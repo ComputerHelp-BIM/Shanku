@@ -23,22 +23,34 @@ function Panel() {
 describe('BottomPanel', () => {
   it('toggles with Ctrl + ` and Ctrl + Shift + `, including from the console input', () => {
     render(<Panel />);
-    const body = screen.getByRole('tabpanel', { hidden: true });
-    expect(body.hidden).toBe(false);
+    expect(screen.getByRole('tabpanel')).toBeTruthy();
     fireEvent.keyDown(window, { code: 'Backquote', ctrlKey: true });
-    expect(body.hidden).toBe(true);
+    expect(screen.queryByRole('tabpanel')).toBeNull();
     fireEvent.keyDown(window, { code: 'Backquote', ctrlKey: true, shiftKey: true });
-    expect(body.hidden).toBe(false);
+    expect(screen.getByRole('tabpanel')).toBeTruthy();
     fireEvent.keyDown(screen.getByLabelText('console input'), { code: 'Backquote', ctrlKey: true });
-    expect(body.hidden).toBe(true);
+    expect(screen.queryByRole('tabpanel')).toBeNull();
   });
 
-  it('opens when a tab is clicked while collapsed', () => {
+  it('takes no space when hidden and opens by dragging the handle up, VS Code style', () => {
     render(<Panel />);
-    fireEvent.click(screen.getByLabelText('Collapse bottom panel'));
-    fireEvent.click(screen.getByRole('tab', { name: /QA results/ }));
-    expect(screen.getByText('3 issues')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Hide bottom panel'));
+    expect(screen.queryByRole('tab')).toBeNull();
+    const sash = screen.getByRole('separator');
+    fireEvent.pointerDown(sash, { button: 0, clientY: 600 });
+    fireEvent.pointerMove(window, { clientY: 400 });
+    fireEvent.pointerUp(window);
     expect(screen.getByRole('tabpanel').hidden).toBe(false);
+    expect((screen.getByLabelText('Bottom panel') as HTMLElement).style.height).toBe('200px');
+  });
+
+  it('closes when dragged below the minimum height', () => {
+    render(<Panel />);
+    const sash = screen.getByRole('separator');
+    fireEvent.pointerDown(sash, { button: 0, clientY: 400 });
+    fireEvent.pointerMove(window, { clientY: 560 });
+    fireEvent.pointerUp(window);
+    expect(screen.queryByRole('tabpanel')).toBeNull();
   });
 });
 

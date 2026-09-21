@@ -21,3 +21,15 @@ afterEach(() => {
   document.documentElement.removeAttribute('data-theme');
   window.localStorage.clear();
 });
+
+// jsdom has no PointerEvent; fire pointer events as MouseEvents so clientX/Y and button survive.
+if (typeof window.PointerEvent === 'undefined') {
+  class PointerEventPolyfill extends MouseEvent {
+    pointerId: number;
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 1;
+    }
+  }
+  (window as unknown as { PointerEvent: typeof PointerEventPolyfill }).PointerEvent = PointerEventPolyfill;
+}

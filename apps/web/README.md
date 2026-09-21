@@ -1,12 +1,16 @@
-# @shanku/web 0.2.0
+# @shanku/web 0.3.0
 
-The Shanku app. Requires `@shanku/engine >= 0.2.0`, `@shanku/ui >= 0.1.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.2.0`, `@shanku/ui >= 0.2.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
 ```bash
 npm run dev          # from the repo root
 ```
+
+## Roadmap for the workspace
+
+Next for the UI: dockable panels like Revit. Properties and the Project browser (and later the QA and BOQ panels) will dock to any side, stack as tabs, float as windows, or pop out, with the layout saved per user. The plan is dockview (MIT), themed with Shanku tokens.
 
 ## Revit shortcuts supported
 
@@ -17,6 +21,10 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.3.0 — 2026-09-21
+- The bottom panel starts hidden and takes no space. Open it with Ctrl + `, by dragging up from the bottom edge of the view, or with Panel in the status bar. Its height is remembered.
+- Tested with real reconstruction files: Test16 (1,493 elements) and Tower1 (14,039 elements, 29 MB, opens in about 3 s).
 
 ### 0.2.0 — 2026-09-21
 - Revit controls from the navigation cheat sheet: Ctrl adds and Shift removes, window/crossing selection, Home, ZF/ZE/ZX/ZA, ZP/ZC, ZR/ZZ, HI/IC/HH/HR with the view outlined while anything is hidden, BX, WF/HL/SD/CO, Keyboard tab.

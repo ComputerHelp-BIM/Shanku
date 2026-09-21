@@ -27,7 +27,7 @@ import { fileFromDrop, pickIfcFile } from './lib/openFile';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.3.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -50,7 +50,24 @@ export function App() {
   const viewport = useRef<ViewportHandle>(null);
   const search = useRef<HTMLInputElement>(null);
   const [ribbonTab, setRibbonTab] = useState('model');
-  const [panelOpen, setPanelOpen] = useState(true);
+  // Bottom panel starts hidden, like VS Code's terminal; its height is remembered.
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelHeight, setPanelHeight] = useState<number>(() => {
+    try {
+      const v = Number(window.localStorage.getItem('shanku.panelHeight'));
+      return Number.isFinite(v) && v >= 96 ? v : 220;
+    } catch {
+      return 220;
+    }
+  });
+  const changePanelHeight = useCallback((h: number) => {
+    setPanelHeight(h);
+    try {
+      window.localStorage.setItem('shanku.panelHeight', String(h));
+    } catch {
+      /* storage unavailable: height applies for this session */
+    }
+  }, []);
   const [panelTab, setPanelTab] = useState('activity');
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -370,6 +387,8 @@ export function App() {
         <BottomPanel
           open={panelOpen}
           onOpenChange={setPanelOpen}
+          height={panelHeight}
+          onHeightChange={changePanelHeight}
           activeId={panelTab}
           onTabChange={setPanelTab}
           tabs={[
@@ -428,6 +447,16 @@ export function App() {
             : null}
           <span className="app-spacer" />
           <LocalIndicator />
+          <span className="app-divider" aria-hidden="true" />
+          <button
+            type="button"
+            className="app-panel-toggle"
+            aria-pressed={panelOpen}
+            title={`${panelOpen ? 'Hide' : 'Show'} panel (Ctrl + \`)`}
+            onClick={() => setPanelOpen((o) => !o)}
+          >
+            Panel {panelOpen ? '▾' : '▴'}
+          </button>
           <span className="app-divider" aria-hidden="true" />
           <span className="app-faint">
             {info ? `${info.schema} · ${info.units.length} · ` : ''}v{APP_VERSION} · engine {ENGINE_VERSION}

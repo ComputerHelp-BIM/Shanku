@@ -68,3 +68,10 @@
 .app-keys { border-collapse: collapse; font-size: 13px; }
 .app-keys th { text-align: left; font-weight: 600; padding: 3px 24px 3px 0; white-space: nowrap; font-family: var(--font-mono); font-size: 12px; }
 .app-keys td { padding: 3px 0; color: var(--text-secondary); }
+
+.app-panel-toggle {
+  height: 20px; padding: 0 var(--space-sm); border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-secondary); font: inherit; font-size: 12px; cursor: pointer;
+}
+.app-panel-toggle:hover { background: var(--chip); }
+.app-panel-toggle[aria-pressed='true'] { color: var(--accent-text); }

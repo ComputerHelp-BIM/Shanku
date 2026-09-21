@@ -2,6 +2,15 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.3.0 — 2026-09-21
+
+### Changed
+- `@shanku/ui` 0.2.0: the bottom panel works like VS Code's: hidden takes no space, drag the edge up or press Ctrl + ` to open, drag to resize or close.
+- `@shanku/web` 0.3.0: the panel starts hidden, remembers its height, and has a Panel toggle in the status bar.
+
+### Verified
+- Real files: Test16-Preliminary-AssumedLevels.ifc (1,493 elements, 1.0 s) and Tower1-Preliminary-AssumedLevels.ifc (14,039 elements, 29 MB, 2.5 s parse, about 3 s in the browser): every element categorised and assigned a level, properties readable.
+
 ## 0.2.0 — 2026-09-21
 
 ### Added

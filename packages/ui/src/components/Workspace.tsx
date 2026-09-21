@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { TOGGLE_BOTTOM_PANEL, formatShortcut, useShortcut } from '../hooks/useShortcut';
 import { Kbd } from './Button';
 
@@ -51,21 +51,107 @@ export interface BottomPanelProps {
   onTabChange: (id: string) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Open height in px. Controlled when given with onHeightChange. Default 196. */
+  height?: number;
+  onHeightChange?: (height: number) => void;
+  /** Dragging below this closes the panel, like VS Code. Default 96. */
+  minHeight?: number;
   /** Bind Ctrl + ` (fallback Ctrl + Shift + `) to toggle. Default true. */
   bindShortcut?: boolean;
 }
 
+const DEFAULT_HEIGHT = 196;
+
 /**
- * Console / QA / BOQ / Activity dock under the viewport. Collapsed, only its
- * tab strip remains so it stays discoverable. The toggle shortcut also works
- * while typing in the console.
+ * Console / QA / BOQ / Activity dock under the viewport, VS Code style: when closed
+ * it takes no space at all, only a thin drag handle along the bottom edge. Drag the
+ * handle up (or press Ctrl + `) to open; drag its top edge to resize; drag it below
+ * `minHeight` to close. The shortcut also works while typing in the console.
  */
-export function BottomPanel({ tabs, activeId, onTabChange, open, onOpenChange, bindShortcut = true }: BottomPanelProps) {
+export function BottomPanel({
+  tabs,
+  activeId,
+  onTabChange,
+  open,
+  onOpenChange,
+  height,
+  onHeightChange,
+  minHeight = 96,
+  bindShortcut = true,
+}: BottomPanelProps) {
   const bodyId = useId();
+  const [innerHeight, setInnerHeight] = useState(DEFAULT_HEIGHT);
+  const h = height ?? innerHeight;
+  const setHeight = (v: number) => (onHeightChange ? onHeightChange(v) : setInnerHeight(v));
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+
   useShortcut(TOGGLE_BOTTOM_PANEL, () => onOpenChange(!open), { enabled: bindShortcut, allowInEditable: true });
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
+  const toggleLabel = formatShortcut(TOGGLE_BOTTOM_PANEL[0]);
+
+  const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = open ? h : 0;
+    const parent = rootRef.current?.parentElement?.getBoundingClientRect().height ?? 0;
+    const maxH = parent > 0 ? Math.max(minHeight, parent * 0.8) : Infinity;
+    let last = startH;
+    setDragging(true);
+    const move = (ev: PointerEvent) => {
+      last = Math.min(maxH, Math.max(0, startH + (startY - ev.clientY)));
+      if (last >= minHeight) {
+        if (!open) onOpenChange(true);
+        setHeight(Math.round(last));
+      }
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      setDragging(false);
+      if (last < minHeight) onOpenChange(false);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  const onSashKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onOpenChange(!open);
+    } else if (open && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      setHeight(Math.max(minHeight, h + (e.key === 'ArrowUp' ? 16 : -16)));
+    }
+  };
+
+  const sash = (
+    <div
+      className={['sk-bottom-sash', dragging && 'is-dragging'].filter(Boolean).join(' ')}
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label={open ? 'Resize bottom panel' : `Show bottom panel (drag up or ${toggleLabel})`}
+      aria-valuenow={open ? h : 0}
+      aria-controls={bodyId}
+      tabIndex={0}
+      title={open ? 'Drag to resize' : `Drag up or press ${toggleLabel}`}
+      onPointerDown={startDrag}
+      onKeyDown={onSashKey}
+    />
+  );
+
+  if (!open) {
+    return (
+      <div ref={rootRef} className="sk-bottom-panel is-collapsed">
+        {sash}
+      </div>
+    );
+  }
+
   return (
-    <section className={['sk-bottom-panel', open ? 'is-open' : 'is-collapsed'].join(' ')} aria-label="Bottom panel">
+    <section ref={rootRef} className="sk-bottom-panel is-open" style={{ height: h }} aria-label="Bottom panel">
+      {sash}
       <div className="sk-bottom-panel__bar">
         <div role="tablist" aria-label="Bottom panel tabs" className="sk-bottom-panel__tabs">
           {tabs.map((tab) => (
@@ -76,10 +162,7 @@ export function BottomPanel({ tabs, activeId, onTabChange, open, onOpenChange, b
               aria-selected={tab.id === active?.id}
               aria-controls={bodyId}
               className={['sk-bottom-panel__tab', tab.id === active?.id && 'is-active'].filter(Boolean).join(' ')}
-              onClick={() => {
-                onTabChange(tab.id);
-                if (!open) onOpenChange(true);
-              }}
+              onClick={() => onTabChange(tab.id)}
             >
               {tab.label}
               {typeof tab.badge === 'number' ? <span className="sk-bottom-panel__badge">{tab.badge}</span> : null}
@@ -87,23 +170,23 @@ export function BottomPanel({ tabs, activeId, onTabChange, open, onOpenChange, b
           ))}
         </div>
         <span className="sk-bottom-panel__hint">
-          Toggle <Kbd>{formatShortcut(TOGGLE_BOTTOM_PANEL[0])}</Kbd>
+          Toggle <Kbd>{toggleLabel}</Kbd>
         </span>
         <button
           type="button"
           className="sk-icon-button"
           aria-expanded={open}
           aria-controls={bodyId}
-          aria-label={open ? 'Collapse bottom panel' : 'Expand bottom panel'}
-          title={`${open ? 'Collapse' : 'Expand'} (${formatShortcut(TOGGLE_BOTTOM_PANEL[0])})`}
-          onClick={() => onOpenChange(!open)}
+          aria-label="Hide bottom panel"
+          title={`Hide (${toggleLabel})`}
+          onClick={() => onOpenChange(false)}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d={open ? 'M6 9l6 6 6-6' : 'M6 15l6-6 6 6'} />
+            <path d="M6 9l6 6 6-6" />
           </svg>
         </button>
       </div>
-      <div id={bodyId} role="tabpanel" className="sk-bottom-panel__body" hidden={!open}>
+      <div id={bodyId} role="tabpanel" className="sk-bottom-panel__body">
         {active?.content}
       </div>
     </section>
