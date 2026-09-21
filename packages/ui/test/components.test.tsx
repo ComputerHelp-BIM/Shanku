@@ -124,3 +124,25 @@ describe('ThemeProvider', () => {
     expect(screen.getByTestId('state').textContent).toBe('system/paper');
   });
 });
+
+describe('ViewTabs', () => {
+  it('colours each tab by its document, pyRevit style', async () => {
+    const { ViewTabs } = await import('../src');
+    render(
+      <ViewTabs
+        activeId="a"
+        onSelect={() => {}}
+        tabs={[
+          { id: 'a', label: '{3D}', color: '#2F7FD8', title: 'model.ifc' },
+          { id: 'b', label: 'Plan.dxf', color: '#1F9E89' },
+          { id: 'c', label: 'Plain' },
+        ]}
+      />,
+    );
+    const tab = screen.getByRole('tab', { name: '{3D}' }).parentElement as HTMLElement;
+    expect(tab.style.getPropertyValue('--tab-color')).toBe('#2F7FD8');
+    expect(tab.className).toContain('has-color');
+    expect(tab.title).toBe('model.ifc');
+    expect((screen.getByRole('tab', { name: 'Plain' }).parentElement as HTMLElement).className).not.toContain('has-color');
+  });
+});

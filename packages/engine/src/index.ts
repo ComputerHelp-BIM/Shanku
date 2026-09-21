@@ -3,4 +3,8 @@ export { categoryOf, prettyIfcClass, CATEGORY_ORDER, CATEGORY_PLURAL } from './m
 export { IfcClient, type OpenProgress } from './ifc/client';
 export { Viewer, type ViewName, type ViewerEvents, type DisplayStyle, type SelectMode } from './render/Viewer';
 export { parseCssColor } from './render/cssColor';
-export const ENGINE_VERSION = '0.2.0';
+export { DxfClient } from './dxf/client';
+export type { ParsedDrawing, DrawingInfo, DrawingLayer, DrawingText } from './dxf/types';
+export { DrawingViewer, type DrawingViewerEvents } from './render/DrawingViewer';
+export { resolvePalette, contrast } from './render/drawingColors';
+export const ENGINE_VERSION = '0.3.0';

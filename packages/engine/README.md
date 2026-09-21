@@ -1,4 +1,4 @@
-# @shanku/engine 0.2.0
+# @shanku/engine 0.3.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -24,6 +24,12 @@ Requires `three` 0.186 and `web-ifc` 0.0.77. The app must serve `web-ifc.wasm` a
 
 Methods: `fit(indices?)` (ZF/ZE/ZX/ZA), `home()`, `setView(view)`, `previousView()` (ZP/ZC), `startZoomRegion()` (ZR/ZZ), `setHidden(indices)` (HH/HI/IC/HR), `setSectionBox(indices | null)` (BX), `setDisplayStyle('shaded' | 'consistent' | 'hiddenLine' | 'wireframe')` (SD/CO/HL/WF).
 
+## DXF 2D view
+
+`src/dxf/extract.py` uses ezdxf's own drawing front end, so blocks, dimensions, leaders, hatches and BYLAYER/BYBLOCK colours resolve as ezdxf renders them. Linetypes are drawn solid for speed. Text is placed by insertion point, height, rotation and alignment in the app's UI font (not the drawing's SHX font). Coordinates are rebased to the drawing's lower-left corner for float precision; the cursor readout adds the origin back.
+
+The first DXF in a session downloads Python and ezdxf from jsDelivr and PyPI (about 15 MB, then cached by the browser). The drawing itself never leaves the device. Measured in headless Chromium: a 0.4 MB drawing opens in 6.7 s including that first download; the 23.6 MB Test17 drawing (505,000 lines, 10,465 texts, 14 floor plans) opens in 26 s. Self-hosting Pyodide for offline use is planned.
+
 ## Performance (measured)
 
 51,280-element synthetic RCC tower (615,360 triangles, 14.5 MB IFC): parsed in 3.0 s in Node, opened in 3.9 s in Chromium including worker transfer. Target: under 8 s. Run it yourself:
@@ -40,6 +46,11 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.3.0 — 2026-09-21
+- Added DXF 2D viewing: `DxfClient` runs ezdxf 1.4.4 (MIT) in Pyodide 0.27.7 (MPL-2.0) inside a worker; `DrawingViewer` draws lines and fills on the GPU and text on a canvas overlay, with AutoCAD pan/zoom and per-layer visibility.
+- Added `resolvePalette`: colour 7 follows the theme; colours too close to the background are pulled toward the foreground so every layer stays readable in Paper and Ink.
+- Python extractor `src/dxf/extract.py` 1.0.0 with pytest tests.
 
 ### 0.2.0 — 2026-09-21
 - Breaking: `onPick(index, additive)` became `onPick(index, mode)` with Revit rules (Ctrl adds, Shift removes).

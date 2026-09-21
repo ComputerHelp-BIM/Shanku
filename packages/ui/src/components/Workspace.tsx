@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type CSSProperties } from 'react';
 import { TOGGLE_BOTTOM_PANEL, formatShortcut, useShortcut } from '../hooks/useShortcut';
 import { Kbd } from './Button';
 
@@ -6,6 +6,10 @@ export interface ViewTab {
   id: string;
   label: string;
   closable?: boolean;
+  /** Document colour, like pyRevit's tab colouring: every view of the same file shares it. */
+  color?: string;
+  /** Tooltip, e.g. the file name. */
+  title?: string;
 }
 
 export interface ViewTabsProps {
@@ -21,7 +25,12 @@ export function ViewTabs({ tabs, activeId, onSelect, onClose }: ViewTabsProps) {
       {tabs.map((tab) => {
         const active = tab.id === activeId;
         return (
-          <div key={tab.id} className={['sk-view-tab', active && 'is-active'].filter(Boolean).join(' ')}>
+          <div
+            key={tab.id}
+            className={['sk-view-tab', active && 'is-active', tab.color && 'has-color'].filter(Boolean).join(' ')}
+            style={tab.color ? ({ '--tab-color': tab.color } as CSSProperties) : undefined}
+            title={tab.title}
+          >
             <button type="button" role="tab" aria-selected={active} className="sk-view-tab__label" onClick={() => onSelect(tab.id)}>
               {tab.label}
             </button>

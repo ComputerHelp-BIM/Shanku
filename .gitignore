@@ -7,3 +7,7 @@ coverage/
 apps/web/public/wasm/
 *.ifc
 !apps/web/public/samples/*.ifc
+__pycache__/
+.pytest_cache/
+*.dxf
+*.dwg

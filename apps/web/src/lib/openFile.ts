@@ -3,6 +3,13 @@ export interface PickedFile {
   bytes: ArrayBuffer;
 }
 
+export type FileKind = 'ifc' | 'dxf';
+
+export function kindOf(name: string): FileKind | 'dwg' | null {
+  const ext = name.toLowerCase().split('.').pop();
+  return ext === 'ifc' || ext === 'dxf' || ext === 'dwg' ? ext : null;
+}
+
 type Picker = (options: {
   types: Array<{ description: string; accept: Record<string, string[]> }>;
   excludeAcceptAllOption?: boolean;
@@ -15,11 +22,18 @@ type Picker = (options: {
  * The file is read locally; nothing is uploaded.
  */
 export async function pickIfcFile(): Promise<PickedFile | null> {
+  return pickFile('ifc');
+}
+
+/** Opens the system file picker for one IFC or DXF file. */
+export async function pickFile(kind: FileKind): Promise<PickedFile | null> {
+  const accept: Record<string, string[]> = kind === 'ifc' ? { 'application/x-step': ['.ifc'] } : { 'image/vnd.dxf': ['.dxf'] };
+  const description = kind === 'ifc' ? 'IFC model' : 'DXF drawing';
   const picker = (window as unknown as { showOpenFilePicker?: Picker }).showOpenFilePicker;
   if (picker) {
     try {
       const [handle] = await picker({
-        types: [{ description: 'IFC model', accept: { 'application/x-step': ['.ifc'] } }],
+        types: [{ description, accept }],
         multiple: false,
       });
       const file = await handle.getFile();
@@ -32,7 +46,7 @@ export async function pickIfcFile(): Promise<PickedFile | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.ifc';
+    input.accept = `.${kind}`;
     input.onchange = async () => {
       const file = input.files?.[0];
       resolve(file ? { name: file.name, bytes: await file.arrayBuffer() } : null);
@@ -42,9 +56,11 @@ export async function pickIfcFile(): Promise<PickedFile | null> {
   });
 }
 
-export async function fileFromDrop(e: { dataTransfer: DataTransfer | null }): Promise<PickedFile | null> {
+export async function fileFromDrop(e: { dataTransfer: DataTransfer | null }): Promise<(PickedFile & { kind: FileKind }) | null> {
   const file = e.dataTransfer?.files?.[0];
   if (!file) return null;
-  if (!file.name.toLowerCase().endsWith('.ifc')) throw new Error(`${file.name} is not an .ifc file. DXF import arrives in the next release.`);
-  return { name: file.name, bytes: await file.arrayBuffer() };
+  const kind = kindOf(file.name);
+  if (kind === 'dwg') throw new Error(`${file.name} is a DWG. Save it as DXF (AutoCAD: Save As > DXF, or the free ODA File Converter) and drop the DXF.`);
+  if (!kind) throw new Error(`${file.name} is not an IFC or DXF file.`);
+  return { name: file.name, bytes: await file.arrayBuffer(), kind };
 }

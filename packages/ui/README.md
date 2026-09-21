@@ -1,4 +1,4 @@
-# @shanku/ui 0.2.0
+# @shanku/ui 0.3.0
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.0.0` and `@shanku/brand >= 1.0.0`.
 
@@ -33,6 +33,9 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.3.0 — 2026-09-21
+- `ViewTabs`: optional `color` and `title` per tab. Coloured tabs get a 3 px top stripe and a light tint, so all views of one file share a colour.
 
 ### 0.2.0 — 2026-09-21
 - Changed (breaking for layouts): `BottomPanel` takes no space when closed, like VS Code's panel. A thin drag handle sits on the edge: drag it up to open, drag the top edge to resize, drag below `minHeight` (96 px) to close. The handle is keyboard operable (Enter toggles, arrow keys resize).

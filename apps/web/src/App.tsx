@@ -23,11 +23,15 @@ import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
 import { fmtCount } from './lib/format';
-import { fileFromDrop, pickIfcFile } from './lib/openFile';
+import { fileFromDrop, pickFile, pickIfcFile } from './lib/openFile';
+import { useDrawings } from './lib/useDrawings';
+import { nextDocColor } from './lib/documents';
+import { DrawingView, type DrawingViewHandle } from './components/DrawingView';
+import { DrawingProperties, LayersPanel } from './components/DrawingPanels';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.4.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -75,12 +79,54 @@ export function App() {
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>('shaded');
   const [sectionBox, setSectionBox] = useState(false);
   const [zoomRegion, setZoomRegion] = useState(false);
+  const [activeView, setActiveView] = useState<string>('3d');
+  const [ifcColor, setIfcColor] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  const drawingView = useRef<DrawingViewHandle>(null);
+  const ifcColorRef = useRef<string | null>(null);
+  ifcColorRef.current = ifcColor;
+  const dx = useDrawings(
+    useCallback(() => (ifcColorRef.current ? [ifcColorRef.current] : []), []),
+    m.log,
+  );
+  const activeDoc = dx.docs.find((d) => d.id === activeView) ?? null;
 
   // A new model starts with nothing hidden and no section box.
   useEffect(() => {
     setHidden([]);
     setSectionBox(false);
+    if (m.model) {
+      setIfcColor((c) => c ?? nextDocColor(dx.docs.map((d) => d.color)));
+      setActiveView('3d');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.model]);
+
+  const openDrawing = useCallback(
+    async (file: { name: string; bytes: ArrayBuffer }) => {
+      try {
+        const id = await dx.open(file);
+        if (id) setActiveView(id);
+      } catch (e) {
+        setNotice(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [dx],
+  );
+
+  const openDxfFromDisk = useCallback(async () => {
+    try {
+      const file = await pickFile('dxf');
+      if (file) await openDrawing(file);
+    } catch (e) {
+      m.log(e instanceof Error ? e.message : String(e), 'error');
+    }
+  }, [m, openDrawing]);
+
+  const closeView = (id: string) => {
+    dx.close(id);
+    if (id === activeView) setActiveView('3d');
+  };
 
   const openFromDisk = useCallback(async () => {
     try {
@@ -100,6 +146,11 @@ export function App() {
   // Revit commands (two-letter sequences, Home, Esc).
   const runCommand = useCallback(
     (cmd: CommandId) => {
+      if (activeDoc) {
+        if (cmd === 'fit') drawingView.current?.fit();
+        else setNotice('That command works in 3D views.');
+        return;
+      }
       const v = viewport.current;
       const model = m.model;
       if (!v || !model) return;
@@ -153,14 +204,14 @@ export function App() {
           return setDisplayStyle('consistent');
       }
     },
-    [m, sectionBox],
+    [m, sectionBox, activeDoc],
   );
 
   useShortcut({ code: 'Escape' }, () => {
     if (zoomRegion) viewport.current?.cancelZoomRegion();
     else m.setSelection([]);
   });
-  useShortcut({ code: 'Home' }, () => viewport.current?.home());
+  useShortcut({ code: 'Home' }, () => (activeDoc ? drawingView.current?.fit() : viewport.current?.home()));
   const commandRef = useRef(runCommand);
   commandRef.current = runCommand;
   useEffect(() => {
@@ -237,7 +288,7 @@ export function App() {
         <Ribbon label="Model">
           <RibbonGroup label="Open">
             <RibbonButton icon="ifc" label="IFC" onClick={openFromDisk} shortcutHint="opens from this device" />
-            <RibbonButton icon="dxf" label="DXF" disabled shortcutHint="next release" />
+            <RibbonButton icon="dxf" label="DXF" onClick={openDxfFromDisk} shortcutHint="2D view, opens from this device" />
           </RibbonGroup>
           <RibbonGroup label="Structure">
             {(['column', 'beam', 'wall', 'slab', 'footing'] as const).map((k) => (
@@ -259,11 +310,33 @@ export function App() {
       }
       left={
         <>
-          <PropertiesPanel model={m.model} selection={sel} properties={m.properties} />
-          <Browser model={m.model} onSelectLevel={selectLevel} onSelectCategory={selectCategory} />
+          {activeDoc ? (
+            <>
+              <DrawingProperties doc={activeDoc} onUnits={(u) => dx.update(activeDoc.id, { units: u })} />
+              <LayersPanel doc={activeDoc} onChange={(on) => dx.update(activeDoc.id, { layerOn: on })} />
+            </>
+          ) : (
+            <>
+              <PropertiesPanel model={m.model} selection={sel} properties={m.properties} />
+              <Browser model={m.model} onSelectLevel={selectLevel} onSelectCategory={selectCategory} />
+            </>
+          )}
         </>
       }
-      viewTabs={<ViewTabs tabs={[{ id: '3d', label: '{3D}' }]} activeId="3d" onSelect={() => {}} />}
+      viewTabs={
+        <ViewTabs
+          tabs={[
+            { id: '3d', label: '{3D}', color: m.model ? ifcColor ?? undefined : undefined, title: info?.fileName },
+            ...dx.docs.map((d) => ({ id: d.id, label: d.name.replace(/\.dxf$/i, ''), closable: true, color: d.color, title: `${d.name} (2D)` })),
+          ]}
+          activeId={activeView}
+          onSelect={(id) => {
+            setActiveView(id);
+            setCursor(null);
+          }}
+          onClose={closeView}
+        />
+      }
       viewport={
         <div
           className={['app-drop', dragging && 'is-dragging', hidden.length > 0 && 'is-isolated'].filter(Boolean).join(' ')}
@@ -277,12 +350,17 @@ export function App() {
             setDragging(false);
             try {
               const file = await fileFromDrop(e);
-              if (file) await m.open(file);
+              if (file?.kind === 'dxf') await openDrawing(file);
+              else if (file) await m.open(file);
             } catch (err) {
               setNotice(err instanceof Error ? err.message : String(err));
             }
           }}
         >
+          {dx.docs.map((d) =>
+            d.id === activeView ? <DrawingView key={d.id} ref={drawingView} doc={d} onCursor={(x, y) => setCursor({ x, y })} /> : null,
+          )}
+          <div className="app-view3d" hidden={activeDoc !== null}>
           <Viewport
             ref={viewport}
             model={m.model}
@@ -293,21 +371,23 @@ export function App() {
             onBoxSelect={m.boxSelect}
             onZoomRegionEnd={() => setZoomRegion(false)}
           />
-          {m.model && (hidden.length || sectionBox || zoomRegion) ? (
+          </div>
+          {!activeDoc && m.model && (hidden.length || sectionBox || zoomRegion) ? (
             <div className="app-viewstate" role="status">
               {hidden.length ? <span>Temporary hide/isolate · HR resets</span> : null}
               {sectionBox ? <span>Section box · BX removes</span> : null}
               {zoomRegion ? <span>Drag a region to zoom · Esc cancels</span> : null}
             </div>
           ) : null}
-          {load.status === 'idle' && !m.model ? (
+          {load.status === 'idle' && !m.model && !activeDoc && !dx.loading ? (
             <div className="app-overlay">
-              <p className="app-overlay__title">Open an IFC model</p>
-              <p className="app-overlay__text">Drop an .ifc file here or choose one. It is read on this device and never uploaded.</p>
+              <p className="app-overlay__title">Open an IFC model or a DXF drawing</p>
+              <p className="app-overlay__text">Drop an .ifc or .dxf file here, or choose one. Files are read on this device and never uploaded.</p>
               <div className="app-overlay__actions">
                 <Button variant="primary" onClick={openFromDisk}>
                   Open IFC file
                 </Button>
+                <Button onClick={openDxfFromDisk}>Open DXF drawing</Button>
                 <Button onClick={openSample}>Try the sample frame</Button>
               </div>
             </div>
@@ -323,7 +403,16 @@ export function App() {
               </div>
             </div>
           ) : null}
-          {load.status === 'error' ? (
+          {dx.loading ? (
+            <div className="app-overlay" role="status" aria-live="polite">
+              <p className="app-overlay__title">Opening {dx.loading.name}</p>
+              <p className="app-overlay__text">{dx.loading.phase}</p>
+              <div className="app-progress app-progress--busy" aria-hidden="true">
+                <div className="app-progress__bar" />
+              </div>
+            </div>
+          ) : null}
+          {load.status === 'error' && !activeDoc ? (
             <div className="app-overlay" role="alert">
               <p className="app-overlay__title">That file didn’t open</p>
               <p className="app-overlay__text">{load.message}</p>
@@ -342,6 +431,15 @@ export function App() {
         </div>
       }
       viewBar={
+        activeDoc ? (
+          <>
+            <Button size="sm" variant="ghost" onClick={() => drawingView.current?.fit()} title="Zoom extents (ZF, Home, double middle-click)">
+              Fit
+            </Button>
+            <span className="app-spacer" />
+            <span className="app-hint">2D · Middle-drag pan · Wheel zoom · Double middle-click fit · Alt + drag on a trackpad</span>
+          </>
+        ) : (
         <>
           <Button size="sm" variant="ghost" onClick={() => viewport.current?.fit()} title="Zoom to fit (ZF)">
             Fit
@@ -382,6 +480,7 @@ export function App() {
             Reset hidden
           </Button>
         </>
+        )
       }
       bottomPanel={
         <BottomPanel
@@ -433,6 +532,16 @@ export function App() {
       }
       statusBar={
         <StatusBar>
+          {activeDoc ? (
+            <>
+              <span className="app-coords" aria-label="Cursor position">
+                {cursor ? `X ${cursor.x.toFixed(1)}   Y ${cursor.y.toFixed(1)}` : 'X —   Y —'} {activeDoc.units}
+              </span>
+              <span className="app-divider" aria-hidden="true" />
+              <StatusChip>Layers {fmtCount(activeDoc.layerOn.filter(Boolean).length)} / {fmtCount(activeDoc.layerOn.length)} on</StatusChip>
+            </>
+          ) : (
+          <>
           <span className="app-sel">
             {sel.length ? <span className="app-sel__dot" aria-hidden="true" /> : null}
             {selLabel}
@@ -445,6 +554,8 @@ export function App() {
                 </StatusChip>
               ))
             : null}
+          </>
+          )}
           <span className="app-spacer" />
           <LocalIndicator />
           <span className="app-divider" aria-hidden="true" />
@@ -459,7 +570,7 @@ export function App() {
           </button>
           <span className="app-divider" aria-hidden="true" />
           <span className="app-faint">
-            {info ? `${info.schema} · ${info.units.length} · ` : ''}v{APP_VERSION} · engine {ENGINE_VERSION}
+            {activeDoc ? `DXF ${activeDoc.drawing.info.release} · ` : info ? `${info.schema} · ${info.units.length} · ` : ''}v{APP_VERSION} · engine {ENGINE_VERSION}
           </span>
         </StatusBar>
       }

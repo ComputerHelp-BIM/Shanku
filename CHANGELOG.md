@@ -2,6 +2,18 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.4.0 — 2026-09-21
+
+### Added
+- DXF drawings open as 2D view tabs (AutoCAD-style viewing only; DXF-to-model comes later as a redesigned pipeline). ezdxf in Pyodide, loaded on first use.
+- Per-file tab colours, pyRevit style.
+- CI runs the Python extractor tests.
+
+### Verified with your files
+- `UMA_NIWAS_BUILDING-ST-30-04-2025.ifc` (Revit 2025, IFC2x3 CV2.0): 1,057 elements, 13 levels, 0.6 s.
+- `Full_G4-3-Parts_Input_Footing.dxf`: 3,741 lines, 412 texts, 29 layers; declared units say inches, override available.
+- `StructuralPlan-Test17-clean.dxf`: 505,000 lines, 1,943 fills, 10,465 texts, 33 layers, 26 s.
+
 ## 0.3.0 — 2026-09-21
 
 ### Changed

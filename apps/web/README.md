@@ -1,6 +1,6 @@
-# @shanku/web 0.3.0
+# @shanku/web 0.4.0
 
-The Shanku app. Requires `@shanku/engine >= 0.2.0`, `@shanku/ui >= 0.2.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.3.0`, `@shanku/ui >= 0.3.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.4.0 — 2026-09-21
+- Open DXF drawings as 2D view tabs beside {3D} (ribbon DXF button or drag and drop). Each file gets its own tab colour, like pyRevit's tab colouring.
+- 2D view: AutoCAD-style middle-drag pan, wheel zoom, double middle-click fit, ZF and Home fit; theme-aware colours with colour 7 flipping black/white.
+- Layers panel with filter, per-layer on/off and All on / All off; drawing properties with a units override (for files whose $INSUNITS is wrong); live X/Y cursor readout.
+- Dropping a DWG explains how to convert it to DXF.
 
 ### 0.3.0 — 2026-09-21
 - The bottom panel starts hidden and takes no space. Open it with Ctrl + `, by dragging up from the bottom edge of the view, or with Panel in the status bar. Its height is remembered.
