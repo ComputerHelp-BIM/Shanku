@@ -1,0 +1,23 @@
+{
+  "name": "shanku",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shanku: open, IFC-native structural modelling in the browser.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "workspaces": [
+    "packages/tokens",
+    "packages/brand",
+    "packages/ui",
+    "apps/playground"
+  ],
+  "scripts": {
+    "build": "npm run build -w @shanku/tokens && npm run build -w @shanku/ui && npm run build -w @shanku/playground",
+    "dev": "npm run build -w @shanku/tokens && npm run dev -w @shanku/playground",
+    "test": "npm run build -w @shanku/tokens && npm run test -w @shanku/ui",
+    "typecheck": "npm run build -w @shanku/tokens && npm run typecheck -w @shanku/ui && npm run typecheck -w @shanku/playground"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

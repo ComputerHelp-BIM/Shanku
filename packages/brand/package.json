@@ -1,0 +1,13 @@
+{
+  "name": "@shanku/brand",
+  "version": "1.0.0",
+  "description": "Shanku logos, structural icon set and brand book.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    "./icons.json": "./icons.json",
+    "./assets/*": "./assets/*",
+    "./BRAND.md": "./BRAND.md"
+  },
+  "files": ["assets", "icons.json", "BRAND.md"]
+}

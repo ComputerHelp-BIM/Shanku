@@ -1,0 +1,19 @@
+{
+  "name": "@shanku/tokens",
+  "version": "1.0.0",
+  "description": "Shanku design tokens (Paper and Ink themes) as CSS custom properties and a typed JS object.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./tokens.css": "./dist/tokens.css",
+    "./tokens.json": "./tokens.json"
+  },
+  "files": ["dist", "tokens.json"],
+  "sideEffects": ["*.css"],
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  }
+}

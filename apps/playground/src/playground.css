@@ -1,0 +1,43 @@
+/* Playground-only styles: the placeholder viewport and bottom-panel content. */
+.pg-viewport { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.pg-viewport svg { width: min(90%, 760px); height: auto; max-height: 92%; }
+.pg-face { stroke: var(--edge-model); stroke-width: 0.6; stroke-linejoin: round; }
+.pg-face.c-top { fill: var(--concrete-top); }
+.pg-face.c-side { fill: var(--concrete-side); }
+.pg-face.c-shade { fill: var(--concrete-shade); }
+.pg-face.s-top { fill: var(--selected-top); stroke: var(--edge-selected); }
+.pg-face.s-side { fill: var(--selected-side); stroke: var(--edge-selected); }
+.pg-face.s-shade { fill: var(--selected-shade); stroke: var(--edge-selected); }
+.pg-note {
+  position: absolute; left: 16px; bottom: 12px; margin: 0;
+  font-size: 12px; line-height: 16px; color: var(--text-faint);
+}
+.pg-console { font-family: var(--font-mono); font-size: 12px; line-height: 17px; }
+.pg-console p { margin: 0; white-space: pre; }
+.pg-console .pg-prompt { color: var(--text-faint); }
+.pg-console .pg-out { color: var(--text-secondary); }
+.pg-console-input { display: flex; align-items: center; gap: 6px; }
+.pg-console-input input {
+  flex: 1; border: 0; background: transparent; color: var(--text);
+  font: inherit; outline: none;
+}
+.pg-table { border-collapse: collapse; font-size: 13px; }
+.pg-table th, .pg-table td { padding: 4px 16px 4px 0; text-align: left; }
+.pg-table th { color: var(--text-secondary); font-weight: 600; }
+.pg-table td.num { text-align: right; }
+.pg-qa { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.pg-qa li { display: flex; align-items: center; gap: 8px; }
+.pg-dot { width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0; }
+.pg-dot.warning { background: var(--status-warning); }
+.pg-dot.error { background: var(--status-error); }
+.pg-sel { display: inline-flex; align-items: center; gap: 8px; }
+.pg-sel__dot { width: 8px; height: 8px; border-radius: 4px; background: var(--accent); }
+.pg-sel__name { color: var(--accent-text); font-weight: 600; }
+.pg-divider { width: 1px; height: 16px; background: var(--border); }
+.pg-spacer { flex: 1; }
+.pg-mono { font-family: var(--font-mono); color: var(--text-secondary); }
+.pg-faint { color: var(--text-faint); }
+/* Slabs are large; drawn semi-transparent so the frame reads through them in both themes. */
+.pg-face.l-top { fill: var(--concrete-top); fill-opacity: 0.55; }
+.pg-face.l-side { fill: var(--concrete-side); }
+.pg-face.l-shade { fill: var(--concrete-shade); }
