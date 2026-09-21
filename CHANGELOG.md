@@ -2,6 +2,20 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.2.0 — 2026-09-21
+
+### Added
+- `@shanku/engine` 0.2.0: IFC loading in a Web Worker (web-ifc), one merged mesh with feature edges, GPU state texture, ID-buffer picking, and Revit navigation and commands.
+- `@shanku/web` 0.2.0: the Shanku app — open IFC (button, drop, sample), select, find by ID, properties on demand, project browser, activity log, keyboard reference; Revit shortcuts ZF/ZE/ZX/ZA, ZP/ZC, ZR/ZZ, HI/IC/HH/HR, BX, WF/HL/SD/CO, Home, Esc.
+- `tools/fixtures/make_sample_ifc.py` 1.1.0 and a 50k-element performance test (3.0 s parse, 3.9 s open in the browser).
+
+### Changed
+- Pages now deploys the app at the site root and the playground at `/playground/`.
+- Dev tooling moved to Vite 8, @vitejs/plugin-react 6 and Vitest 5: `npm audit` reports 0 vulnerabilities.
+
+### Removed
+- `.github/workflows/jekyll-gh-pages.yml` and `static.yml`: they deployed to the same Pages site as `pages.yml`, so whichever finished last replaced the app with raw repository files.
+
 ## 0.1.0 — 2026-09-21
 
 First commit of the Shanku foundation.

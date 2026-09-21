@@ -1,4 +1,8 @@
-name: Deploy playground to GitHub Pages
+name: Deploy to GitHub Pages
+
+# The only Pages workflow in this repo. The app is served at /Shanku/ and the
+# component playground at /Shanku/playground/. Keep one Pages workflow: several
+# race each other and the last one to finish replaces the site.
 
 on:
   push:
@@ -24,13 +28,23 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - run: npm run build -w @shanku/tokens
+      - run: npm run build -w @shanku/web
         env:
           BASE: /Shanku/
+      - run: npm run build -w @shanku/playground
+        env:
+          BASE: /Shanku/playground/
+      - name: Assemble site
+        run: |
+          mkdir -p site
+          cp -r apps/web/dist/. site/
+          mkdir -p site/playground
+          cp -r apps/playground/dist/. site/playground/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/playground/dist
+          path: site
   deploy:
     needs: build
     runs-on: ubuntu-latest

@@ -1,6 +1,6 @@
 {
   "name": "shanku",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Shanku: open, IFC-native structural modelling in the browser.",
   "license": "UNLICENSED",
@@ -9,13 +9,17 @@
     "packages/tokens",
     "packages/brand",
     "packages/ui",
-    "apps/playground"
+    "packages/engine",
+    "apps/playground",
+    "apps/web"
   ],
   "scripts": {
-    "build": "npm run build -w @shanku/tokens && npm run build -w @shanku/ui && npm run build -w @shanku/playground",
-    "dev": "npm run build -w @shanku/tokens && npm run dev -w @shanku/playground",
-    "test": "npm run build -w @shanku/tokens && npm run test -w @shanku/ui",
-    "typecheck": "npm run build -w @shanku/tokens && npm run typecheck -w @shanku/ui && npm run typecheck -w @shanku/playground"
+    "build": "npm run build -w @shanku/tokens && npm run build -w @shanku/ui && npm run build -w @shanku/playground && npm run build -w @shanku/web",
+    "dev": "npm run build -w @shanku/tokens && npm run dev -w @shanku/web",
+    "dev:playground": "npm run build -w @shanku/tokens && npm run dev -w @shanku/playground",
+    "test": "npm run build -w @shanku/tokens && npm run test -w @shanku/ui && npm run test -w @shanku/engine && npm run test -w @shanku/web",
+    "typecheck": "npm run build -w @shanku/tokens && npm run typecheck -w @shanku/ui && npm run typecheck -w @shanku/engine && npm run typecheck -w @shanku/playground && npm run typecheck -w @shanku/web",
+    "fixtures:large": "python tools/fixtures/make_sample_ifc.py large large-frame.ifc"
   },
   "engines": {
     "node": ">=20"

@@ -2,7 +2,7 @@
 
 Open, IFC-native structural modelling for reinforced concrete, in the browser. No install, and no sign-up for core features: files open from your disk and stay on your device.
 
-> **Status: 0.1.0 — design system and UI foundation.** The modelling engine (IFC, DXF import, 3D viewport, BOQ) is not built yet. This repository currently holds the approved design system and the first React components.
+> **Status: 0.2.0 — open, navigate and inspect IFC.** Live at https://shanku-bim.github.io/Shanku/ (component playground at `/Shanku/playground/`). DXF import, modelling and BOQ come next.
 
 ## Repository layout
 
@@ -11,7 +11,10 @@ Open, IFC-native structural modelling for reinforced concrete, in the browser. N
 | `packages/tokens` | `@shanku/tokens` | 1.0.0 | Design tokens for the Paper and Ink themes, compiled to CSS custom properties |
 | `packages/brand` | `@shanku/brand` | 1.0.0 | Logos, the structural icon set, and the brand book (`BRAND.md`) |
 | `packages/ui` | `@shanku/ui` | 0.1.0 | React components: title bar, ribbon, properties, project browser, view tabs, bottom panel, status bar, app shell |
-| `apps/playground` | `@shanku/playground` | 0.1.0 | The full Shanku window with sample data, deployed to GitHub Pages |
+| `packages/engine` | `@shanku/engine` | 0.2.0 | IFC loading in a worker, element model, three.js viewer with Revit navigation and picking |
+| `apps/web` | `@shanku/web` | 0.2.0 | The Shanku app |
+| `apps/playground` | `@shanku/playground` | 0.1.0 | Component playground with sample data |
+| `tools/fixtures` | — | 1.1.0 | Python generator for sample and 50k-element test IFC files |
 
 The design source of truth is `packages/tokens/tokens.json` plus `packages/brand/BRAND.md`, taken from the approved Shanku Design System. Change tokens there, never in component CSS.
 
@@ -21,10 +24,11 @@ Requires Node 20 or newer (22 recommended, see `.nvmrc`).
 
 ```bash
 npm install
-npm run dev          # playground at http://localhost:5173
+npm run dev          # the app at http://localhost:5173
+npm run dev:playground
 npm test             # unit tests (Vitest + Testing Library)
 npm run typecheck
-npm run build        # tokens -> ui -> playground
+npm run build        # tokens -> ui -> playground -> web
 ```
 
 ## Using the UI package
@@ -45,11 +49,13 @@ The consumer provides the fonts (IBM Plex Sans 400/600, IBM Plex Mono 400, Sora 
 | `` Ctrl ` `` | Toggle the bottom panel (console, QA, BOQ, activity) |
 | `` Ctrl Shift ` `` | Fallback toggle where a browser or OS takes `` Ctrl ` `` |
 
+The 3D view follows Revit: see `apps/web/README.md` for the full list, or the Keyboard tab in the app.
+
 Shortcuts match the physical key (`KeyboardEvent.code`), so they work on every keyboard layout.
 
 ## Deploying the playground
 
-`.github/workflows/pages.yml` builds and deploys `apps/playground` on every push to `main`. Enable it once under **Settings → Pages → Build and deployment → Source: GitHub Actions**. The site is then served at `https://shanku-bim.github.io/Shanku/`.
+`.github/workflows/pages.yml` builds the app and the playground on every push to `main` and deploys both: the app at `https://shanku-bim.github.io/Shanku/`, the playground at `/Shanku/playground/`. Keep it the only Pages workflow; two workflows deploying to Pages overwrite each other.
 
 ## Licence
 

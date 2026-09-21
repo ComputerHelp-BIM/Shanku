@@ -1,20 +1,22 @@
 {
-  "name": "@shanku/playground",
-  "version": "0.1.0",
+  "name": "@shanku/web",
+  "version": "0.2.0",
   "private": true,
-  "description": "Live playground for @shanku/ui: the full Shanku window with sample data.",
+  "description": "Shanku \u2014 the web app. Open IFC, navigate like Revit, select, isolate, section, inspect.",
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.1.0",
     "@fontsource/ibm-plex-sans": "^5.1.0",
     "@fontsource/sora": "^5.1.0",
+    "@shanku/engine": "0.2.0",
     "@shanku/tokens": "1.0.0",
     "@shanku/ui": "0.1.0",
     "react": "^18.3.1",
@@ -26,6 +28,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^5.6.0",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   }
 }

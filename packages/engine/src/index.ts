@@ -1,0 +1,6 @@
+export * from './model/types';
+export { categoryOf, prettyIfcClass, CATEGORY_ORDER, CATEGORY_PLURAL } from './model/categories';
+export { IfcClient, type OpenProgress } from './ifc/client';
+export { Viewer, type ViewName, type ViewerEvents, type DisplayStyle, type SelectMode } from './render/Viewer';
+export { parseCssColor } from './render/cssColor';
+export const ENGINE_VERSION = '0.2.0';
