@@ -1,4 +1,4 @@
-# @shanku/web 0.4.0
+# @shanku/web 0.4.1
 
 The Shanku app. Requires `@shanku/engine >= 0.3.0`, `@shanku/ui >= 0.3.0`, `@shanku/tokens >= 1.0.0`.
 
@@ -21,6 +21,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.4.1 — 2026-09-21
+- Requires @shanku/engine 0.3.1 (correct quantity units on Revit exports).
 
 ### 0.4.0 — 2026-09-21
 - Open DXF drawings as 2D view tabs beside {3D} (ribbon DXF button or drag and drop). Each file gets its own tab colour, like pyRevit's tab colouring.

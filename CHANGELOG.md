@@ -2,6 +2,16 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.4.1 — 2026-09-21
+
+### Fixed
+- `@shanku/engine` 0.3.1: quantity units on Revit exports (mm lengths were labelled m).
+
+### Verified: Revit export comparison (UMA NIWAS, Revit 2025)
+- `Shanku Structural` (IFC2x3 CV2.0), IFC4 Reference View [Structural] and IFC4 Design Transfer View all open in about 0.5 s with 1,086 elements.
+- Base quantities are present and match the geometry exactly: slabs 367.43 m³, columns 223.68 m³, beams 212.81 m³ (quantity sum = mesh volume).
+- GlobalIds are identical across all three exports: 1,086 / 1,086.
+
 ## 0.4.0 — 2026-09-21
 
 ### Added

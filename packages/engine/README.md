@@ -1,4 +1,4 @@
-# @shanku/engine 0.3.0
+# @shanku/engine 0.3.1
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.3.1 — 2026-09-21
+- Fixed: quantity lengths showed as metres on Revit exports. Units now come from the project's IfcUnitAssignment only; Revit also writes a stray metre IfcSIUnit that used to override millimetres. Values were right, the unit label was wrong.
 
 ### 0.3.0 — 2026-09-21
 - Added DXF 2D viewing: `DxfClient` runs ezdxf 1.4.4 (MIT) in Pyodide 0.27.7 (MPL-2.0) inside a worker; `DrawingViewer` draws lines and fills on the GPU and text on a canvas overlay, with AutoCAD pan/zoom and per-layer visibility.

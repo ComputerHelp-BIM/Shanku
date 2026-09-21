@@ -87,4 +87,15 @@ describe('parseIfc on the sample RCC frame', () => {
     const qto = groups.find((g) => g.kind === 'qto')!;
     expect(qto.items.find((i) => i.name === 'Length')?.unit).toBe('mm');
   });
+
+  it('takes units from the project, ignoring other SI units in the file (Revit writes a stray metre)', async () => {
+    const text = readFileSync(SAMPLE, 'utf8').replace(/ENDSEC;\s*END-ISO-10303-21;/, "#999999=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\nENDSEC;\nEND-ISO-10303-21;");
+    expect(text).toContain('#999999=');
+    const api2 = new WebIFC.IfcAPI();
+    await api2.Init();
+    api2.SetLogLevel(WebIFC.LogLevel.LOG_LEVEL_OFF);
+    const { model } = parseIfc(api2, new TextEncoder().encode(text), { fileName: 'units.ifc' });
+    expect(model.info.units.length).toBe('mm');
+  });
 });
+

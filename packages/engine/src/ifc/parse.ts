@@ -44,16 +44,35 @@ function forEachLine(api: IfcAPI, modelID: number, type: number, fn: (line: any)
 
 const PREFIX: Record<string, string> = { MILLI: 'm', CENTI: 'c', DECI: 'd', KILO: 'k' };
 
-/** Reads the project's SI length, area and volume units from IfcUnitAssignment. */
+/**
+ * Reads the project's length, area and volume units from IfcProject.UnitsInContext.
+ * Only the project's own IfcUnitAssignment counts: Revit also writes other IfcSIUnits
+ * (e.g. a metre inside a derived unit) that must not override the project's millimetres.
+ * Falls back to scanning all IfcSIUnits only when the project declares none.
+ */
 export function readUnits(api: IfcAPI, modelID: number): ModelUnits {
   const units: ModelUnits = { length: 'm', area: 'm²', volume: 'm³' };
-  forEachLine(api, modelID, WebIFC.IFCSIUNIT, (u) => {
+  const apply = (u: any) => {
+    if (!u || u.type !== WebIFC.IFCSIUNIT) return;
     const kind = String(u.UnitType?.value ?? '');
     const prefix = PREFIX[String(u.Prefix?.value ?? '')] ?? '';
     if (kind === 'LENGTHUNIT') units.length = `${prefix}m`;
     if (kind === 'AREAUNIT') units.area = `${prefix}m²`;
     if (kind === 'VOLUMEUNIT') units.volume = `${prefix}m³`;
+  };
+  let fromProject = false;
+  forEachLine(api, modelID, WebIFC.IFCPROJECT, (p) => {
+    const ua = refId(p.UnitsInContext);
+    if (ua === null) return;
+    const assignment = api.GetLine(modelID, ua);
+    for (const r of assignment?.Units ?? []) {
+      const id = refId(r);
+      if (id === null) continue;
+      apply(api.GetLine(modelID, id));
+      fromProject = true;
+    }
   });
+  if (!fromProject) forEachLine(api, modelID, WebIFC.IFCSIUNIT, apply);
   return units;
 }
 
