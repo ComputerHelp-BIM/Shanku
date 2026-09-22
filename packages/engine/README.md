@@ -1,4 +1,4 @@
-# @shanku/engine 0.5.0
+# @shanku/engine 0.6.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.6.0 — 2026-09-22
+- Added `ElementRecord.dims` (length, width, depth, height in m, null where not meaningful): IFC Width/Depth/Height/Length and cross-section area where reliable, element bounds otherwise.
 
 ### 0.5.0 — 2026-09-22
 - Added BOQ quantities per element: `volume` (m³), `length` (m, columns and beams), `area` (m², slabs and walls), `quantitySource` ('ifc' | 'geometry'). IFC base quantities are read in one pass and converted to SI; files without them fall back to volumes computed from the geometry (divergence theorem), which matched IFC quantities to 0.1 % on UMA NIWAS.

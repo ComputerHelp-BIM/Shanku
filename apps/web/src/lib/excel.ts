@@ -1,119 +1,248 @@
-import type { Boq, BoqKey, ElementRecord, ModelInfo } from '@shanku/engine';
+import { siFactor, type ElementRecord, type ModelInfo } from '@shanku/engine';
+import { itemKey, rateFor, rateItems, type RateBook } from './rates';
 
 export interface BoqExportInput {
   info: ModelInfo;
-  boq: Boq;
   elements: readonly ElementRecord[];
+  rates: RateBook;
   markRules: readonly string[];
   gradeRules: readonly string[];
   appVersion: string;
   /** For tests; defaults to now. */
   date?: Date;
+  /** For tests: omit cached formula results so a spreadsheet engine must calculate them. */
+  omitResults?: boolean;
 }
 
-const KEY_LABEL: Record<BoqKey, string> = { level: 'Level', category: 'Category', grade: 'Grade / material' };
-const HEADER_FILL = 'FFEFECE5';
-const RULE_COLOR = 'FFD9761E';
+const TABLE_STYLE = 'TableStyleMedium15'; // dark header, light bands: closest built-in to the design system
+const INPUT_FILL = 'FFFFF7E8';
+const INPUT_TEXT = 'FFA3500C';
+const F_VOL = '#,##0.000';
+const F_DIM = '#,##0.00';
+/** Indian digit grouping: 1,23,45,678.90 */
+const F_INR = '[>=10000000]##\\,##\\,##\\,##0.00;[>=100000]##\\,##\\,##0.00;##,##0.00';
+
+/** Elements sheet column letters, used by the other sheets' formulas. */
+const EL = { level: 'D', category: 'E', grade: 'G', volume: 'M', rate: 'N', amount: 'P' } as const;
+
+type Cell = string | number | null | { formula: string; result?: number | string };
+
+/** Rate from the Rates sheet; an empty rate stays empty (never 0), a missing item is empty. */
+const rateLookup = (key: string) => {
+  const hit = `INDEX(Rates!$E:$E,MATCH(${key},Rates!$A:$A,0))`;
+  return `IFERROR(IF(${hit}="","",${hit}),"")`;
+};
 
 /**
- * Builds the BOQ workbook: "BOQ" (grouped, with live SUM totals), "Elements" (one row per
- * element, filterable), "About" (source file, format rating, rules, and caveats).
- * ExcelJS is loaded on demand so it costs nothing until the first export.
+ * The approved BOQ workbook: Summary, Levels, Elements, Rates, About. Every data range is
+ * an Excel Table (filters, sorting, banded rows, totals via SUBTOTAL). Summary and Levels
+ * are live SUMIFS over Elements; element rates come from the Rates sheet unless overridden.
  */
 export async function buildBoqWorkbook(input: BoqExportInput): Promise<ArrayBuffer> {
   const ExcelJS = (await import('exceljs')).default;
-  const { info, boq, elements } = input;
+  const { info, elements, rates } = input;
+  const date = input.date ?? new Date();
+  const f = (formula: string, result: number | string | null): Cell => (input.omitResults || result === null ? { formula } : { formula, result });
   const wb = new ExcelJS.Workbook();
   wb.creator = `Shanku ${input.appVersion}`;
-  wb.created = input.date ?? new Date();
+  wb.created = date;
 
-  // ---- BOQ ----
-  const ws = wb.addWorksheet('BOQ', { views: [{ state: 'frozen', ySplit: 5 }] });
-  ws.getCell('A1').value = `Bill of quantities — ${info.projectName || info.fileName}`;
-  ws.getCell('A1').font = { bold: true, size: 14 };
-  ws.getCell('A2').value = `${info.fileName} · ${info.compatibility.format} (${info.compatibility.level}) · exported ${(input.date ?? new Date()).toLocaleString('en-IN')}`;
-  ws.getCell('A3').value = 'Concrete quantities as modelled (net volumes, no deductions for waste or rebar).';
-  ws.getCell('A2').font = ws.getCell('A3').font = { color: { argb: 'FF5B5F68' }, size: 10 };
-
-  const keys = boq.groupBy;
-  const header = [...keys.map((k) => KEY_LABEL[k]), 'Count', 'Volume (m³)', 'Length (m)', 'Area (m²)', 'Elements from geometry'];
-  const headerRow = ws.getRow(5);
-  headerRow.values = header;
-  headerRow.font = { bold: true };
-  headerRow.eachCell((c) => {
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } };
-    c.border = { bottom: { style: 'medium', color: { argb: RULE_COLOR } } };
-  });
-  const first = 6;
-  boq.rows.forEach((r, i) => {
-    const row = ws.getRow(first + i);
-    row.values = [...keys.map((k) => r[k] || ''), r.count, r.volume, r.length || null, r.area || null, r.fromGeometry || null];
-  });
-  const last = first + boq.rows.length - 1;
-  const n0 = keys.length + 1; // first numeric column (Count)
-  const col = (n: number) => String.fromCharCode(64 + n);
-  const totalRow = ws.getRow(last + 1);
-  totalRow.getCell(1).value = 'Total';
-  const totals = [boq.total.count, boq.total.volume, boq.total.length, boq.total.area, boq.total.fromGeometry];
-  totals.forEach((t, k) => {
-    const c = col(n0 + k);
-    totalRow.getCell(n0 + k).value = boq.rows.length ? { formula: `SUM(${c}${first}:${c}${last})`, result: t } : 0;
-  });
-  totalRow.font = { bold: true };
-  totalRow.eachCell((c) => (c.border = { top: { style: 'thin' } }));
-  const fmt = ['#,##0', '#,##0.000', '#,##0.00', '#,##0.00', '#,##0'];
-  fmt.forEach((f, k) => (ws.getColumn(n0 + k).numFmt = f));
-  keys.forEach((_, k) => (ws.getColumn(k + 1).width = k === keys.length - 1 ? 26 : 22));
-  [10, 14, 12, 12, 14].forEach((w, k) => (ws.getColumn(n0 + k).width = w));
-  ws.autoFilter = { from: { row: 5, column: 1 }, to: { row: Math.max(5, last), column: header.length } };
+  const sheet = (name: string, title: string) => {
+    const ws = wb.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 5 }] });
+    ws.getCell('A1').value = title;
+    ws.getCell('A1').font = { bold: true, size: 14 };
+    ws.getCell('A2').value = `${info.projectName || info.fileName} · ${info.fileName} · ${info.compatibility.format} (${info.compatibility.level}) · exported ${date.toLocaleString('en-IN')}`;
+    ws.getCell('A3').value = 'Concrete quantities as modelled: net volumes, no deductions for waste or reinforcement. Rates in ₹ per m³.';
+    ws.getCell('A2').font = ws.getCell('A3').font = { color: { argb: 'FF5B5F68' }, size: 10 };
+    return ws;
+  };
+  type Col = { name: string; width: number; fmt?: string; total?: 'sum' | 'none'; label?: string };
+  const table = (ws: import('exceljs').Worksheet, name: string, cols: Col[], rows: Cell[][]) => {
+    ws.addTable({
+      name,
+      ref: 'A5',
+      headerRow: true,
+      totalsRow: true,
+      style: { theme: TABLE_STYLE, showRowStripes: true },
+      columns: cols.map((c, i) => ({
+        name: c.name,
+        filterButton: true,
+        totalsRowFunction: c.total === 'sum' ? 'sum' : 'none',
+        totalsRowLabel: i === 0 ? 'Total' : undefined,
+      })),
+      rows: rows.length ? rows : [cols.map(() => null)],
+    });
+    cols.forEach((c, i) => {
+      const col = ws.getColumn(i + 1);
+      col.width = c.width;
+      if (c.fmt) col.numFmt = c.fmt;
+    });
+  };
 
   // ---- Elements ----
-  const es = wb.addWorksheet('Elements', { views: [{ state: 'frozen', ySplit: 1 }] });
-  es.columns = [
-    { header: 'Element ID', key: 'id', width: 11 },
-    { header: 'GlobalId', key: 'gid', width: 25 },
-    { header: 'Mark', key: 'mark', width: 12 },
-    { header: 'Level', key: 'level', width: 22 },
-    { header: 'Category', key: 'cat', width: 11 },
-    { header: 'IFC class', key: 'cls', width: 18 },
-    { header: 'Type', key: 'type', width: 34 },
-    { header: 'Grade / material', key: 'grade', width: 20 },
-    { header: 'Volume (m³)', key: 'vol', width: 12, style: { numFmt: '#,##0.000' } },
-    { header: 'Length (m)', key: 'len', width: 11, style: { numFmt: '#,##0.00' } },
-    { header: 'Area (m²)', key: 'area', width: 11, style: { numFmt: '#,##0.00' } },
-    { header: 'Quantity source', key: 'src', width: 15 },
-  ];
+  const lengthF = siFactor(info.units.length);
+  const elRows: Cell[][] = elements.map((e, i) => {
+    const r = 6 + i;
+    const rr = rateFor(e, rates);
+    const rate: Cell =
+      rr.source === 'override'
+        ? rr.rate
+        : f(rateLookup(`${EL.category}${r}&"|"&${EL.grade}${r}`), rr.rate ?? '');
+    return [
+      e.mark || null, e.expressId, e.globalId, e.level || null, e.category, e.typeName || null, e.grade || '(no grade)',
+      e.dims.length, e.dims.width, e.dims.depth, e.dims.height, e.area, e.volume,
+      rate, rr.source === 'override' ? 'Override' : 'Item',
+      f(`IF(${EL.rate}${r}="","",${EL.volume}${r}*${EL.rate}${r})`, rr.amount ?? ''),
+      e.quantitySource === 'ifc' ? 'IFC quantities' : 'Geometry',
+    ];
+  });
+  const items = rateItems(elements, rates);
+  const levelElev = new Map(info.levels.map((l) => [l.name, l.elevation === null ? null : l.elevation * lengthF]));
+
+  // ---- Summary ----
+  const ws1 = sheet('Summary', 'Bill of quantities — Summary');
+  table(
+    ws1,
+    'Summary',
+    [
+      { name: 'Category', width: 12 },
+      { name: 'Grade / material', width: 24 },
+      { name: 'Count', width: 9, fmt: '#,##0', total: 'sum' },
+      { name: 'Volume (m³)', width: 13, fmt: F_VOL, total: 'sum' },
+      { name: 'Unit', width: 6 },
+      { name: 'Rate (₹)', width: 12, fmt: F_INR },
+      { name: 'Overrides', width: 10, fmt: '#,##0', total: 'sum' },
+      { name: 'Amount (₹)', width: 18, fmt: F_INR, total: 'sum' },
+    ],
+    items.map((it, i) => {
+      const r = 6 + i;
+      const crit = `Elements!$${EL.category}:$${EL.category},A${r},Elements!$${EL.grade}:$${EL.grade},B${r}`;
+      return [
+        it.category, it.grade,
+        f(`COUNTIFS(${crit})`, it.count),
+        f(`SUMIFS(Elements!$${EL.volume}:$${EL.volume},${crit})`, it.volume),
+        'm³',
+        f(rateLookup(`A${r}&"|"&B${r}`), it.rate ?? ''),
+        f(`COUNTIFS(${crit},Elements!$O:$O,"Override")`, it.overrides),
+        f(`SUMIFS(Elements!$${EL.amount}:$${EL.amount},${crit})`, it.amount),
+      ];
+    }),
+  );
+
+  // ---- Levels ----
+  const lv = new Map<string, { level: string; category: string; count: number; volume: number; amount: number }>();
   for (const e of elements) {
-    es.addRow({
-      id: e.expressId, gid: e.globalId, mark: e.mark, level: e.level, cat: e.category, cls: e.ifcClass, type: e.typeName,
-      grade: e.grade, vol: e.volume, len: e.length, area: e.area, src: e.quantitySource === 'ifc' ? 'IFC quantities' : 'Geometry',
-    });
+    const k = `${e.level}\u0000${e.category}`;
+    const row = lv.get(k) ?? { level: e.level, category: e.category, count: 0, volume: 0, amount: 0 };
+    row.count++;
+    row.volume += e.volume;
+    row.amount += rateFor(e, rates).amount ?? 0;
+    lv.set(k, row);
   }
-  es.getRow(1).font = { bold: true };
-  es.getRow(1).eachCell((c) => (c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } }));
-  es.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 12 } };
+  const levelOrder = new Map(info.levels.map((l, i) => [l.name, i]));
+  const levelRows = [...lv.values()].sort((a, b) => (levelOrder.get(a.level) ?? 1e9) - (levelOrder.get(b.level) ?? 1e9) || a.category.localeCompare(b.category));
+  const ws2 = sheet('Levels', 'Bill of quantities — Levels');
+  table(
+    ws2,
+    'Levels',
+    [
+      { name: 'Level', width: 24 },
+      { name: 'Elevation (m)', width: 13, fmt: '#,##0.000' },
+      { name: 'Category', width: 12 },
+      { name: 'Count', width: 9, fmt: '#,##0', total: 'sum' },
+      { name: 'Volume (m³)', width: 13, fmt: F_VOL, total: 'sum' },
+      { name: 'Amount (₹)', width: 18, fmt: F_INR, total: 'sum' },
+    ],
+    levelRows.map((l, i) => {
+      const r = 6 + i;
+      const crit = `Elements!$${EL.level}:$${EL.level},A${r},Elements!$${EL.category}:$${EL.category},C${r}`;
+      return [
+        l.level || '(no level)', levelElev.get(l.level) ?? null, l.category,
+        f(`COUNTIFS(${crit})`, l.count),
+        f(`SUMIFS(Elements!$${EL.volume}:$${EL.volume},${crit})`, l.volume),
+        f(`SUMIFS(Elements!$${EL.amount}:$${EL.amount},${crit})`, l.amount),
+      ];
+    }),
+  );
+
+  // ---- Elements ----
+  const ws3 = sheet('Elements', 'Bill of quantities — Elements');
+  table(
+    ws3,
+    'Elements',
+    [
+      { name: 'Mark', width: 10 },
+      { name: 'Element ID', width: 11, fmt: '0' },
+      { name: 'GlobalId', width: 25 },
+      { name: 'Level', width: 22 },
+      { name: 'Category', width: 11 },
+      { name: 'Type', width: 34 },
+      { name: 'Grade', width: 20 },
+      { name: 'Length (m)', width: 11, fmt: F_DIM },
+      { name: 'Width (m)', width: 10, fmt: F_DIM },
+      { name: 'Depth (m)', width: 10, fmt: F_DIM },
+      { name: 'Height (m)', width: 10, fmt: F_DIM },
+      { name: 'Area (m²)', width: 11, fmt: F_DIM, total: 'sum' },
+      { name: 'Volume (m³)', width: 12, fmt: F_VOL, total: 'sum' },
+      { name: 'Rate (₹)', width: 11, fmt: F_INR },
+      { name: 'Rate source', width: 11 },
+      { name: 'Amount (₹)', width: 16, fmt: F_INR, total: 'sum' },
+      { name: 'Quantity source', width: 15 },
+    ],
+    elRows,
+  );
+  elements.forEach((e, i) => {
+    if (rateFor(e, rates).source === 'override') {
+      const c = ws3.getCell(`${EL.rate}${6 + i}`);
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: INPUT_FILL } };
+      c.font = { italic: true, bold: true, color: { argb: INPUT_TEXT } };
+    }
+  });
+
+  // ---- Rates (the input sheet) ----
+  const ws4 = sheet('Rates', 'Bill of quantities — Rates');
+  ws4.getCell('A3').value = 'Type rates in the orange column. Summary, Levels and Elements recalculate. Rows marked Override on Elements keep their own rate.';
+  table(
+    ws4,
+    'Rates',
+    [
+      { name: 'Key', width: 30 },
+      { name: 'Category', width: 12 },
+      { name: 'Grade / material', width: 24 },
+      { name: 'Unit', width: 6 },
+      { name: 'Rate (₹)', width: 12, fmt: F_INR },
+      { name: 'Overrides', width: 10, fmt: '#,##0' },
+      { name: 'Basis / note', width: 36 },
+    ],
+    items.map((it) => [it.key, it.category, it.grade, 'm³', it.rate, it.overrides, rates.edited.includes(it.key) ? 'Edited in Shanku' : null]),
+  );
+  items.forEach((_, i) => {
+    const c = ws4.getCell(`E${6 + i}`);
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: INPUT_FILL } };
+    c.font = { bold: true, color: { argb: INPUT_TEXT } };
+  });
 
   // ---- About ----
   const ab = wb.addWorksheet('About');
   const geom = elements.filter((e) => e.quantitySource === 'geometry').length;
-  const rowsAbout: Array<[string, string]> = [
+  const missing = items.filter((i) => i.rate === null).length;
+  const aboutRows: Array<[string, string]> = [
     ['Generated by', `Shanku ${input.appVersion}`],
     ['Source file', info.fileName],
-    ['Schema', info.schema],
     ['Export format', `${info.compatibility.format} — ${info.compatibility.level}`],
-    ['Units', 'Volumes m³, lengths m, areas m² (converted from the file where needed)'],
-    ['Grouped by', keys.map((k) => KEY_LABEL[k]).join(', ') || 'Nothing (single total)'],
+    ['Units', 'Dimensions m, areas m², volumes m³, rates ₹ per m³, amounts ₹'],
     ['Volumes', geom ? `IFC base quantities for ${elements.length - geom} elements; computed from 3D geometry for ${geom}.` : 'IFC base quantities for every element.'],
-    ['Lengths', 'Columns: height from geometry. Beams: IFC Length, else longest plan dimension.'],
-    ['Areas', 'Slabs: IFC NetArea, else GrossArea, else volume ÷ depth. Walls: IFC side area.'],
+    ['Dimensions', 'Column width × depth and height; beam length, width, depth; slab length × width and thickness; wall length, thickness, height. From IFC quantities where reliable, else element bounds.'],
+    ['Rates', `${items.length} rate items, ${missing} without a rate; ${Object.keys(rates.overrides).length} element overrides.`],
     ['Mark rules', input.markRules.join(', ')],
     ['Grade rules', `${input.gradeRules.join(', ')}; then the IFC material name`],
-    ['Not included', 'Reinforcement, formwork, waste and rates (planned).'],
+    ['Not included', 'Reinforcement, formwork, waste.'],
   ];
-  rowsAbout.forEach(([k, v]) => ab.addRow([k, v]));
-  ab.getColumn(1).width = 18;
-  ab.getColumn(2).width = 90;
+  aboutRows.forEach((r) => ab.addRow(r));
+  ab.getColumn(1).width = 16;
+  ab.getColumn(2).width = 100;
   ab.getColumn(1).font = { bold: true };
+  void itemKey;
 
   return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
 }

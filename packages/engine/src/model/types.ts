@@ -42,6 +42,12 @@ export interface ElementRecord {
   length: number | null;
   /** Where volume, area and length came from. */
   quantitySource: 'ifc' | 'geometry';
+  /**
+   * Dimensions in m, null where not meaningful for the category.
+   * Column: width × depth section, height · Beam: length, width, depth · Slab: length × width, depth (thickness)
+   * Wall: length, width (thickness), height · Footing: length, width, depth · Stair: length, width, height.
+   */
+  dims: { length: number | null; width: number | null; depth: number | null; height: number | null };
   /** Axis-aligned bounds in viewer coordinates (metres, Y up): [minX,minY,minZ,maxX,maxY,maxZ]. */
   bounds: [number, number, number, number, number, number];
 }

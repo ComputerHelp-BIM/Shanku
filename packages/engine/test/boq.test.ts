@@ -5,7 +5,7 @@ import type { ElementRecord } from '../src/model/types';
 
 const el = (i: number, level: string, category: ElementRecord['category'], grade: string, volume: number, extra: Partial<ElementRecord> = {}): ElementRecord => ({
   index: i, expressId: 100 + i, globalId: `g${i}`, ifcClass: 'IfcX', category, name: '', tag: '', typeName: '', level,
-  mark: '', markSource: '', grade, gradeSource: '', volume, area: null, length: null, quantitySource: 'ifc',
+  mark: '', markSource: '', grade, gradeSource: '', volume, area: null, length: null, quantitySource: 'ifc', dims: { length: null, width: null, depth: null, height: null },
   bounds: [0, 0, 0, 1, 1, 1], ...extra,
 });
 const levels = [

@@ -2,6 +2,19 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.7.0 — 2026-09-22
+
+### Added
+- BOQ window and Excel workbook built to the approved design-system specs (BoqWindow, BoqWorkbook): element-wise dimensions, quantities, item rates with per-element overrides, amounts; Summary / Levels / Elements / Rates / About as Excel Tables with live formulas.
+
+### Verified
+- The workbook's formulas were recalculated from scratch in LibreOffice (no cached values) and matched the app's totals, including overrides and empty rates.
+- UMA NIWAS (IFC4 RV): window sort, filter, rate edit, override, reset, select, dock and export all exercised in the browser.
+
+### Notes
+- Excel table style uses the built-in `TableStyleMedium15` (dark header, light bands), the closest built-in to the design; custom fills would break banding when rows are sorted.
+- Element rates use `INDEX/MATCH` instead of the `XLOOKUP` shown in the design preview, for Excel 2010+ and LibreOffice compatibility.
+
 ## 0.6.0 — 2026-09-22
 
 ### Added

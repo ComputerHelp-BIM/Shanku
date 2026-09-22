@@ -12,6 +12,9 @@ export interface RawQuantities {
   grossSideArea?: number;
   length?: number;
   depth?: number;
+  width?: number;
+  height?: number;
+  crossSectionArea?: number;
 }
 
 const FACTOR: Record<string, number> = { m: 1, cm: 0.01, mm: 0.001, dm: 0.1, km: 1000 };
@@ -65,9 +68,12 @@ export function readQuantities(api: IfcAPI, modelID: number, units: ModelUnits):
           else if (n === 'GrossArea') q.grossArea = area * fa;
           else if (n === 'NetSideArea') q.netSideArea = area * fa;
           else if (n === 'GrossSideArea') q.grossSideArea = area * fa;
+          else if (n === 'CrossSectionArea') q.crossSectionArea = area * fa;
         } else if (len !== undefined) {
           if (n === 'Length') q.length = len * fl;
           else if (n === 'Depth') q.depth = len * fl;
+          else if (n === 'Width') q.width = len * fl;
+          else if (n === 'Height') q.height = len * fl;
         }
       }
       qCache.set(qsId, q);

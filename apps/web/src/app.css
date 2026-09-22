@@ -114,16 +114,52 @@
 .app-dialog__row { display: flex; gap: var(--space-sm); }
 .app-dialog__actions { display: flex; justify-content: flex-end; gap: var(--space-sm); margin-top: var(--space-lg); }
 
-.app-boq { display: flex; flex-direction: column; gap: var(--space-sm); }
-.app-boq__tools { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; position: sticky; top: -10px; padding: 4px 0; background: var(--panel); z-index: 1; }
-.app-boq__label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
-.app-boq__toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
-.app-boq__toggle input { accent-color: var(--accent); margin: 0; }
-.app-boq__note { font-size: 12px; color: var(--text-secondary); }
-.app-boq__table { border-collapse: collapse; font-size: 13px; min-width: 640px; }
-.app-boq__table th, .app-boq__table td { padding: 4px 16px 4px 0; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
-.app-boq__table thead th { color: var(--text-secondary); font-weight: 600; }
-.app-boq__table .num { text-align: right; font-variant-numeric: tabular-nums; }
-.app-boq__table tbody tr { cursor: pointer; }
-.app-boq__table tbody tr:hover, .app-boq__table tbody tr:focus-visible { background: var(--chip); outline: none; }
-.app-boq__table tfoot th, .app-boq__table tfoot td { font-weight: 600; border-top: 2px solid var(--accent); border-bottom: 0; }
+
+/* ---- BOQ window (design system: BoqWindow) ---- */
+.bq-win { position: absolute; z-index: 20; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18); overflow: hidden; }
+.bq-win.is-min { height: auto; }
+.bq-docked { display: flex; flex-direction: column; height: 100%; margin: -10px -16px; }
+.bq-title { height: 38px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px; border-bottom: 1px solid var(--border); box-shadow: inset 0 3px 0 var(--doc); cursor: move; user-select: none; touch-action: none; }
+.bq-title h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.bq-file { color: var(--text-faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bq-ib { width: 28px; height: 28px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text-secondary); font: inherit; cursor: pointer; }
+.bq-ib:hover { background: var(--chip); }
+.bq-tabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.bq-tabs button { height: 32px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-secondary); font: inherit; cursor: pointer; }
+.bq-tabs button.on { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; }
+.bq-tools { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; }
+.bq-in { height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--field); color: var(--text); font: inherit; width: 240px; }
+.bq-sel { height: 28px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--field); color: var(--text); font: inherit; }
+.bq-chip { padding: 2px 8px; border-radius: 10px; background: var(--chip); color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
+.bq-scroll { flex: 1; min-height: 0; overflow: auto; }
+.bq-table { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+.bq-table th, .bq-table td { padding: 0 10px; height: 26px; white-space: nowrap; border-bottom: 1px solid var(--border); text-align: left; }
+.bq-table thead th { position: sticky; top: 0; z-index: 2; background: var(--ribbon); font-weight: 600; color: var(--text-secondary); cursor: pointer; user-select: none; }
+.bq-table thead th:hover { color: var(--text); }
+.bq-table thead .grp th { height: 22px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); cursor: default; text-align: center; border-bottom: 0; }
+.bq-table thead .grp + .cols th { top: 22px; }
+.bq-ar { color: var(--accent-text); }
+.bq-table .n { text-align: right; }
+.bq-table .mono { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+.bq-table .dim { color: var(--text-secondary); }
+.bq-table .na { color: var(--text-faint); text-align: center; }
+.bq-type { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.bq-faint { color: var(--text-faint); }
+.bq-table tbody tr { cursor: pointer; }
+.bq-table tbody tr:hover td { background: var(--chip); }
+.bq-table tbody tr.sel td { background: var(--row-selected); }
+.bq-table tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.bq-table .stk { position: sticky; left: 0; z-index: 1; background: var(--panel); }
+.bq-table thead .stk { z-index: 3; background: var(--ribbon); }
+.bq-table tbody tr.sel .stk { background: var(--row-selected); }
+.bq-table td.rate { padding: 0 4px; position: relative; }
+.bq-table td.rate input { width: 92px; height: 22px; padding: 0 6px; text-align: right; border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: inherit; }
+.bq-table td.rate input:hover { border-color: var(--border); }
+.bq-table td.rate input:focus { outline: none; border-color: var(--accent); background: var(--field); }
+.bq-table td.rate.edited input { color: var(--accent-text); font-weight: 600; }
+.bq-table td.rate.ovr::before { content: ''; position: absolute; left: 6px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 3px; background: var(--accent); }
+.bq-table td.rate.ovr input { font-style: italic; font-weight: 600; }
+.bq-table .amt { font-weight: 600; }
+.bq-table tfoot th, .bq-table tfoot td { position: sticky; bottom: 0; background: var(--panel); font-weight: 600; border-top: 2px solid var(--accent); border-bottom: 0; height: 30px; }
+.bq-foot { height: 28px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
+.bq-grip { position: absolute; right: 2px; bottom: 2px; width: 12px; height: 12px; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg, transparent 50%, var(--border-strong) 50% 60%, transparent 60% 70%, var(--border-strong) 70% 80%, transparent 80%); }

@@ -193,6 +193,7 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
         area: null,
         length: null,
         quantitySource: 'geometry',
+        dims: { length: null, width: null, depth: null, height: null },
         bounds: [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity],
       });
     }
@@ -272,6 +273,7 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
     else if (e.category === 'Beam' || e.category === 'Member') e.length = q?.length ?? Math.max(dx, dz);
     if (e.category === 'Slab') e.area = q?.netArea ?? q?.grossArea ?? (q?.depth ? e.volume / q.depth : dx * dz);
     else if (e.category === 'Wall') e.area = q?.netSideArea ?? q?.grossSideArea ?? null;
+    e.dims = dimensionsOf(e.category, dx, dy, dz, q, e.length);
   }
 
   // ---- summary ----
@@ -323,6 +325,42 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
     edges: { positions: edgePos.toArray(), elementIds: edgeElement.toArray() },
   };
   return { modelID, model };
+}
+
+/**
+ * Element dimensions for the BOQ, in m. IFC base quantities where they are reliable,
+ * otherwise the axis-aligned bounds (dx, dz plan; dy vertical). Beam width prefers
+ * cross-section area ÷ depth so skewed beams are not overstated.
+ */
+export function dimensionsOf(
+  category: Category,
+  dx: number,
+  dy: number,
+  dz: number,
+  q: { length?: number; width?: number; depth?: number; height?: number; crossSectionArea?: number } | undefined,
+  length: number | null,
+): ElementRecord['dims'] {
+  const plan = [dx, dz].sort((a, b) => a - b); // [short, long]
+  switch (category) {
+    case 'Column':
+    case 'Pile':
+      return { length: null, width: plan[0], depth: plan[1], height: dy };
+    case 'Beam':
+    case 'Member': {
+      const depth = dy;
+      const width = q?.crossSectionArea && depth > 0 && q.crossSectionArea / depth < plan[1] ? q.crossSectionArea / depth : plan[0];
+      return { length: length ?? plan[1], width, depth, height: null };
+    }
+    case 'Slab':
+    case 'Plate':
+      return { length: plan[1], width: plan[0], depth: q?.depth ?? q?.width ?? dy, height: null };
+    case 'Wall':
+      return { length: q?.length ?? plan[1], width: q?.width ?? plan[0], depth: null, height: q?.height ?? dy };
+    case 'Footing':
+      return { length: plan[1], width: plan[0], depth: dy, height: null };
+    default:
+      return { length: plan[1], width: plan[0], depth: null, height: dy };
+  }
 }
 
 /** Signed volume of a transformed triangle mesh (m³), via the divergence theorem. */

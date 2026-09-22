@@ -119,5 +119,21 @@ describe('parseIfc on the sample RCC frame', () => {
     const beam = els.find((e) => e.category === 'Beam')!;
     expect(beam.length).toBeCloseTo(5.6, 3);
   });
+
+  it('gives each element BOQ dimensions in metres', () => {
+    const els = result.model.elements;
+    const c1 = els.find((e) => e.name === 'C1')!;
+    expect(c1.dims.width).toBeCloseTo(0.4, 3);
+    expect(c1.dims.depth).toBeCloseTo(0.4, 3);
+    expect(c1.dims.height).toBeCloseTo(3.05, 3);
+    expect(c1.dims.length).toBeNull();
+    const beam = els.find((e) => e.category === 'Beam')!;
+    expect(beam.dims.length).toBeCloseTo(5.6, 3);
+    expect(beam.dims.width).toBeCloseTo(0.3, 3);
+    expect(beam.dims.depth).toBeCloseTo(0.5, 3);
+    const slab = els.find((e) => e.category === 'Slab')!;
+    expect(slab.dims.depth).toBeCloseTo(0.15, 3);
+    expect(slab.dims.length).toBeCloseTo(18.4, 2);
+  });
 });
 

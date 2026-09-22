@@ -29,11 +29,12 @@ import { nextDocColor } from './lib/documents';
 import { DrawingView, type DrawingViewHandle } from './components/DrawingView';
 import { DrawingProperties, LayersPanel } from './components/DrawingPanels';
 import { MarkRulesDialog } from './components/MarkRulesDialog';
-import { BoqPanel } from './components/BoqPanel';
+import { BoqWindow } from './components/BoqWindow';
+import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.6.0';
+const APP_VERSION = '0.7.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -84,6 +85,30 @@ export function App() {
   const [activeView, setActiveView] = useState<string>('3d');
   const [markDialog, setMarkDialog] = useState(false);
   const [gradeDialog, setGradeDialog] = useState(false);
+  const [boqOpen, setBoqOpen] = useState(false);
+  const [rates, setRates] = useState<RateBook>(emptyRates);
+  useEffect(() => {
+    if (m.model) setRates(loadRates(m.model.info.fileName));
+  }, [m.model?.info.fileName]); // eslint-disable-line react-hooks/exhaustive-deps
+  const changeRates = useCallback(
+    (book: RateBook) => {
+      setRates(book);
+      if (m.model) saveRates(m.model.info.fileName, book);
+    },
+    [m.model],
+  );
+  const boqSelect = useCallback(
+    (ids: number[], mode: 'replace' | 'add' | 'remove') => {
+      setActiveView('3d');
+      if (mode === 'replace') m.setSelection(ids);
+      else if (mode === 'add') m.setSelection([...new Set([...m.selection, ...ids])]);
+      else {
+        const drop = new Set(ids);
+        m.setSelection(m.selection.filter((i) => !drop.has(i)));
+      }
+    },
+    [m],
+  );
   const [ifcColor, setIfcColor] = useState<string | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const drawingView = useRef<DrawingViewHandle>(null);
@@ -312,11 +337,9 @@ export function App() {
               icon="boq"
               label="BOQ"
               disabled={!m.model}
-              onClick={() => {
-                setPanelTab('boq');
-                setPanelOpen(true);
-              }}
-              shortcutHint="concrete quantities and Excel export"
+              active={boqOpen}
+              onClick={() => setBoqOpen((o) => !o)}
+              shortcutHint="bill of quantities with rates and Excel export"
             />
           </RibbonGroup>
           <RibbonGroup label="Settings">
@@ -442,6 +465,28 @@ export function App() {
               </div>
             </div>
           ) : null}
+          {boqOpen && m.model && !activeDoc ? (
+            <BoqWindow
+              mode="floating"
+              model={m.model}
+              rates={rates}
+              onRates={changeRates}
+              selection={sel}
+              onSelect={boqSelect}
+              markRules={m.markRules}
+              gradeRules={m.gradeRules}
+              appVersion={APP_VERSION}
+              color={ifcColor ?? undefined}
+              onEditGradeRules={() => setGradeDialog(true)}
+              onLog={m.log}
+              onClose={() => setBoqOpen(false)}
+              onDock={() => {
+                setBoqOpen(false);
+                setPanelTab('boq');
+                setPanelOpen(true);
+              }}
+            />
+          ) : null}
           <MarkRulesDialog open={markDialog} rules={m.markRules} defaults={DEFAULT_MARK_RULES} elements={m.model?.elements ?? []} onSave={(r) => void m.setMarkRules(r)} onClose={() => setMarkDialog(false)} />
           <MarkRulesDialog
             open={gradeDialog}
@@ -540,19 +585,22 @@ export function App() {
             {
               id: 'boq',
               label: 'BOQ',
-              content: (
-                <BoqPanel
+              content: m.model ? (
+                <BoqWindow
+                  mode="docked"
                   model={m.model}
+                  rates={rates}
+                  onRates={changeRates}
+                  selection={sel}
+                  onSelect={boqSelect}
                   markRules={m.markRules}
                   gradeRules={m.gradeRules}
                   appVersion={APP_VERSION}
-                  onSelect={(ids) => {
-                    setActiveView('3d');
-                    m.setSelection(ids);
-                  }}
                   onEditGradeRules={() => setGradeDialog(true)}
                   onLog={m.log}
                 />
+              ) : (
+                <p className="app-empty-note">Open an IFC model to see its bill of quantities.</p>
               ),
             },
             {
