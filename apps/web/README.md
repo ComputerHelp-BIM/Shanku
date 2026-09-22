@@ -1,6 +1,6 @@
-# @shanku/web 0.11.0
+# @shanku/web 0.12.0
 
-The Shanku app. Requires `@shanku/engine >= 0.8.0`, `@shanku/ui >= 0.4.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.9.0`, `@shanku/ui >= 0.5.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,14 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.12.0 — 2026-09-22
+- **BOQ, DXF → 3D and Keys are Revit-style windows** that float anywhere above the app, ribbon included; Properties, Project browser, Activity and the console stay dockable. Saved dock layouts from earlier versions are reset once.
+- **2D DXF selection**: click any line, polyline, circle, text, hatch or block to highlight it and see its properties (handle, layer, colour, linetype, length, area, vertices, text, block…); Esc clears.
+- **Windows and doors are see-through glass** in 3D.
+- **Close files from their tabs**: the {3D} tab closes the model; it is hidden when only drawings are open.
+- Fixed: opening the Python console could blank the whole tab (its output scrolling moved the app frame; the saved layout then repeated it on every visit).
+- Refactor: DXF → 3D logic moved into `usePipeline`; dead styles removed.
 
 ### 0.11.0 — 2026-09-22
 - **DXF → 3D** (ribbon Open → DXF → 3D): pick a drawing in the Computer Help format; the review panel (docked under the view) shows levels with editable names and heights, element counts per level and the checks, each with **Show** to zoom the drawing to it. **Create 3D model** writes an IFC4 file, opens it as the model (BOQ, marks, console all work) and offers **Download IFC**.

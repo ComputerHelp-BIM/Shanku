@@ -6,6 +6,30 @@ import type { DrawingDoc } from '../lib/useDrawings';
 
 export function DrawingProperties({ doc, onUnits }: { doc: DrawingDoc; onUnits: (u: string) => void }) {
   const i = doc.drawing.info;
+  const sel = doc.selected;
+  if (sel) {
+    const p = sel.props;
+    const fmt = (v: string | number | number[]) => (Array.isArray(v) ? v.map((n) => n.toLocaleString('en-IN', { maximumFractionDigits: 3 })).join(', ') : typeof v === 'number' ? v.toLocaleString('en-IN', { maximumFractionDigits: 3 }) : v);
+    return (
+      <DockPanel title="Properties">
+        <TypeSelector icon="dxf" category="DXF object · Esc clears" typeName={p ? String(p.Type) : 'Loading…'} />
+        {p ? (
+          <>
+            <PropertySection title="General">
+              {(['Handle', 'Layer', 'Color', 'Linetype'] as const).map((k) => (p[k] !== undefined ? <PropertyRow key={k} label={k} value={fmt(p[k])} readOnly /> : null))}
+            </PropertySection>
+            <PropertySection title="Geometry">
+              {Object.entries(p)
+                .filter(([k]) => !['Type', 'Handle', 'Layer', 'Color', 'Linetype'].includes(k))
+                .map(([k, v]) => (
+                  <PropertyRow key={k} label={k} value={fmt(v)} readOnly />
+                ))}
+            </PropertySection>
+          </>
+        ) : null}
+      </DockPanel>
+    );
+  }
   return (
     <DockPanel title="Properties">
       <TypeSelector icon="dxf" category="DXF drawing" typeName={doc.name} />

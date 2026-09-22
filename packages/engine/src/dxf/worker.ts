@@ -7,9 +7,9 @@ import type { ParsedDrawing } from './types';
 
 declare const self: DedicatedWorkerGlobalScope;
 
-export const PYODIDE_VERSION = '0.27.7';
+import { PYODIDE_INDEX_URL as INDEX_URL } from '../pyodide';
+
 export const EZDXF_VERSION = '1.4.4';
-const INDEX_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
 
 type PyProxy = { toJs: () => unknown; destroy: () => void };
 type Pyodide = {
@@ -61,14 +61,26 @@ self.onmessage = async (event: MessageEvent<DxfRequest>) => {
       post({ type: 'pipeline', requestId: msg.requestId, summary, ifc });
       return;
     }
+    if (msg.type === 'entity' || msg.type === 'forget') {
+      py.globals.set('_did', msg.drawingId);
+      if (msg.type === 'forget') {
+        py.runPython('extract.forget(_did)');
+        post({ type: 'entity', requestId: msg.requestId, props: 'null' });
+        return;
+      }
+      py.globals.set('_h', msg.handle);
+      post({ type: 'entity', requestId: msg.requestId, props: String(py.runPython('extract.entity_props_json(_did, _h)')) });
+      return;
+    }
     post({ type: 'phase', requestId: msg.requestId, text: `Reading ${msg.fileName}…` });
     py.FS.writeFile('/shanku/in.dxf', new Uint8Array(msg.bytes));
-    const proxy = py.runPython('extract.extract_for_js("/shanku/in.dxf")');
+    py.globals.set('_did', msg.drawingId);
+    const proxy = py.runPython('extract.extract_for_js("/shanku/in.dxf", _did)');
     if (!proxy) throw new Error('The DXF extractor returned nothing.');
-    const parts = proxy.toJs() as [string, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array];
+    const parts = proxy.toJs() as [string, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array];
     proxy.destroy();
     py.FS.unlink('/shanku/in.dxf');
-    const head = JSON.parse(parts[0]) as Pick<ParsedDrawing, 'info' | 'palette' | 'layers' | 'texts'>;
+    const head = JSON.parse(parts[0]) as Pick<ParsedDrawing, 'info' | 'palette' | 'layers' | 'texts' | 'handles'>;
     const drawing: ParsedDrawing = {
       ...head,
       fileName: msg.fileName,
@@ -80,11 +92,14 @@ self.onmessage = async (event: MessageEvent<DxfRequest>) => {
       polyStart: view(Uint32Array, parts[5]),
       polyColor: view(Uint16Array, parts[6]),
       polyLayer: view(Uint16Array, parts[7]),
+      segEnt: view(Uint32Array, parts[8]),
+      polyEnt: view(Uint32Array, parts[9]),
+      drawingId: msg.drawingId,
       loadMs: performance.now() - t0,
     };
     const d = drawing;
     post({ type: 'opened', requestId: msg.requestId, drawing }, [
-      d.seg.buffer, d.segColor.buffer, d.segLayer.buffer, d.poly.buffer, d.polyStart.buffer, d.polyColor.buffer, d.polyLayer.buffer,
+      d.seg.buffer, d.segColor.buffer, d.segLayer.buffer, d.poly.buffer, d.polyStart.buffer, d.polyColor.buffer, d.polyLayer.buffer, d.segEnt.buffer, d.polyEnt.buffer,
     ] as ArrayBuffer[]);
   } catch (err) {
     post({ type: 'error', requestId: msg.requestId, message: err instanceof Error ? err.message.split('\n').slice(-3).join(' ') : String(err) });

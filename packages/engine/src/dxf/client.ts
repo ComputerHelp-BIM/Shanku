@@ -18,6 +18,7 @@ export class DxfClient {
       if (msg.type === 'phase') return p.onPhase?.(msg.text);
       this.pending.delete(msg.requestId);
       if (msg.type === 'opened') p.resolve(msg.drawing);
+      else if (msg.type === 'entity') p.resolve(JSON.parse(msg.props));
       else if (msg.type === 'pipeline') p.resolve({ summary: JSON.parse(msg.summary) as PipelineSummary, ifc: msg.ifc });
       else p.reject(new Error(msg.message));
     };
@@ -27,9 +28,25 @@ export class DxfClient {
     const requestId = this.nextId++;
     return new Promise((resolve, reject) => {
       this.pending.set(requestId, { resolve, reject, onPhase });
-      const msg: DxfRequest = { type: 'open', requestId, fileName, bytes };
+      const msg: DxfRequest = { type: 'open', requestId, fileName, bytes, drawingId: `d${requestId}` };
       this.worker.postMessage(msg, [bytes]);
     });
+  }
+
+  /** Properties of one DXF object (like AutoCAD's Properties palette), or null when unknown. */
+  entity(drawingId: string, handle: string): Promise<Record<string, string | number | number[]> | null> {
+    const requestId = this.nextId++;
+    return new Promise((resolve, reject) => {
+      this.pending.set(requestId, { resolve, reject });
+      this.worker.postMessage({ type: 'entity', requestId, drawingId, handle } satisfies DxfRequest);
+    });
+  }
+
+  /** Lets the worker close a drawing that is no longer shown. */
+  forget(drawingId: string): void {
+    const requestId = this.nextId++;
+    this.pending.set(requestId, { resolve: () => undefined, reject: () => undefined });
+    this.worker.postMessage({ type: 'forget', requestId, drawingId } satisfies DxfRequest);
   }
 
   /**

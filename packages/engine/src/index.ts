@@ -14,4 +14,5 @@ export { assessCompatibility, readViewDefinition, RECOMMENDED_EXPORT, type Compa
 export { type SectionBoxState } from './render/sectionBox';
 export type { PipelineSummary, PipelineLevel, PipelineQa } from './pipeline/types';
 export type { PipelineOptions } from './dxf/protocol';
-export const ENGINE_VERSION = '0.8.0';
+export { PYODIDE_VERSION, PYODIDE_INDEX_URL } from './pyodide';
+export const ENGINE_VERSION = '0.9.0';

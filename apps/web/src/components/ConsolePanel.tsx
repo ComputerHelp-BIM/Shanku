@@ -22,7 +22,7 @@ export function ConsolePanel({ model, selection, onAction }: ConsolePanelProps) 
   const history = useRef<string[]>([]);
   const hIndex = useRef(-1);
   const seq = useRef(0);
-  const end = useRef<HTMLDivElement>(null);
+  const logEl = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const actionRef = useRef(onAction);
   actionRef.current = onAction;
@@ -50,7 +50,12 @@ export function ConsolePanel({ model, selection, onAction }: ConsolePanelProps) 
   useEffect(() => {
     if (status === 'ready' && client.current) void client.current.setSelection(selection);
   }, [status, selection]);
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [log]);
+  // Scroll only the log itself. (scrollIntoView also scrolls every ancestor, including the app's
+  // overflow-hidden frame, which pushed the whole UI out of the tab.)
+  useEffect(() => {
+    const el = logEl.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [log]);
 
   const run = async () => {
     const src = code.trim();
@@ -67,7 +72,7 @@ export function ConsolePanel({ model, selection, onAction }: ConsolePanelProps) 
       push({ code: src, note: e instanceof Error ? e.message : String(e), tone: 'error' });
     } finally {
       setBusy(false);
-      input.current?.focus();
+      input.current?.focus({ preventScroll: true });
     }
   };
 
@@ -88,8 +93,8 @@ export function ConsolePanel({ model, selection, onAction }: ConsolePanelProps) 
   };
 
   return (
-    <div className="app-console" onClick={() => input.current?.focus()}>
-      <div className="app-console__log" role="log" aria-live="polite">
+    <div className="app-console" onClick={() => input.current?.focus({ preventScroll: true })}>
+      <div className="app-console__log" role="log" aria-live="polite" ref={logEl}>
         {status === 'booting' ? <p className="app-console__note">Starting Python (first time about 12 MB, then cached)…</p> : null}
         {log.map((e) => (
           <div key={e.id} className="app-console__entry">
@@ -116,7 +121,6 @@ export function ConsolePanel({ model, selection, onAction }: ConsolePanelProps) 
             {e.result?.error ? <pre className="app-console__out is-error">{e.result.error}</pre> : null}
           </div>
         ))}
-        <div ref={end} />
       </div>
       <div className="app-console__prompt">
         <span aria-hidden="true">{busy ? '…' : '>>>'}</span>

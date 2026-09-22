@@ -4,6 +4,8 @@ import { Color, DataTexture, GLSL3, RGBAFormat, ShaderMaterial, UnsignedByteType
 export const STATE_SELECTED = 1;
 export const STATE_HOVER = 2;
 export const STATE_HIDDEN = 4;
+/** Windows and doors: drawn in the transparent (glass) pass. */
+export const STATE_GLASS = 8;
 
 export const STATE_TEXTURE_WIDTH = 2048;
 
@@ -64,6 +66,9 @@ export function createModelMaterial(state: DataTexture): ShaderMaterial {
       uPaper: { value: new Color() },
       // Section-box caps: back faces seen through a cut are painted flat, so cut members read solid.
       uCap: { value: new Color() },
+      // 0 = opaque pass (skips glass), 1 = glass pass (only glass, see-through)
+      uPass: { value: 0 },
+      uGlass: { value: new Color() },
       uMode: { value: DISPLAY_SHADED },
       // Horizontal "light" direction in the XZ plane: faces turned toward it get the lit side colour.
       uLight: { value: new Vector2(0.8, 0.6).normalize() },
@@ -86,11 +91,14 @@ flat in int vState;
 flat in int vId;
 in vec3 vNormalW;
 ${CLIP_F_PARS}
-uniform vec3 uTop, uSide, uShade, uSelTop, uSelSide, uSelShade, uHover, uPaper, uCap;
+uniform vec3 uTop, uSide, uShade, uSelTop, uSelSide, uSelShade, uHover, uPaper, uCap, uGlass;
 uniform vec2 uLight;
 uniform int uMode;
+uniform int uPass;
 void main() {
   ${CLIP_F}
+  bool glass = (vState & ${STATE_GLASS}) != 0;
+  if (glass != (uPass == 1)) discard;
   bool sel = (vState & ${STATE_SELECTED}) != 0;
   if (!gl_FrontFacing) { outColor = vec4(sel ? uSelShade : uCap, 1.0); return; } // only drawn while a section box is on
   bool hov = (vState & ${STATE_HOVER}) != 0;
@@ -111,6 +119,11 @@ void main() {
   }
   // Hover is carried by the edges (outline); faces only warm very slightly.
   if (hov && !sel) col = mix(col, uHover, 0.08);
+  if (uPass == 1) {
+    // Glass: tinted and see-through; selection still reads orange.
+    outColor = sel ? vec4(uSelTop, 0.6) : vec4(mix(uGlass, col, 0.25), hov ? 0.45 : 0.3);
+    return;
+  }
   outColor = vec4(col, 1.0);
 }`,
   });

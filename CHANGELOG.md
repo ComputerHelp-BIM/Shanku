@@ -2,6 +2,22 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.12.0 — 2026-09-22
+
+### Fixed
+- IFC from the DXF pipeline now imports into Revit without "not cutting anything" errors (holes in wall geometry, Reference View), and lists each element once per type.
+- Python console no longer blanks the tab.
+- Stacked duplicate outlines with a single label are built once instead of skipped.
+
+### Added
+- Revit-style floating windows for BOQ, DXF → 3D and Keys.
+- Selectable objects with properties in the 2D DXF view.
+- Glass windows and doors in 3D.
+- Closable {3D} tab (unloads the model).
+
+### Changed
+- Refactor: shared Pyodide constant, `usePipeline` hook, dead code and styles removed.
+
 ## 0.11.0 — 2026-09-22
 
 ### Added

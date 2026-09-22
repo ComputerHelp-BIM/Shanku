@@ -6,7 +6,8 @@
     "baseUrl": ".",
     "paths": {
       "@shanku/ui": ["../../packages/ui/src/index.ts"],
-      "@shanku/engine": ["../../packages/engine/src/index.ts"]
+      "@shanku/engine": ["../../packages/engine/src/index.ts"],
+      "@shanku/engine/pyodide": ["../../packages/engine/src/pyodide.ts"]
     }
   },
   "include": ["src", "vite.config.ts"]

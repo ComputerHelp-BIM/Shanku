@@ -62,3 +62,18 @@ def test_js_packing_round_trips(dxf_path):
     seg = array("f"); seg.frombytes(out[1])
     color = array("H"); color.frombytes(out[2])
     assert len(seg) == 4 * len(color) == 4 * head["info"]["segments"]
+
+
+def test_every_primitive_knows_its_entity_and_props_answer(dxf_path):
+    out = X.extract_for_js(dxf_path, "d1")
+    head = json.loads(out[0])
+    seg_ent = array("I"); seg_ent.frombytes(out[8])
+    assert len(seg_ent) == head["info"]["segments"]
+    handles = head["handles"]
+    types = {json.loads(X.entity_props_json("d1", handles[i]))["Type"] for i in set(seg_ent)}
+    assert {"Line", "Circle", "Insert"} <= types  # block contents belong to their INSERT
+    assert all(t[9] < len(handles) for t in head["texts"])
+    line = json.loads(X.entity_props_json("d1", handles[0]))
+    assert line["Length"] == 4000 and line["Layer"] == "S-BEAM"
+    X.forget("d1")
+    assert json.loads(X.entity_props_json("d1", handles[0])) is None

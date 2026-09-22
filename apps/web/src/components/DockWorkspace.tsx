@@ -10,20 +10,18 @@ import {
 import 'dockview-react/dist/styles/dockview.css';
 
 /** Every dockable panel in Shanku. "views" is the 3D view and drawing tabs; it always stays in the grid. */
-export type PanelId = 'views' | 'properties' | 'browser' | 'activity' | 'boq' | 'keyboard' | 'console' | 'pipeline';
+export type PanelId = 'views' | 'properties' | 'browser' | 'activity' | 'console';
 
 export const PANEL_TITLES: Record<PanelId, string> = {
   views: 'Views',
   properties: 'Properties',
   browser: 'Project browser',
   activity: 'Activity',
-  boq: 'Bill of quantities',
-  keyboard: 'Keyboard',
   console: 'Python console',
-  pipeline: 'DXF → 3D',
 };
-const BOTTOM: PanelId[] = ['activity', 'boq', 'keyboard', 'console'];
-const LAYOUT_KEY = 'shanku.layout.v1';
+const BOTTOM: PanelId[] = ['activity', 'console'];
+/** v2: BOQ, DXF → 3D and Keys became windows; older saved layouts are dropped. */
+const LAYOUT_KEY = 'shanku.layout.v2';
 
 const RenderCtx = createContext<(id: PanelId) => ReactNode>(() => null);
 
@@ -75,14 +73,6 @@ function addDefault(api: DockviewApi, id: PanelId) {
   if (id === 'views') return api.addPanel(base);
   if (id === 'browser') return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'left' }, initialWidth: 270 });
   if (id === 'properties') return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'right' }, initialWidth: 310 });
-  if (id === 'pipeline') {
-    // Review sits under the view so "Show" can zoom the drawing above it.
-    return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'below' }, initialHeight: 340 });
-  }
-  if (id === 'boq') {
-    const r = document.querySelector('.dv-dockview')?.getBoundingClientRect();
-    return api.addPanel({ ...base, floating: { x: 40, y: 40, width: Math.min(1080, (r?.width ?? 1200) - 80), height: Math.min(520, (r?.height ?? 700) - 80) } });
-  }
   const sibling = BOTTOM.map((b) => api.getPanel(b)).find((p) => p && p.group.api.location.type === 'grid');
   if (sibling) return api.addPanel({ ...base, position: { referencePanel: sibling, direction: 'within' } });
   return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'below' }, initialHeight: 240 });

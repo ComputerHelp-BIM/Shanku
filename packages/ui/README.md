@@ -1,4 +1,4 @@
-# @shanku/ui 0.4.0
+# @shanku/ui 0.5.0
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.0.0` and `@shanku/brand >= 1.0.0`.
 
@@ -33,6 +33,10 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.5.0 — 2026-09-22
+- Added `FloatingWindow`: a Revit-style modeless dialog above the whole app (ribbon included), moved by its title bar, resized from any edge or corner, brought to front on use, position remembered, Esc closes.
+- The page frame never scrolls (`html, body { overflow: hidden }`); focus calls use `preventScroll`.
 
 ### 0.4.0 — 2026-09-22
 - `AppShell` takes an optional `workspace` that owns the area between ribbon and status bar (for docking layouts); the fixed `left` / `viewTabs` / `viewport` / `bottomPanel` slots are now optional.

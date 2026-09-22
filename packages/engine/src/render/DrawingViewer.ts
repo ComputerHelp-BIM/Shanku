@@ -1,4 +1,5 @@
 import {
+  LineBasicMaterial,
   BufferAttribute,
   BufferGeometry,
   DataTexture,
@@ -22,7 +23,12 @@ import { resolvePalette, toCss } from './drawingColors';
 export interface DrawingViewerEvents {
   /** Cursor position in real drawing coordinates (origin added back), or null when outside. */
   onCursor?: (x: number, y: number) => void;
+  /** A click picked a DXF object (index into drawing.handles), or empty space (null). */
+  onSelect?: (entity: number | null) => void;
 }
+
+/** Pick box half-size in screen pixels, like AutoCAD's PICKBOX. */
+const PICK_PX = 6;
 
 const VERTEX = /* glsl */ `
 in float aColor;
@@ -66,6 +72,10 @@ export class DrawingViewer {
   private viewHeight = 1;
   private frameRequested = false;
   private disposers: Array<() => void> = [];
+  private selected: number | null = null;
+  private highlight: LineSegments | null = null;
+  private highlightMat = new LineBasicMaterial({ depthTest: false, transparent: true, opacity: 1 });
+  private accentCss = '#D9761E';
 
   constructor(private container: HTMLElement, private events: DrawingViewerEvents = {}) {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
@@ -166,6 +176,88 @@ export class DrawingViewer {
     this.fit();
   }
 
+  /**
+   * The DXF object under a screen point: nearest visible line within the pick box, else a text whose
+   * box contains the point, else a filled area containing it. Returns an index into drawing.handles.
+   */
+  pickAt(clientX: number, clientY: number): number | null {
+    const d = this.drawing;
+    if (!d) return null;
+    const p = this.toWorld(clientX, clientY);
+    const tol = (PICK_PX * this.viewHeight) / Math.max(1, this.container.getBoundingClientRect().height);
+    let best: number | null = null;
+    let bestD = tol;
+    const s = d.seg;
+    for (let i = 0, n = d.segEnt.length; i < n; i++) {
+      if (!this.layerOn[d.segLayer[i]]) continue;
+      const x1 = s[i * 4], y1 = s[i * 4 + 1], x2 = s[i * 4 + 2], y2 = s[i * 4 + 3];
+      if ((p.x < Math.min(x1, x2) - bestD) || (p.x > Math.max(x1, x2) + bestD) || (p.y < Math.min(y1, y2) - bestD) || (p.y > Math.max(y1, y2) + bestD)) continue;
+      const dx = x2 - x1, dy = y2 - y1;
+      const L2 = dx * dx + dy * dy;
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((p.x - x1) * dx + (p.y - y1) * dy) / L2)) : 0;
+      const dist = Math.hypot(p.x - (x1 + t * dx), p.y - (y1 + t * dy));
+      if (dist <= bestD) {
+        bestD = dist;
+        best = d.segEnt[i];
+      }
+    }
+    if (best !== null) return best;
+    for (const t of d.texts) {
+      const [x, y, h, rot, , , text, , li, ent] = t;
+      if (!this.layerOn[li]) continue;
+      const a = (-rot * Math.PI) / 180;
+      const lx = (p.x - x) * Math.cos(a) - (p.y - y) * Math.sin(a);
+      const ly = (p.x - x) * Math.sin(a) + (p.y - y) * Math.cos(a);
+      const w = h * 0.62 * Math.max(...text.split('\n').map((l) => l.length)); // approximate text box
+      const lines = text.split('\n').length;
+      if (Math.abs(lx) <= w + tol && ly >= -h * 1.4 * lines - tol && ly <= h * 1.4 + tol) return ent;
+    }
+    for (let i = d.polyColor.length - 1; i >= 0; i--) {
+      if (!this.layerOn[d.polyLayer[i]]) continue;
+      const a = d.polyStart[i], b = i + 1 < d.polyStart.length ? d.polyStart[i + 1] : d.poly.length / 2;
+      let inside = false;
+      for (let k = a, j = b - 1; k < b; j = k++) {
+        const xi = d.poly[k * 2], yi = d.poly[k * 2 + 1], xj = d.poly[j * 2], yj = d.poly[j * 2 + 1];
+        if ((yi > p.y) !== (yj > p.y) && p.x < ((xj - xi) * (p.y - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      if (inside) return d.polyEnt[i];
+    }
+    return null;
+  }
+
+  /** Highlights one DXF object (its lines in the accent colour, its text in the accent colour). */
+  select(entity: number | null): void {
+    this.selected = entity;
+    this.highlight?.removeFromParent();
+    this.highlight?.geometry.dispose();
+    this.highlight = null;
+    const d = this.drawing;
+    if (d && entity !== null) {
+      const pts: number[] = [];
+      for (let i = 0, n = d.segEnt.length; i < n; i++) {
+        if (d.segEnt[i] !== entity) continue;
+        pts.push(d.seg[i * 4], d.seg[i * 4 + 1], 0.5, d.seg[i * 4 + 2], d.seg[i * 4 + 3], 0.5);
+      }
+      for (let i = 0; i < d.polyColor.length; i++) {
+        if (d.polyEnt[i] !== entity) continue;
+        const a = d.polyStart[i], b = i + 1 < d.polyStart.length ? d.polyStart[i + 1] : d.poly.length / 2;
+        for (let k = a; k < b; k++) {
+          const j = k + 1 < b ? k + 1 : a;
+          pts.push(d.poly[k * 2], d.poly[k * 2 + 1], 0.5, d.poly[j * 2], d.poly[j * 2 + 1], 0.5);
+        }
+      }
+      if (pts.length) {
+        const g = new BufferGeometry();
+        g.setAttribute('position', new BufferAttribute(new Float32Array(pts), 3));
+        this.highlight = new LineSegments(g, this.highlightMat);
+        this.highlight.renderOrder = 5;
+        this.highlight.frustumCulled = false;
+        this.scene.add(this.highlight);
+      }
+    }
+    this.requestRender();
+  }
+
   /** Layer visibility by layer index. */
   setLayerVisibility(on: readonly boolean[]): void {
     this.layerOn = [...on];
@@ -237,8 +329,10 @@ export class DrawingViewer {
   private bindInput(c: HTMLCanvasElement): void {
     let drag: { x: number; y: number } | null = null;
     let lastMiddle = 0;
+    let click: { x: number; y: number } | null = null;
     const down = (e: PointerEvent) => {
       c.focus({ preventScroll: true });
+      click = e.button === 0 && !e.altKey ? { x: e.clientX, y: e.clientY } : null;
       const pan = e.button === 1 || (e.button === 0 && e.altKey);
       if (e.button === 1) {
         const t = performance.now();
@@ -268,6 +362,12 @@ export class DrawingViewer {
       this.updateCamera();
     };
     const up = (e: PointerEvent) => {
+      if (click && e.button === 0 && Math.hypot(e.clientX - click.x, e.clientY - click.y) < 4) {
+        const hit = this.pickAt(e.clientX, e.clientY);
+        this.select(hit);
+        this.events.onSelect?.(hit);
+      }
+      click = null;
       drag = null;
       if (c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
     };
@@ -313,6 +413,8 @@ export class DrawingViewer {
     });
     this.paletteTex.needsUpdate = true;
     this.screenPalette = colors.map(toCss);
+    this.accentCss = getComputedStyle(this.container).getPropertyValue('--accent').trim() || '#D9761E';
+    this.highlightMat.color.set(this.accentCss);
     this.requestRender();
   }
 
@@ -338,7 +440,7 @@ export class DrawingViewer {
     const halfW = W / pxPerUnit / 2;
     const halfH = this.viewHeight / 2;
     const font = getComputedStyle(this.container).getPropertyValue('--font-sans') || 'sans-serif';
-    for (const [x, y, h, rot, ah, av, text, ci, li] of d.texts) {
+    for (const [x, y, h, rot, ah, av, text, ci, li, ent] of d.texts) {
       if (!this.layerOn[li]) continue;
       const px = h * pxPerUnit;
       if (px < 2.5) continue; // too small to read, like AutoCAD's text frames at low zoom
@@ -349,7 +451,7 @@ export class DrawingViewer {
       ctx.setTransform(1, 0, 0, 1, sx, sy);
       if (rot) ctx.rotate((-rot * Math.PI) / 180);
       ctx.font = `${px}px ${font}`;
-      ctx.fillStyle = this.screenPalette[ci] ?? 'currentColor';
+      ctx.fillStyle = ent === this.selected ? this.accentCss : this.screenPalette[ci] ?? 'currentColor';
       ctx.textAlign = ah;
       const lines = text.split('\n');
       ctx.textBaseline = BASELINE[av] ?? 'alphabetic';
@@ -360,6 +462,10 @@ export class DrawingViewer {
   }
 
   private clear(): void {
+    this.highlight?.removeFromParent();
+    this.highlight?.geometry.dispose();
+    this.highlight = null;
+    this.selected = null;
     for (const o of this.objects) {
       o.removeFromParent();
       o.geometry.dispose();
@@ -376,6 +482,7 @@ export class DrawingViewer {
   dispose(): void {
     for (const f of this.disposers) f();
     this.clear();
+    this.highlightMat.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
     this.overlay.remove();

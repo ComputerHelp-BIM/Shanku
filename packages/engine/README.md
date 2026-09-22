@@ -1,4 +1,4 @@
-# @shanku/engine 0.8.0
+# @shanku/engine 0.9.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,13 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.9.0 — 2026-09-22
+- Fixed (pipeline 1.1.0): IFC for Revit. Walls now carry window and door holes in their own geometry (Reference View), with no opening elements, voids or fills, which Revit reported as "not cutting anything". Every element was also listed twice in its type relationship; now once.
+- Pipeline 1.1.0: stacked identical outlines with one label are built once (warning) instead of skipped.
+- Windows and doors render as glass (a transparent second pass).
+- DXF extractor 1.1.0: every line, fill and text records its DXF object; `DrawingViewer.pickAt` / `select` pick with a CAD pick box and highlight; `DxfClient.entity` returns object properties; drawings stay open in the worker until `forget`.
+- One Pyodide constant (`@shanku/engine/pyodide`) for all workers.
 
 ### 0.8.0 — 2026-09-22
 - Added the DXF → 3D pipeline (`src/pipeline/dxf2ifc.py` 1.0.0): reads the Computer Help format (see `docs/dxf-format.md`) and writes IFC4 with storeys, extrusions, openings, types, materials, `Shanku_DXF` properties, base quantities and stable GlobalIds; checks with locations. Runs in the DXF worker (`DxfClient.pipeline`) and in CPython (pytest).

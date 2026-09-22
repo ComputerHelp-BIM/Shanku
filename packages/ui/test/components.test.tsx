@@ -146,3 +146,23 @@ describe('ViewTabs', () => {
     expect((screen.getByRole('tab', { name: 'Plain' }).parentElement as HTMLElement).className).not.toContain('has-color');
   });
 });
+
+describe('FloatingWindow', () => {
+  it('renders above the app in a portal, moves by its title bar and closes with Esc', async () => {
+    const { FloatingWindow } = await import('../src');
+    const onClose = vi.fn();
+    render(
+      <FloatingWindow id="t" title="Keys" open onClose={onClose} initial={{ x: 100, y: 50, w: 400, h: 300 }}>
+        <p>body</p>
+      </FloatingWindow>,
+    );
+    const win = screen.getByRole('dialog', { name: 'Keys' });
+    expect(win.parentElement).toBe(document.body);
+    fireEvent.pointerDown(win.querySelector('.sk-window__title')!, { button: 0, clientX: 150, clientY: 60 });
+    fireEvent.pointerMove(window, { clientX: 210, clientY: 90 });
+    fireEvent.pointerUp(window);
+    expect(win.style.left).toBe('160px');
+    fireEvent.keyDown(screen.getByText('body'), { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
+});

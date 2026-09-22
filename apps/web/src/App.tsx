@@ -3,6 +3,7 @@ import {
   AppShell,
   Button,
   CommandSearch,
+  FloatingWindow,
   IconButton,
   LocalIndicator,
   Ribbon,
@@ -18,7 +19,7 @@ import {
   useShortcut,
   useTheme,
 } from '@shanku/ui';
-import { CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, type Category, type DisplayStyle } from '@shanku/engine';
+import { CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, type Category, type DisplayStyle, type PipelineQa } from '@shanku/engine';
 import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
@@ -31,14 +32,14 @@ import { DrawingProperties, LayersPanel } from './components/DrawingPanels';
 import { MarkRulesDialog } from './components/MarkRulesDialog';
 import { BoqWindow } from './components/BoqWindow';
 import { ConsolePanel } from './components/ConsolePanel';
-import { PipelinePanel, type PipelineState } from './components/PipelinePanel';
-import { downloadFile } from './lib/excel';
+import { PipelinePanel } from './components/PipelinePanel';
+import { qaFocus, usePipeline } from './lib/usePipeline';
 import { DockWorkspace, type DockWorkspaceHandle, type PanelId } from './components/DockWorkspace';
 import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.11.0';
+const APP_VERSION = '0.12.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -72,8 +73,9 @@ export function App() {
   const [gradeDialog, setGradeDialog] = useState(false);
   const dock = useRef<DockWorkspaceHandle>(null);
   const [openPanels, setOpenPanels] = useState<PanelId[]>([]);
-  const [pipe, setPipe] = useState<PipelineState | null>(null);
-  const pipeIfc = useRef<string>('');
+  // Revit-style windows (float above everything, ribbon included)
+  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false });
+  const toggleWin = (k: keyof typeof wins, v?: boolean) => setWins((w) => ({ ...w, [k]: v ?? !w[k] }));
   useShortcut(TOGGLE_BOTTOM_PANEL, () => dock.current?.toggleBottom(), { allowInEditable: true });
   const [rates, setRates] = useState<RateBook>(emptyRates);
   useEffect(() => {
@@ -142,58 +144,42 @@ export function App() {
   }, [m, openDrawing]);
 
   // ---- DXF -> 3D pipeline
-  const startPipeline = useCallback(async () => {
-    let file: { name: string; bytes: ArrayBuffer } | null = null;
-    try {
-      file = await pickFile('dxf');
-    } catch (e) {
-      m.log(e instanceof Error ? e.message : String(e), 'error');
-    }
-    if (!file) return;
-    const forDrawing = file.bytes.slice(0);
-    dock.current?.open('pipeline');
-    pipeIfc.current = '';
-    setPipe({ fileName: file.name, summary: null, names: {}, heights: {}, phase: 'Starting Python (first time about 15 MB)…', built: null, error: null });
-    try {
-      const { summary } = await dx.getClient().pipeline({}, { fileName: file.name, bytes: file.bytes }, (t) => setPipe((p) => (p ? { ...p, phase: t } : p)));
-      setPipe((p) => (p ? { ...p, summary, phase: null } : p));
-      m.log(`DXF → 3D read ${file.name}: ${summary.levels.length} levels, ${summary.counts.reduce((n, c) => n + c.count, 0).toLocaleString('en-IN')} elements, ${summary.qa.length} checks.`);
-      void dx.open({ name: file.name, bytes: forDrawing }).catch(() => undefined); // 2D view for "Show"
-    } catch (e) {
-      setPipe((p) => (p ? { ...p, phase: null, error: e instanceof Error ? e.message : String(e) } : p));
-    }
-  }, [dx, m]);
-
-  const buildPipeline = useCallback(async () => {
-    if (!pipe?.summary) return;
-    const base = pipe.fileName.replace(/\.dxf$/i, '');
-    setPipe((p) => (p ? { ...p, phase: 'Building the 3D model…', error: null } : p));
-    try {
-      const { summary, ifc } = await dx.getClient().pipeline({ build: true, names: pipe.names, heights: pipe.heights, project: base, source: pipe.fileName });
-      pipeIfc.current = ifc;
-      const ifcName = `${base}.ifc`;
-      await m.open({ name: ifcName, bytes: new TextEncoder().encode(ifc).buffer as ArrayBuffer });
+  const pipeline = usePipeline({
+    getClient: dx.getClient,
+    openDrawing: dx.open,
+    openModel: async (f) => {
+      await m.open(f);
       setActiveView('3d');
-      setPipe((p) => (p ? { ...p, summary, phase: null, built: { ifcName, elements: summary.report?.elements ?? 0, openings: summary.report?.openings ?? 0 } } : p));
-    } catch (e) {
-      setPipe((p) => (p ? { ...p, phase: null, error: e instanceof Error ? e.message : String(e) } : p));
-    }
-  }, [dx, m, pipe]);
+    },
+    log: m.log,
+    showWindow: () => toggleWin('pipeline', true),
+  });
+  const pipe = pipeline.state;
 
   const showQa = useCallback(
-    (q: { at: [number, number] | null; bounds: [number, number, number, number] | null }) => {
+    (q: PipelineQa) => {
       const doc = dx.docs.find((d) => d.name === pipe?.fileName);
       if (!doc) return setNotice('The drawing is still opening in 2D; try again in a moment.');
       setActiveView(doc.id);
-      const b = q.bounds ?? (q.at ? [q.at[0] - 800, q.at[1] - 800, q.at[0] + 800, q.at[1] + 800] : null);
+      const b = qaFocus(q);
       if (b) setTimeout(() => drawingView.current?.zoomTo(b[0], b[1], b[2], b[3]), 80);
     },
     [dx.docs, pipe?.fileName],
   );
 
   const closeView = (id: string) => {
+    if (id === '3d') {
+      m.close();
+      setIfcColor(null);
+      setHidden([]);
+      setSectionBox(false);
+      setWins((w) => ({ ...w, boq: false }));
+      m.log('Model closed.');
+      if (dx.docs.length) setActiveView(dx.docs[0].id);
+      return;
+    }
     dx.close(id);
-    if (id === activeView) setActiveView('3d');
+    if (id === activeView) setActiveView(m.model || dx.docs.length <= 1 ? '3d' : dx.docs.find((d) => d.id !== id)!.id);
   };
 
   const openFromDisk = useCallback(async () => {
@@ -276,7 +262,8 @@ export function App() {
   );
 
   useShortcut({ code: 'Escape' }, () => {
-    if (zoomRegion) viewport.current?.cancelZoomRegion();
+    if (activeDoc) dx.select(activeDoc.id, null);
+    else if (zoomRegion) viewport.current?.cancelZoomRegion();
     else m.setSelection([]);
   });
   // Ctrl + Z: undo the last section-box edit (the only undoable action so far).
@@ -361,7 +348,7 @@ export function App() {
           <RibbonGroup label="Open">
             <RibbonButton icon="ifc" label="IFC" onClick={openFromDisk} shortcutHint="opens from this device" />
             <RibbonButton icon="dxf" label="DXF" onClick={openDxfFromDisk} shortcutHint="2D view, opens from this device" />
-            <RibbonButton icon="column" label="DXF → 3D" onClick={() => (pipe ? dock.current?.open('pipeline') : void startPipeline())} shortcutHint="build an IFC model from a CH-format drawing" />
+            <RibbonButton icon="column" label="DXF → 3D" active={wins.pipeline} onClick={() => (pipe ? toggleWin('pipeline') : void pipeline.start())} shortcutHint="build an IFC model from a CH-format drawing" />
           </RibbonGroup>
           <RibbonGroup label="Structure">
             {(['column', 'beam', 'wall', 'slab', 'footing'] as const).map((k) => (
@@ -374,15 +361,15 @@ export function App() {
             <RibbonButton icon="elevation" label="Front" onClick={() => viewport.current?.setView('front')} />
           </RibbonGroup>
           <RibbonGroup label="Select">
-            <RibbonButton icon="byid" label="By ID" onClick={() => search.current?.focus()} shortcutHint="Ctrl + K" />
+            <RibbonButton icon="byid" label="By ID" onClick={() => search.current?.focus({ preventScroll: true })} shortcutHint="Ctrl + K" />
           </RibbonGroup>
           <RibbonGroup label="Quantities">
             <RibbonButton
               icon="boq"
               label="BOQ"
               disabled={!m.model}
-              active={openPanels.includes('boq')}
-              onClick={() => dock.current?.toggle('boq')}
+              active={wins.boq}
+              onClick={() => toggleWin('boq')}
               shortcutHint="bill of quantities with rates and Excel export"
             />
           </RibbonGroup>
@@ -392,12 +379,12 @@ export function App() {
                 ['properties', 'properties', 'Properties'],
                 ['browser', 'browser', 'Browser'],
                 ['activity', 'activity', 'Activity'],
-                ['keyboard', 'keyboard', 'Keys'],
                 ['console', 'console', 'Console'],
               ] as const
             ).map(([id, icon, label]) => (
               <RibbonButton key={id} icon={icon} label={label} active={openPanels.includes(id)} onClick={() => dock.current?.toggle(id)} shortcutHint="show or hide" />
             ))}
+            <RibbonButton icon="keyboard" label="Keys" active={wins.keys} onClick={() => toggleWin('keys')} shortcutHint="keyboard shortcuts" />
             <RibbonButton icon="layout" label="Reset" onClick={() => dock.current?.reset()} shortcutHint="default layout: browser left, properties right" />
           </RibbonGroup>
           <RibbonGroup label="Settings">
@@ -419,7 +406,8 @@ export function App() {
                   <div className="app-views">
                     {<ViewTabs
           tabs={[
-            { id: '3d', label: '{3D}', color: m.model ? ifcColor ?? undefined : undefined, title: info?.fileName },
+            // {3D} is the IFC model's view: closable when a model is open, hidden when only drawings are open.
+            ...(m.model || !dx.docs.length ? [{ id: '3d', label: '{3D}', closable: !!m.model, color: m.model ? ifcColor ?? undefined : undefined, title: m.model ? `${info?.fileName} (close to unload the model)` : undefined }] : []),
             ...dx.docs.map((d) => ({ id: d.id, label: d.name.replace(/\.dxf$/i, ''), closable: true, color: d.color, title: `${d.name} (2D)` })),
           ]}
           activeId={activeView}
@@ -449,7 +437,7 @@ export function App() {
           }}
         >
           {dx.docs.map((d) =>
-            d.id === activeView ? <DrawingView key={d.id} ref={drawingView} doc={d} onCursor={(x, y) => setCursor({ x, y })} /> : null,
+            d.id === activeView ? <DrawingView key={d.id} ref={drawingView} doc={d} onCursor={(x, y) => setCursor({ x, y })} onSelect={(e) => dx.select(d.id, e)} /> : null,
           )}
           <div className="app-view3d" hidden={activeDoc !== null}>
           <Viewport
@@ -514,6 +502,51 @@ export function App() {
               </div>
             </div>
           ) : null}
+          <FloatingWindow id="boq" title="Bill of quantities" subtitle={m.model?.info.fileName} accent={ifcColor ?? undefined} open={wins.boq} onClose={() => toggleWin('boq', false)} initial={{ w: 1080, h: 540 }} minWidth={560} minHeight={280}>
+            {m.model ? (
+                  <BoqWindow
+                    model={m.model}
+                    rates={rates}
+                    onRates={changeRates}
+                    selection={sel}
+                    onSelect={boqSelect}
+                    markRules={m.markRules}
+                    gradeRules={m.gradeRules}
+                    appVersion={APP_VERSION}
+                    onEditGradeRules={() => setGradeDialog(true)}
+                    onLog={m.log}
+                  />
+                ) : (
+                  <p className="app-empty-note">Open an IFC model to see its bill of quantities.</p>
+                )}
+          </FloatingWindow>
+          <FloatingWindow id="pipeline" title="DXF → 3D" subtitle={pipe?.fileName} open={wins.pipeline} onClose={() => toggleWin('pipeline', false)} initial={{ w: 1000, h: 560 }} minWidth={560} minHeight={300}>
+            {(
+                  <PipelinePanel
+                    state={pipe}
+                    onPick={() => void pipeline.start()}
+                    onName={pipeline.setName}
+                    onHeight={pipeline.setHeight}
+                    onBuild={() => void pipeline.build()}
+                    onDownload={pipeline.download}
+                    onShow={showQa}
+                  />
+                )}
+          </FloatingWindow>
+          <FloatingWindow id="keys" title="Keyboard shortcuts" open={wins.keys} onClose={() => toggleWin('keys', false)} initial={{ w: 520, h: 560 }} minWidth={360}>
+            {(
+                  <table className="app-keys">
+                    <tbody>
+                      {SHORTCUT_HELP.map((k) => (
+                        <tr key={k.keys}>
+                          <th scope="row">{k.keys}</th>
+                          <td>{k.action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+          </FloatingWindow>
           <MarkRulesDialog open={markDialog} rules={m.markRules} defaults={DEFAULT_MARK_RULES} elements={m.model?.elements ?? []} onSave={(r) => void m.setMarkRules(r)} onClose={() => setMarkDialog(false)} />
           <MarkRulesDialog
             open={gradeDialog}
@@ -608,19 +641,6 @@ export function App() {
                 ) : (
                   <p className="app-empty-note">Nothing yet. Open a model and its load times appear here.</p>
                 );
-              case 'keyboard':
-                return (
-                  <table className="app-keys">
-                    <tbody>
-                      {SHORTCUT_HELP.map((k) => (
-                        <tr key={k.keys}>
-                          <th scope="row">{k.keys}</th>
-                          <td>{k.action}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                );
               case 'console':
                 return (
                   <ConsolePanel
@@ -637,36 +657,6 @@ export function App() {
                       else if (a.type === 'fit') viewport.current?.fit(a.indices ?? undefined);
                     }}
                   />
-                );
-              case 'pipeline':
-                return (
-                  <PipelinePanel
-                    state={pipe}
-                    onPick={() => void startPipeline()}
-                    onName={(n, name) => setPipe((p) => (p ? { ...p, names: { ...p.names, [n]: name } } : p))}
-                    onHeight={(n, h) => setPipe((p) => (p ? { ...p, heights: { ...p.heights, [n]: h } } : p))}
-                    onBuild={() => void buildPipeline()}
-                    onDownload={() => pipe?.built && downloadFile(new TextEncoder().encode(pipeIfc.current).buffer as ArrayBuffer, pipe.built.ifcName, 'application/x-step')}
-                    onShow={showQa}
-                  />
-                );
-              case 'boq':
-                return m.model ? (
-                  <BoqWindow
-                    mode="docked"
-                    model={m.model}
-                    rates={rates}
-                    onRates={changeRates}
-                    selection={sel}
-                    onSelect={boqSelect}
-                    markRules={m.markRules}
-                    gradeRules={m.gradeRules}
-                    appVersion={APP_VERSION}
-                    onEditGradeRules={() => setGradeDialog(true)}
-                    onLog={m.log}
-                  />
-                ) : (
-                  <p className="app-empty-note">Open an IFC model to see its bill of quantities.</p>
                 );
               default:
                 return null;

@@ -28,6 +28,7 @@ import {
   DISPLAY_HIDDEN_LINE,
   DISPLAY_SHADED,
   DISPLAY_WIREFRAME,
+  STATE_GLASS,
   STATE_HIDDEN,
   STATE_HOVER,
   STATE_SELECTED,
@@ -97,6 +98,7 @@ export class Viewer {
   private state: DataTexture | null = null;
   private stateData: Uint8Array | null = null;
   private meshMat: ShaderMaterial | null = null;
+  private glassMat: ShaderMaterial | null = null;
   private edgeMat: ShaderMaterial | null = null;
   private pickMat: ShaderMaterial | null = null;
   private mesh: Mesh | null = null;
@@ -169,6 +171,15 @@ export class Viewer {
     this.state = createStateTexture(model.elements.length);
     this.stateData = this.state.image.data as Uint8Array;
     this.meshMat = createModelMaterial(this.state);
+    // Second pass for windows and doors: same geometry, transparent, drawn after the opaque model.
+    this.glassMat = createModelMaterial(this.state);
+    this.glassMat.uniforms.uPass.value = 1;
+    this.glassMat.transparent = true;
+    this.glassMat.depthWrite = false;
+    this.glassMat.clippingPlanes = this.clipPlanes;
+    model.elements.forEach((e) => {
+      if (e.ifcClass === 'IfcWindow' || e.ifcClass === 'IfcDoor') this.stateData![e.index * 4] |= STATE_GLASS;
+    });
     this.edgeMat = createEdgeMaterial(this.state);
     this.pickMat = createPickMaterial(this.state);
     for (const m of [this.meshMat, this.edgeMat, this.pickMat]) m.clippingPlanes = this.clipPlanes;
@@ -191,9 +202,12 @@ export class Viewer {
     this.edges.frustumCulled = false;
     this.edges.renderOrder = 1;
 
-    this.scene.add(this.mesh, this.edges);
+    const glassMesh = new Mesh(geo, this.glassMat);
+    glassMesh.frustumCulled = false;
+    glassMesh.renderOrder = 2;
+    this.scene.add(this.mesh, this.edges, glassMesh);
     this.pickScene.add(pickMesh);
-    this.objects = [this.mesh, this.edges, pickMesh];
+    this.objects = [this.mesh, this.edges, glassMesh, pickMesh];
     this.modelBox()?.getBoundingSphere(this.modelSphere);
     this.setDisplayStyle(this.style);
     this.orient('iso');
@@ -208,6 +222,8 @@ export class Viewer {
     this.objects = [];
     this.mesh = this.edges = null;
     this.meshMat?.dispose();
+    this.glassMat?.dispose();
+    this.glassMat = null;
     this.edgeMat?.dispose();
     this.pickMat?.dispose();
     this.state?.dispose();
@@ -317,7 +333,7 @@ export class Viewer {
 
   setDisplayStyle(style: DisplayStyle): void {
     this.style = style;
-    if (this.meshMat) this.meshMat.uniforms.uMode.value = STYLE_CODE[style];
+    for (const m of [this.meshMat, this.glassMat]) if (m) m.uniforms.uMode.value = STYLE_CODE[style];
     if (this.mesh) this.mesh.visible = style !== 'wireframe';
     if (this.edgeMat) {
       // Wireframe shows edges through the model, like Revit's WF.
@@ -363,8 +379,8 @@ export class Viewer {
     if (st) this.clipPlanes.push(...planesOf(st));
     if (toggled) {
       // Caps need back faces while a section box is on; without it, front faces only (cheaper, no artefacts).
-      for (const m of [this.meshMat, this.pickMat]) if (m) m.side = st ? DoubleSide : FrontSide;
-      for (const m of [this.meshMat, this.edgeMat, this.pickMat]) if (m) m.needsUpdate = true;
+      for (const m of [this.meshMat, this.glassMat, this.pickMat]) if (m) m.side = st ? DoubleSide : FrontSide;
+      for (const m of [this.meshMat, this.glassMat, this.edgeMat, this.pickMat]) if (m) m.needsUpdate = true;
     }
     this.events.onSectionBoxChange?.(st !== null);
     this.requestRender();
@@ -798,19 +814,26 @@ export class Viewer {
   applyTheme(): void {
     const t = readViewerTokens(this.container);
     const set = (m: ShaderMaterial | null, name: string, c: Rgba) => m?.uniforms[name]?.value.setRGB(c.r, c.g, c.b);
-    set(this.meshMat, 'uTop', t['concrete-top']);
-    set(this.meshMat, 'uSide', t['concrete-side']);
-    set(this.meshMat, 'uShade', t['concrete-shade']);
-    set(this.meshMat, 'uSelTop', t['selected-top']);
-    set(this.meshMat, 'uSelSide', t['selected-side']);
-    set(this.meshMat, 'uSelShade', t['selected-shade']);
-    set(this.meshMat, 'uHover', t['hover-outline']);
-    set(this.meshMat, 'uPaper', t.viewport);
+    const setMesh = (name: string, c: Rgba) => {
+      set(this.meshMat, name, c);
+      set(this.glassMat, name, c);
+    };
+    setMesh( 'uTop', t['concrete-top']);
+    setMesh( 'uSide', t['concrete-side']);
+    setMesh( 'uShade', t['concrete-shade']);
+    setMesh( 'uSelTop', t['selected-top']);
+    setMesh( 'uSelSide', t['selected-side']);
+    setMesh( 'uSelShade', t['selected-shade']);
+    setMesh( 'uHover', t['hover-outline']);
+    setMesh( 'uPaper', t.viewport);
     // Cut faces: the shade colour taken a step darker, so caps read as solid section.
     const cap = t['concrete-shade'];
-    set(this.meshMat, 'uCap', { r: cap.r * 0.78, g: cap.g * 0.78, b: cap.b * 0.78, a: 1 });
+    setMesh( 'uCap', { r: cap.r * 0.78, g: cap.g * 0.78, b: cap.b * 0.78, a: 1 });
     const accent = getComputedStyle(this.container).getPropertyValue('--accent').trim() || '#D9761E';
     this.gizmo.setColors(new Color(accent), new Color(t['selected-top'].r, t['selected-top'].g, t['selected-top'].b));
+    // Glass tint: a cool grey-blue, lighter on Paper, deeper on Ink.
+    const dark = t.viewport.r + t.viewport.g + t.viewport.b < 1.5;
+    setMesh('uGlass', dark ? { r: 0.45, g: 0.6, b: 0.72, a: 1 } : { r: 0.62, g: 0.76, b: 0.86, a: 1 });
     // Hidden line and wireframe draw edges as solid drawing lines; shaded styles use soft model edges.
     const edge = this.style === 'hiddenLine' ? t['line-cut'] : this.style === 'wireframe' ? t['line-projection'] : t['edge-model'];
     set(this.edgeMat, 'uEdge', edge);

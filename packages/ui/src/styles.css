@@ -1,4 +1,4 @@
-/* @shanku/ui 0.4.0 — requires @shanku/tokens/tokens.css loaded first. */
+/* @shanku/ui 0.5.0 — requires @shanku/tokens/tokens.css loaded first. */
 
 /* ---------- base ---------- */
 .sk-shell,
@@ -356,3 +356,22 @@
 @media (prefers-reduced-motion: reduce) {
   .sk-shell * { transition: none !important; animation: none !important; }
 }
+
+/* ---- FloatingWindow: Revit-style modeless dialog above the whole app ---- */
+.sk-window:focus { outline: none; }
+.sk-window { position: fixed; display: flex; flex-direction: column; background: var(--panel); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24); font-family: var(--font-sans); font-size: 13px; overflow: visible; }
+.sk-window__title { height: 36px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; border-bottom: 1px solid var(--border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--ribbon); box-shadow: inset 0 3px 0 var(--sk-window-accent, var(--accent)); cursor: move; user-select: none; touch-action: none; }
+.sk-window__title h2 { margin: 0; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.sk-window__subtitle { color: var(--text-faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sk-window__spacer { flex: 1; }
+.sk-window__body { position: relative; flex: 1; min-height: 0; overflow: auto; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+.sk-window__edge { position: absolute; z-index: 2; touch-action: none; }
+.sk-window__edge--n, .sk-window__edge--s { left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
+.sk-window__edge--n { top: -3px; } .sk-window__edge--s { bottom: -3px; }
+.sk-window__edge--e, .sk-window__edge--w { top: 8px; bottom: 8px; width: 6px; cursor: ew-resize; }
+.sk-window__edge--e { right: -3px; } .sk-window__edge--w { left: -3px; }
+.sk-window__edge--ne, .sk-window__edge--nw, .sk-window__edge--se, .sk-window__edge--sw { width: 12px; height: 12px; }
+.sk-window__edge--ne { top: -4px; right: -4px; cursor: nesw-resize; } .sk-window__edge--sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
+.sk-window__edge--nw { top: -4px; left: -4px; cursor: nwse-resize; } .sk-window__edge--se { bottom: -4px; right: -4px; cursor: nwse-resize; }
+/* The app frame never scrolls; only panels inside it do. */
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }

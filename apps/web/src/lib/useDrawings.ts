@@ -11,12 +11,16 @@ export interface DrawingDoc {
   layerOn: boolean[];
   /** User override when the file's $INSUNITS is wrong (common in client files). */
   units: string;
+  /** Selected DXF object (index into drawing.handles) and its properties once loaded. */
+  selected: { entity: number; props: Record<string, string | number | number[]> | null } | null;
 }
 
 /** Open DXF drawings, one 2D view tab each. */
 export function useDrawings(colorsInUse: () => string[], log: (text: string, tone?: 'info' | 'error') => void) {
   const client = useRef<DxfClient | null>(null);
   const [docs, setDocs] = useState<DrawingDoc[]>([]);
+  const docsRef = useRef(docs);
+  docsRef.current = docs;
   const [loading, setLoading] = useState<{ name: string; phase: string } | null>(null);
   const seq = useRef(0);
 
@@ -31,7 +35,7 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
         const drawing = await client.current.open(file.name, file.bytes, (phase) => setLoading({ name: file.name, phase }));
         const id = `dxf-${++seq.current}`;
         const color = nextDocColor([...colorsInUse(), ...docs.map((d) => d.color)]);
-        setDocs((ds) => [...ds, { id, name: file.name, color, drawing, layerOn: drawing.layers.map((l) => l.on), units: drawing.info.units }]);
+        setDocs((ds) => [...ds, { id, name: file.name, color, drawing, layerOn: drawing.layers.map((l) => l.on), units: drawing.info.units, selected: null }]);
         const i = drawing.info;
         log(
           `Opened ${file.name}: ${i.segments.toLocaleString('en-IN')} lines, ${i.polygons.toLocaleString('en-IN')} fills, ` +
@@ -49,7 +53,25 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
     [colorsInUse, docs, log],
   );
 
-  const close = useCallback((id: string) => setDocs((ds) => ds.filter((d) => d.id !== id)), []);
+  const close = useCallback((id: string) => {
+    setDocs((ds) => {
+      const d = ds.find((x) => x.id === id);
+      if (d) client.current?.forget(d.drawing.drawingId); // the worker keeps each drawing open for selection
+      return ds.filter((x) => x.id !== id);
+    });
+  }, []);
+
+  /** Selects a DXF object (or clears with null) and loads its properties from the worker. */
+  const select = useCallback((id: string, entity: number | null) => {
+    setDocs((ds) => ds.map((d) => (d.id === id ? { ...d, selected: entity === null ? null : { entity, props: null } } : d)));
+    if (entity === null) return;
+    const doc = docsRef.current.find((d) => d.id === id);
+    if (!doc || !client.current) return;
+    void client.current.entity(doc.drawing.drawingId, doc.drawing.handles[entity]).then((props) =>
+      setDocs((ds) => ds.map((d) => (d.id === id && d.selected?.entity === entity ? { ...d, selected: { entity, props } } : d))),
+    );
+  }, []);
+
   const update = useCallback((id: string, patch: Partial<Pick<DrawingDoc, 'layerOn' | 'units'>>) => {
     setDocs((ds) => ds.map((d) => (d.id === id ? { ...d, ...patch } : d)));
   }, []);
@@ -57,5 +79,5 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
   /** The shared DXF worker (Python + ezdxf), also used by the DXF -> 3D pipeline. */
   const getClient = useCallback(() => (client.current ??= new DxfClient()), []);
 
-  return { docs, loading, open, close, update, getClient };
+  return { docs, loading, open, close, update, select, getClient };
 }

@@ -13,10 +13,11 @@ Reads the default drawing format agreed with the user and writes an IFC4 file:
     windows / doors       "panels,sill,height,MARK"    panels 0 means "not given" (treated as 1)
 * Levels: the foundation frame is Level 1; storeys stack from ±0 by their heights;
   "2-4" repeats one plan on levels 2, 3 and 4.
+* IFC4 Reference View: walls carry their window and door holes in their own geometry (no opening
+  elements or boolean voids), so importers such as Revit have nothing to cut.
 
-Version 1.0.0
+Version 1.1.0
 """
-import hashlib
 import math
 import re
 import time
@@ -24,7 +25,7 @@ import uuid
 
 import ezdxf
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 # ---------------------------------------------------------------- profile (the drawing format)
 
@@ -159,6 +160,48 @@ def rect_axes(poly):
                 else:
                     best = (w * h, h, w, (-uy, ux), (cx, cy))
     return best[1], best[2], best[3], best[4]
+
+
+def wall_pieces(wall, ops):
+    """Splits a rectangular wall around its openings into solid pieces: (plan polygon, z0, z1).
+    Returns None when the wall outline is not a rectangle (then it is built whole)."""
+    poly = wall["poly"]
+    L, W, (ux, uy), (cx, cy) = rect_axes(poly)
+    if abs(area(poly) - L * W) > max(1.0, 1e-4 * L * W):
+        return None
+    vx, vy = -uy, ux
+    z0w, z1w = wall["z0"], wall["z1"]
+    holes = []
+    for op in ops:
+        oL = rect_axes(op["poly"])[0]
+        ocx, ocy = centroid(op["poly"])
+        t = (ocx - cx) * ux + (ocy - cy) * uy
+        a0, a1 = max(-L / 2, t - oL / 2), min(L / 2, t + oL / 2)
+        h0, h1 = max(z0w, op["z0"]), min(z1w, op["z1"])
+        if a1 - a0 > 1e-6 and h1 - h0 > 1e-6:
+            holes.append((a0, a1, h0, h1))
+    if not holes:
+        return [(poly, z0w, z1w)]
+    cuts = sorted({-L / 2, L / 2} | {h[0] for h in holes} | {h[1] for h in holes})
+
+    def rect(a, b):
+        return [(cx + ux * a - vx * W / 2, cy + uy * a - vy * W / 2), (cx + ux * b - vx * W / 2, cy + uy * b - vy * W / 2),
+                (cx + ux * b + vx * W / 2, cy + uy * b + vy * W / 2), (cx + ux * a + vx * W / 2, cy + uy * a + vy * W / 2)]
+
+    pieces = []
+    for a, b in zip(cuts, cuts[1:]):
+        if b - a < 1e-6:
+            continue
+        mid = (a + b) / 2
+        gaps = sorted((h[2], h[3]) for h in holes if h[0] <= mid <= h[1])
+        z = z0w
+        for g0, g1 in gaps:  # solid between the holes stacked in this span
+            if g0 > z + 1e-6:
+                pieces.append((rect(a, b), z, g0))
+            z = max(z, g1)
+        if z1w > z + 1e-6:
+            pieces.append((rect(a, b), z, z1w))
+    return pieces
 
 
 # ---------------------------------------------------------------- reading
@@ -313,13 +356,21 @@ def analyze(path, level_names=None, level_heights=None):
             e0, pts = group[0]
             spec = ELEMENT_LAYERS[layer]
             inside = [t for t in labels_by_layer.get(spec[1], []) if point_in(pts, t.dxf.insert[0], t.dxf.insert[1])]
+            cx, cy = centroid(pts)
+            handles = ", ".join(g[0].dxf.handle for g in group)
+            if len(inside) <= 1:
+                # Unambiguous: build the first outline once, skip the copies, and say so.
+                for e, _ in group[1:]:
+                    duplicate.add(e.dxf.handle)
+                _qa(qa, "warning", "duplicate", "{} identical {} outlines stacked (handles {}): built once; delete the copies (AutoCAD OVERKILL).".format(
+                    len(group), spec[5].lower(), handles), at=[cx, cy], layer=layer, handle=e0.dxf.handle, bounds=list(bbox(pts)))
+                continue
             for t in inside:
                 seen_labels.add(t.dxf.handle)
             for e, _ in group:
                 duplicate.add(e.dxf.handle)
-            cx, cy = centroid(pts)
-            _qa(qa, "error", "duplicate", "{} identical {} outlines on top of each other (handles {}) with labels {}: delete the extra one; neither is built.".format(
-                len(group), spec[5].lower(), ", ".join(g[0].dxf.handle for g in group), ", ".join('"{}"'.format(text_of(t)) for t in inside) or "none"),
+            _qa(qa, "error", "duplicate", "{} identical {} outlines stacked (handles {}) with {} labels {}: delete the extra outline and label; none is built.".format(
+                len(group), spec[5].lower(), handles, len(inside), ", ".join('"{}"'.format(text_of(t)) for t in inside)),
                 at=[cx, cy], layer=layer, handle=e0.dxf.handle, bounds=list(bbox(pts)))
     for e in ents:
         if e.dxf.handle in duplicate:
@@ -515,24 +566,33 @@ def build_ifc(result, project_name="Shanku DXF model", source_name="drawing.dxf"
         storey[lv["number"]], storey_pl[lv["number"]] = st, (pl, lv["elevation"])
     a("IFCRELAGGREGATES({},$,$,$,{},({}))".format(_s(ifc_guid("agg3:" + source_name)), building, ",".join(storey[l["number"]] for l in result["levels"])))
 
-    def extrusion(poly, z0_rel, depth):
+    def solid(poly, z0_rel, depth):
         pts = ",".join(a("IFCCARTESIANPOINT(({},{}))".format(_f(x), _f(y))) for x, y in poly)
-        first = S.lines[int(pts.split(",")[0][1:]) - 1]
-        closing = pts.split(",")[0]
-        pl = a("IFCPOLYLINE(({},{}))".format(pts, closing))
+        pl = a("IFCPOLYLINE(({},{}))".format(pts, pts.split(",")[0]))
         prof = a("IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,{})".format(pl))
         p0 = a("IFCCARTESIANPOINT((0.,0.,{}))".format(_f(z0_rel)))
         pos = a("IFCAXIS2PLACEMENT3D({},{},{})".format(p0, zdir, xdir))
-        solid = a("IFCEXTRUDEDAREASOLID({},{},{},{})".format(prof, pos, zdir, _f(max(depth, 1.0))))
-        rep = a("IFCSHAPEREPRESENTATION({},'Body','SweptSolid',({}))".format(body, solid))
-        del first
+        return a("IFCEXTRUDEDAREASOLID({},{},{},{})".format(prof, pos, zdir, _f(max(depth, 1.0))))
+
+    def make_shape(solids):
+        rep = a("IFCSHAPEREPRESENTATION({},'Body','SweptSolid',({}))".format(body, ",".join(solids)))
         return a("IFCPRODUCTDEFINITIONSHAPE($,$,({}))".format(rep))
+
+    def extrusion(poly, z0_rel, depth):
+        return make_shape([solid(poly, z0_rel, depth)])
+
+    # Reference View: walls carry their openings in their own geometry (no opening elements or
+    # boolean voids), windows and doors simply sit in the holes. Importers such as Revit then have
+    # nothing to cut. Openings are grouped by host wall first.
+    openings_of = {}
+    for el in result["elements"]:
+        if el["kind"] in OPENING_KINDS and el.get("host") is not None:
+            openings_of.setdefault(id(el["host"]), []).append(el)
 
     contained = {n: [] for n in storey}
     by_material = {}
     by_type = {}
     report = {"elements": 0, "openings": 0, "by_kind": {}}
-    PREFIX = {"IFCCOLUMN": "Column", "IFCBEAM": "Beam", "IFCSLAB": "Slab", "IFCWALL": "Wall", "IFCFOOTING": "Footing"}
 
     for el in result["elements"]:
         n = el["level"]
@@ -552,25 +612,15 @@ def build_ifc(result, project_name="Shanku DXF model", source_name="drawing.dxf"
             vx, vy = -uy, ux
             panel = [(cx - ux * L / 2 - vx * t / 2, cy - uy * L / 2 - vy * t / 2), (cx + ux * L / 2 - vx * t / 2, cy + uy * L / 2 - vy * t / 2),
                      (cx + ux * L / 2 + vx * t / 2, cy + uy * L / 2 + vy * t / 2), (cx - ux * L / 2 + vx * t / 2, cy - uy * L / 2 + vy * t / 2)]
-            shape = extrusion(panel, el["z0"] - elev, depth)
+            panel_shape = extrusion(panel, el["z0"] - elev, depth)
             panels = max(1, el.get("panels", 1))
             if el["kind"] == "window":
                 part = {1: "SINGLE_PANEL", 2: "DOUBLE_PANEL_VERTICAL", 3: "TRIPLE_PANEL_VERTICAL"}.get(panels, "USERDEFINED")
-                ent = a("IFCWINDOW({},$,{},$,$,{},{},{},{},{},.WINDOW.,.{}.,$)".format(gid, name, pl, shape, tag, _f(el["height"]), _f(L), part))
+                ent = a("IFCWINDOW({},$,{},$,$,{},{},{},{},{},.WINDOW.,.{}.,$)".format(gid, name, pl, panel_shape, tag, _f(el["height"]), _f(L), part))
             else:
                 op_type = {1: "SINGLE_SWING_LEFT", 2: "DOUBLE_DOOR_SINGLE_SWING"}.get(panels, "USERDEFINED")
-                ent = a("IFCDOOR({},$,{},$,$,{},{},{},{},{},.DOOR.,.{}.,$)".format(gid, name, pl, shape, tag, _f(el["height"]), _f(L), op_type))
-            host = el.get("host")
-            if host is not None:
-                # Opening: the outline grown 2 mm across the wall so the cut goes clean through.
-                grow = 2.0
-                cut = [(cx - ux * L / 2 - vx * (W / 2 + grow), cy - uy * L / 2 - vy * (W / 2 + grow)), (cx + ux * L / 2 - vx * (W / 2 + grow), cy + uy * L / 2 - vy * (W / 2 + grow)),
-                       (cx + ux * L / 2 + vx * (W / 2 + grow), cy + uy * L / 2 + vy * (W / 2 + grow)), (cx - ux * L / 2 + vx * (W / 2 + grow), cy - uy * L / 2 + vy * (W / 2 + grow))]
-                opl = a("IFCLOCALPLACEMENT({},{})".format(spl, world))
-                oshape = extrusion(cut, el["z0"] - elev, depth)
-                opening = a("IFCOPENINGELEMENT({},$,{},$,$,{},{},$,.OPENING.)".format(_s(ifc_guid("open:" + key)), _s("Opening " + el["mark"]), opl, oshape))
-                host.setdefault("_openings", []).append((opening, el))
-                a("IFCRELFILLSELEMENT({},$,$,$,{},{})".format(_s(ifc_guid("fill:" + key)), opening, ent))
+                ent = a("IFCDOOR({},$,{},$,$,{},{},{},{},{},.DOOR.,.{}.,$)".format(gid, name, pl, panel_shape, tag, _f(el["height"]), _f(L), op_type))
+            if el.get("host") is not None:
                 report["openings"] += 1
             el["_ent"] = ent
             qs = [a("IFCQUANTITYLENGTH('Width',$,$,{},$)".format(_f(L))), a("IFCQUANTITYLENGTH('Height',$,$,{},$)".format(_f(el["height"]))),
@@ -578,9 +628,18 @@ def build_ifc(result, project_name="Shanku DXF model", source_name="drawing.dxf"
             q = a("IFCELEMENTQUANTITY({},$,{},$,$,({}))".format(_s(ifc_guid("qto:" + key)), _s("Qto_WindowBaseQuantities" if el["kind"] == "window" else "Qto_DoorBaseQuantities"), ",".join(qs)))
             a("IFCRELDEFINESBYPROPERTIES({},$,$,$,({}),{})".format(_s(ifc_guid("qrel:" + key)), ent, q))
         else:
-            shape = extrusion(poly, el["z0"] - elev, depth)
+            ops = openings_of.get(id(el), [])
+            pieces = wall_pieces(el, ops) if ops else None
+            if pieces is None:
+                geom = extrusion(poly, el["z0"] - elev, depth)
+                if ops:
+                    report["uncut"] = report.get("uncut", 0) + len(ops)  # host is not a rectangle
+            else:
+                geom = make_shape([solid(pp, z0 - elev, z1 - z0) for pp, z0, z1 in pieces])
+                el["_net"] = sum(area(pp) * (z1 - z0) for pp, z0, z1 in pieces) / 1e9
+                el["_cut_ops"] = ops
             cls = el["ifc"]
-            ent = a("{}({},$,{},$,{},{},{},{},.{}.)".format(cls, gid, name, _s(el["word"]), pl, shape, tag, el["predefined"]))
+            ent = a("{}({},$,{},$,{},{},{},{},.{}.)".format(cls, gid, name, _s(el["word"]), pl, geom, tag, el["predefined"]))
             el["_ent"] = ent
             by_material.setdefault(el["material"], []).append(ent)
             if el["kind"] in ("column", "pedestal", "beam", "footing", "pcc", "wall"):
@@ -599,10 +658,13 @@ def build_ifc(result, project_name="Shanku DXF model", source_name="drawing.dxf"
                  a("IFCPROPERTYSINGLEVALUE('DXF label',$,IFCLABEL({}),$)".format(_s(el["label"]))),
                  a("IFCPROPERTYSINGLEVALUE('DXF layer',$,IFCLABEL({}),$)".format(_s(el["layer"]))),
                  a("IFCPROPERTYSINGLEVALUE('DXF handle',$,IFCLABEL({}),$)".format(_s(el["handle"])))]
+        if el["kind"] in OPENING_KINDS:
+            host = el.get("host")
+            props.append(a("IFCPROPERTYSINGLEVALUE('Host wall',$,IFCLABEL({}),$)".format(_s(host["mark"] if host else ""))))
         ps = a("IFCPROPERTYSET({},$,'Shanku_DXF',$,({}))".format(_s(ifc_guid("pset:" + key)), ",".join(props)))
         a("IFCRELDEFINESBYPROPERTIES({},$,$,$,({}),{})".format(_s(ifc_guid("prel:" + key)), ent, ps))
 
-    # walls: voids, and quantities for all solids (after openings are known)
+    # quantities for all solids (walls use their net volume after openings)
     for el in result["elements"]:
         if el["kind"] in OPENING_KINDS or "_ent" not in el:
             continue
@@ -611,21 +673,15 @@ def build_ifc(result, project_name="Shanku DXF model", source_name="drawing.dxf"
         depth = el["z1"] - el["z0"]
         plan = area(el["poly"])  # mm²
         gross = plan * depth / 1e9
-        cut = 0.0
-        for opening, op in el.get("_openings", []):
-            a("IFCRELVOIDSELEMENT({},$,$,$,{},{})".format(_s(ifc_guid("void:{}:{}".format(key, opening))), ent, opening))
-            oz0, oz1 = max(op["z0"], el["z0"]), min(op["z1"], el["z1"])
-            if oz1 > oz0:
-                L, W, _, _ = rect_axes(op["poly"])
-                cut += L * min(W, rect_axes(el["poly"])[1]) * (oz1 - oz0) / 1e9
+        net = el.get("_net", gross)
         L, W, _, _ = rect_axes(el["poly"])
-        qs = [a("IFCQUANTITYVOLUME('GrossVolume',$,$,{},$)".format(_f(gross))), a("IFCQUANTITYVOLUME('NetVolume',$,$,{},$)".format(_f(gross - cut)))]
+        qs = [a("IFCQUANTITYVOLUME('GrossVolume',$,$,{},$)".format(_f(gross))), a("IFCQUANTITYVOLUME('NetVolume',$,$,{},$)".format(_f(net)))]
         if el["kind"] in ("beam",):
             qs += [a("IFCQUANTITYLENGTH('Length',$,$,{},$)".format(_f(L))), a("IFCQUANTITYLENGTH('Width',$,$,{},$)".format(_f(W))), a("IFCQUANTITYLENGTH('Depth',$,$,{},$)".format(_f(depth)))]
         elif el["kind"] in ("slab", "chajja"):
             qs += [a("IFCQUANTITYAREA('NetArea',$,$,{},$)".format(_f(plan / 1e6))), a("IFCQUANTITYLENGTH('Depth',$,$,{},$)".format(_f(depth)))]
         elif el["kind"] == "wall":
-            side = L * depth / 1e6 - sum(rect_axes(op["poly"])[0] * (op["z1"] - op["z0"]) for _, op in el.get("_openings", [])) / 1e6
+            side = L * depth / 1e6 - sum(rect_axes(op["poly"])[0] * max(0.0, min(op["z1"], el["z1"]) - max(op["z0"], el["z0"])) for op in el.get("_cut_ops", [])) / 1e6
             qs += [a("IFCQUANTITYLENGTH('Length',$,$,{},$)".format(_f(L))), a("IFCQUANTITYLENGTH('Width',$,$,{},$)".format(_f(W))),
                    a("IFCQUANTITYLENGTH('Height',$,$,{},$)".format(_f(depth))), a("IFCQUANTITYAREA('NetSideArea',$,$,{},$)".format(_f(side)))]
         else:

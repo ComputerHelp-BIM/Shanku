@@ -116,14 +116,7 @@
 
 
 /* ---- BOQ window (design system: BoqWindow) ---- */
-.bq-win { position: absolute; z-index: 20; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18); overflow: hidden; }
-.bq-win.is-min { height: auto; }
-.bq-docked { display: flex; flex-direction: column; height: 100%; margin: -10px -16px; }
-.bq-title { height: 38px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px; border-bottom: 1px solid var(--border); box-shadow: inset 0 3px 0 var(--doc); cursor: move; user-select: none; touch-action: none; }
-.bq-title h3 { margin: 0; font-size: 13px; font-weight: 600; }
-.bq-file { color: var(--text-faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.bq-ib { width: 28px; height: 28px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text-secondary); font: inherit; cursor: pointer; }
-.bq-ib:hover { background: var(--chip); }
+.bq-docked { display: flex; flex-direction: column; height: 100%; }
 .bq-tabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .bq-tabs button { height: 32px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-secondary); font: inherit; cursor: pointer; }
 .bq-tabs button.on { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; }
@@ -162,7 +155,6 @@
 .bq-table .amt { font-weight: 600; }
 .bq-table tfoot th, .bq-table tfoot td { position: sticky; bottom: 0; background: var(--panel); font-weight: 600; border-top: 2px solid var(--accent); border-bottom: 0; height: 30px; }
 .bq-foot { height: 28px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
-.bq-grip { position: absolute; right: 2px; bottom: 2px; width: 12px; height: 12px; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg, transparent 50%, var(--border-strong) 50% 60%, transparent 60% 70%, var(--border-strong) 70% 80%, transparent 80%); }
 
 /* ---- docking workspace (dockview themed with Shanku tokens) ---- */
 .app-dock { height: 100%; }
@@ -214,7 +206,6 @@
 .app-dock-actions { display: flex; align-items: center; height: 100%; padding-right: 4px; gap: 2px; }
 .app-dock-action { width: 26px; height: 24px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
 .app-dock-action:hover { background: var(--chip); color: var(--text); }
-.bq-docked { margin: 0; }
 
 /* ---- Python console ---- */
 .app-console { position: absolute; inset: 0; display: flex; flex-direction: column; font-family: var(--font-mono); font-size: 12.5px; }
@@ -259,3 +250,4 @@
 .pl-msg { flex: 1; }
 .pl-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .pl-ok { color: var(--status-ok); }
+.sk-window__body > .app-keys { margin: 10px 16px; }

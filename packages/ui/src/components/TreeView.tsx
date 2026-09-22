@@ -37,7 +37,7 @@ export function TreeView({ nodes, label, activeId, defaultExpanded = [], onSelec
 
   const focus = (id: string) => {
     setFocusedId(id);
-    refs.current.get(id)?.focus();
+    refs.current.get(id)?.focus({ preventScroll: true });
   };
   const toggle = (id: string, open?: boolean) =>
     setExpanded((prev) => {

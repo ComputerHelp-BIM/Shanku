@@ -79,7 +79,12 @@ def test_ifc_is_valid_step_with_openings_and_stable_ids(drawing):
     r = P.analyze(drawing)
     ifc, rep = P.build_ifc(r, "T", "t.dxf")
     assert ifc.startswith("ISO-10303-21;") and "FILE_SCHEMA(('IFC4'))" in ifc
-    assert rep["openings"] == 2 and ifc.count("IFCRELVOIDSELEMENT") == 2 and ifc.count("IFCWINDOW(") == 2
+    # Reference View: openings live in the wall geometry; no opening elements, voids or fills
+    assert rep["openings"] == 2 and ifc.count("IFCWINDOW(") == 2
+    assert "IFCOPENINGELEMENT" not in ifc and "IFCRELVOIDSELEMENT" not in ifc and "IFCRELFILLSELEMENT" not in ifc
+    for m in re.finditer(r"IFCRELDEFINESBYTYPE\([^(]*\(([^)]*)\)", ifc):
+        refs = m.group(1).split(",")
+        assert len(refs) == len(set(refs))  # every element listed once per type
     ids = re.findall(r"#(\d+)=", ifc)
     assert [int(i) for i in ids] == list(range(1, len(ids) + 1))
     refs = {int(x) for x in re.findall(r"#(\d+)", ifc.split("DATA;")[1])}
@@ -96,3 +101,13 @@ def test_wall_net_volume_deducts_the_window(drawing):
     vols = [float(v) for v in re.findall(r"IFCQUANTITYVOLUME\('NetVolume',\$,\$,([0-9.eE-]+),\$\)", ifc)]
     wall_net = 4.0 * 0.23 * 2.4 - 1.0 * 0.23 * 1.4
     assert any(abs(v - wall_net) < 1e-6 for v in vols)
+
+
+def test_wall_pieces_leave_exactly_the_hole():
+    wall = {"poly": [(0, 0), (4000, 0), (4000, 230), (0, 230)], "z0": 0, "z1": 2400}
+    win = {"poly": [(1500, 0), (2500, 0), (2500, 230), (1500, 230)], "z0": 1000, "z1": 2400}
+    door = {"poly": [(3000, 0), (3800, 0), (3800, 230), (3000, 230)], "z0": 0, "z1": 2100}
+    pieces = P.wall_pieces(wall, [win, door])
+    vol = sum(P.area(p) * (z1 - z0) for p, z0, z1 in pieces)
+    assert abs(vol - (4000 * 230 * 2400 - 1000 * 230 * 1400 - 800 * 230 * 2100)) < 1
+    assert P.wall_pieces({"poly": [(0, 0), (4000, 0), (4000, 230), (2000, 230), (2000, 900), (0, 900)], "z0": 0, "z1": 2400}, [win]) is None

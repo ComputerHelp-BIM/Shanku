@@ -1,9 +1,9 @@
 /// <reference lib="webworker" />
 // Python console worker: Pyodide (MPL-2.0) from jsDelivr, same build as the DXF reader, plus the shanku API.
 import shankuSource from './shanku.py?raw';
+import { PYODIDE_INDEX_URL as INDEX_URL } from '@shanku/engine/pyodide';
 
 declare const self: DedicatedWorkerGlobalScope;
-const INDEX_URL = 'https://cdn.jsdelivr.net/pyodide/v0.27.7/full/';
 
 type Py = {
   runPython: (code: string) => unknown;

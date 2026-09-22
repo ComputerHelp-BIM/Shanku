@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { Button } from '@shanku/ui';
 import { CATEGORY_ORDER, siFactor, type ElementRecord, type ParsedModel } from '@shanku/engine';
 import { buildBoqWorkbook, downloadFile } from '../lib/excel';
@@ -8,26 +8,8 @@ type Tab = 'elements' | 'levels' | 'summary' | 'rates';
 type SortKey = 'mark' | 'id' | 'level' | 'category' | 'type' | 'grade' | 'length' | 'width' | 'depth' | 'height' | 'area' | 'volume' | 'rate' | 'amount';
 
 const ROW = 26;
-const MIN_W = 640;
-const MIN_H = 320;
 const d2 = (v: number | null) => (v === null ? '—' : inr(v, 2));
 const d3 = (v: number) => inr(v, 3);
-
-interface Geometry {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-const loadGeom = (): Geometry => {
-  try {
-    const g = JSON.parse(localStorage.getItem('shanku.boqWindow') ?? 'null');
-    if (g && [g.x, g.y, g.w, g.h].every(Number.isFinite)) return g;
-  } catch {
-    /* fall through */
-  }
-  return { x: 24, y: 24, w: 1080, h: 520 };
-};
 
 export interface BoqWindowProps {
   model: ParsedModel;
@@ -38,17 +20,11 @@ export interface BoqWindowProps {
   markRules: string[];
   gradeRules: string[];
   appVersion: string;
-  color?: string;
   onEditGradeRules: () => void;
   onLog: (text: string, tone?: 'info' | 'error') => void;
-  /** Floating over the 3D view (default) or docked in the bottom panel. */
-  mode: 'floating' | 'docked';
-  onDock?: () => void;
-  onFloat?: () => void;
-  onClose?: () => void;
 }
 
-/** The approved BOQ window: Elements, Levels, Summary, Rates; item rates with per-element overrides. */
+/** Content of the BOQ window: Elements, Levels, Summary, Rates; item rates with per-element overrides. */
 export function BoqWindow(p: BoqWindowProps) {
   const { model, rates, onRates } = p;
   const [tab, setTab] = useState<Tab>('elements');
@@ -57,27 +33,18 @@ export function BoqWindow(p: BoqWindowProps) {
   const [lvl, setLvl] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({ key: 'volume', asc: false });
   const [busy, setBusy] = useState(false);
-  const [geom, setGeom] = useState<Geometry>(loadGeom);
-  const [minimised, setMinimised] = useState(false);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewH, setViewH] = useState(400);
   const scroller = useRef<HTMLDivElement>(null);
   const selected = useMemo(() => new Set(p.selection), [p.selection]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('shanku.boqWindow', JSON.stringify(geom));
-    } catch {
-      /* ignore */
-    }
-  }, [geom]);
-  useEffect(() => {
     const el = scroller.current;
     if (!el) return undefined;
     const ro = new ResizeObserver(() => setViewH(el.clientHeight));
     ro.observe(el);
     return () => ro.disconnect();
-  }, [tab, minimised]);
+  }, [tab]);
 
   // ---------- data ----------
   const els = model.elements;
@@ -183,35 +150,6 @@ export function BoqWindow(p: BoqWindowProps) {
       p.onLog(`BOQ export failed: ${e instanceof Error ? e.message : String(e)}`, 'error');
     } finally {
       setBusy(false);
-    }
-  };
-
-  // ---------- window drag / resize ----------
-  const drag = (kind: 'move' | 'resize') => (ev: ReactPointerEvent) => {
-    if (p.mode !== 'floating' || ev.button !== 0 || (kind === 'move' && (ev.target as HTMLElement).closest('button'))) return;
-    ev.preventDefault();
-    const start = { px: ev.clientX, py: ev.clientY, ...geom };
-    const parent = (ev.currentTarget as HTMLElement).closest('.app-drop')?.getBoundingClientRect();
-    const move = (e: PointerEvent) => {
-      const dx = e.clientX - start.px, dy = e.clientY - start.py;
-      setGeom(() => {
-        if (kind === 'resize') return { x: start.x, y: start.y, w: Math.max(MIN_W, start.w + dx), h: Math.max(MIN_H, start.h + dy) };
-        const maxX = parent ? parent.width - 80 : Infinity, maxY = parent ? parent.height - 38 : Infinity;
-        return { w: start.w, h: start.h, x: Math.min(maxX, Math.max(-start.w + 80, start.x + dx)), y: Math.min(maxY, Math.max(0, start.y + dy)) };
-      });
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  };
-
-  const onKeyWin = (ev: KeyboardEvent) => {
-    if (ev.key === 'Escape' && !(ev.target instanceof HTMLInputElement) && p.onClose) {
-      ev.stopPropagation();
-      p.onClose();
     }
   };
 
@@ -445,27 +383,6 @@ export function BoqWindow(p: BoqWindowProps) {
     </>
   );
 
-  if (p.mode === 'docked') return <div className="bq-docked" onKeyDown={onKeyWin}>{body}</div>;
-
-  return (
-    <section
-      className={['bq-win', minimised && 'is-min'].filter(Boolean).join(' ')}
-      style={{ left: geom.x, top: geom.y, width: geom.w, height: minimised ? undefined : geom.h, ['--doc' as string]: p.color ?? 'var(--accent)' }}
-      role="dialog"
-      aria-label="Bill of quantities"
-      onKeyDown={onKeyWin}
-    >
-      <div className="bq-title" onPointerDown={drag('move')}>
-        <h3>Bill of quantities</h3>
-        <span className="bq-file">{model.info.fileName} · {els.length.toLocaleString('en-IN')} elements</span>
-        <span className="app-spacer" />
-        <button type="button" className="bq-ib" title="Dock to the bottom panel" aria-label="Dock" onClick={p.onDock}>⤓</button>
-        <button type="button" className="bq-ib" title={minimised ? 'Restore' : 'Minimise'} aria-label={minimised ? 'Restore' : 'Minimise'} onClick={() => setMinimised((m) => !m)}>{minimised ? '▢' : '–'}</button>
-        <button type="button" className="bq-ib" title="Close (Esc)" aria-label="Close" onClick={p.onClose}>×</button>
-      </div>
-      {minimised ? null : body}
-      {minimised ? null : <div className="bq-grip" onPointerDown={drag('resize')} aria-hidden="true" />}
-    </section>
-  );
+  return <div className="bq-docked">{body}</div>;
 }
 

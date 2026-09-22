@@ -1,8 +1,8 @@
 export type TextAlignH = 'left' | 'center' | 'right';
 export type TextAlignV = 'baseline' | 'bottom' | 'middle' | 'top';
 
-/** [x, y, height, rotationDeg, alignH, alignV, text, colorIndex, layerIndex] — drawing units, rebased. */
-export type DrawingText = [number, number, number, number, TextAlignH, TextAlignV, string, number, number];
+/** [x, y, height, rotationDeg, alignH, alignV, text, colorIndex, layerIndex, entityIndex] — drawing units, rebased. */
+export type DrawingText = [number, number, number, number, TextAlignH, TextAlignV, string, number, number, number];
 
 export interface DrawingLayer {
   name: string;
@@ -47,6 +47,13 @@ export interface ParsedDrawing {
   polyStart: Uint32Array;
   polyColor: Uint16Array;
   polyLayer: Uint16Array;
+  /** Model-space entity (index into `handles`) that produced each segment / polygon, for picking. */
+  segEnt: Uint32Array;
+  polyEnt: Uint32Array;
+  /** DXF handle per model-space entity. */
+  handles: string[];
+  /** Worker-side id: the worker keeps this drawing open to answer object properties. */
+  drawingId: string;
   /** Wall-clock ms in the worker, including Python start-up. */
   loadMs: number;
 }

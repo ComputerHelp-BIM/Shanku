@@ -30,4 +30,5 @@ export {
   type BottomPanelProps,
   type AppShellProps,
 } from './components/Workspace';
-export const version = '0.4.0';
+export { FloatingWindow, type FloatingWindowProps } from './components/FloatingWindow';
+export const version = '0.5.0';

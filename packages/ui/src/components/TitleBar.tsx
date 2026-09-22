@@ -14,7 +14,7 @@ export const CommandSearch = forwardRef<HTMLInputElement, CommandSearchProps>(fu
 ) {
   const inner = useRef<HTMLInputElement>(null);
   useImperativeHandle(ref, () => inner.current as HTMLInputElement);
-  useShortcut(OPEN_COMMAND_PALETTE, () => inner.current?.focus(), { enabled: bindShortcut, allowInEditable: true });
+  useShortcut(OPEN_COMMAND_PALETTE, () => inner.current?.focus({ preventScroll: true }), { enabled: bindShortcut, allowInEditable: true });
   return (
     <input
       ref={inner}

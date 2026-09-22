@@ -1,6 +1,6 @@
 # DXF → 3D: the Computer Help drawing format (source of truth)
 
-The DXF → 3D pipeline (`packages/engine/src/pipeline/dxf2ifc.py`, version 1.0.0) reads this format and writes an IFC4 file. Everything is in millimetres. **Only closed polylines are used**; open lines, arcs, blocks and anything else on element layers are ignored and listed in the checks.
+The DXF → 3D pipeline (`packages/engine/src/pipeline/dxf2ifc.py`, version 1.1.0) reads this format and writes an IFC4 file. Everything is in millimetres. **Only closed polylines are used**; open lines, arcs, blocks and anything else on element layers are ignored and listed in the checks.
 
 ## Frames and levels
 
@@ -28,7 +28,7 @@ Storeys stack from ±0 (top of pedestal) by their heights: in the sample, levels
 | `CH-Window` | `CHT-Window` | `2,1000,1400,WN-1` | frame count (0 = not given, built as 1), sill, height, mark |
 | `CH-Door` | `CHT-Door` | `1,0,2100,D1` | panel count (0 = not given, built as 1), sill, height, mark |
 
-Windows and doors cut an opening through the wall they sit in (host found by position); without a host they are built without an opening and reported.
+Windows and doors make a hole in the wall they sit in (host found by position). Following IFC4 Reference View, the hole is part of the wall's own geometry (the wall is written as solid pieces around it); there are no opening elements or boolean voids, so Revit and other importers have nothing to cut. Without a host wall a window or door is built without a hole and reported.
 
 ## What the model gets
 
@@ -36,8 +36,8 @@ IFC4 (Reference View header), extruded solids, storeys with your names, material
 
 ## Checks
 
-Errors skip the item: missing or extra labels in an outline, unreadable labels, identical outlines stacked on each other, frames without origin or level. Warnings build but tell you: labels outside any outline, walls taller than their storey, openings outside walls, solids overlapping in plan by more than 1 mm (touching is fine). Notes: ignored open lines, panel counts left at 0. Each check with a place has **Show**, which zooms the 2D drawing to it.
+Errors skip the item: missing or extra labels in an outline, unreadable labels, identical outlines stacked on each other carrying more than one label, frames without origin or level. Stacked identical outlines with a single label are built once, with a warning to delete the copies (AutoCAD `OVERKILL`). Warnings build but tell you: labels outside any outline, walls taller than their storey, openings outside walls, solids overlapping in plan by more than 1 mm (touching is fine). Notes: ignored open lines, panel counts left at 0. Each check with a place has **Show**, which zooms the 2D drawing to it.
 
 ## Verified on `Full_G4-3-Parts_Input.dxf`
 
-1,006 elements on 8 levels, 156 openings; IFC quantities equal the engine's geometry after openings (e.g. PCC 14.339 m³, footing 34.647 m³, pedestal 11.739 m³, beams 95.577 m³); 3 real drawing errors found (stacked duplicate columns C-12/C-13 twice and C-16/C-17). Read 0.5 s, IFC written 0.6 s; in the browser about 8 s the first time (Python start-up), 3 s to build and open.
+1,015 elements on 8 levels, 156 openings; IFC quantities equal the engine's geometry (e.g. PCC 14.339 m³, footing 34.647 m³, pedestal 11.739 m³, beams 95.577 m³, walls net of openings 259.608 m³). Three stacked duplicate column outlines are reported (handles 354, 362, 939 duplicate 34D, 35B, 932). Read 0.5 s, IFC written 0.6 s; in the browser about 8 s the first time (Python start-up), 3 s to build and open.

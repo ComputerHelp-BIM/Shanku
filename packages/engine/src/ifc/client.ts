@@ -93,6 +93,11 @@ export class IfcClient {
     });
   }
 
+  /** Frees the open model in the worker (the worker stays ready for the next file). */
+  closeModel(): void {
+    this.post({ type: 'close' });
+  }
+
   dispose(): void {
     this.worker.terminate();
     for (const p of this.pending.values()) p.reject(new Error('IFC worker stopped.'));

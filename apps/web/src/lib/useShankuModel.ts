@@ -57,6 +57,15 @@ export function useShankuModel() {
     return () => client.dispose();
   }, [log]);
 
+  /** Closes the open model: frees it in the worker and clears selection and properties. */
+  const close = useCallback(() => {
+    clientRef.current?.closeModel();
+    setModel(null);
+    setSelection([]);
+    setProperties(null);
+    setLoad({ status: 'idle' });
+  }, []);
+
   const open = useCallback(
     async (file: PickedFile) => {
       const client = clientRef.current;
@@ -210,7 +219,7 @@ export function useShankuModel() {
   );
 
   return useMemo(
-    () => ({ load, model, selection, setSelection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules }),
-    [load, model, selection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules],
+    () => ({ load, model, selection, setSelection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules, close }),
+    [close, load, model, selection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules],
   );
 }
