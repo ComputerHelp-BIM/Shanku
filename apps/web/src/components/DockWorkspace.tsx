@@ -1,4 +1,4 @@
-import { createContext, forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useRef, type ReactNode } from 'react';
+import { createContext, forwardRef, useCallback, useContext, useImperativeHandle, useRef, type ReactNode } from 'react';
 import {
   DockviewReact,
   themeLight,
@@ -31,7 +31,7 @@ function PanelBody(props: IDockviewPanelProps) {
   return <div className="app-dock-panel">{render(props.api.id as PanelId)}</div>;
 }
 
-/** Float, pop out to its own window, dock back, as buttons on every group's tab bar. */
+/** Float and dock back, as buttons on every group's tab bar. Everything stays inside the Shanku tab. */
 function HeaderActions({ group, containerApi }: IDockviewHeaderActionsProps) {
   const where = group.api.location.type;
   if (group.panels.some((p) => p.id === 'views')) return null;
@@ -43,7 +43,6 @@ function HeaderActions({ group, containerApi }: IDockviewHeaderActionsProps) {
   return (
     <div className="app-dock-actions">
       {where === 'grid' ? btn('Float', '❐', () => containerApi.addFloatingGroup(group)) : null}
-      {where !== 'popout' ? btn('Pop out to a new window', '↗', () => void containerApi.addPopoutGroup(group, { popoutUrl: `${import.meta.env.BASE_URL}popout.html` })) : null}
       {where !== 'grid'
         ? btn('Dock', '⤓', () => {
             const views = containerApi.getPanel('views')?.group;
@@ -71,7 +70,7 @@ export interface DockWorkspaceProps {
 }
 
 function addDefault(api: DockviewApi, id: PanelId) {
-  const base = { id, component: 'panel', title: PANEL_TITLES[id], renderer: 'always' as const };
+  const base = { id, component: 'panel', title: PANEL_TITLES[id], renderer: 'always' as const, minimumWidth: id === 'views' ? 320 : 200, minimumHeight: 120 };
   if (id === 'views') return api.addPanel(base);
   if (id === 'browser') return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'left' }, initialWidth: 270 });
   if (id === 'properties') return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'right' }, initialWidth: 310 });
@@ -92,7 +91,7 @@ function defaultLayout(api: DockviewApi) {
   api.getPanel('views')?.api.setActive();
 }
 
-/** Revit-style docking: panels dock left, right or bottom, stack as tabs, float, or pop out to their own window. */
+/** Revit-style docking inside the app: drag a tab to dock it on any side or stack it; float, move and resize; dock back. */
 export const DockWorkspace = forwardRef<DockWorkspaceHandle, DockWorkspaceProps>(function DockWorkspace({ render, onChange }, ref) {
   const apiRef = useRef<DockviewApi | null>(null);
   const changeRef = useRef(onChange);
@@ -105,10 +104,7 @@ export const DockWorkspace = forwardRef<DockWorkspaceHandle, DockWorkspaceProps>
 
   const lockViews = (api: DockviewApi) => {
     const g = api.getPanel('views')?.group;
-    if (g) {
-      g.locked = 'no-drop-target'; // other panels dock around the views, never into them
-      g.header.hidden = true;
-    }
+    if (g) g.header.hidden = true; // the views keep their own tab strip ({3D}, drawings)
   };
 
   const save = useCallback(() => {
@@ -116,7 +112,7 @@ export const DockWorkspace = forwardRef<DockWorkspaceHandle, DockWorkspaceProps>
     if (!api) return;
     try {
       const json = api.toJSON() as unknown as Record<string, unknown>;
-      delete json.popoutGroups; // pop-out windows are not restored on reload (browsers block them)
+      delete json.popoutGroups; // Shanku never opens separate browser windows
       localStorage.setItem(LAYOUT_KEY, JSON.stringify(json));
     } catch {
       /* storage unavailable */
@@ -141,6 +137,32 @@ export const DockWorkspace = forwardRef<DockWorkspaceHandle, DockWorkspaceProps>
     api.onDidLayoutChange(() => {
       save();
       report();
+    });
+    // Panels dock beside the views (left, right, top, bottom) but never stack into them as a tab.
+    api.onWillShowOverlay((ev) => {
+      const target = (ev as unknown as { group?: { panels: Array<{ id: string }> } }).group;
+      if (ev.position === 'center' && target?.panels.some((p) => p.id === 'views')) ev.preventDefault();
+    });
+    // Like Revit, when docks are added, moved, floated or docked back, the 3D view absorbs the space:
+    // a side dock that dockview split evenly is set back to a normal width. Runs only when the dock
+    // structure changes, never while the user drags a splitter, so their own sizes stand.
+    let signature = '';
+    let pending = 0;
+    api.onDidLayoutChange(() => {
+      const sig = api.groups.map((g) => `${g.id}:${g.api.location.type}:${g.panels.map((p) => p.id).join(',')}`).join('|');
+      if (sig === signature) return;
+      signature = sig;
+      cancelAnimationFrame(pending);
+      pending = requestAnimationFrame(() => {
+        const total = document.querySelector('.app-dock')?.getBoundingClientRect();
+        if (!total) return;
+        for (const g of api.groups) {
+          if (g.api.location.type !== 'grid' || g.panels.some((p) => p.id === 'views')) continue;
+          const tall = g.height > total.height * 0.6;
+          if (tall && g.width > 380) g.api.setSize({ width: g.panels.some((p) => p.id === 'browser') ? 270 : 310 });
+          else if (!tall && g.height > total.height * 0.45) g.api.setSize({ height: 240 });
+        }
+      });
     });
     api.onDidAddPanel(report);
     api.onDidRemovePanel(report);
@@ -179,29 +201,6 @@ export const DockWorkspace = forwardRef<DockWorkspaceHandle, DockWorkspaceProps>
     },
   }));
 
-  // Keep pop-out windows on the same theme as the main window.
-  useEffect(() => {
-    const sync = () => {
-      const api = apiRef.current;
-      const theme = document.documentElement.getAttribute('data-theme');
-      for (const g of api?.groups ?? []) {
-        const loc = g.api.location;
-        if (loc.type === 'popout') {
-          const root = loc.getWindow().document.documentElement;
-          if (theme) root.setAttribute('data-theme', theme);
-          else root.removeAttribute('data-theme');
-        }
-      }
-    };
-    const mo = new MutationObserver(sync);
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    const t = setInterval(sync, 1000); // also catches newly opened pop-outs
-    return () => {
-      mo.disconnect();
-      clearInterval(t);
-    };
-  }, []);
-
   return (
     <RenderCtx.Provider value={render}>
       <DockviewReact
@@ -211,7 +210,7 @@ export const DockWorkspace = forwardRef<DockWorkspaceHandle, DockWorkspaceProps>
         rightHeaderActionsComponent={HeaderActions}
         onReady={onReady}
         floatingGroupBounds="boundedWithinViewport"
-        popoutUrl={`${import.meta.env.BASE_URL}popout.html`}
+        floatingGroupDragHandle="tabbar"
       />
     </RenderCtx.Provider>
   );

@@ -1,4 +1,4 @@
-# @shanku/web 0.8.0
+# @shanku/web 0.9.0
 
 The Shanku app. Requires `@shanku/engine >= 0.6.0`, `@shanku/ui >= 0.4.0`, `@shanku/tokens >= 1.0.0`.
 
@@ -22,8 +22,14 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 
 ## Changelog
 
+### 0.9.0 — 2026-09-22
+- Everything stays inside the Shanku tab: pop-out windows removed. Panels float over the whole workspace instead.
+- Revit-like docking checked end to end: drag a tab to any side of the 3D view or another dock to dock it, onto another panel to stack them as tabs, drag a floating window by its tab bar, resize it from any edge or corner, resize docks with the splitters (highlighted on hover), Float / Dock buttons. The 3D view never takes panels as tabs.
+- When docks change, the 3D view absorbs the freed space (side docks go back to their normal width); splitter sizes you set yourself are kept.
+- Fixed: tab bars showed white in the Ink theme (dockview's stylesheet loaded after ours; theme rules now win).
+
 ### 0.8.0 — 2026-09-22
-- **Dockable panels** (dockview, MIT): Project browser docks left and Properties right by default; Activity, Keyboard, Python console and BOQ dock at the bottom or anywhere else. Drag a tab to dock it on any side or stack it with other panels; every group has **Float** (a window over the whole workspace, not just the 3D view), **Pop out** (a real browser window you can move to another monitor) and **Dock** buttons. The layout is saved per browser; ribbon **Windows → Reset** restores the defaults.
+- **Dockable panels** (dockview, MIT): Project browser docks left and Properties right by default; Activity, Keyboard, Python console and BOQ dock at the bottom or anywhere else. Drag a tab to dock it on any side or stack it with other panels; every group has **Float** (a window over the whole workspace, not just the 3D view) and **Dock** buttons. The layout is saved per browser; ribbon **Windows → Reset** restores the defaults.
 - Ribbon **Windows** group toggles Properties, Browser, Activity, Keys and Console; **Quantities → BOQ** opens the BOQ as a floating panel. Ctrl + ` and the status-bar **Panel** button show or hide the bottom docks.
 - Pop-out windows follow the Paper / Ink theme.
 - Fixed CI: the Python extractor job installs Pillow (ezdxf's drawing add-on needs it).

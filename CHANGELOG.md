@@ -2,6 +2,15 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.9.0 — 2026-09-22
+
+### Changed
+- No separate browser windows: pop-out removed; floating panels stay inside the Shanku tab.
+- Docking behaves like Revit: drag to dock beside the view or other docks, stack as tabs, float, move, resize, dock back; the 3D view keeps the space when docks change.
+
+### Fixed
+- White tab bars in the Ink theme.
+
 ## 0.8.0 — 2026-09-22
 
 ### Added
