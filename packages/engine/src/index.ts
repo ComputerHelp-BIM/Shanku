@@ -7,4 +7,6 @@ export { DxfClient } from './dxf/client';
 export type { ParsedDrawing, DrawingInfo, DrawingLayer, DrawingText } from './dxf/types';
 export { DrawingViewer, type DrawingViewerEvents } from './render/DrawingViewer';
 export { resolvePalette, contrast } from './render/drawingColors';
-export const ENGINE_VERSION = '0.3.1';
+export { DEFAULT_MARK_RULES, parseRules, rulePriority } from './ifc/marks';
+export { assessCompatibility, readViewDefinition, RECOMMENDED_EXPORT, type Compatibility, type CompatLevel } from './ifc/compat';
+export const ENGINE_VERSION = '0.4.0';

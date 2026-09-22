@@ -1,4 +1,4 @@
-# @shanku/engine 0.3.1
+# @shanku/engine 0.4.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.4.0 — 2026-09-21
+- Added IFC compatibility rating (`info.compatibility`: recommended / supported / limited / experimental, with fix-it notes), from schema, view definition, quantity sets, Revit property sets and levels.
+- Added mark detection: `ElementRecord.mark` and `markSource`, from configurable rules (`DEFAULT_MARK_RULES`: Mark, Schedule Mark, ID, Type Mark, Comments; `PsetName.Property` for one set). One pass over property relationships. `IfcClient.marks(rules)` re-detects on the open model.
 
 ### 0.3.1 — 2026-09-21
 - Fixed: quantity lengths showed as metres on Revit exports. Units now come from the project's IfcUnitAssignment only; Revit also writes a stray metre IfcSIUnit that used to override millimetres. Values were right, the unit label was wrong.

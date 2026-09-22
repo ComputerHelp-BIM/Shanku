@@ -26,6 +26,10 @@ export interface ElementRecord {
   tag: string;
   typeName: string;
   level: string;
+  /** Detected mark (see mark rules); empty when none found. */
+  mark: string;
+  /** Where the mark came from, e.g. "01--COLUMN_M.ID". */
+  markSource: string;
   /** Axis-aligned bounds in viewer coordinates (metres, Y up): [minX,minY,minZ,maxX,maxY,maxZ]. */
   bounds: [number, number, number, number, number, number];
 }
@@ -57,6 +61,10 @@ export interface ModelInfo {
   edgeCount: number;
   /** Viewer-space bounds of the whole model, metres. */
   bounds: [number, number, number, number, number, number];
+  /** How well this export suits Shanku. */
+  compatibility: import('../ifc/compat').Compatibility;
+  viewDefinition: string;
+  quantitySets: number;
   /** Milliseconds per phase. */
   timings: { open: number; relations: number; geometry: number; total: number };
 }

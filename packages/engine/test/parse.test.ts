@@ -97,5 +97,13 @@ describe('parseIfc on the sample RCC frame', () => {
     const { model } = parseIfc(api2, new TextEncoder().encode(text), { fileName: 'units.ifc' });
     expect(model.info.units.length).toBe('mm');
   });
+
+  it('detects marks with the default rules and reports compatibility', () => {
+    const c1 = result.model.elements.find((e) => e.name === 'C1')!;
+    expect(c1.mark).toBe('C1');
+    expect(c1.markSource).toBe('Shanku_Structural.Mark');
+    expect(result.model.info.compatibility.level).toBe('supported'); // IfcOpenShell writes an IFC4 Design Transfer View header
+    expect(result.model.info.quantitySets).toBeGreaterThan(0);
+  });
 });
 

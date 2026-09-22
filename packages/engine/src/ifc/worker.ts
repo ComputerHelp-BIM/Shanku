@@ -3,6 +3,7 @@
 import * as WebIFC from 'web-ifc';
 import type { ModelUnits } from '../model/types';
 import { parseIfc, readProperties } from './parse';
+import { detectMarks } from './marks';
 import type { WorkerRequest, WorkerResponse } from './protocol';
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -33,6 +34,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       if (modelID !== null) api.CloseModel(modelID);
       const { modelID: id, model } = parseIfc(api, new Uint8Array(msg.bytes), {
         fileName: msg.fileName,
+        markRules: msg.markRules,
         onProgress: (done, total) => post({ type: 'progress', requestId: msg.requestId, done, total }),
       });
       modelID = id;
@@ -51,6 +53,12 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       if (modelID === null) throw new Error('No model is open.');
       const groups = await readProperties(api, modelID, msg.expressId, units);
       post({ type: 'properties', requestId: msg.requestId, groups });
+      return;
+    }
+    if (msg.type === 'marks') {
+      if (modelID === null) throw new Error('No model is open.');
+      const r = detectMarks(api, modelID, msg.rules);
+      post({ type: 'marks', requestId: msg.requestId, marks: [...r.byExpressId].map(([id, [v, src]]) => [id, v, src]) });
       return;
     }
     if (msg.type === 'close' && modelID !== null) {

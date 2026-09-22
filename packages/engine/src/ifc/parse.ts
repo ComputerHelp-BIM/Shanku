@@ -13,6 +13,8 @@ import type {
 } from '../model/types';
 import { GrowableF32, GrowableU32 } from './buffers';
 import { featureEdges } from './edges';
+import { assessCompatibility, readViewDefinition } from './compat';
+import { DEFAULT_MARK_RULES, detectMarks } from './marks';
 
 export interface ParseOptions {
   fileName: string;
@@ -20,6 +22,8 @@ export interface ParseOptions {
   onProgress?: (done: number, total: number) => void;
   /** Feature-edge angle. Default 30°. */
   edgeAngleDeg?: number;
+  /** Mark detection rules in priority order. Default DEFAULT_MARK_RULES. */
+  markRules?: readonly string[];
 }
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -132,6 +136,9 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
     projectName = str(p.LongName) || str(p.Name);
   });
   const units = readUnits(api, modelID);
+  const marks = detectMarks(api, modelID, options.markRules ?? DEFAULT_MARK_RULES);
+  const quantitySets = api.GetLineIDsWithType(modelID, WebIFC.IFCELEMENTQUANTITY).size();
+  const viewDefinition = readViewDefinition(new TextDecoder().decode(bytes.subarray(0, 4096)));
   const t2 = now();
 
   // ---- geometry ----
@@ -168,6 +175,8 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
         tag: str(line.Tag),
         typeName: typeOf.get(expressId) ?? '',
         level: levelOf.get(expressId) ?? '',
+        mark: marks.byExpressId.get(expressId)?.[0] ?? '',
+        markSource: marks.byExpressId.get(expressId)?.[1] ?? '',
         bounds: [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity],
       });
     }
@@ -260,6 +269,16 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
       triangleCount,
       edgeCount: edgePos.length / 6,
       bounds: elements.length ? (mb as ParsedModel['info']['bounds']) : [0, 0, 0, 0, 0, 0],
+      viewDefinition,
+      quantitySets,
+      compatibility: assessCompatibility({
+        schema,
+        viewDefinition,
+        quantitySets,
+        revitPropertySets: ['Dimensions', 'Constraints', 'Identity Data', 'Materials and Finishes'].some((n) => marks.psetNames.has(n)),
+        elementCount: elements.length,
+        elementsWithoutLevel: elements.filter((e) => !e.level).length,
+      }),
       timings: { open: t1 - t0, relations: t2 - t1, geometry: t3 - t2, total: t3 - t0 },
     },
     elements,

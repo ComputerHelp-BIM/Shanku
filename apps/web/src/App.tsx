@@ -28,10 +28,11 @@ import { useDrawings } from './lib/useDrawings';
 import { nextDocColor } from './lib/documents';
 import { DrawingView, type DrawingViewHandle } from './components/DrawingView';
 import { DrawingProperties, LayersPanel } from './components/DrawingPanels';
+import { MarkRulesDialog } from './components/MarkRulesDialog';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.4.1';
+const APP_VERSION = '0.5.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -80,6 +81,7 @@ export function App() {
   const [sectionBox, setSectionBox] = useState(false);
   const [zoomRegion, setZoomRegion] = useState(false);
   const [activeView, setActiveView] = useState<string>('3d');
+  const [markDialog, setMarkDialog] = useState(false);
   const [ifcColor, setIfcColor] = useState<string | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const drawingView = useRef<DrawingViewHandle>(null);
@@ -259,7 +261,7 @@ export function App() {
       : sel.length === 1
         ? (() => {
             const e = m.model.elements[sel[0]];
-            return `${e.category === 'Other' ? e.ifcClass : e.category} ${e.name || e.expressId}`;
+            return `${e.category === 'Other' ? e.ifcClass : e.category} ${e.mark || e.name || e.expressId}`;
           })()
         : `${fmtCount(sel.length)} elements`;
 
@@ -270,7 +272,7 @@ export function App() {
         <TitleBar
           fileName={info?.fileName ?? 'No model open'}
           saveState={info ? 'Opened from this device' : undefined}
-          search={<CommandSearch ref={search} onKeyDown={onSearchKey} placeholder="Find by Element ID, GlobalId or name…   Ctrl + K" />}
+          search={<CommandSearch ref={search} onKeyDown={onSearchKey} placeholder="Find by mark, Element ID, GlobalId or name…   Ctrl + K" />}
           actions={
             <>
               <IconButton label={`Theme: ${preference}. Switch theme`} onClick={cycle}>
@@ -303,6 +305,9 @@ export function App() {
           <RibbonGroup label="Select">
             <RibbonButton icon="byid" label="By ID" onClick={() => search.current?.focus()} shortcutHint="Ctrl + K" />
           </RibbonGroup>
+          <RibbonGroup label="Settings">
+            <RibbonButton icon="byid" label="Marks" disabled={!m.model} onClick={() => setMarkDialog(true)} shortcutHint="which property is the mark" />
+          </RibbonGroup>
           <RibbonGroup label="Section">
             <RibbonButton icon="section" label="Box" active={sectionBox} disabled={!m.model} onClick={() => runCommand('sectionBox')} shortcutHint="BX" />
           </RibbonGroup>
@@ -317,7 +322,7 @@ export function App() {
             </>
           ) : (
             <>
-              <PropertiesPanel model={m.model} selection={sel} properties={m.properties} />
+              <PropertiesPanel model={m.model} selection={sel} properties={m.properties} onEditMarkRules={() => setMarkDialog(true)} />
               <Browser model={m.model} onSelectLevel={selectLevel} onSelectCategory={selectCategory} />
             </>
           )}
@@ -423,6 +428,7 @@ export function App() {
               </div>
             </div>
           ) : null}
+          <MarkRulesDialog open={markDialog} rules={m.markRules} elements={m.model?.elements ?? []} onSave={(r) => void m.setMarkRules(r)} onClose={() => setMarkDialog(false)} />
           {notice ? (
             <p className="app-notice" role="status">
               {notice}

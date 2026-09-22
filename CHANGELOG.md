@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.5.0 — 2026-09-21
+
+### Added
+- IFC compatibility rating with fix-it tips; `docs/ifc-compatibility.md` names IFC4 Reference View [Structural] as the preferred export, with the Revit setup and test evidence.
+- Automatic, configurable mark detection (Mark, Schedule Mark, ID, Type Mark, Comments, or `PsetName.Property`).
+
 ## 0.4.1 — 2026-09-21
 
 ### Fixed

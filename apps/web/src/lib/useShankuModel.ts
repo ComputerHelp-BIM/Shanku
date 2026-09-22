@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { IfcClient, type Category, type ParsedModel, type PropertyGroup, type SelectMode } from '@shanku/engine';
+import { DEFAULT_MARK_RULES, IfcClient, type Category, type ParsedModel, type PropertyGroup, type SelectMode } from '@shanku/engine';
 import { fmtBytes, fmtCount, fmtMs } from './format';
 import type { PickedFile } from './openFile';
 
@@ -25,6 +25,16 @@ export function useShankuModel() {
   const [properties, setProperties] = useState<{ index: number; groups: PropertyGroup[] | null; error?: string } | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const logId = useRef(0);
+  const [markRules, setMarkRulesState] = useState<string[]>(() => {
+    try {
+      const v = JSON.parse(window.localStorage.getItem('shanku.markRules') ?? 'null');
+      return Array.isArray(v) && v.every((x) => typeof x === 'string') ? v : [...DEFAULT_MARK_RULES];
+    } catch {
+      return [...DEFAULT_MARK_RULES];
+    }
+  });
+  const markRulesRef = useRef(markRules);
+  markRulesRef.current = markRules;
 
   const log = useCallback((text: string, tone: ActivityEntry['tone'] = 'info') => {
     setActivity((a) => [...a.slice(-199), { id: ++logId.current, time: new Date(), text, tone }]);
@@ -47,8 +57,11 @@ export function useShankuModel() {
       setProperties(null);
       const t0 = performance.now();
       try {
-        const parsed = await client.open(file.name, file.bytes, (p) =>
-          setLoad({ status: 'loading', fileName: file.name, done: p.done, total: p.total }),
+        const parsed = await client.open(
+          file.name,
+          file.bytes,
+          (p) => setLoad({ status: 'loading', fileName: file.name, done: p.done, total: p.total }),
+          markRulesRef.current,
         );
         const wall = performance.now() - t0;
         setModel(parsed);
@@ -59,6 +72,8 @@ export function useShankuModel() {
             `${fmtCount(parsed.info.triangleCount)} triangles in ${fmtMs(wall)} ` +
             `(read ${fmtMs(t.open)}, relations ${fmtMs(t.relations)}, geometry ${fmtMs(t.geometry)}).`,
         );
+        const c = parsed.info.compatibility;
+        log(`Format: ${c.format} (${c.level}). ${c.notes.join(' ')}`, c.level === 'limited' ? 'error' : 'info');
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         setLoad({ status: 'error', message: `${file.name} could not be opened. ${message}` });
@@ -66,6 +81,35 @@ export function useShankuModel() {
       }
     },
     [log],
+  );
+
+  /** Changes the mark rules, saves them, and re-detects marks on the open model. */
+  const setMarkRules = useCallback(
+    async (rules: string[]) => {
+      setMarkRulesState(rules);
+      try {
+        window.localStorage.setItem('shanku.markRules', JSON.stringify(rules));
+      } catch {
+        /* storage unavailable: rules apply for this session */
+      }
+      const client = clientRef.current;
+      if (!client || !model) return;
+      const found = await client.marks(rules);
+      const byId = new Map(found.map(([id, mark, src]) => [id, [mark, src] as const]));
+      setModel((cur) =>
+        cur
+          ? {
+              ...cur,
+              elements: cur.elements.map((e) => {
+                const hit = byId.get(e.expressId);
+                return { ...e, mark: hit?.[0] ?? '', markSource: hit?.[1] ?? '' };
+              }),
+            }
+          : cur,
+      );
+      log(`Mark rules updated: ${found.length.toLocaleString('en-IN')} elements have a mark.`);
+    },
+    [model, log],
   );
 
   // Properties for a single selected element, newest request wins.
@@ -124,6 +168,7 @@ export function useShankuModel() {
       const hit =
         (/^\d+$/.test(q) && els.find((e) => e.expressId === Number(q))) ||
         els.find((e) => e.globalId === q) ||
+        els.find((e) => e.mark && e.mark.toLowerCase() === q.toLowerCase()) ||
         els.find((e) => e.name.toLowerCase() === q.toLowerCase()) ||
         els.find((e) => e.tag === q) ||
         els.find((e) => e.name.toLowerCase().includes(q.toLowerCase()));
@@ -133,7 +178,7 @@ export function useShankuModel() {
   );
 
   return useMemo(
-    () => ({ load, model, selection, setSelection, properties, activity, log, open, pick, boxSelect, selectWhere, find }),
-    [load, model, selection, properties, activity, log, open, pick, boxSelect, selectWhere, find],
+    () => ({ load, model, selection, setSelection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules }),
+    [load, model, selection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules],
   );
 }

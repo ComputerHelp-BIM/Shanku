@@ -22,9 +22,12 @@ export interface PropertiesPanelProps {
   model: ParsedModel | null;
   selection: number[];
   properties: { index: number; groups: PropertyGroup[] | null; error?: string } | null;
+  onEditMarkRules: () => void;
 }
 
-export function PropertiesPanel({ model, selection, properties }: PropertiesPanelProps) {
+const LEVEL_LABEL = { recommended: 'Recommended', supported: 'Supported', limited: 'Limited', experimental: 'Experimental' } as const;
+
+export function PropertiesPanel({ model, selection, properties, onEditMarkRules }: PropertiesPanelProps) {
   if (!model) {
     return (
       <DockPanel title="Properties">
@@ -44,8 +47,20 @@ export function PropertiesPanel({ model, selection, properties }: PropertiesPane
           <PropertyRow label="Schema" value={i.schema} />
           <PropertyRow label="Length unit" value={i.units.length} />
         </PropertySection>
+        <PropertySection title="Compatibility">
+          <div className="app-compat">
+            <span className={`app-compat__badge is-${i.compatibility.level}`}>{LEVEL_LABEL[i.compatibility.level]}</span>
+            <span className="app-compat__format">{i.compatibility.format}</span>
+          </div>
+          <ul className="app-compat__notes">
+            {i.compatibility.notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        </PropertySection>
         <PropertySection title="Model">
           <PropertyRow label="Elements" value={fmtCount(i.elementCount)} />
+          <PropertyRow label="With a mark" value={fmtCount(model.elements.filter((e) => e.mark).length)} />
           <PropertyRow label="Levels" value={fmtCount(i.levels.length)} />
           <PropertyRow label="Triangles" value={fmtCount(i.triangleCount)} readOnly />
           <PropertyRow label="Opened in" value={fmtMs(i.timings.total)} readOnly />
@@ -64,6 +79,7 @@ export function PropertiesPanel({ model, selection, properties }: PropertiesPane
         <TypeSelector icon={cat ? ICON[cat] : 'view3d'} category={`${fmtCount(els.length)} elements`} typeName={cat ? `${cat}` : 'Mixed categories'} />
         <PropertySection title="Common">
           <PropertyRow label="Category" value={cat} varies={cat === null} />
+          <PropertyRow label="Mark" value={common(els.map((e) => e.mark)) || null} varies={common(els.map((e) => e.mark)) === null} />
           <PropertyRow label="Type" value={type || null} varies={type === null} />
           <PropertyRow label="Level" value={level || null} varies={level === null} />
         </PropertySection>
@@ -80,6 +96,13 @@ export function PropertiesPanel({ model, selection, properties }: PropertiesPane
         <PropertyRow label="Element ID" value={el.expressId} mono />
         <PropertyRow label="GlobalId" value={el.globalId} mono />
         <PropertyRow label="Name" value={el.name || null} />
+        <PropertyRow label="Mark" value={el.mark || '—'} />
+        {el.markSource ? <PropertyRow label="Mark from" value={el.markSource} readOnly /> : null}
+        <div className="app-inline-action">
+          <button type="button" className="app-link" onClick={onEditMarkRules}>
+            Mark rules…
+          </button>
+        </div>
       </PropertySection>
       <PropertySection title="Constraints">
         <PropertyRow label="Level" value={el.level || null} />

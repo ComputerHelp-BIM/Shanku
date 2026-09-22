@@ -43,6 +43,7 @@ export class IfcClient {
       if (msg.type === 'error') p.reject(new Error(msg.message));
       else if (msg.type === 'opened') p.resolve(msg.model);
       else if (msg.type === 'properties') p.resolve(msg.groups);
+      else if (msg.type === 'marks') p.resolve(msg.marks);
     };
     this.worker.onerror = (e) => failReady(new Error(e.message || 'The IFC worker failed to start.'));
     this.post({ type: 'init', wasmPath });
@@ -53,12 +54,22 @@ export class IfcClient {
   }
 
   /** Parses the file off the main thread. The ArrayBuffer is transferred (unusable afterwards). */
-  async open(fileName: string, bytes: ArrayBuffer, onProgress?: (p: OpenProgress) => void): Promise<ParsedModel> {
+  async open(fileName: string, bytes: ArrayBuffer, onProgress?: (p: OpenProgress) => void, markRules?: readonly string[]): Promise<ParsedModel> {
     await this.readyPromise;
     const requestId = this.nextId++;
     return new Promise<ParsedModel>((resolve, reject) => {
       this.pending.set(requestId, { resolve, reject, onProgress });
-      this.post({ type: 'open', requestId, fileName, bytes }, [bytes]);
+      this.post({ type: 'open', requestId, fileName, bytes, markRules: markRules ? [...markRules] : undefined }, [bytes]);
+    });
+  }
+
+  /** Re-runs mark detection on the open model: [expressId, mark, source] for every element that has one. */
+  async marks(rules: readonly string[]): Promise<Array<[number, string, string]>> {
+    await this.readyPromise;
+    const requestId = this.nextId++;
+    return new Promise((resolve, reject) => {
+      this.pending.set(requestId, { resolve, reject });
+      this.post({ type: 'marks', requestId, rules: [...rules] });
     });
   }
 

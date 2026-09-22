@@ -49,6 +49,8 @@ The consumer provides the fonts (IBM Plex Sans 400/600, IBM Plex Mono 400, Sora 
 | `` Ctrl ` `` | Toggle the bottom panel (console, QA, BOQ, activity) |
 | `` Ctrl Shift ` `` | Fallback toggle where a browser or OS takes `` Ctrl ` `` |
 
+**Preferred IFC export: IFC4 Reference View [Structural].** See `docs/ifc-compatibility.md` for the Revit setup and how other formats rate.
+
 The 3D view follows Revit: see `apps/web/README.md` for the full list, or the Keyboard tab in the app.
 
 Shortcuts match the physical key (`KeyboardEvent.code`), so they work on every keyboard layout.
