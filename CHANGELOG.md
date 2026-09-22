@@ -2,6 +2,17 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.11.0 — 2026-09-22
+
+### Added
+- DXF → 3D pipeline for the Computer Help drawing format: frames, levels, labels, checks with Show, IFC4 output with openings, quantities and stable ids. Format spec in `docs/dxf-format.md`.
+
+### Changed
+- Windows and doors no longer add volume to the BOQ.
+
+### Verified
+- `Full_G4-3-Parts_Input.dxf`: 1,006 elements, 8 levels, 156 openings; IFC quantities match the engine geometry; 3 stacked duplicate columns found.
+
 ## 0.10.0 — 2026-09-22
 
 ### Added

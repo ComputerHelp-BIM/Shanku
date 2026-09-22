@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 // DXF worker: runs ezdxf (MIT) inside Pyodide (MPL-2.0), loaded on first use from jsDelivr.
 import extractSource from './extract.py?raw';
+import pipelineSource from '../pipeline/dxf2ifc.py?raw';
 import type { DxfRequest, DxfResponse } from './protocol';
 import type { ParsedDrawing } from './types';
 
@@ -33,7 +34,8 @@ function boot(requestId: number): Promise<Pyodide> {
     await py.pyimport('micropip').install(`ezdxf==${EZDXF_VERSION}`);
     py.FS.mkdirTree('/shanku');
     py.FS.writeFile('/shanku/extract.py', extractSource);
-    py.runPython('import sys\nsys.path.insert(0, "/shanku")\nimport extract'); // returns None: nothing to destroy
+    py.FS.writeFile('/shanku/dxf2ifc.py', pipelineSource);
+    py.runPython('import sys\nsys.path.insert(0, "/shanku")\nimport extract\nimport dxf2ifc'); // returns None: nothing to destroy
     return py;
   })();
   pyodide.catch(() => (pyodide = null)); // allow a retry after a network failure
@@ -48,6 +50,17 @@ self.onmessage = async (event: MessageEvent<DxfRequest>) => {
   const t0 = performance.now();
   try {
     const py = await boot(msg.requestId);
+    if (msg.type === 'pipeline') {
+      if (msg.bytes) py.FS.writeFile('/shanku/pipeline.dxf', new Uint8Array(msg.bytes));
+      post({ type: 'phase', requestId: msg.requestId, text: msg.options.build ? 'Building the 3D model…' : 'Reading frames, levels and labels…' });
+      py.globals.set('_opts', JSON.stringify(msg.options));
+      const proxy = py.runPython('dxf2ifc.run_for_js("/shanku/pipeline.dxf", _opts)');
+      if (!proxy) throw new Error('The pipeline returned nothing.');
+      const [summary, ifc] = proxy.toJs() as [string, string];
+      proxy.destroy();
+      post({ type: 'pipeline', requestId: msg.requestId, summary, ifc });
+      return;
+    }
     post({ type: 'phase', requestId: msg.requestId, text: `Reading ${msg.fileName}…` });
     py.FS.writeFile('/shanku/in.dxf', new Uint8Array(msg.bytes));
     const proxy = py.runPython('extract.extract_for_js("/shanku/in.dxf")');

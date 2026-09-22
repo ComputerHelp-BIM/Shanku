@@ -31,12 +31,14 @@ import { DrawingProperties, LayersPanel } from './components/DrawingPanels';
 import { MarkRulesDialog } from './components/MarkRulesDialog';
 import { BoqWindow } from './components/BoqWindow';
 import { ConsolePanel } from './components/ConsolePanel';
+import { PipelinePanel, type PipelineState } from './components/PipelinePanel';
+import { downloadFile } from './lib/excel';
 import { DockWorkspace, type DockWorkspaceHandle, type PanelId } from './components/DockWorkspace';
 import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.10.0';
+const APP_VERSION = '0.11.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -70,6 +72,8 @@ export function App() {
   const [gradeDialog, setGradeDialog] = useState(false);
   const dock = useRef<DockWorkspaceHandle>(null);
   const [openPanels, setOpenPanels] = useState<PanelId[]>([]);
+  const [pipe, setPipe] = useState<PipelineState | null>(null);
+  const pipeIfc = useRef<string>('');
   useShortcut(TOGGLE_BOTTOM_PANEL, () => dock.current?.toggleBottom(), { allowInEditable: true });
   const [rates, setRates] = useState<RateBook>(emptyRates);
   useEffect(() => {
@@ -136,6 +140,56 @@ export function App() {
       m.log(e instanceof Error ? e.message : String(e), 'error');
     }
   }, [m, openDrawing]);
+
+  // ---- DXF -> 3D pipeline
+  const startPipeline = useCallback(async () => {
+    let file: { name: string; bytes: ArrayBuffer } | null = null;
+    try {
+      file = await pickFile('dxf');
+    } catch (e) {
+      m.log(e instanceof Error ? e.message : String(e), 'error');
+    }
+    if (!file) return;
+    const forDrawing = file.bytes.slice(0);
+    dock.current?.open('pipeline');
+    pipeIfc.current = '';
+    setPipe({ fileName: file.name, summary: null, names: {}, heights: {}, phase: 'Starting Python (first time about 15 MB)…', built: null, error: null });
+    try {
+      const { summary } = await dx.getClient().pipeline({}, { fileName: file.name, bytes: file.bytes }, (t) => setPipe((p) => (p ? { ...p, phase: t } : p)));
+      setPipe((p) => (p ? { ...p, summary, phase: null } : p));
+      m.log(`DXF → 3D read ${file.name}: ${summary.levels.length} levels, ${summary.counts.reduce((n, c) => n + c.count, 0).toLocaleString('en-IN')} elements, ${summary.qa.length} checks.`);
+      void dx.open({ name: file.name, bytes: forDrawing }).catch(() => undefined); // 2D view for "Show"
+    } catch (e) {
+      setPipe((p) => (p ? { ...p, phase: null, error: e instanceof Error ? e.message : String(e) } : p));
+    }
+  }, [dx, m]);
+
+  const buildPipeline = useCallback(async () => {
+    if (!pipe?.summary) return;
+    const base = pipe.fileName.replace(/\.dxf$/i, '');
+    setPipe((p) => (p ? { ...p, phase: 'Building the 3D model…', error: null } : p));
+    try {
+      const { summary, ifc } = await dx.getClient().pipeline({ build: true, names: pipe.names, heights: pipe.heights, project: base, source: pipe.fileName });
+      pipeIfc.current = ifc;
+      const ifcName = `${base}.ifc`;
+      await m.open({ name: ifcName, bytes: new TextEncoder().encode(ifc).buffer as ArrayBuffer });
+      setActiveView('3d');
+      setPipe((p) => (p ? { ...p, summary, phase: null, built: { ifcName, elements: summary.report?.elements ?? 0, openings: summary.report?.openings ?? 0 } } : p));
+    } catch (e) {
+      setPipe((p) => (p ? { ...p, phase: null, error: e instanceof Error ? e.message : String(e) } : p));
+    }
+  }, [dx, m, pipe]);
+
+  const showQa = useCallback(
+    (q: { at: [number, number] | null; bounds: [number, number, number, number] | null }) => {
+      const doc = dx.docs.find((d) => d.name === pipe?.fileName);
+      if (!doc) return setNotice('The drawing is still opening in 2D; try again in a moment.');
+      setActiveView(doc.id);
+      const b = q.bounds ?? (q.at ? [q.at[0] - 800, q.at[1] - 800, q.at[0] + 800, q.at[1] + 800] : null);
+      if (b) setTimeout(() => drawingView.current?.zoomTo(b[0], b[1], b[2], b[3]), 80);
+    },
+    [dx.docs, pipe?.fileName],
+  );
 
   const closeView = (id: string) => {
     dx.close(id);
@@ -307,6 +361,7 @@ export function App() {
           <RibbonGroup label="Open">
             <RibbonButton icon="ifc" label="IFC" onClick={openFromDisk} shortcutHint="opens from this device" />
             <RibbonButton icon="dxf" label="DXF" onClick={openDxfFromDisk} shortcutHint="2D view, opens from this device" />
+            <RibbonButton icon="column" label="DXF → 3D" onClick={() => (pipe ? dock.current?.open('pipeline') : void startPipeline())} shortcutHint="build an IFC model from a CH-format drawing" />
           </RibbonGroup>
           <RibbonGroup label="Structure">
             {(['column', 'beam', 'wall', 'slab', 'footing'] as const).map((k) => (
@@ -581,6 +636,18 @@ export function App() {
                       else if (a.type === 'reset') setHidden([]);
                       else if (a.type === 'fit') viewport.current?.fit(a.indices ?? undefined);
                     }}
+                  />
+                );
+              case 'pipeline':
+                return (
+                  <PipelinePanel
+                    state={pipe}
+                    onPick={() => void startPipeline()}
+                    onName={(n, name) => setPipe((p) => (p ? { ...p, names: { ...p.names, [n]: name } } : p))}
+                    onHeight={(n, h) => setPipe((p) => (p ? { ...p, heights: { ...p.heights, [n]: h } } : p))}
+                    onBuild={() => void buildPipeline()}
+                    onDownload={() => pipe?.built && downloadFile(new TextEncoder().encode(pipeIfc.current).buffer as ArrayBuffer, pipe.built.ifcName, 'application/x-step')}
+                    onShow={showQa}
                   />
                 );
               case 'boq':

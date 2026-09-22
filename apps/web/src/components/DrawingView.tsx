@@ -4,6 +4,7 @@ import type { DrawingDoc } from '../lib/useDrawings';
 
 export interface DrawingViewHandle {
   fit: () => void;
+  zoomTo: (x0: number, y0: number, x1: number, y1: number) => void;
 }
 
 /** One 2D view per open DXF. */
@@ -25,6 +26,6 @@ export const DrawingView = forwardRef<DrawingViewHandle, { doc: DrawingDoc; onCu
   }, [doc.drawing]);
 
   useEffect(() => viewer.current?.setLayerVisibility(doc.layerOn), [doc.layerOn]);
-  useImperativeHandle(ref, () => ({ fit: () => viewer.current?.fit() }));
+  useImperativeHandle(ref, () => ({ fit: () => viewer.current?.fit(), zoomTo: (a, b, c, d) => viewer.current?.zoomTo(a, b, c, d) }));
   return <div ref={host} className="app-viewport" />;
 });

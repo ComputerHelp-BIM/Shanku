@@ -11,6 +11,8 @@ export interface CompatFacts {
   quantitySets: number;
   /** Revit writes parameter groups as property sets named like "Dimensions", "Constraints". */
   revitPropertySets: boolean;
+  /** The header names Revit / Autodesk as the authoring tool (only then are Revit property sets expected). */
+  fromRevit?: boolean;
   elementCount: number;
   elementsWithoutLevel: number;
 }
@@ -66,7 +68,7 @@ export function assessCompatibility(f: CompatFacts): Compatibility {
     notes.unshift('No base quantities: volumes and areas for the BOQ are missing. In Revit, turn on "Export base quantities".');
     if (level === 'recommended') level = 'supported';
   }
-  if (!f.revitPropertySets) notes.push('No Revit property sets (material, dimensions, marks). Turn on "Export Revit property sets" if this came from Revit.');
+  if (!f.revitPropertySets && f.fromRevit !== false) notes.push('No Revit property sets (material, dimensions, marks). Turn on "Export Revit property sets" if this came from Revit.');
   if (f.elementCount > 0 && f.elementsWithoutLevel / f.elementCount > 0.05)
     notes.push(`${f.elementsWithoutLevel} elements have no level. Turn on "Split walls, columns, ducts by level".`);
   if (level === 'recommended' && notes.length === 0) notes.push('Best format for Shanku: quantities, properties and levels all present.');

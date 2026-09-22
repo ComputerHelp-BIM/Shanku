@@ -54,5 +54,8 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
     setDocs((ds) => ds.map((d) => (d.id === id ? { ...d, ...patch } : d)));
   }, []);
 
-  return { docs, loading, open, close, update };
+  /** The shared DXF worker (Python + ezdxf), also used by the DXF -> 3D pipeline. */
+  const getClient = useCallback(() => (client.current ??= new DxfClient()), []);
+
+  return { docs, loading, open, close, update, getClient };
 }

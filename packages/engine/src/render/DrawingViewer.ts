@@ -191,6 +191,17 @@ export class DrawingViewer {
     this.updateCamera();
   }
 
+  /** Zooms to a rectangle in real drawing coordinates (as in the DXF), with a margin. */
+  zoomTo(x0: number, y0: number, x1: number, y1: number): void {
+    const d = this.drawing;
+    if (!d) return;
+    const [ox, oy] = d.info.origin;
+    this.center.set((x0 + x1) / 2 - ox, (y0 + y1) / 2 - oy);
+    const w = Math.max(Math.abs(x1 - x0), 1), h = Math.max(Math.abs(y1 - y0), 1);
+    this.viewHeight = Math.max(h, w / this.aspect()) * 1.6;
+    this.updateCamera();
+  }
+
   private aspect(): number {
     const r = this.container.getBoundingClientRect();
     return r.height > 0 ? r.width / r.height : 1;

@@ -267,7 +267,9 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
     const b = e.bounds;
     const dx = b[3] - b[0], dy = b[4] - b[1], dz = b[5] - b[2];
     const ifcVol = q?.netVolume ?? q?.grossVolume;
-    e.volume = ifcVol ?? geomVol;
+    // Windows and doors are not concrete: no volume in the BOQ (their Qto area stays available).
+    const opening = e.ifcClass === 'IfcWindow' || e.ifcClass === 'IfcDoor';
+    e.volume = opening ? 0 : ifcVol ?? geomVol;
     e.quantitySource = ifcVol !== undefined ? 'ifc' : 'geometry';
     if (e.category === 'Column' || e.category === 'Pile') e.length = dy; // vertical extent: Revit's column Length is unreliable
     else if (e.category === 'Beam' || e.category === 'Member') e.length = q?.length ?? Math.max(dx, dz);
@@ -310,6 +312,7 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
         viewDefinition,
         quantitySets,
         revitPropertySets: ['Dimensions', 'Constraints', 'Identity Data', 'Materials and Finishes'].some((n) => marks.psetNames.has(n)),
+        fromRevit: /revit|autodesk/i.test(new TextDecoder().decode(bytes.subarray(0, 4096))),
         elementCount: elements.length,
         elementsWithoutLevel: elements.filter((e) => !e.level).length,
       }),

@@ -12,4 +12,6 @@ export { buildBoq, type Boq, type BoqKey, type BoqRow } from './model/boq';
 export { siFactor } from './ifc/quantities';
 export { assessCompatibility, readViewDefinition, RECOMMENDED_EXPORT, type Compatibility, type CompatLevel } from './ifc/compat';
 export { type SectionBoxState } from './render/sectionBox';
-export const ENGINE_VERSION = '0.7.0';
+export type { PipelineSummary, PipelineLevel, PipelineQa } from './pipeline/types';
+export type { PipelineOptions } from './dxf/protocol';
+export const ENGINE_VERSION = '0.8.0';

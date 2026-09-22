@@ -1,4 +1,4 @@
-# @shanku/engine 0.7.0
+# @shanku/engine 0.8.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.8.0 — 2026-09-22
+- Added the DXF → 3D pipeline (`src/pipeline/dxf2ifc.py` 1.0.0): reads the Computer Help format (see `docs/dxf-format.md`) and writes IFC4 with storeys, extrusions, openings, types, materials, `Shanku_DXF` properties, base quantities and stable GlobalIds; checks with locations. Runs in the DXF worker (`DxfClient.pipeline`) and in CPython (pytest).
+- Windows and doors carry no BOQ volume. The "no Revit property sets" hint only appears for files authored in Revit.
 
 ### 0.7.0 — 2026-09-22
 - Section box, Revit-style: six arrow grips move one face each along its own direction at any view angle (Shift snaps faces to 100 mm), a ring rotates the box in plan (Shift: 15°), the box outline always shows, `undoSectionBox()` steps back through edits, and cut members are capped with a flat cut colour so sections read solid. Maths in `render/sectionBox.ts` (tested); `onSectionBoxChange` event.
