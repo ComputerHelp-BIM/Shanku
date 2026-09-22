@@ -1,6 +1,6 @@
 # DXF → 3D: the Computer Help drawing format (source of truth)
 
-The DXF → 3D pipeline (`packages/engine/src/pipeline/dxf2ifc.py`, version 1.1.0) reads this format and writes an IFC4 file. Everything is in millimetres. **Only closed polylines are used**; open lines, arcs, blocks and anything else on element layers are ignored and listed in the checks.
+The DXF → 3D pipeline (`packages/engine/src/pipeline/dxf2ifc.py`, version 1.2.0) reads this format and writes an IFC4 file. Everything is in millimetres. **Only closed polylines are used**; open lines, arcs, blocks and anything else on element layers are ignored and listed in the checks.
 
 ## Frames and levels
 
@@ -28,7 +28,7 @@ Storeys stack from ±0 (top of pedestal) by their heights: in the sample, levels
 | `CH-Window` | `CHT-Window` | `2,1000,1400,WN-1` | frame count (0 = not given, built as 1), sill, height, mark |
 | `CH-Door` | `CHT-Door` | `1,0,2100,D1` | panel count (0 = not given, built as 1), sill, height, mark |
 
-Windows and doors make a hole in the wall they sit in (host found by position). Following IFC4 Reference View, the hole is part of the wall's own geometry (the wall is written as solid pieces around it); there are no opening elements or boolean voids, so Revit and other importers have nothing to cut. Without a host wall a window or door is built without a hole and reported.
+Windows and doors make a hole in the wall they sit in (host found by position). Following IFC4 Reference View, the hole is part of the wall's own geometry: the wall is written as one closed tessellated solid (IfcPolygonalFaceSet) with the holes in it. There are no opening elements or boolean voids, so Revit and other importers have nothing to cut or merge. Without a host wall a window or door is built without a hole and reported.
 
 ## What the model gets
 

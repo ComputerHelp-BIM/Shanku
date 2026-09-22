@@ -111,3 +111,24 @@ def test_wall_pieces_leave_exactly_the_hole():
     vol = sum(P.area(p) * (z1 - z0) for p, z0, z1 in pieces)
     assert abs(vol - (4000 * 230 * 2400 - 1000 * 230 * 1400 - 800 * 230 * 2100)) < 1
     assert P.wall_pieces({"poly": [(0, 0), (4000, 0), (4000, 230), (2000, 230), (2000, 900), (0, 900)], "z0": 0, "z1": 2400}, [win]) is None
+
+
+def test_wall_mesh_is_closed_and_encloses_the_net_volume():
+    wall = {"poly": [(0, 0), (4000, 0), (4000, 230), (0, 230)], "z0": 0, "z1": 2400}
+    win = {"poly": [(1500, 0), (2500, 0), (2500, 230), (1500, 230)], "z0": 1000, "z1": 2400}  # up to the top
+    door = {"poly": [(3000, 0), (3800, 0), (3800, 230), (3000, 230)], "z0": 0, "z1": 2100}   # from the floor
+    pts, faces = P.wall_mesh(wall, [win, door])
+    edges = {}
+    for f in faces:
+        for i in range(len(f)):
+            e = (f[i], f[(i + 1) % len(f)])
+            edges[e] = edges.get(e, 0) + 1
+    assert all(edges.get((b, a), 0) == n for (a, b), n in edges.items())  # every edge used once each way: closed, consistent
+    vol = 0.0
+    for f in faces:  # divergence theorem over a fan of each quad
+        p0 = pts[f[0]]
+        for k in range(1, len(f) - 1):
+            p1, p2 = pts[f[k]], pts[f[k + 1]]
+            vol += (p0[0] * (p1[1] * p2[2] - p1[2] * p2[1]) - p0[1] * (p1[0] * p2[2] - p1[2] * p2[0]) + p0[2] * (p1[0] * p2[1] - p1[1] * p2[0])) / 6
+    net = 4000 * 230 * 2400 - 1000 * 230 * 1400 - 800 * 230 * 2100
+    assert abs(vol - net) < 1  # positive: faces point outward

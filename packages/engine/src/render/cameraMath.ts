@@ -1,9 +1,10 @@
-import { Vector3 } from 'three';
+import { Quaternion, Vector3 } from 'three';
 
 /**
- * Orbit a camera about a pivot. Azimuth turns about the world up axis, elevation
- * tilts about the camera's right axis and is clamped so the view never flips.
- * Returns new position and target (both move rigidly around the pivot).
+ * Revit orbit: turn about the world vertical through the pivot (horizontal drag) and tilt about the
+ * camera's own right axis (vertical drag). Returns the new position, target and the rotation to apply
+ * to the camera orientation. Using the camera's right axis (not view × up) keeps orbiting working when
+ * looking straight down or up, where view × up is zero and the camera used to freeze.
  */
 export function orbitAround(
   position: Vector3,
@@ -12,25 +13,25 @@ export function orbitAround(
   up: Vector3,
   dAzimuth: number,
   dElevation: number,
-  minPolar = 0.02,
-): { position: Vector3; target: Vector3 } {
+  cameraRight?: Vector3,
+  minPolar = 1e-4,
+): { position: Vector3; target: Vector3; rotation: Quaternion } {
   const viewDir = new Vector3().subVectors(target, position).normalize();
   const polar = Math.acos(Math.min(1, Math.max(-1, -viewDir.dot(up)))); // 0 = looking straight down
   const nextPolar = Math.min(Math.PI - minPolar, Math.max(minPolar, polar - dElevation));
-  const clampedElev = polar - nextPolar;
+  const clampedElev = polar - nextPolar; // never tilt over the top: the horizon stays level
 
-  const right = new Vector3().crossVectors(viewDir, up);
+  const right = cameraRight?.clone() ?? new Vector3().crossVectors(viewDir, up);
+  right.sub(up.clone().multiplyScalar(right.dot(up))); // keep it horizontal
   if (right.lengthSq() < 1e-12) right.set(1, 0, 0);
   right.normalize();
 
-  const rotate = (p: Vector3) => {
-    const v = p.clone().sub(pivot);
-    v.applyAxisAngle(up, dAzimuth);
-    const r = right.clone().applyAxisAngle(up, dAzimuth);
-    v.applyAxisAngle(r, clampedElev);
-    return v.add(pivot);
-  };
-  return { position: rotate(position), target: rotate(target) };
+  const qAz = new Quaternion().setFromAxisAngle(up, dAzimuth);
+  const r = right.clone().applyQuaternion(qAz);
+  const qEl = new Quaternion().setFromAxisAngle(r, clampedElev);
+  const rotation = qEl.multiply(qAz); // azimuth first, then tilt
+  const rotate = (p: Vector3) => p.clone().sub(pivot).applyQuaternion(rotation).add(pivot);
+  return { position: rotate(position), target: rotate(target), rotation };
 }
 
 /**

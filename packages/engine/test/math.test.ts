@@ -67,3 +67,26 @@ describe('feature edges', () => {
     expect(e.length / 6).toBe(12);
   });
 });
+
+describe('orbit at the poles (regression: camera froze at top and bottom)', () => {
+  it('turns the view when looking straight down', async () => {
+    const { Quaternion: Q, Vector3: V } = await import('three');
+    const { orbitAround } = await import('../src/render/cameraMath');
+    const up = new V(0, 1, 0);
+    const pos = new V(0, 10, 0), target = new V(0, 0, 0);
+    const camQ = new Q(); // camera right = +X
+    const r = orbitAround(pos, target, target, up, 0.5, 0, new V(1, 0, 0).applyQuaternion(camQ));
+    const newRight = new V(1, 0, 0).applyQuaternion(camQ.clone().premultiply(r.rotation));
+    expect(newRight.angleTo(new V(1, 0, 0))).toBeCloseTo(0.5, 5); // the plan view spins
+    const down = orbitAround(pos, target, target, up, 0, -0.3, new V(1, 0, 0));
+    expect(down.position.y).toBeLessThan(10); // and can tilt away from the pole
+    expect(down.position.distanceTo(target)).toBeCloseTo(10, 5);
+  });
+
+  it('never tilts past straight down', async () => {
+    const { Vector3: V } = await import('three');
+    const { orbitAround } = await import('../src/render/cameraMath');
+    const r = orbitAround(new V(0, 10, 0.01), new V(0, 0, 0), new V(0, 0, 0), new V(0, 1, 0), 0, 1, new V(1, 0, 0));
+    expect(r.position.y).toBeGreaterThan(9.99);
+  });
+});

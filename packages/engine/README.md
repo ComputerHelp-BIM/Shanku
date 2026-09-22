@@ -1,4 +1,4 @@
-# @shanku/engine 0.9.0
+# @shanku/engine 0.10.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.10.0 — 2026-09-22
+- Fixed: orbiting froze at the top and bottom (straight down or up). Orbit now rotates the camera's own orientation about its right axis instead of re-aiming with lookAt, which is undefined at the poles. Regression tests added.
+- Pipeline 1.2.0: a wall with windows or doors is one closed tessellated solid (`IfcPolygonalFaceSet`) with the holes in it. Several touching extrusions made Revit merge the pieces and drop some. Tested watertight, outward-facing and exact net volume; on the sample all 212 walls match the BOQ within 0.00004 m³.
 
 ### 0.9.0 — 2026-09-22
 - Fixed (pipeline 1.1.0): IFC for Revit. Walls now carry window and door holes in their own geometry (Reference View), with no opening elements, voids or fills, which Revit reported as "not cutting anything". Every element was also listed twice in its type relationship; now once.

@@ -564,10 +564,13 @@ export class Viewer {
   }
 
   private orbit(dxPx: number, dyPx: number, pivot: Vector3): void {
-    const { position, target } = orbitAround(this.camera.position, this.target, pivot, UP, -dxPx * 0.008, -dyPx * 0.008);
+    const right = new Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+    const { position, target, rotation } = orbitAround(this.camera.position, this.target, pivot, UP, -dxPx * 0.008, -dyPx * 0.008, right);
     this.camera.position.copy(position);
     this.target.copy(target);
-    this.camera.lookAt(this.target);
+    // Rotate the camera's orientation directly (no lookAt): lookAt is undefined when looking straight
+    // down or up, which is what froze the view at the top and bottom.
+    this.camera.quaternion.premultiply(rotation);
     this.camera.updateMatrixWorld();
     this.requestRender();
   }

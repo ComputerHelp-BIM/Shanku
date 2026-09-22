@@ -1,6 +1,6 @@
-# @shanku/web 0.12.0
+# @shanku/web 0.12.1
 
-The Shanku app. Requires `@shanku/engine >= 0.9.0`, `@shanku/ui >= 0.5.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.10.0`, `@shanku/ui >= 0.5.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.12.1 — 2026-09-22
+- Requires @shanku/engine 0.10.0: camera no longer sticks at the top or bottom; DXF → 3D walls import completely in Revit.
 
 ### 0.12.0 — 2026-09-22
 - **BOQ, DXF → 3D and Keys are Revit-style windows** that float anywhere above the app, ribbon included; Properties, Project browser, Activity and the console stay dockable. Saved dock layouts from earlier versions are reset once.

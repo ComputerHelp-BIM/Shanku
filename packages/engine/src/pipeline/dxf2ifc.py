@@ -13,10 +13,11 @@ Reads the default drawing format agreed with the user and writes an IFC4 file:
     windows / doors       "panels,sill,height,MARK"    panels 0 means "not given" (treated as 1)
 * Levels: the foundation frame is Level 1; storeys stack from ±0 by their heights;
   "2-4" repeats one plan on levels 2, 3 and 4.
-* IFC4 Reference View: walls carry their window and door holes in their own geometry (no opening
-  elements or boolean voids), so importers such as Revit have nothing to cut.
+* IFC4 Reference View: a wall with windows or doors is written as one closed tessellated solid with
+  the holes in it (IfcPolygonalFaceSet), no opening elements or boolean voids: importers such as
+  Revit have nothing to cut and nothing to merge.
 
-Version 1.1.0
+Version 1.2.0
 """
 import math
 import re
@@ -25,7 +26,7 @@ import uuid
 
 import ezdxf
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 # ---------------------------------------------------------------- profile (the drawing format)
 
@@ -202,6 +203,73 @@ def wall_pieces(wall, ops):
         if z1w > z + 1e-6:
             pieces.append((rect(a, b), z, z1w))
     return pieces
+
+
+def wall_mesh(wall, ops):
+    """One closed, outward-facing quad mesh of a rectangular wall with rectangular holes.
+    Returns (points [(x, y, z)], faces [[i, j, k, l] 0-based]) or None when the wall is not a rectangle.
+    The wall face is cut into a grid along the openings; solid cells get front and back quads and a
+    side quad wherever they border a hole or the outside, so all edges are shared (watertight)."""
+    poly = wall["poly"]
+    L, W, (ux, uy), (cx, cy) = rect_axes(poly)
+    if abs(area(poly) - L * W) > max(1.0, 1e-4 * L * W):
+        return None
+    vx, vy = -uy, ux
+    z0w, z1w = wall["z0"], wall["z1"]
+    holes = []
+    for op in ops:
+        oL = rect_axes(op["poly"])[0]
+        ocx, ocy = centroid(op["poly"])
+        t = (ocx - cx) * ux + (ocy - cy) * uy
+        a0, a1 = max(-L / 2, t - oL / 2), min(L / 2, t + oL / 2)
+        h0, h1 = max(z0w, op["z0"]), min(z1w, op["z1"])
+        if a1 - a0 > 1e-6 and h1 - h0 > 1e-6:
+            holes.append((a0, a1, h0, h1))
+    A = sorted({round(v, 6) for v in [-L / 2, L / 2] + [h[0] for h in holes] + [h[1] for h in holes]})
+    Z = sorted({round(v, 6) for v in [z0w, z1w] + [h[2] for h in holes] + [h[3] for h in holes]})
+    na, nz = len(A) - 1, len(Z) - 1
+
+    def solid(i, j):
+        if i < 0 or j < 0 or i >= na or j >= nz:
+            return False
+        am, zm = (A[i] + A[i + 1]) / 2, (Z[j] + Z[j + 1]) / 2
+        return not any(h[0] < am < h[1] and h[2] < zm < h[3] for h in holes)
+
+    pts, index, faces = [], {}, []
+
+    def vid(a, b, z):
+        key = (round(a, 4), round(b, 4), round(z, 4))
+        if key not in index:
+            index[key] = len(pts)
+            pts.append((cx + ux * a + vx * b, cy + uy * a + vy * b, z))
+        return index[key]
+
+    def quad(corners, normal):
+        ids = [vid(*c) for c in corners]
+        p = [pts[k] for k in ids]
+        e1 = [p[1][d] - p[0][d] for d in range(3)]
+        e2 = [p[2][d] - p[0][d] for d in range(3)]
+        n = (e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0])
+        faces.append(ids if sum(n[d] * normal[d] for d in range(3)) > 0 else list(reversed(ids)))
+
+    hw = W / 2
+    nu, nv = (ux, uy, 0.0), (vx, vy, 0.0)
+    for i in range(na):
+        for j in range(nz):
+            if not solid(i, j):
+                continue
+            a0, a1, z0, z1 = A[i], A[i + 1], Z[j], Z[j + 1]
+            quad([(a0, -hw, z0), (a1, -hw, z0), (a1, -hw, z1), (a0, -hw, z1)], tuple(-c for c in nv))
+            quad([(a0, hw, z0), (a1, hw, z0), (a1, hw, z1), (a0, hw, z1)], nv)
+            if not solid(i - 1, j):
+                quad([(a0, -hw, z0), (a0, hw, z0), (a0, hw, z1), (a0, -hw, z1)], tuple(-c for c in nu))
+            if not solid(i + 1, j):
+                quad([(a1, -hw, z0), (a1, hw, z0), (a1, hw, z1), (a1, -hw, z1)], nu)
+            if not solid(i, j - 1):
+                quad([(a0, -hw, z0), (a1, -hw, z0), (a1, hw, z0), (a0, hw, z0)], (0.0, 0.0, -1.0))
+            if not solid(i, j + 1):
+                quad([(a0, -hw, z1), (a1, -hw, z1), (a1, hw, z1), (a0, hw, z1)], (0.0, 0.0, 1.0))
+    return pts, faces
 
 
 # ---------------------------------------------------------------- reading
@@ -635,7 +703,14 @@ def build_ifc(result, project_name="Shanku DXF model", source_name="drawing.dxf"
                 if ops:
                     report["uncut"] = report.get("uncut", 0) + len(ops)  # host is not a rectangle
             else:
-                geom = make_shape([solid(pp, z0 - elev, z1 - z0) for pp, z0, z1 in pieces])
+                # One closed tessellated solid with the holes (several touching extrusions made
+                # Revit merge the pieces and drop some of them).
+                pts3, faces3 = wall_mesh(el, ops)
+                coords = a("IFCCARTESIANPOINTLIST3D(({}),$)".format(",".join("({},{},{})".format(_f(x), _f(y), _f(z - elev)) for x, y, z in pts3)))
+                fs = [a("IFCINDEXEDPOLYGONALFACE(({}))".format(",".join(str(k + 1) for k in f))) for f in faces3]
+                tess = a("IFCPOLYGONALFACESET({},.T.,({}),$)".format(coords, ",".join(fs)))
+                rep = a("IFCSHAPEREPRESENTATION({},'Body','Tessellation',({}))".format(body, tess))
+                geom = a("IFCPRODUCTDEFINITIONSHAPE($,$,({}))".format(rep))
                 el["_net"] = sum(area(pp) * (z1 - z0) for pp, z0, z1 in pieces) / 1e9
                 el["_cut_ops"] = ops
             cls = el["ifc"]

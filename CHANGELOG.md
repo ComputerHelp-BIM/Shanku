@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.12.1 — 2026-09-22
+
+### Fixed
+- 3D camera stuck at the top or bottom view.
+- Revit showed only parts of walls with windows/doors from DXF → 3D: walls with holes are now single closed tessellated solids.
+
 ## 0.12.0 — 2026-09-22
 
 ### Fixed
