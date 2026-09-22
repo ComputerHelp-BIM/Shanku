@@ -30,4 +30,4 @@ export {
   type BottomPanelProps,
   type AppShellProps,
 } from './components/Workspace';
-export const version = '0.3.0';
+export const version = '0.4.0';

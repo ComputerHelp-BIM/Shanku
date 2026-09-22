@@ -1,4 +1,4 @@
-# @shanku/ui 0.3.0
+# @shanku/ui 0.4.0
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.0.0` and `@shanku/brand >= 1.0.0`.
 
@@ -33,6 +33,10 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.4.0 — 2026-09-22
+- `AppShell` takes an optional `workspace` that owns the area between ribbon and status bar (for docking layouts); the fixed `left` / `viewTabs` / `viewport` / `bottomPanel` slots are now optional.
+- Requires @shanku/brand 1.1.0 (workspace icons).
 
 ### 0.3.0 — 2026-09-21
 - `ViewTabs`: optional `color` and `title` per tab. Coloured tabs get a 3 px top stripe and a light tint, so all views of one file share a colour.

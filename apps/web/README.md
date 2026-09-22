@@ -1,6 +1,6 @@
-# @shanku/web 0.7.0
+# @shanku/web 0.8.0
 
-The Shanku app. Requires `@shanku/engine >= 0.6.0`, `@shanku/ui >= 0.3.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.6.0`, `@shanku/ui >= 0.4.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.8.0 — 2026-09-22
+- **Dockable panels** (dockview, MIT): Project browser docks left and Properties right by default; Activity, Keyboard, Python console and BOQ dock at the bottom or anywhere else. Drag a tab to dock it on any side or stack it with other panels; every group has **Float** (a window over the whole workspace, not just the 3D view), **Pop out** (a real browser window you can move to another monitor) and **Dock** buttons. The layout is saved per browser; ribbon **Windows → Reset** restores the defaults.
+- Ribbon **Windows** group toggles Properties, Browser, Activity, Keys and Console; **Quantities → BOQ** opens the BOQ as a floating panel. Ctrl + ` and the status-bar **Panel** button show or hide the bottom docks.
+- Pop-out windows follow the Paper / Ink theme.
+- Fixed CI: the Python extractor job installs Pillow (ezdxf's drawing add-on needs it).
 
 ### 0.7.0 — 2026-09-22
 - The approved **BOQ window** (design system: BoqWindow): floats over the 3D view (ribbon Quantities → BOQ), drag, resize, minimise, dock to the bottom panel, position remembered. Tabs Elements, Levels, Summary, Rates. Elements shows mark, ID, level, category, type, grade, length, width, depth, height, area, volume, rate and amount; sortable headers, filter and category/level pickers, virtualised rows, click to select (Ctrl adds, Shift removes).

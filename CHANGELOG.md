@@ -2,6 +2,18 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.8.0 — 2026-09-22
+
+### Added
+- Dockable workspace: Properties right and Project browser left by default; every panel can dock on any side, stack as tabs, float over the workspace, or pop out into its own browser window (other monitors included). Layout saved; Reset restores defaults.
+- `@shanku/ui` 0.4.0 (`AppShell` workspace slot), `@shanku/brand` 1.1.0 (six workspace icons).
+
+### Fixed
+- CI `dxf-extractor` job: install Pillow alongside ezdxf.
+
+### Changed
+- The bottom panel is now dock panels (Activity, Keyboard, Python console, BOQ). The drag-up handle from 0.3.0 is replaced by dock splitters; Ctrl + ` still toggles.
+
 ## 0.7.0 — 2026-09-22
 
 ### Added

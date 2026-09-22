@@ -231,9 +231,11 @@ export interface AppShellProps {
   titleBar: ReactNode;
   ribbonTabs: ReactNode;
   ribbon: ReactNode;
-  left: ReactNode;
-  viewTabs: ReactNode;
-  viewport: ReactNode;
+  /** A docking workspace that owns everything between the ribbon and the status bar. Replaces the fixed slots below. */
+  workspace?: ReactNode;
+  left?: ReactNode;
+  viewTabs?: ReactNode;
+  viewport?: ReactNode;
   viewBar?: ReactNode;
   bottomPanel?: ReactNode;
   statusBar: ReactNode;
@@ -246,6 +248,9 @@ export function AppShell(p: AppShellProps) {
       {p.titleBar}
       {p.ribbonTabs}
       {p.ribbon}
+      {p.workspace ? (
+        <div className="sk-shell__workspace">{p.workspace}</div>
+      ) : (
       <div className="sk-shell__body">
         <aside className="sk-shell__left">{p.left}</aside>
         <main className="sk-shell__main">
@@ -255,6 +260,7 @@ export function AppShell(p: AppShellProps) {
           {p.bottomPanel}
         </main>
       </div>
+      )}
       {p.statusBar}
     </div>
   );

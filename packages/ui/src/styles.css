@@ -1,4 +1,4 @@
-/* @shanku/ui 0.3.0 — requires @shanku/tokens/tokens.css loaded first. */
+/* @shanku/ui 0.4.0 — requires @shanku/tokens/tokens.css loaded first. */
 
 /* ---------- base ---------- */
 .sk-shell,
@@ -187,6 +187,7 @@
 
 /* ---------- shell ---------- */
 .sk-shell__body { flex: 1; display: flex; min-height: 0; }
+.sk-shell__workspace { flex: 1; min-height: 0; position: relative; }
 .sk-shell__left {
   width: 300px;
   flex-shrink: 0;

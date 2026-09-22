@@ -163,3 +163,46 @@
 .bq-table tfoot th, .bq-table tfoot td { position: sticky; bottom: 0; background: var(--panel); font-weight: 600; border-top: 2px solid var(--accent); border-bottom: 0; height: 30px; }
 .bq-foot { height: 28px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
 .bq-grip { position: absolute; right: 2px; bottom: 2px; width: 12px; height: 12px; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg, transparent 50%, var(--border-strong) 50% 60%, transparent 60% 70%, var(--border-strong) 70% 80%, transparent 80%); }
+
+/* ---- docking workspace (dockview themed with Shanku tokens) ---- */
+.app-dock { height: 100%; }
+.app-dock-theme {
+  --dv-group-view-background-color: var(--panel);
+  --dv-tabs-and-actions-container-background-color: var(--ribbon);
+  --dv-tabs-and-actions-container-height: 32px;
+  --dv-tabs-and-actions-container-font-size: 13px;
+  --dv-activegroup-visiblepanel-tab-background-color: var(--panel);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--ribbon);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--panel);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--ribbon);
+  --dv-activegroup-visiblepanel-tab-color: var(--text);
+  --dv-activegroup-hiddenpanel-tab-color: var(--text-secondary);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--text-secondary);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--text-faint);
+  --dv-tab-divider-color: var(--border);
+  --dv-separator-border: var(--border);
+  --dv-paneview-header-border-color: var(--border);
+  --dv-drag-over-background-color: color-mix(in srgb, var(--accent) 18%, transparent);
+  --dv-drag-over-border-color: var(--accent);
+  --dv-edge-dock-indicator-color: var(--accent);
+  --dv-active-sash-color: var(--accent);
+  --dv-icon-hover-background-color: var(--chip);
+  --dv-floating-box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  --dv-floating-border: 1px solid var(--border-strong);
+  --dv-floating-titlebar-background-color: var(--ribbon);
+  --dv-border-radius: 8px;
+  --dv-tabs-container-scrollbar-color: var(--border-strong);
+  color: var(--text);
+  font-family: var(--font-sans);
+  color-scheme: inherit;
+}
+.app-dock-theme .dv-tab.dv-active-tab { box-shadow: inset 0 -2px 0 var(--accent); font-weight: 600; }
+.app-dock-theme .dv-groupview { border: 0; }
+.app-dock-panel { position: absolute; inset: 0; overflow: auto; background: var(--panel); color: var(--text); font-family: var(--font-sans); font-size: 13px; }
+.app-dock-panel .sk-dock__title { display: none; } /* the dock tab already names the panel */
+.app-dock-panel > .app-activity, .app-dock-panel > .app-keys, .app-dock-panel > .app-empty-note { margin: 10px 16px; }
+.app-views { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
+.app-dock-actions { display: flex; align-items: center; height: 100%; padding-right: 4px; gap: 2px; }
+.app-dock-action { width: 26px; height: 24px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+.app-dock-action:hover { background: var(--chip); color: var(--text); }
+.bq-docked { margin: 0; }

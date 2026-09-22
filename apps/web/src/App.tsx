@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
   AppShell,
-  BottomPanel,
   Button,
   CommandSearch,
   IconButton,
@@ -15,6 +14,7 @@ import {
   TitleBar,
   ViewTabs,
   isEditableTarget,
+  TOGGLE_BOTTOM_PANEL,
   useShortcut,
   useTheme,
 } from '@shanku/ui';
@@ -30,11 +30,12 @@ import { DrawingView, type DrawingViewHandle } from './components/DrawingView';
 import { DrawingProperties, LayersPanel } from './components/DrawingPanels';
 import { MarkRulesDialog } from './components/MarkRulesDialog';
 import { BoqWindow } from './components/BoqWindow';
+import { DockWorkspace, type DockWorkspaceHandle, type PanelId } from './components/DockWorkspace';
 import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.7.0';
+const APP_VERSION = '0.8.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -57,25 +58,6 @@ export function App() {
   const viewport = useRef<ViewportHandle>(null);
   const search = useRef<HTMLInputElement>(null);
   const [ribbonTab, setRibbonTab] = useState('model');
-  // Bottom panel starts hidden, like VS Code's terminal; its height is remembered.
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [panelHeight, setPanelHeight] = useState<number>(() => {
-    try {
-      const v = Number(window.localStorage.getItem('shanku.panelHeight'));
-      return Number.isFinite(v) && v >= 96 ? v : 220;
-    } catch {
-      return 220;
-    }
-  });
-  const changePanelHeight = useCallback((h: number) => {
-    setPanelHeight(h);
-    try {
-      window.localStorage.setItem('shanku.panelHeight', String(h));
-    } catch {
-      /* storage unavailable: height applies for this session */
-    }
-  }, []);
-  const [panelTab, setPanelTab] = useState('activity');
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [hidden, setHidden] = useState<number[]>([]);
@@ -85,7 +67,9 @@ export function App() {
   const [activeView, setActiveView] = useState<string>('3d');
   const [markDialog, setMarkDialog] = useState(false);
   const [gradeDialog, setGradeDialog] = useState(false);
-  const [boqOpen, setBoqOpen] = useState(false);
+  const dock = useRef<DockWorkspaceHandle>(null);
+  const [openPanels, setOpenPanels] = useState<PanelId[]>([]);
+  useShortcut(TOGGLE_BOTTOM_PANEL, () => dock.current?.toggleBottom(), { allowInEditable: true });
   const [rates, setRates] = useState<RateBook>(emptyRates);
   useEffect(() => {
     if (m.model) setRates(loadRates(m.model.info.fileName));
@@ -337,10 +321,24 @@ export function App() {
               icon="boq"
               label="BOQ"
               disabled={!m.model}
-              active={boqOpen}
-              onClick={() => setBoqOpen((o) => !o)}
+              active={openPanels.includes('boq')}
+              onClick={() => dock.current?.toggle('boq')}
               shortcutHint="bill of quantities with rates and Excel export"
             />
+          </RibbonGroup>
+          <RibbonGroup label="Windows">
+            {(
+              [
+                ['properties', 'properties', 'Properties'],
+                ['browser', 'browser', 'Browser'],
+                ['activity', 'activity', 'Activity'],
+                ['keyboard', 'keyboard', 'Keys'],
+                ['console', 'console', 'Console'],
+              ] as const
+            ).map(([id, icon, label]) => (
+              <RibbonButton key={id} icon={icon} label={label} active={openPanels.includes(id)} onClick={() => dock.current?.toggle(id)} shortcutHint="show or hide" />
+            ))}
+            <RibbonButton icon="layout" label="Reset" onClick={() => dock.current?.reset()} shortcutHint="default layout: browser left, properties right" />
           </RibbonGroup>
           <RibbonGroup label="Settings">
             <RibbonButton icon="byid" label="Marks" disabled={!m.model} onClick={() => setMarkDialog(true)} shortcutHint="which property is the mark" />
@@ -350,23 +348,16 @@ export function App() {
           </RibbonGroup>
         </Ribbon>
       }
-      left={
-        <>
-          {activeDoc ? (
-            <>
-              <DrawingProperties doc={activeDoc} onUnits={(u) => dx.update(activeDoc.id, { units: u })} />
-              <LayersPanel doc={activeDoc} onChange={(on) => dx.update(activeDoc.id, { layerOn: on })} />
-            </>
-          ) : (
-            <>
-              <PropertiesPanel model={m.model} selection={sel} properties={m.properties} onEditMarkRules={() => setMarkDialog(true)} />
-              <Browser model={m.model} onSelectLevel={selectLevel} onSelectCategory={selectCategory} />
-            </>
-          )}
-        </>
-      }
-      viewTabs={
-        <ViewTabs
+      workspace={
+        <DockWorkspace
+          ref={dock}
+          onChange={setOpenPanels}
+          render={(id) => {
+            switch (id) {
+              case 'views':
+                return (
+                  <div className="app-views">
+                    {<ViewTabs
           tabs={[
             { id: '3d', label: '{3D}', color: m.model ? ifcColor ?? undefined : undefined, title: info?.fileName },
             ...dx.docs.map((d) => ({ id: d.id, label: d.name.replace(/\.dxf$/i, ''), closable: true, color: d.color, title: `${d.name} (2D)` })),
@@ -377,10 +368,8 @@ export function App() {
             setCursor(null);
           }}
           onClose={closeView}
-        />
-      }
-      viewport={
-        <div
+        />}
+                    <div className="sk-shell__viewport">{<div
           className={['app-drop', dragging && 'is-dragging', hidden.length > 0 && 'is-isolated'].filter(Boolean).join(' ')}
           onDragOver={(e) => {
             e.preventDefault();
@@ -465,28 +454,6 @@ export function App() {
               </div>
             </div>
           ) : null}
-          {boqOpen && m.model && !activeDoc ? (
-            <BoqWindow
-              mode="floating"
-              model={m.model}
-              rates={rates}
-              onRates={changeRates}
-              selection={sel}
-              onSelect={boqSelect}
-              markRules={m.markRules}
-              gradeRules={m.gradeRules}
-              appVersion={APP_VERSION}
-              color={ifcColor ?? undefined}
-              onEditGradeRules={() => setGradeDialog(true)}
-              onLog={m.log}
-              onClose={() => setBoqOpen(false)}
-              onDock={() => {
-                setBoqOpen(false);
-                setPanelTab('boq');
-                setPanelOpen(true);
-              }}
-            />
-          ) : null}
           <MarkRulesDialog open={markDialog} rules={m.markRules} defaults={DEFAULT_MARK_RULES} elements={m.model?.elements ?? []} onSave={(r) => void m.setMarkRules(r)} onClose={() => setMarkDialog(false)} />
           <MarkRulesDialog
             open={gradeDialog}
@@ -504,10 +471,8 @@ export function App() {
               {notice}
             </p>
           ) : null}
-        </div>
-      }
-      viewBar={
-        activeDoc ? (
+        </div>}</div>
+                    <div className="sk-shell__viewbar">{activeDoc ? (
           <>
             <Button size="sm" variant="ghost" onClick={() => drawingView.current?.fit()} title="Zoom extents (ZF, Home, double middle-click)">
               Fit
@@ -556,75 +521,70 @@ export function App() {
             Reset hidden
           </Button>
         </>
-        )
-      }
-      bottomPanel={
-        <BottomPanel
-          open={panelOpen}
-          onOpenChange={setPanelOpen}
-          height={panelHeight}
-          onHeightChange={changePanelHeight}
-          activeId={panelTab}
-          onTabChange={setPanelTab}
-          tabs={[
-            {
-              id: 'activity',
-              label: 'Activity',
-              content: m.activity.length ? (
-                <ol className="app-activity">
-                  {m.activity.map((a) => (
-                    <li key={a.id} className={a.tone === 'error' ? 'is-error' : undefined}>
-                      <time>{a.time.toLocaleTimeString()}</time> {a.text}
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="app-empty-note">Nothing yet. Open a model and its load times appear here.</p>
-              ),
-            },
-            {
-              id: 'boq',
-              label: 'BOQ',
-              content: m.model ? (
-                <BoqWindow
-                  mode="docked"
-                  model={m.model}
-                  rates={rates}
-                  onRates={changeRates}
-                  selection={sel}
-                  onSelect={boqSelect}
-                  markRules={m.markRules}
-                  gradeRules={m.gradeRules}
-                  appVersion={APP_VERSION}
-                  onEditGradeRules={() => setGradeDialog(true)}
-                  onLog={m.log}
-                />
-              ) : (
-                <p className="app-empty-note">Open an IFC model to see its bill of quantities.</p>
-              ),
-            },
-            {
-              id: 'keyboard',
-              label: 'Keyboard',
-              content: (
-                <table className="app-keys">
-                  <tbody>
-                    {SHORTCUT_HELP.map((k) => (
-                      <tr key={k.keys}>
-                        <th scope="row">{k.keys}</th>
-                        <td>{k.action}</td>
-                      </tr>
+        )}</div>
+                  </div>
+                );
+              case 'properties':
+                return activeDoc ? (
+                  <DrawingProperties doc={activeDoc} onUnits={(u) => dx.update(activeDoc.id, { units: u })} />
+                ) : (
+                  <PropertiesPanel model={m.model} selection={sel} properties={m.properties} onEditMarkRules={() => setMarkDialog(true)} />
+                );
+              case 'browser':
+                return activeDoc ? (
+                  <LayersPanel doc={activeDoc} onChange={(on) => dx.update(activeDoc.id, { layerOn: on })} />
+                ) : (
+                  <Browser model={m.model} onSelectLevel={selectLevel} onSelectCategory={selectCategory} />
+                );
+              case 'activity':
+                return m.activity.length ? (
+                  <ol className="app-activity">
+                    {m.activity.map((a) => (
+                      <li key={a.id} className={a.tone === 'error' ? 'is-error' : undefined}>
+                        <time>{a.time.toLocaleTimeString()}</time> {a.text}
+                      </li>
                     ))}
-                  </tbody>
-                </table>
-              ),
-            },
-            {
-              id: 'console',
-              label: 'Python console',
-              content: <p className="app-empty-note">The Python console arrives in a later release.</p>,
-            },
-          ]}
+                  </ol>
+                ) : (
+                  <p className="app-empty-note">Nothing yet. Open a model and its load times appear here.</p>
+                );
+              case 'keyboard':
+                return (
+                  <table className="app-keys">
+                    <tbody>
+                      {SHORTCUT_HELP.map((k) => (
+                        <tr key={k.keys}>
+                          <th scope="row">{k.keys}</th>
+                          <td>{k.action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              case 'console':
+                return <p className="app-empty-note">The Python console arrives in a later release.</p>;
+              case 'boq':
+                return m.model ? (
+                  <BoqWindow
+                    mode="docked"
+                    model={m.model}
+                    rates={rates}
+                    onRates={changeRates}
+                    selection={sel}
+                    onSelect={boqSelect}
+                    markRules={m.markRules}
+                    gradeRules={m.gradeRules}
+                    appVersion={APP_VERSION}
+                    onEditGradeRules={() => setGradeDialog(true)}
+                    onLog={m.log}
+                  />
+                ) : (
+                  <p className="app-empty-note">Open an IFC model to see its bill of quantities.</p>
+                );
+              default:
+                return null;
+            }
+          }}
         />
       }
       statusBar={
@@ -659,11 +619,11 @@ export function App() {
           <button
             type="button"
             className="app-panel-toggle"
-            aria-pressed={panelOpen}
-            title={`${panelOpen ? 'Hide' : 'Show'} panel (Ctrl + \`)`}
-            onClick={() => setPanelOpen((o) => !o)}
+            aria-pressed={openPanels.some((p) => ['activity', 'keyboard', 'console'].includes(p))}
+            title="Show or hide the bottom panels (Ctrl + `)"
+            onClick={() => dock.current?.toggleBottom()}
           >
-            Panel {panelOpen ? '▾' : '▴'}
+            Panel
           </button>
           <span className="app-divider" aria-hidden="true" />
           <span className="app-faint">
