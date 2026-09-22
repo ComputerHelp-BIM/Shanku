@@ -1,4 +1,4 @@
-# @shanku/engine 0.4.0
+# @shanku/engine 0.5.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,11 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.5.0 — 2026-09-22
+- Added BOQ quantities per element: `volume` (m³), `length` (m, columns and beams), `area` (m², slabs and walls), `quantitySource` ('ifc' | 'geometry'). IFC base quantities are read in one pass and converted to SI; files without them fall back to volumes computed from the geometry (divergence theorem), which matched IFC quantities to 0.1 % on UMA NIWAS.
+- Added `grade` / `gradeSource`: configurable rules (`DEFAULT_GRADE_RULES`), then the IFC material name (element or its type). `IfcClient.grades(rules)` re-detects.
+- Added `buildBoq(elements, levels, groupBy)`: rows by any mix of level, category and grade, sorted by elevation and category, with totals.
 
 ### 0.4.0 — 2026-09-21
 - Added IFC compatibility rating (`info.compatibility`: recommended / supported / limited / experimental, with fix-it notes), from schema, view definition, quantity sets, Revit property sets and levels.

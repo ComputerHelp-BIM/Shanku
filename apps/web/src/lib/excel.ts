@@ -1,0 +1,131 @@
+import type { Boq, BoqKey, ElementRecord, ModelInfo } from '@shanku/engine';
+
+export interface BoqExportInput {
+  info: ModelInfo;
+  boq: Boq;
+  elements: readonly ElementRecord[];
+  markRules: readonly string[];
+  gradeRules: readonly string[];
+  appVersion: string;
+  /** For tests; defaults to now. */
+  date?: Date;
+}
+
+const KEY_LABEL: Record<BoqKey, string> = { level: 'Level', category: 'Category', grade: 'Grade / material' };
+const HEADER_FILL = 'FFEFECE5';
+const RULE_COLOR = 'FFD9761E';
+
+/**
+ * Builds the BOQ workbook: "BOQ" (grouped, with live SUM totals), "Elements" (one row per
+ * element, filterable), "About" (source file, format rating, rules, and caveats).
+ * ExcelJS is loaded on demand so it costs nothing until the first export.
+ */
+export async function buildBoqWorkbook(input: BoqExportInput): Promise<ArrayBuffer> {
+  const ExcelJS = (await import('exceljs')).default;
+  const { info, boq, elements } = input;
+  const wb = new ExcelJS.Workbook();
+  wb.creator = `Shanku ${input.appVersion}`;
+  wb.created = input.date ?? new Date();
+
+  // ---- BOQ ----
+  const ws = wb.addWorksheet('BOQ', { views: [{ state: 'frozen', ySplit: 5 }] });
+  ws.getCell('A1').value = `Bill of quantities — ${info.projectName || info.fileName}`;
+  ws.getCell('A1').font = { bold: true, size: 14 };
+  ws.getCell('A2').value = `${info.fileName} · ${info.compatibility.format} (${info.compatibility.level}) · exported ${(input.date ?? new Date()).toLocaleString('en-IN')}`;
+  ws.getCell('A3').value = 'Concrete quantities as modelled (net volumes, no deductions for waste or rebar).';
+  ws.getCell('A2').font = ws.getCell('A3').font = { color: { argb: 'FF5B5F68' }, size: 10 };
+
+  const keys = boq.groupBy;
+  const header = [...keys.map((k) => KEY_LABEL[k]), 'Count', 'Volume (m³)', 'Length (m)', 'Area (m²)', 'Elements from geometry'];
+  const headerRow = ws.getRow(5);
+  headerRow.values = header;
+  headerRow.font = { bold: true };
+  headerRow.eachCell((c) => {
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } };
+    c.border = { bottom: { style: 'medium', color: { argb: RULE_COLOR } } };
+  });
+  const first = 6;
+  boq.rows.forEach((r, i) => {
+    const row = ws.getRow(first + i);
+    row.values = [...keys.map((k) => r[k] || ''), r.count, r.volume, r.length || null, r.area || null, r.fromGeometry || null];
+  });
+  const last = first + boq.rows.length - 1;
+  const n0 = keys.length + 1; // first numeric column (Count)
+  const col = (n: number) => String.fromCharCode(64 + n);
+  const totalRow = ws.getRow(last + 1);
+  totalRow.getCell(1).value = 'Total';
+  const totals = [boq.total.count, boq.total.volume, boq.total.length, boq.total.area, boq.total.fromGeometry];
+  totals.forEach((t, k) => {
+    const c = col(n0 + k);
+    totalRow.getCell(n0 + k).value = boq.rows.length ? { formula: `SUM(${c}${first}:${c}${last})`, result: t } : 0;
+  });
+  totalRow.font = { bold: true };
+  totalRow.eachCell((c) => (c.border = { top: { style: 'thin' } }));
+  const fmt = ['#,##0', '#,##0.000', '#,##0.00', '#,##0.00', '#,##0'];
+  fmt.forEach((f, k) => (ws.getColumn(n0 + k).numFmt = f));
+  keys.forEach((_, k) => (ws.getColumn(k + 1).width = k === keys.length - 1 ? 26 : 22));
+  [10, 14, 12, 12, 14].forEach((w, k) => (ws.getColumn(n0 + k).width = w));
+  ws.autoFilter = { from: { row: 5, column: 1 }, to: { row: Math.max(5, last), column: header.length } };
+
+  // ---- Elements ----
+  const es = wb.addWorksheet('Elements', { views: [{ state: 'frozen', ySplit: 1 }] });
+  es.columns = [
+    { header: 'Element ID', key: 'id', width: 11 },
+    { header: 'GlobalId', key: 'gid', width: 25 },
+    { header: 'Mark', key: 'mark', width: 12 },
+    { header: 'Level', key: 'level', width: 22 },
+    { header: 'Category', key: 'cat', width: 11 },
+    { header: 'IFC class', key: 'cls', width: 18 },
+    { header: 'Type', key: 'type', width: 34 },
+    { header: 'Grade / material', key: 'grade', width: 20 },
+    { header: 'Volume (m³)', key: 'vol', width: 12, style: { numFmt: '#,##0.000' } },
+    { header: 'Length (m)', key: 'len', width: 11, style: { numFmt: '#,##0.00' } },
+    { header: 'Area (m²)', key: 'area', width: 11, style: { numFmt: '#,##0.00' } },
+    { header: 'Quantity source', key: 'src', width: 15 },
+  ];
+  for (const e of elements) {
+    es.addRow({
+      id: e.expressId, gid: e.globalId, mark: e.mark, level: e.level, cat: e.category, cls: e.ifcClass, type: e.typeName,
+      grade: e.grade, vol: e.volume, len: e.length, area: e.area, src: e.quantitySource === 'ifc' ? 'IFC quantities' : 'Geometry',
+    });
+  }
+  es.getRow(1).font = { bold: true };
+  es.getRow(1).eachCell((c) => (c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } }));
+  es.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 12 } };
+
+  // ---- About ----
+  const ab = wb.addWorksheet('About');
+  const geom = elements.filter((e) => e.quantitySource === 'geometry').length;
+  const rowsAbout: Array<[string, string]> = [
+    ['Generated by', `Shanku ${input.appVersion}`],
+    ['Source file', info.fileName],
+    ['Schema', info.schema],
+    ['Export format', `${info.compatibility.format} — ${info.compatibility.level}`],
+    ['Units', 'Volumes m³, lengths m, areas m² (converted from the file where needed)'],
+    ['Grouped by', keys.map((k) => KEY_LABEL[k]).join(', ') || 'Nothing (single total)'],
+    ['Volumes', geom ? `IFC base quantities for ${elements.length - geom} elements; computed from 3D geometry for ${geom}.` : 'IFC base quantities for every element.'],
+    ['Lengths', 'Columns: height from geometry. Beams: IFC Length, else longest plan dimension.'],
+    ['Areas', 'Slabs: IFC NetArea, else GrossArea, else volume ÷ depth. Walls: IFC side area.'],
+    ['Mark rules', input.markRules.join(', ')],
+    ['Grade rules', `${input.gradeRules.join(', ')}; then the IFC material name`],
+    ['Not included', 'Reinforcement, formwork, waste and rates (planned).'],
+  ];
+  rowsAbout.forEach(([k, v]) => ab.addRow([k, v]));
+  ab.getColumn(1).width = 18;
+  ab.getColumn(2).width = 90;
+  ab.getColumn(1).font = { bold: true };
+
+  return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
+}
+
+/** Saves a buffer as a file download. */
+export function downloadFile(buffer: ArrayBuffer, fileName: string, mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'): void {
+  const url = URL.createObjectURL(new Blob([buffer], { type: mime }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

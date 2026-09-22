@@ -4,6 +4,7 @@ import * as WebIFC from 'web-ifc';
 import type { ModelUnits } from '../model/types';
 import { parseIfc, readProperties } from './parse';
 import { detectMarks } from './marks';
+import { readMaterials } from './quantities';
 import type { WorkerRequest, WorkerResponse } from './protocol';
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -35,6 +36,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       const { modelID: id, model } = parseIfc(api, new Uint8Array(msg.bytes), {
         fileName: msg.fileName,
         markRules: msg.markRules,
+        gradeRules: msg.gradeRules,
         onProgress: (done, total) => post({ type: 'progress', requestId: msg.requestId, done, total }),
       });
       modelID = id;
@@ -59,6 +61,26 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       if (modelID === null) throw new Error('No model is open.');
       const r = detectMarks(api, modelID, msg.rules);
       post({ type: 'marks', requestId: msg.requestId, marks: [...r.byExpressId].map(([id, [v, src]]) => [id, v, src]) });
+      return;
+    }
+    if (msg.type === 'grades') {
+      if (modelID === null) throw new Error('No model is open.');
+      const r = detectMarks(api, modelID, msg.rules);
+      const typeIdOf = new Map<number, number>();
+      const rels = api.GetLineIDsWithType(modelID, WebIFC.IFCRELDEFINESBYTYPE);
+      for (let i = 0; i < rels.size(); i++) {
+        const rel = api.GetLine(modelID, rels.get(i));
+        const t = rel.RelatingType?.value;
+        for (const o of rel.RelatedObjects ?? []) if (t) typeIdOf.set(o.value, t);
+      }
+      const mats = readMaterials(api, modelID, typeIdOf);
+      const out: Array<[number, string, string]> = [];
+      const ids = new Set([...r.byExpressId.keys(), ...mats.keys()]);
+      for (const id of ids) {
+        const hit = r.byExpressId.get(id);
+        out.push(hit ? [id, hit[0], hit[1]] : [id, mats.get(id)!, 'IfcMaterial']);
+      }
+      post({ type: 'grades', requestId: msg.requestId, grades: out });
       return;
     }
     if (msg.type === 'close' && modelID !== null) {

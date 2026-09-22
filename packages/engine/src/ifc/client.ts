@@ -44,6 +44,7 @@ export class IfcClient {
       else if (msg.type === 'opened') p.resolve(msg.model);
       else if (msg.type === 'properties') p.resolve(msg.groups);
       else if (msg.type === 'marks') p.resolve(msg.marks);
+      else if (msg.type === 'grades') p.resolve(msg.grades);
     };
     this.worker.onerror = (e) => failReady(new Error(e.message || 'The IFC worker failed to start.'));
     this.post({ type: 'init', wasmPath });
@@ -54,12 +55,12 @@ export class IfcClient {
   }
 
   /** Parses the file off the main thread. The ArrayBuffer is transferred (unusable afterwards). */
-  async open(fileName: string, bytes: ArrayBuffer, onProgress?: (p: OpenProgress) => void, markRules?: readonly string[]): Promise<ParsedModel> {
+  async open(fileName: string, bytes: ArrayBuffer, onProgress?: (p: OpenProgress) => void, markRules?: readonly string[], gradeRules?: readonly string[]): Promise<ParsedModel> {
     await this.readyPromise;
     const requestId = this.nextId++;
     return new Promise<ParsedModel>((resolve, reject) => {
       this.pending.set(requestId, { resolve, reject, onProgress });
-      this.post({ type: 'open', requestId, fileName, bytes, markRules: markRules ? [...markRules] : undefined }, [bytes]);
+      this.post({ type: 'open', requestId, fileName, bytes, markRules: markRules ? [...markRules] : undefined, gradeRules: gradeRules ? [...gradeRules] : undefined }, [bytes]);
     });
   }
 
@@ -79,6 +80,16 @@ export class IfcClient {
     return new Promise<PropertyGroup[]>((resolve, reject) => {
       this.pending.set(requestId, { resolve, reject });
       this.post({ type: 'properties', requestId, expressId });
+    });
+  }
+
+  /** Re-runs grade detection: [expressId, grade, source]; source "IfcMaterial" when no rule matched. */
+  async grades(rules: readonly string[]): Promise<Array<[number, string, string]>> {
+    await this.readyPromise;
+    const requestId = this.nextId++;
+    return new Promise((resolve, reject) => {
+      this.pending.set(requestId, { resolve, reject });
+      this.post({ type: 'grades', requestId, rules: [...rules] });
     });
   }
 

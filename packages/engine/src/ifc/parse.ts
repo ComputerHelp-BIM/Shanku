@@ -14,7 +14,8 @@ import type {
 import { GrowableF32, GrowableU32 } from './buffers';
 import { featureEdges } from './edges';
 import { assessCompatibility, readViewDefinition } from './compat';
-import { DEFAULT_MARK_RULES, detectMarks } from './marks';
+import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, detectMarks } from './marks';
+import { readMaterials, readQuantities } from './quantities';
 
 export interface ParseOptions {
   fileName: string;
@@ -24,6 +25,8 @@ export interface ParseOptions {
   edgeAngleDeg?: number;
   /** Mark detection rules in priority order. Default DEFAULT_MARK_RULES. */
   markRules?: readonly string[];
+  /** Grade detection rules. Default DEFAULT_GRADE_RULES, then the IFC material name. */
+  gradeRules?: readonly string[];
 }
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -123,12 +126,15 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
     }
   });
   const typeOf = new Map<number, string>();
+  const typeIdOf = new Map<number, number>();
   forEachLine(api, modelID, WebIFC.IFCRELDEFINESBYTYPE, (r) => {
     const t = refId(r.RelatingType);
     const typeName = t !== null ? str(api.GetLine(modelID, t).Name) : '';
     for (const el of r.RelatedObjects ?? []) {
       const id = refId(el);
-      if (id !== null) typeOf.set(id, typeName);
+      if (id === null) continue;
+      typeOf.set(id, typeName);
+      if (t !== null) typeIdOf.set(id, t);
     }
   });
   let projectName = '';
@@ -138,6 +144,9 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
   const units = readUnits(api, modelID);
   const marks = detectMarks(api, modelID, options.markRules ?? DEFAULT_MARK_RULES);
   const quantitySets = api.GetLineIDsWithType(modelID, WebIFC.IFCELEMENTQUANTITY).size();
+  const grades = detectMarks(api, modelID, options.gradeRules ?? DEFAULT_GRADE_RULES);
+  const qtys = readQuantities(api, modelID, units);
+  const materials = readMaterials(api, modelID, typeIdOf);
   const viewDefinition = readViewDefinition(new TextDecoder().decode(bytes.subarray(0, 4096)));
   const t2 = now();
 
@@ -152,6 +161,7 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
   const elements: ElementRecord[] = [];
   const indexOfExpress = new Map<number, number>();
   const angle = options.edgeAngleDeg ?? 30;
+  const meshVolume: number[] = [];
   let triangleCount = 0;
   const mb = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
 
@@ -177,6 +187,12 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
         level: levelOf.get(expressId) ?? '',
         mark: marks.byExpressId.get(expressId)?.[0] ?? '',
         markSource: marks.byExpressId.get(expressId)?.[1] ?? '',
+        grade: grades.byExpressId.get(expressId)?.[0] ?? materials.get(expressId) ?? '',
+        gradeSource: grades.byExpressId.has(expressId) ? grades.byExpressId.get(expressId)![1] : materials.has(expressId) ? 'IfcMaterial' : '',
+        volume: 0,
+        area: null,
+        length: null,
+        quantitySource: 'geometry',
         bounds: [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity],
       });
     }
@@ -216,6 +232,7 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
       }
       indices.reserve(idx.length);
       for (let k = 0; k < idx.length; k++) indices.push(base + idx[k]);
+      meshVolume[index] = (meshVolume[index] ?? 0) + signedVolume(verts, idx, m);
       triangleCount += idx.length / 3;
 
       let local = localEdgeCache.get(pg.geometryExpressID);
@@ -241,6 +258,21 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
     if (options.onProgress && (i % 500 === 0 || i === total - 1)) options.onProgress(i + 1, total);
   });
   const t3 = now();
+
+  // ---- quantities: IFC base quantities first, geometry as fallback ----
+  for (const e of elements) {
+    const q = qtys.get(e.expressId);
+    const geomVol = Math.abs(meshVolume[e.index] ?? 0);
+    const b = e.bounds;
+    const dx = b[3] - b[0], dy = b[4] - b[1], dz = b[5] - b[2];
+    const ifcVol = q?.netVolume ?? q?.grossVolume;
+    e.volume = ifcVol ?? geomVol;
+    e.quantitySource = ifcVol !== undefined ? 'ifc' : 'geometry';
+    if (e.category === 'Column' || e.category === 'Pile') e.length = dy; // vertical extent: Revit's column Length is unreliable
+    else if (e.category === 'Beam' || e.category === 'Member') e.length = q?.length ?? Math.max(dx, dz);
+    if (e.category === 'Slab') e.area = q?.netArea ?? q?.grossArea ?? (q?.depth ? e.volume / q.depth : dx * dz);
+    else if (e.category === 'Wall') e.area = q?.netSideArea ?? q?.grossSideArea ?? null;
+  }
 
   // ---- summary ----
   const categories: Partial<Record<Category, number>> = {};
@@ -291,6 +323,23 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
     edges: { positions: edgePos.toArray(), elementIds: edgeElement.toArray() },
   };
   return { modelID, model };
+}
+
+/** Signed volume of a transformed triangle mesh (m³), via the divergence theorem. */
+function signedVolume(verts: Float32Array, idx: Uint32Array, m: ArrayLike<number>): number {
+  let v = 0;
+  const p = (i: number, out: number[]) => {
+    const o = i * 6, x = verts[o], y = verts[o + 1], z = verts[o + 2];
+    out[0] = m[0] * x + m[4] * y + m[8] * z + m[12];
+    out[1] = m[1] * x + m[5] * y + m[9] * z + m[13];
+    out[2] = m[2] * x + m[6] * y + m[10] * z + m[14];
+  };
+  const a = [0, 0, 0], b = [0, 0, 0], c = [0, 0, 0];
+  for (let t = 0; t < idx.length; t += 3) {
+    p(idx[t], a); p(idx[t + 1], b); p(idx[t + 2], c);
+    v += (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6;
+  }
+  return v;
 }
 
 // ---------------------------------------------------------------------------

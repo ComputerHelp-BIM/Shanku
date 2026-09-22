@@ -105,5 +105,19 @@ describe('parseIfc on the sample RCC frame', () => {
     expect(result.model.info.compatibility.level).toBe('supported'); // IfcOpenShell writes an IFC4 Design Transfer View header
     expect(result.model.info.quantitySets).toBeGreaterThan(0);
   });
+
+  it('reads BOQ quantities from base quantities, in SI', () => {
+    const els = result.model.elements;
+    const c1 = els.find((e) => e.name === 'C1')!;
+    expect(c1.quantitySource).toBe('ifc');
+    expect(c1.volume).toBeCloseTo(0.16 * 3.05, 3);
+    expect(c1.length).toBeCloseTo(3.05, 3); // column height from geometry
+    expect(c1.grade).toBe('M40');
+    expect(c1.gradeSource).toBe('Shanku_Structural.ConcreteGrade');
+    const slab = els.find((e) => e.category === 'Slab')!;
+    expect(slab.area).toBeCloseTo(18.4 * 10.4, 1); // volume / Depth
+    const beam = els.find((e) => e.category === 'Beam')!;
+    expect(beam.length).toBeCloseTo(5.6, 3);
+  });
 });
 

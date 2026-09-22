@@ -1,6 +1,6 @@
-# @shanku/web 0.5.0
+# @shanku/web 0.6.0
 
-The Shanku app. Requires `@shanku/engine >= 0.4.0`, `@shanku/ui >= 0.3.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.5.0`, `@shanku/ui >= 0.3.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.6.0 — 2026-09-22
+- BOQ tab (ribbon Quantities → BOQ): concrete quantities grouped by any mix of level, category and grade/material, with totals; click a row to select its elements; notes when volumes came from geometry.
+- Export Excel: `<file> - BOQ.xlsx` with BOQ (live SUM totals, filters, frozen header), Elements (one row per element) and About (source, format rating, rules, caveats). ExcelJS (MIT) loads only on first export.
+- Grade rules dialog; quantities and grade shown in Properties.
 
 ### 0.5.0 — 2026-09-21
 - Compatibility badge and tips in Properties for every IFC, plus an Activity entry. See `docs/ifc-compatibility.md`.

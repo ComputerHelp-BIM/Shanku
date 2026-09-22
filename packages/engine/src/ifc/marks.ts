@@ -8,6 +8,12 @@ import type { IfcAPI } from 'web-ifc';
  */
 export const DEFAULT_MARK_RULES: readonly string[] = ['Mark', 'Schedule Mark', 'ID', 'Type Mark', 'Comments'];
 
+/**
+ * Concrete grade rules, same syntax as marks. When none match, the element's IFC
+ * material name is used (e.g. "RCC_COLUMN"), so every element lands in a group.
+ */
+export const DEFAULT_GRADE_RULES: readonly string[] = ['Concrete Grade', 'ConcreteGrade', 'Grade', 'Concrete Class', 'Structural Material'];
+
 export interface MarkResult {
   /** Per element express id: [mark, "PsetName.Property"]. */
   byExpressId: Map<number, [string, string]>;

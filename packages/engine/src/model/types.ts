@@ -30,6 +30,18 @@ export interface ElementRecord {
   mark: string;
   /** Where the mark came from, e.g. "01--COLUMN_M.ID". */
   markSource: string;
+  /** Concrete grade or material for BOQ grouping, e.g. "M30" or "RCC_COLUMN". */
+  grade: string;
+  /** "Pset.Property", "IfcMaterial", or "" when none. */
+  gradeSource: string;
+  /** Concrete volume, m³: IFC NetVolume, else GrossVolume, else computed from the geometry. */
+  volume: number;
+  /** m² for slabs (plan area) and walls (side area); null for other categories or when unknown. */
+  area: number | null;
+  /** m for columns (height), beams and members (length); null otherwise. */
+  length: number | null;
+  /** Where volume, area and length came from. */
+  quantitySource: 'ifc' | 'geometry';
   /** Axis-aligned bounds in viewer coordinates (metres, Y up): [minX,minY,minZ,maxX,maxY,maxZ]. */
   bounds: [number, number, number, number, number, number];
 }

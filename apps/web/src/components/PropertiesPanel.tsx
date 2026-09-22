@@ -107,6 +107,13 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules 
       <PropertySection title="Constraints">
         <PropertyRow label="Level" value={el.level || null} />
       </PropertySection>
+      <PropertySection title="Quantities (BOQ)">
+        <PropertyRow label="Grade / material" value={el.grade || '—'} />
+        <PropertyRow label="Volume" value={el.volume.toFixed(3)} unit="m³" readOnly />
+        {el.length !== null ? <PropertyRow label="Length" value={el.length.toFixed(2)} unit="m" readOnly /> : null}
+        {el.area !== null ? <PropertyRow label="Area" value={el.area.toFixed(2)} unit="m²" readOnly /> : null}
+        <PropertyRow label="Source" value={el.quantitySource === 'ifc' ? 'IFC quantities' : 'Geometry'} readOnly />
+      </PropertySection>
       {groups === null ? (
         <p className="app-empty-note">Loading properties…</p>
       ) : properties?.error ? (

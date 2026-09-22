@@ -2,6 +2,19 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.6.0 — 2026-09-22
+
+### Added
+- Concrete BOQ grouped by level, category and grade/material, with Excel export (BOQ, Elements, About sheets).
+- Quantities fall back to 3D geometry for exports without base quantities.
+
+### Verified (UMA NIWAS)
+- IFC4 Reference View: 1,086 elements, 871.485 m³ total from IFC quantities.
+- Default export without quantities: 870.770 m³ measured from geometry, within 0.1 %.
+
+### Security
+- ExcelJS pulls an old `uuid`; overridden to 11.1.1 in the root `package.json`. `npm audit`: 0 vulnerabilities.
+
 ## 0.5.0 — 2026-09-21
 
 ### Added

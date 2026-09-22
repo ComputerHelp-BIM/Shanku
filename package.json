@@ -1,6 +1,6 @@
 {
   "name": "shanku",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Shanku: open, IFC-native structural modelling in the browser.",
   "license": "UNLICENSED",
@@ -23,5 +23,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

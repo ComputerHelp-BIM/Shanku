@@ -18,7 +18,7 @@ import {
   useShortcut,
   useTheme,
 } from '@shanku/ui';
-import { CATEGORY_PLURAL, ENGINE_VERSION, type Category, type DisplayStyle } from '@shanku/engine';
+import { CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, type Category, type DisplayStyle } from '@shanku/engine';
 import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
@@ -29,10 +29,11 @@ import { nextDocColor } from './lib/documents';
 import { DrawingView, type DrawingViewHandle } from './components/DrawingView';
 import { DrawingProperties, LayersPanel } from './components/DrawingPanels';
 import { MarkRulesDialog } from './components/MarkRulesDialog';
+import { BoqPanel } from './components/BoqPanel';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.5.0';
+const APP_VERSION = '0.6.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -82,6 +83,7 @@ export function App() {
   const [zoomRegion, setZoomRegion] = useState(false);
   const [activeView, setActiveView] = useState<string>('3d');
   const [markDialog, setMarkDialog] = useState(false);
+  const [gradeDialog, setGradeDialog] = useState(false);
   const [ifcColor, setIfcColor] = useState<string | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const drawingView = useRef<DrawingViewHandle>(null);
@@ -305,6 +307,18 @@ export function App() {
           <RibbonGroup label="Select">
             <RibbonButton icon="byid" label="By ID" onClick={() => search.current?.focus()} shortcutHint="Ctrl + K" />
           </RibbonGroup>
+          <RibbonGroup label="Quantities">
+            <RibbonButton
+              icon="boq"
+              label="BOQ"
+              disabled={!m.model}
+              onClick={() => {
+                setPanelTab('boq');
+                setPanelOpen(true);
+              }}
+              shortcutHint="concrete quantities and Excel export"
+            />
+          </RibbonGroup>
           <RibbonGroup label="Settings">
             <RibbonButton icon="byid" label="Marks" disabled={!m.model} onClick={() => setMarkDialog(true)} shortcutHint="which property is the mark" />
           </RibbonGroup>
@@ -428,7 +442,18 @@ export function App() {
               </div>
             </div>
           ) : null}
-          <MarkRulesDialog open={markDialog} rules={m.markRules} elements={m.model?.elements ?? []} onSave={(r) => void m.setMarkRules(r)} onClose={() => setMarkDialog(false)} />
+          <MarkRulesDialog open={markDialog} rules={m.markRules} defaults={DEFAULT_MARK_RULES} elements={m.model?.elements ?? []} onSave={(r) => void m.setMarkRules(r)} onClose={() => setMarkDialog(false)} />
+          <MarkRulesDialog
+            open={gradeDialog}
+            title="Grade rules"
+            intro="Property names read as the concrete grade, first match wins; elements with no match use their IFC material name."
+            rules={m.gradeRules}
+            defaults={DEFAULT_GRADE_RULES}
+            sourceField="gradeSource"
+            elements={m.model?.elements ?? []}
+            onSave={(r) => void m.setGradeRules(r)}
+            onClose={() => setGradeDialog(false)}
+          />
           {notice ? (
             <p className="app-notice" role="status">
               {notice}
@@ -510,6 +535,24 @@ export function App() {
                 </ol>
               ) : (
                 <p className="app-empty-note">Nothing yet. Open a model and its load times appear here.</p>
+              ),
+            },
+            {
+              id: 'boq',
+              label: 'BOQ',
+              content: (
+                <BoqPanel
+                  model={m.model}
+                  markRules={m.markRules}
+                  gradeRules={m.gradeRules}
+                  appVersion={APP_VERSION}
+                  onSelect={(ids) => {
+                    setActiveView('3d');
+                    m.setSelection(ids);
+                  }}
+                  onEditGradeRules={() => setGradeDialog(true)}
+                  onLog={m.log}
+                />
               ),
             },
             {

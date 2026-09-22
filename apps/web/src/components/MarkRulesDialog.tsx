@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@shanku/ui';
-import { DEFAULT_MARK_RULES, type ElementRecord } from '@shanku/engine';
+import type { ElementRecord } from '@shanku/engine';
 
 export interface MarkRulesDialogProps {
   open: boolean;
@@ -8,13 +8,19 @@ export interface MarkRulesDialogProps {
   elements: readonly ElementRecord[];
   onSave: (rules: string[]) => void;
   onClose: () => void;
+  /** Defaults to the mark dialog. */
+  title?: string;
+  intro?: string;
+  defaults: readonly string[];
+  /** Which element field shows where a match came from. Default "markSource". */
+  sourceField?: 'markSource' | 'gradeSource';
 }
 
 /**
  * Edit the property names Shanku reads as an element's mark, in priority order.
  * "ID" matches any property set; "01--COLUMN_M.ID" matches only that set.
  */
-export function MarkRulesDialog({ open, rules, elements, onSave, onClose }: MarkRulesDialogProps) {
+export function MarkRulesDialog({ open, rules, elements, onSave, onClose, title = 'Mark rules', intro, defaults, sourceField = 'markSource' }: MarkRulesDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<string[]>(rules);
   useEffect(() => {
@@ -28,9 +34,9 @@ export function MarkRulesDialog({ open, rules, elements, onSave, onClose }: Mark
 
   const found = useMemo(() => {
     const m = new Map<string, number>();
-    for (const e of elements) if (e.markSource) m.set(e.markSource, (m.get(e.markSource) ?? 0) + 1);
+    for (const e of elements) if (e[sourceField]) m.set(e[sourceField], (m.get(e[sourceField]) ?? 0) + 1);
     return [...m].sort((a, b) => b[1] - a[1]);
-  }, [elements]);
+  }, [elements, sourceField]);
 
   const move = (i: number, d: number) =>
     setDraft((r) => {
@@ -42,12 +48,10 @@ export function MarkRulesDialog({ open, rules, elements, onSave, onClose }: Mark
     });
 
   return (
-    <dialog ref={ref} className="app-dialog" onClose={onClose} aria-labelledby="mark-rules-title">
-      <h2 id="mark-rules-title" className="app-dialog__title">
-        Mark rules
-      </h2>
+    <dialog ref={ref} className="app-dialog" onClose={onClose} aria-label={title}>
+      <h2 className="app-dialog__title">{title}</h2>
       <p className="app-dialog__text">
-        Property names read as the element's mark, first match wins. Write <code>ID</code> to match any property set, or{' '}
+        {intro ?? "Property names read as the element's mark, first match wins."} Write <code>ID</code> to match any property set, or{' '}
         <code>01--COLUMN_M.ID</code> for one set only. Names are not case-sensitive.
       </p>
       <ol className="app-rules">
@@ -70,7 +74,7 @@ export function MarkRulesDialog({ open, rules, elements, onSave, onClose }: Mark
         <Button size="sm" onClick={() => setDraft((d) => [...d, ''])}>
           Add rule
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => setDraft([...DEFAULT_MARK_RULES])}>
+        <Button size="sm" variant="ghost" onClick={() => setDraft([...defaults])}>
           Reset to defaults
         </Button>
       </div>

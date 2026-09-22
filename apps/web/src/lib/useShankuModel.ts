@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_MARK_RULES, IfcClient, type Category, type ParsedModel, type PropertyGroup, type SelectMode } from '@shanku/engine';
+import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, IfcClient, type Category, type ParsedModel, type PropertyGroup, type SelectMode } from '@shanku/engine';
 import { fmtBytes, fmtCount, fmtMs } from './format';
 import type { PickedFile } from './openFile';
 
@@ -35,6 +35,16 @@ export function useShankuModel() {
   });
   const markRulesRef = useRef(markRules);
   markRulesRef.current = markRules;
+  const [gradeRules, setGradeRulesState] = useState<string[]>(() => {
+    try {
+      const v = JSON.parse(window.localStorage.getItem('shanku.gradeRules') ?? 'null');
+      return Array.isArray(v) && v.every((x) => typeof x === 'string') ? v : [...DEFAULT_GRADE_RULES];
+    } catch {
+      return [...DEFAULT_GRADE_RULES];
+    }
+  });
+  const gradeRulesRef = useRef(gradeRules);
+  gradeRulesRef.current = gradeRules;
 
   const log = useCallback((text: string, tone: ActivityEntry['tone'] = 'info') => {
     setActivity((a) => [...a.slice(-199), { id: ++logId.current, time: new Date(), text, tone }]);
@@ -62,6 +72,7 @@ export function useShankuModel() {
           file.bytes,
           (p) => setLoad({ status: 'loading', fileName: file.name, done: p.done, total: p.total }),
           markRulesRef.current,
+          gradeRulesRef.current,
         );
         const wall = performance.now() - t0;
         setModel(parsed);
@@ -108,6 +119,27 @@ export function useShankuModel() {
           : cur,
       );
       log(`Mark rules updated: ${found.length.toLocaleString('en-IN')} elements have a mark.`);
+    },
+    [model, log],
+  );
+
+  /** Changes the grade rules, saves them, and re-detects grades (falling back to IFC material names). */
+  const setGradeRules = useCallback(
+    async (rules: string[]) => {
+      setGradeRulesState(rules);
+      try {
+        window.localStorage.setItem('shanku.gradeRules', JSON.stringify(rules));
+      } catch {
+        /* storage unavailable */
+      }
+      const client = clientRef.current;
+      if (!client || !model) return;
+      const found = await client.grades(rules);
+      const byId = new Map(found.map(([id, g, src]) => [id, [g, src] as const]));
+      setModel((cur) =>
+        cur ? { ...cur, elements: cur.elements.map((e) => ({ ...e, grade: byId.get(e.expressId)?.[0] ?? '', gradeSource: byId.get(e.expressId)?.[1] ?? '' })) } : cur,
+      );
+      log(`Grade rules updated: ${found.filter((f) => f[2] !== 'IfcMaterial').length.toLocaleString('en-IN')} elements matched a rule; the rest use their IFC material.`);
     },
     [model, log],
   );
@@ -178,7 +210,7 @@ export function useShankuModel() {
   );
 
   return useMemo(
-    () => ({ load, model, selection, setSelection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules }),
-    [load, model, selection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules],
+    () => ({ load, model, selection, setSelection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules }),
+    [load, model, selection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules],
   );
 }
