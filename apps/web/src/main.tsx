@@ -8,7 +8,7 @@ import '@shanku/tokens/tokens.css';
 import '@shanku/ui/styles.css';
 import './app.css';
 import { ThemeProvider } from '@shanku/ui';
-import { App } from './App';
+import { Root } from './Root';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');
@@ -16,7 +16,7 @@ if (!root) throw new Error('Missing #root element');
 createRoot(root).render(
   <StrictMode>
     <ThemeProvider>
-      <App />
+      <Root />
     </ThemeProvider>
   </StrictMode>,
 );

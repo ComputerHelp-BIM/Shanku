@@ -22,6 +22,7 @@ const STATE_VERTEX = /* glsl */ `
 in float aElement;
 uniform sampler2D uState;
 uniform int uStateWidth;
+uniform int uReveal;
 flat out int vState;
 flat out int vId;
 int readState() {
@@ -32,7 +33,8 @@ int readState() {
 }
 `;
 
-const HIDE = /* glsl */ `if ((vState & ${STATE_HIDDEN}) != 0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); }`;
+// Hidden elements vanish, unless Reveal Hidden Elements is on (then they draw in the reveal colour).
+const HIDE = /* glsl */ `if ((vState & ${STATE_HIDDEN}) != 0 && uReveal == 0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); }`;
 
 /** Display styles, as Revit's SD / CO / HL / WF. */
 export const DISPLAY_SHADED = 0;
@@ -56,6 +58,8 @@ export function createModelMaterial(state: DataTexture): ShaderMaterial {
     uniforms: {
       uState: { value: state },
       uStateWidth: { value: STATE_TEXTURE_WIDTH },
+      uReveal: { value: 0 },
+      uRevealColor: { value: new Color(0.71, 0.09, 0.62) }, // Revit's reveal magenta
       uTop: { value: new Color() },
       uSide: { value: new Color() },
       uShade: { value: new Color() },
@@ -91,7 +95,7 @@ flat in int vState;
 flat in int vId;
 in vec3 vNormalW;
 ${CLIP_F_PARS}
-uniform vec3 uTop, uSide, uShade, uSelTop, uSelSide, uSelShade, uHover, uPaper, uCap, uGlass;
+uniform vec3 uTop, uSide, uShade, uSelTop, uSelSide, uSelShade, uHover, uPaper, uCap, uGlass, uRevealColor;
 uniform vec2 uLight;
 uniform int uMode;
 uniform int uPass;
@@ -119,6 +123,11 @@ void main() {
   }
   // Hover is carried by the edges (outline); faces only warm very slightly.
   if (hov && !sel) col = mix(col, uHover, 0.08);
+  if ((vState & ${STATE_HIDDEN}) != 0) {
+    // Reveal Hidden Elements (only reached when revealing): hidden elements in the reveal colour.
+    outColor = vec4(sel ? uSelTop : mix(col, uRevealColor, 0.72), uPass == 1 ? 0.5 : 1.0);
+    return;
+  }
   if (uPass == 1) {
     // Glass: tinted and see-through; selection still reads orange.
     outColor = sel ? vec4(uSelTop, 0.6) : vec4(mix(uGlass, col, 0.25), hov ? 0.45 : 0.3);
@@ -138,6 +147,8 @@ export function createEdgeMaterial(state: DataTexture): ShaderMaterial {
     uniforms: {
       uState: { value: state },
       uStateWidth: { value: STATE_TEXTURE_WIDTH },
+      uReveal: { value: 0 },
+      uRevealColor: { value: new Color(0.71, 0.09, 0.62) }, // Revit's reveal magenta
       uEdge: { value: new Color() },
       uEdgeAlpha: { value: 1 },
       uEdgeSel: { value: new Color() },
@@ -159,13 +170,14 @@ out vec4 outColor;
 flat in int vState;
 flat in int vId;
 ${CLIP_F_PARS}
-uniform vec3 uEdge, uEdgeSel, uHover;
+uniform vec3 uEdge, uEdgeSel, uHover, uRevealColor;
 uniform float uEdgeAlpha, uEdgeSelAlpha;
 void main() {
   ${CLIP_F}
   bool sel = (vState & ${STATE_SELECTED}) != 0;
   bool hov = (vState & ${STATE_HOVER}) != 0;
-  outColor = sel ? vec4(uEdgeSel, uEdgeSelAlpha) : hov ? vec4(uHover, 1.0) : vec4(uEdge, uEdgeAlpha);
+  bool hid = (vState & ${STATE_HIDDEN}) != 0;
+  outColor = sel ? vec4(uEdgeSel, uEdgeSelAlpha) : hov ? vec4(uHover, 1.0) : hid ? vec4(uRevealColor, 1.0) : vec4(uEdge, uEdgeAlpha);
 }`,
   });
 }
@@ -175,7 +187,7 @@ export function createPickMaterial(state: DataTexture): ShaderMaterial {
   return new ShaderMaterial({
     glslVersion: GLSL3,
     clipping: true,
-    uniforms: { uState: { value: state }, uStateWidth: { value: STATE_TEXTURE_WIDTH } },
+    uniforms: { uState: { value: state }, uStateWidth: { value: STATE_TEXTURE_WIDTH }, uReveal: { value: 0 } },
     vertexShader: /* glsl */ `
 ${STATE_VERTEX}
 ${CLIP_V_PARS}

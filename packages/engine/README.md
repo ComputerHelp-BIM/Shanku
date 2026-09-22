@@ -1,4 +1,4 @@
-# @shanku/engine 0.10.0
+# @shanku/engine 0.11.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.11.0 — 2026-09-22
+- Added transactions modelled on the Revit API (`History`, `Transaction`): named transactions that commit as one undo step or roll back completely, one open at a time, groups with `assimilate()` / `rollBackGroup()`, undo/redo lists and listeners. Built to be opened to plugins.
+- Viewer: `lookFrom(dir)` for the ViewCube (plan views north-up), `orbitBy`, `orientation`, `onCamera`; `setEdges`; `setReveal` (hidden elements in Revit's reveal magenta, pickable); `setSectionBoxState` + `onSectionBoxEdit` so section-box edits are transactions (the viewer's private undo stack is gone); bottom view.
 
 ### 0.10.0 — 2026-09-22
 - Fixed: orbiting froze at the top and bottom (straight down or up). Orbit now rotates the camera's own orientation about its right axis instead of re-aiming with lookAt, which is undefined at the poles. Regression tests added.

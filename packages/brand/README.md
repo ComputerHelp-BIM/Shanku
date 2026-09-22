@@ -1,4 +1,4 @@
-# @shanku/brand 1.1.0
+# @shanku/brand 1.2.0
 
 Logos, the custom structural icon set and the brand book (`BRAND.md`, the full design-system guidelines: voice, themes, colour rules, type, iconography, layout, shortcuts, accessibility).
 
@@ -18,6 +18,9 @@ The wordmark is lowercase **shanku** in Sora SemiBold. It is typeset, not yet ou
 Round 1: 20 icons on a 24 px grid, 1.5 px round strokes, `currentColor`. `icons.json` holds each icon's inner SVG as `outline`, and a `twoTone` version for the five structural elements used on large ribbon buttons (column, beam, slab, wall, footing). Generic actions come from Lucide.
 
 ## Changelog
+
+### 1.2.0 — 2026-09-22
+- Added edges, reveal, undo, redo and isolate icons.
 
 ### 1.1.0 — 2026-09-22
 - Added six workspace icons for dockable panels: properties, browser, activity, keyboard, console, layout.

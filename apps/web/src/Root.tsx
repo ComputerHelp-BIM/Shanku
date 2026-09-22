@@ -1,0 +1,46 @@
+import { Suspense, lazy, useEffect, useState } from 'react';
+import { Home } from './home/Home';
+import type { AppStart } from './App';
+
+const App = lazy(() => import('./App').then((m) => ({ default: m.App })));
+
+/**
+ * Homepage and app live in one page: browsers only allow fullscreen after a click on the same page,
+ * and navigating away would drop it. "Try Shanku free" asks for fullscreen, then swaps the homepage
+ * for the app (loaded on demand, so the homepage stays light). #app opens the app directly.
+ */
+export async function enterFullscreen(): Promise<void> {
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    // Chrome / Edge: keep Esc for the app (Esc clears selection etc.); holding Esc still leaves fullscreen.
+    await (navigator as unknown as { keyboard?: { lock?: (keys: string[]) => Promise<void> } }).keyboard?.lock?.(['Escape']);
+  } catch {
+    /* fullscreen refused (e.g. inside an iframe): the app still opens normally */
+  }
+}
+
+export function Root() {
+  const [start, setStart] = useState<AppStart | null>(() => (location.hash.startsWith('#app') ? {} : null));
+
+  useEffect(() => {
+    const onHash = () => setStart((s) => (location.hash.startsWith('#app') ? s ?? {} : null));
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  useEffect(() => {
+    document.title = start ? 'Shanku' : 'Shanku — structural BIM in your browser';
+  }, [start]);
+
+  const open = (s: AppStart = {}) => {
+    void enterFullscreen();
+    history.pushState(null, '', '#app');
+    setStart(s);
+  };
+
+  if (!start) return <Home onOpen={open} />;
+  return (
+    <Suspense fallback={<div className="home-loading">Opening Shanku…</div>}>
+      <App start={start} />
+    </Suspense>
+  );
+}

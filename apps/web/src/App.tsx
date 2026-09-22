@@ -4,6 +4,7 @@ import {
   Button,
   CommandSearch,
   FloatingWindow,
+  Icon,
   IconButton,
   LocalIndicator,
   Ribbon,
@@ -34,12 +35,14 @@ import { BoqWindow } from './components/BoqWindow';
 import { ConsolePanel } from './components/ConsolePanel';
 import { PipelinePanel } from './components/PipelinePanel';
 import { qaFocus, usePipeline } from './lib/usePipeline';
+import { useHistory } from './lib/useHistory';
+import { QuickAccess } from './components/QuickAccess';
 import { DockWorkspace, type DockWorkspaceHandle, type PanelId } from './components/DockWorkspace';
 import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.12.1';
+const APP_VERSION = '0.13.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -56,7 +59,13 @@ function ThemeIcon() {
   );
 }
 
-export function App() {
+/** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
+export interface AppStart {
+  file?: { name: string; bytes: ArrayBuffer };
+  sample?: boolean;
+}
+
+export function App({ start }: { start?: AppStart } = {}) {
   const { preference, cycle } = useTheme();
   const m = useShankuModel();
   const viewport = useRef<ViewportHandle>(null);
@@ -67,6 +76,11 @@ export function App() {
   const [hidden, setHidden] = useState<number[]>([]);
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>('shaded');
   const [sectionBox, setSectionBox] = useState(false);
+  const [edges, setEdges] = useState(true);
+  const [hideMenu, setHideMenu] = useState(false);
+  const [reveal, setReveal] = useState(false);
+  // Revit-style transactions: every undoable change goes through history.run(...)
+  const history = useHistory();
   const [zoomRegion, setZoomRegion] = useState(false);
   const [activeView, setActiveView] = useState<string>('3d');
   const [markDialog, setMarkDialog] = useState(false);
@@ -81,12 +95,18 @@ export function App() {
   useEffect(() => {
     if (m.model) setRates(loadRates(m.model.info.fileName));
   }, [m.model?.info.fileName]); // eslint-disable-line react-hooks/exhaustive-deps
-  const changeRates = useCallback(
+  const applyRates = useCallback(
     (book: RateBook) => {
       setRates(book);
       if (m.model) saveRates(m.model.info.fileName, book);
     },
     [m.model],
+  );
+  const ratesRef = useRef(rates);
+  ratesRef.current = rates;
+  const changeRates = useCallback(
+    (book: RateBook) => history.run('Edit BOQ rates', (t) => t.change('boq-rates', ratesRef.current, book, applyRates)),
+    [history, applyRates],
   );
   const boqSelect = useCallback(
     (ids: number[], mode: 'replace' | 'add' | 'remove') => {
@@ -112,15 +132,18 @@ export function App() {
   const activeDoc = dx.docs.find((d) => d.id === activeView) ?? null;
 
   // A new model starts with nothing hidden and no section box.
+  // Keyed on the file (info), not the model object: re-detecting marks or grades replaces the model
+  // object but is the same document, and must not reset the view or the undo history.
   useEffect(() => {
     setHidden([]);
     setSectionBox(false);
+    history.clear();
     if (m.model) {
       setIfcColor((c) => c ?? nextDocColor(dx.docs.map((d) => d.color)));
       setActiveView('3d');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [m.model]);
+  }, [m.model?.info]);
 
   const openDrawing = useCallback(
     async (file: { name: string; bytes: ArrayBuffer }) => {
@@ -191,11 +214,25 @@ export function App() {
     }
   }, [m]);
 
+  // Homepage hand-off: open what the visitor dropped or chose, once.
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current || !start) return;
+    started.current = true;
+    const f = start.file;
+    if (f && /\.dxf$/i.test(f.name)) void openDrawing(f);
+    else if (f) void m.open(f);
+    else if (start.sample) void openSampleRef.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start]);
+
   const openSample = useCallback(async () => {
     const res = await fetch(`${import.meta.env.BASE_URL}samples/sample-frame.ifc`);
     if (!res.ok) return m.log('The sample model could not be loaded.', 'error');
     await m.open({ name: 'sample-frame.ifc', bytes: await res.arrayBuffer() });
   }, [m]);
+  const openSampleRef = useRef(openSample);
+  openSampleRef.current = openSample;
 
   // Revit commands (two-letter sequences, Home, Esc).
   const runCommand = useCallback(
@@ -237,17 +274,36 @@ export function App() {
           const cats = new Set(sel.map((i) => model.elements[i].category));
           return setHidden(model.elements.filter((e) => !cats.has(e.category)).map((e) => e.index));
         }
+        case 'hideCategory': {
+          if (!sel.length) return void needSelection();
+          const cats = new Set(sel.map((i) => model.elements[i].category));
+          setHidden((h) => [...new Set([...h, ...model.elements.filter((e) => cats.has(e.category)).map((e) => e.index)])]);
+          return m.setSelection([]);
+        }
+        case 'revealHidden':
+          return setReveal((r) => !r);
+        case 'unhideElement': {
+          if (!sel.length) return void needSelection();
+          const drop = new Set(sel);
+          return setHidden((h) => h.filter((i) => !drop.has(i)));
+        }
         case 'resetHidden':
           return setHidden([]);
-        case 'sectionBox':
-          if (sectionBox) {
-            v.setSectionBox(null);
-            return setSectionBox(false);
-          }
-          if (!sel.length) return void needSelection();
-          v.setSectionBox(sel);
-          setSectionBox(true);
-          return v.fit(sel);
+        case 'sectionBox': {
+          if (!sectionBox && !sel.length) return void needSelection();
+          const before = v.sectionBoxState();
+          if (sectionBox) v.setSectionBox(null);
+          else v.setSectionBox(sel);
+          const after = v.sectionBoxState();
+          // Revit records section box changes as undoable view edits
+          history.run(sectionBox ? 'Remove section box' : 'Section box', (t) =>
+            t.change('section-box', before, after, (st) => {
+              viewport.current?.setSectionBoxState(st);
+              setSectionBox(st !== null);
+            }),
+          );
+          return sectionBox ? undefined : v.fit(sel);
+        }
         case 'wireframe':
           return setDisplayStyle('wireframe');
         case 'hiddenLine':
@@ -266,10 +322,18 @@ export function App() {
     else if (zoomRegion) viewport.current?.cancelZoomRegion();
     else m.setSelection([]);
   });
-  // Ctrl + Z: undo the last section-box edit (the only undoable action so far).
-  useShortcut({ code: 'KeyZ', ctrl: true }, () => {
-    if (sectionBox && !viewport.current?.undoSectionBox()) setNotice('Nothing to undo.');
-  });
+  // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
+  const undo = useCallback(() => {
+    const done = history.undo();
+    setNotice(done.length ? `Undid: ${done[0]}` : 'Nothing to undo.');
+  }, [history]);
+  const redo = useCallback(() => {
+    const done = history.redo();
+    setNotice(done.length ? `Redid: ${done[0]}` : 'Nothing to redo.');
+  }, [history]);
+  useShortcut({ code: 'KeyZ', ctrl: true }, undo);
+  useShortcut({ code: 'KeyY', ctrl: true }, redo);
+  useShortcut({ code: 'KeyZ', ctrl: true, shift: true }, redo);
   useShortcut({ code: 'Home' }, () => (activeDoc ? drawingView.current?.fit() : viewport.current?.home()));
   const commandRef = useRef(runCommand);
   commandRef.current = runCommand;
@@ -328,6 +392,7 @@ export function App() {
       titleBar={
         <TitleBar
           fileName={info?.fileName ?? 'No model open'}
+          quickAccess={<QuickAccess history={history} onOpen={openFromDisk} onHome={() => viewport.current?.home()} canHome={!!m.model} />}
           saveState={info ? 'Opened from this device' : undefined}
           search={<CommandSearch ref={search} onKeyDown={onSearchKey} placeholder="Find by mark, Element ID, GlobalId or name…   Ctrl + K" />}
           actions={
@@ -344,7 +409,9 @@ export function App() {
       }
       ribbonTabs={<RibbonTabs tabs={RIBBON_TABS} activeId={ribbonTab} onChange={setRibbonTab} />}
       ribbon={
-        <Ribbon label="Model">
+        <Ribbon label={RIBBON_TABS.find((t) => t.id === ribbonTab)?.label ?? 'Model'}>
+          {ribbonTab === 'model' ? (
+            <>
           <RibbonGroup label="Open">
             <RibbonButton icon="ifc" label="IFC" onClick={openFromDisk} shortcutHint="opens from this device" />
             <RibbonButton icon="dxf" label="DXF" onClick={openDxfFromDisk} shortcutHint="2D view, opens from this device" />
@@ -354,11 +421,6 @@ export function App() {
             {(['column', 'beam', 'wall', 'slab', 'footing'] as const).map((k) => (
               <RibbonButton key={k} icon={k} label={k[0].toUpperCase() + k.slice(1)} twoTone disabled shortcutHint="modelling arrives in 0.2" />
             ))}
-          </RibbonGroup>
-          <RibbonGroup label="View">
-            <RibbonButton icon="view3d" label="3D" onClick={() => viewport.current?.home()} shortcutHint="Home" />
-            <RibbonButton icon="plan" label="Top" onClick={() => viewport.current?.setView('top')} />
-            <RibbonButton icon="elevation" label="Front" onClick={() => viewport.current?.setView('front')} />
           </RibbonGroup>
           <RibbonGroup label="Select">
             <RibbonButton icon="byid" label="By ID" onClick={() => search.current?.focus({ preventScroll: true })} shortcutHint="Ctrl + K" />
@@ -372,6 +434,21 @@ export function App() {
               onClick={() => toggleWin('boq')}
               shortcutHint="bill of quantities with rates and Excel export"
             />
+          </RibbonGroup>
+            </>
+          ) : ribbonTab === 'view' ? (
+            <>
+          <RibbonGroup label="Create">
+            <RibbonButton icon="view3d" label="3D" onClick={() => viewport.current?.home()} shortcutHint="Home" />
+            <RibbonButton icon="plan" label="Top" onClick={() => viewport.current?.setView('top')} />
+            <RibbonButton icon="elevation" label="Front" onClick={() => viewport.current?.setView('front')} />
+          </RibbonGroup>
+          <RibbonGroup label="Section">
+            <RibbonButton icon="section" label="Box" active={sectionBox} disabled={!m.model} onClick={() => runCommand('sectionBox')} shortcutHint="BX" />
+          </RibbonGroup>
+          <RibbonGroup label="Graphics">
+            <RibbonButton icon="edges" label="Edges" active={edges} disabled={!m.model} onClick={() => setEdges((v) => !v)} shortcutHint="show or hide model edges" />
+            <RibbonButton icon="reveal" label="Reveal" active={reveal} disabled={!m.model} onClick={() => setReveal((v) => !v)} shortcutHint="reveal hidden elements (RH)" />
           </RibbonGroup>
           <RibbonGroup label="Windows">
             {(
@@ -387,12 +464,14 @@ export function App() {
             <RibbonButton icon="keyboard" label="Keys" active={wins.keys} onClick={() => toggleWin('keys')} shortcutHint="keyboard shortcuts" />
             <RibbonButton icon="layout" label="Reset" onClick={() => dock.current?.reset()} shortcutHint="default layout: browser left, properties right" />
           </RibbonGroup>
+            </>
+          ) : (
+            <>
           <RibbonGroup label="Settings">
             <RibbonButton icon="byid" label="Marks" disabled={!m.model} onClick={() => setMarkDialog(true)} shortcutHint="which property is the mark" />
           </RibbonGroup>
-          <RibbonGroup label="Section">
-            <RibbonButton icon="section" label="Box" active={sectionBox} disabled={!m.model} onClick={() => runCommand('sectionBox')} shortcutHint="BX" />
-          </RibbonGroup>
+            </>
+          )}
         </Ribbon>
       }
       workspace={
@@ -448,7 +527,12 @@ export function App() {
             displayStyle={displayStyle}
             onPick={m.pick}
             onBoxSelect={m.boxSelect}
+            edges={edges}
+            reveal={reveal}
             onZoomRegionEnd={() => setZoomRegion(false)}
+            onSectionBoxEdit={(before, after) =>
+              history.run('Edit section box', (t) => t.change('section-box', before, after, (st) => viewport.current?.setSectionBoxState(st)))
+            }
           />
           </div>
           {!activeDoc && m.model && (hidden.length || sectionBox || zoomRegion) ? (
@@ -547,7 +631,7 @@ export function App() {
                   </table>
                 )}
           </FloatingWindow>
-          <MarkRulesDialog open={markDialog} rules={m.markRules} defaults={DEFAULT_MARK_RULES} elements={m.model?.elements ?? []} onSave={(r) => void m.setMarkRules(r)} onClose={() => setMarkDialog(false)} />
+          <MarkRulesDialog open={markDialog} rules={m.markRules} defaults={DEFAULT_MARK_RULES} elements={m.model?.elements ?? []} onSave={(r) => history.run('Mark rules', (t) => t.change('mark-rules', m.markRules, r, (x) => void m.setMarkRules(x)))} onClose={() => setMarkDialog(false)} />
           <MarkRulesDialog
             open={gradeDialog}
             title="Grade rules"
@@ -556,7 +640,7 @@ export function App() {
             defaults={DEFAULT_GRADE_RULES}
             sourceField="gradeSource"
             elements={m.model?.elements ?? []}
-            onSave={(r) => void m.setGradeRules(r)}
+            onSave={(r) => history.run('Grade rules', (t) => t.change('grade-rules', m.gradeRules, r, (x) => void m.setGradeRules(x)))}
             onClose={() => setGradeDialog(false)}
           />
           {notice ? (
@@ -610,9 +694,37 @@ export function App() {
           <Button size="sm" variant="ghost" onClick={() => runCommand('sectionBox')} disabled={!m.model || (!sectionBox && !sel.length)} title="Section box around the selection (BX)">
             Section box: {sectionBox ? 'On' : 'Off'}
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => runCommand('resetHidden')} disabled={!hidden.length} title="Reset temporary hide/isolate (HR)">
-            Reset hidden
+          <span className="app-hidemenu">
+            <Button size="sm" variant="ghost" aria-expanded={hideMenu} disabled={!m.model} onClick={() => setHideMenu((o) => !o)} title="Temporary Hide/Isolate">
+              <Icon name="isolate" size={16} /> Hide/Isolate
+            </Button>
+            {hideMenu ? (
+              <span className="app-hidemenu__list" role="menu" onClick={() => setHideMenu(false)}>
+                {(
+                  [
+                    ['isolateCategory', 'Isolate Category', 'IC'],
+                    ['hideCategory', 'Hide Category', 'HC'],
+                    ['isolateElement', 'Isolate Element', 'HI'],
+                    ['hideElement', 'Hide Element', 'HH'],
+                    ['resetHidden', 'Reset Temporary Hide/Isolate', 'HR'],
+                  ] as const
+                ).map(([cmd, label, key]) => (
+                  <button key={cmd} type="button" role="menuitem" disabled={cmd === 'resetHidden' ? !hidden.length : !sel.length} onClick={() => runCommand(cmd)}>
+                    <span>{label}</span>
+                    <kbd>{key}</kbd>
+                  </button>
+                ))}
+              </span>
+            ) : null}
+          </span>
+          <Button size="sm" variant="ghost" aria-pressed={reveal} disabled={!m.model} onClick={() => runCommand('revealHidden')} title="Reveal Hidden Elements (RH)">
+            <Icon name="reveal" size={16} />
           </Button>
+          {reveal && sel.some((i) => hidden.includes(i)) ? (
+            <Button size="sm" variant="ghost" onClick={() => runCommand('unhideElement')} title="Unhide the selected elements (EU)">
+              Unhide
+            </Button>
+          ) : null}
         </>
         )}</div>
                   </div>

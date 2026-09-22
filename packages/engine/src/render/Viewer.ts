@@ -11,6 +11,7 @@ import {
   Matrix4,
   Mesh,
   OrthographicCamera,
+  Quaternion,
   Plane,
   Scene,
   Sphere,
@@ -40,7 +41,7 @@ import {
 import { decodePickId } from './pickId';
 import { SectionGizmo, aabbOf, axesOf, cloneState, metresPerPixel, moveFace, planesOf, snapDelta, type GripData, type SectionBoxState } from './sectionBox';
 
-export type ViewName = 'iso' | 'top' | 'front' | 'back' | 'left' | 'right';
+export type ViewName = 'iso' | 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
 /** Revit visual styles: SD, CO, HL, WF. */
 export type DisplayStyle = 'shaded' | 'consistent' | 'hiddenLine' | 'wireframe';
 /** replace = plain click; add = Ctrl; remove = Shift (Revit). */
@@ -55,6 +56,10 @@ export interface ViewerEvents {
   onZoomRegionEnd?: () => void;
   /** Section box turned on/off or edited. */
   onSectionBoxChange?: (active: boolean) => void;
+  /** The camera moved (every rendered frame after a change): for the ViewCube. */
+  onCamera?: (orientation: Quaternion) => void;
+  /** A grip drag or rotation finished: record it as one undoable change (the viewer keeps no undo stack). */
+  onSectionBoxEdit?: (before: SectionBoxState, after: SectionBoxState) => void;
 }
 
 interface CameraState {
@@ -113,11 +118,12 @@ export class Viewer {
   private section: Box3 | null = null;
   private clipPlanes: Plane[] = [];
   private sbox: SectionBoxState | null = null;
-  private sboxUndo: SectionBoxState[] = [];
   private gizmo = new SectionGizmo();
   private gizmoScene = new Scene();
   private hotGrip: Mesh | null = null;
   private raycaster = new Raycaster();
+  private edgesOn = true;
+  private revealOn = false;
   private history: CameraState[] = [];
   private zoomRegionArmed = false;
   private frameRequested = false;
@@ -210,6 +216,8 @@ export class Viewer {
     this.objects = [this.mesh, this.edges, glassMesh, pickMesh];
     this.modelBox()?.getBoundingSphere(this.modelSphere);
     this.setDisplayStyle(this.style);
+    this.edges.visible = this.edgesOn;
+    this.setReveal(this.revealOn);
     this.orient('iso');
     this.fit(undefined, false);
   }
@@ -354,17 +362,14 @@ export class Viewer {
       const b = box.clone().expandByScalar(Math.max(0.1, box.getSize(new Vector3()).length() * 0.02));
       this.sbox = { center: b.getCenter(new Vector3()), half: b.getSize(new Vector3()).multiplyScalar(0.5), angle: 0 };
     } else this.sbox = null;
-    this.sboxUndo = [];
     this.applySectionBox(true);
   }
 
-  /** Undo the last grip drag or rotation of the section box. Returns false when there is nothing to undo. */
-  undoSectionBox(): boolean {
-    const prev = this.sboxUndo.pop();
-    if (!prev || !this.sbox) return false;
-    this.sbox = prev;
-    this.applySectionBox(false);
-    return true;
+  /** Sets the section box to an exact state (null removes it); used by undo/redo. */
+  setSectionBoxState(st: SectionBoxState | null): void {
+    const toggled = (st === null) !== (this.sbox === null);
+    this.sbox = st ? cloneState(st) : null;
+    this.applySectionBox(toggled);
   }
 
   /** Current section box (centre, half-size, plan rotation), or null. */
@@ -431,16 +436,56 @@ export class Viewer {
   private orient(view: ViewName): void {
     const dirs: Record<ViewName, [number, number, number]> = {
       iso: [1, 0.82, 1],
-      top: [0, 1, 0.0001],
+      top: [0, 1, 0],
+      bottom: [0, -1, 0],
       front: [0, 0, 1],
       back: [0, 0, -1],
       left: [-1, 0, 0],
       right: [1, 0, 0],
     };
-    const d = new Vector3(...dirs[view]).normalize();
+    this.aim(new Vector3(...dirs[view]));
+  }
+
+  /** Puts the camera on the side `dir` points to (from the target), horizon level; plan views have north up. */
+  private aim(dir: Vector3): void {
+    const d = dir.clone().normalize();
     this.camera.position.copy(this.target).addScaledVector(d, Math.max(10, this.modelSphere.radius * 4));
+    const vertical = Math.abs(d.y) > 0.999;
+    if (vertical) this.camera.up.set(0, 0, -1); // looking straight down or up: north (−Z) at the top of the screen
     this.camera.lookAt(this.target);
+    if (vertical) this.camera.up.copy(UP);
     this.camera.updateMatrixWorld();
+  }
+
+  /** ViewCube: look from the direction `dir` (world, from the model towards the camera), then fit. */
+  lookFrom(dir: Vector3 | readonly [number, number, number]): void {
+    this.pushHistory();
+    this.aim(Array.isArray(dir) ? new Vector3(dir[0], dir[1], dir[2]) : (dir as Vector3));
+    this.fit(undefined, false);
+  }
+
+  /** ViewCube drag: orbit by screen pixels about the selection, section box or model. */
+  orbitBy(dxPx: number, dyPx: number): void {
+    this.orbit(dxPx, dyPx, this.orbitPivot());
+  }
+
+  /** Camera orientation (camera to world), for the ViewCube. */
+  get orientation(): Quaternion {
+    return this.camera.quaternion.clone();
+  }
+
+  /** Model edges on or off (Graphics → Edges). */
+  setEdges(on: boolean): void {
+    if (this.edges) this.edges.visible = on;
+    this.edgesOn = on;
+    this.requestRender();
+  }
+
+  /** Reveal Hidden Elements: hidden elements draw in the reveal colour and can be picked (to unhide). */
+  setReveal(on: boolean): void {
+    this.revealOn = on;
+    for (const m of [this.meshMat, this.glassMat, this.edgeMat, this.pickMat]) if (m) m.uniforms.uReveal.value = on ? 1 : 0;
+    this.requestRender();
   }
 
   /** Revit ZF / ZE / ZX: fit the model, or the given elements, tight to their projected box. */
@@ -751,7 +796,7 @@ export class Viewer {
       if (c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
       this.rectEl.style.display = 'none';
       if (d.mode === 'grip') {
-        if (d.moved && d.start) this.sboxUndo.push(d.start);
+        if (d.moved && d.start && this.sbox) this.events.onSectionBoxEdit?.(d.start, cloneState(this.sbox));
         return;
       }
       if (d.mode === 'zoomRegion') {
@@ -868,6 +913,7 @@ export class Viewer {
         this.renderer.autoClear = true;
       } else this.gizmo.update(null, 1);
       this.lastFrameMs = performance.now() - t0;
+      this.events.onCamera?.(this.camera.quaternion);
     });
   }
 

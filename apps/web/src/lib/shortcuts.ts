@@ -4,6 +4,9 @@ export type CommandId =
   | 'previous'
   | 'zoomRegion'
   | 'isolateElement'
+  | 'hideCategory'
+  | 'revealHidden'
+  | 'unhideElement'
   | 'isolateCategory'
   | 'hideElement'
   | 'resetHidden'
@@ -26,6 +29,9 @@ export const SEQUENCES: Record<string, CommandId> = {
   IC: 'isolateCategory',
   HH: 'hideElement',
   HR: 'resetHidden',
+  HC: 'hideCategory',
+  RH: 'revealHidden',
+  EU: 'unhideElement',
   WF: 'wireframe',
   HL: 'hiddenLine',
   SD: 'shaded',
@@ -68,6 +74,9 @@ export const SHORTCUT_HELP: Array<{ keys: string; action: string }> = [
   { keys: 'ZR · ZZ', action: 'Zoom in region (then drag)' },
   { keys: 'HI · IC', action: 'Isolate element · isolate category' },
   { keys: 'HH · HR', action: 'Hide element · reset temporary hide/isolate' },
+  { keys: 'HC', action: 'Hide the selected categories (temporary)' },
+  { keys: 'RH', action: 'Reveal Hidden Elements on/off (hidden show in magenta)' },
+  { keys: 'EU', action: 'Unhide the selected elements (while revealing)' },
   { keys: 'BX', action: 'Section box around the selection (again to remove)' },
   { keys: 'Drag a box arrow', action: 'Move that face of the section box (Shift: 100 mm steps)' },
   { keys: 'Drag the box ring', action: 'Rotate the section box in plan (Shift: 15° steps)' },

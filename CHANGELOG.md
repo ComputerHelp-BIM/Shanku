@@ -2,6 +2,16 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.13.0 — 2026-09-22
+
+### Added
+- Homepage with fullscreen "Try Shanku free" and drop-to-open.
+- Revit-style transactions for undo/redo (engine `History`), Quick Access Toolbar with undo/redo lists.
+- Working ribbon tabs; ViewCube; Temporary Hide/Isolate menu; Reveal Hidden Elements; Edges toggle.
+
+### Fixed
+- Re-detecting marks or grades no longer resets the view, section box or hidden elements.
+
 ## 0.12.1 — 2026-09-22
 
 ### Fixed

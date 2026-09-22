@@ -1,6 +1,6 @@
-# @shanku/web 0.12.1
+# @shanku/web 0.13.0
 
-The Shanku app. Requires `@shanku/engine >= 0.10.0`, `@shanku/ui >= 0.5.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.11.0`, `@shanku/ui >= 0.6.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,14 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.13.0 — 2026-09-22
+- **Homepage** in front of the app (hero, how it works, toolkit, real screenshots, specs, FAQ). **Try Shanku free** opens the app full screen in the same page (browsers only allow fullscreen on a click in the same page); dropping an .ifc or .dxf on the homepage opens it directly. `#app` links straight to the app. The app is loaded on demand, so the homepage stays small.
+- **Undo / redo as transactions** (Revit-style): Quick Access Toolbar with Undo ▾ / Redo ▾ listing named steps (undo back to any point), Ctrl + Z, Ctrl + Y, Ctrl + Shift + Z. Undoable now: section box on/off, grip moves and rotation, BOQ rates and overrides, mark and grade rules.
+- **Ribbon tabs switch**: Model (Open, Structure, Select, Quantities), View (Create, Section, Graphics, Windows), Manage (Settings).
+- **ViewCube**: faces, edges and corners (26 directions), drag to orbit, Home.
+- **View controls**: Temporary Hide/Isolate menu (IC, HC, HI, HH, HR), Reveal Hidden Elements (RH, magenta frame; pick hidden elements and Unhide, EU), Graphics → Edges.
+- Fixed: changing mark or grade rules reset hidden elements, the section box and the camera (the view now reloads only for a different file).
 
 ### 0.12.1 — 2026-09-22
 - Requires @shanku/engine 0.10.0: camera no longer sticks at the top or bottom; DXF → 3D walls import completely in Revit.

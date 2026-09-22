@@ -15,4 +15,5 @@ export { type SectionBoxState } from './render/sectionBox';
 export type { PipelineSummary, PipelineLevel, PipelineQa } from './pipeline/types';
 export type { PipelineOptions } from './dxf/protocol';
 export { PYODIDE_VERSION, PYODIDE_INDEX_URL } from './pyodide';
-export const ENGINE_VERSION = '0.10.0';
+export { History, Transaction, TransactionError, type Change, type CommittedTransaction } from './doc/transactions';
+export const ENGINE_VERSION = '0.11.0';

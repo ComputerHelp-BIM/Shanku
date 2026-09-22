@@ -1,4 +1,4 @@
-/* @shanku/ui 0.5.0 — requires @shanku/tokens/tokens.css loaded first. */
+/* @shanku/ui 0.6.0 — requires @shanku/tokens/tokens.css loaded first. */
 
 /* ---------- base ---------- */
 .sk-shell,
@@ -375,3 +375,6 @@
 .sk-window__edge--nw { top: -4px; left: -4px; cursor: nwse-resize; } .sk-window__edge--se { bottom: -4px; right: -4px; cursor: nwse-resize; }
 /* The app frame never scrolls; only panels inside it do. */
 html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+
+/* Quick Access Toolbar (title bar, after the logo) */
+.sk-titlebar__qat { display: flex; align-items: center; gap: 2px; padding: 0 8px; margin-right: 4px; border-right: 1px solid var(--border); }
