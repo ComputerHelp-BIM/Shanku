@@ -2,6 +2,13 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.10.0 — 2026-09-22
+
+### Added
+- Working Python console with the `shanku` API; Ctrl + ` opens it.
+- Section box grips (move faces, rotate in plan, snapping, undo) and capped cut faces.
+- CI runs the console API tests alongside the DXF extractor tests.
+
 ## 0.9.0 — 2026-09-22
 
 ### Changed

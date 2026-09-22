@@ -29,4 +29,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install ezdxf==1.4.4 pillow pytest  # ezdxf.addons.drawing imports Pillow
-      - run: pytest -q packages/engine/src/dxf
+      - run: pytest -q packages/engine/src/dxf apps/web/src/console

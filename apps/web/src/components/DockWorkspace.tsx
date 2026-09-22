@@ -58,7 +58,7 @@ export interface DockWorkspaceHandle {
   toggle: (id: PanelId) => void;
   open: (id: PanelId) => void;
   isOpen: (id: PanelId) => boolean;
-  /** Ctrl + `: show or hide the docked bottom panels. */
+  /** Ctrl + `: open the Python console at the bottom, or hide the docked bottom panels. */
   toggleBottom: () => void;
   reset: () => void;
 }
@@ -190,7 +190,7 @@ export const DockWorkspace = forwardRef<DockWorkspaceHandle, DockWorkspaceProps>
       if (!api) return;
       const docked = BOTTOM.map((b) => api.getPanel(b)).filter((p) => p && p.group.api.location.type === 'grid');
       if (docked.length) docked.forEach((p) => p!.api.close());
-      else addDefault(api, 'activity')?.api.setActive();
+      else (api.getPanel('console') ?? addDefault(api, 'console'))?.api.setActive(); // Ctrl + ` = the console, like VS Code's terminal
     },
     reset: () => {
       const api = apiRef.current;

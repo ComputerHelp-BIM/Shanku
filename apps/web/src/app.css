@@ -215,3 +215,22 @@
 .app-dock-action { width: 26px; height: 24px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
 .app-dock-action:hover { background: var(--chip); color: var(--text); }
 .bq-docked { margin: 0; }
+
+/* ---- Python console ---- */
+.app-console { position: absolute; inset: 0; display: flex; flex-direction: column; font-family: var(--font-mono); font-size: 12.5px; }
+.app-console__log { flex: 1; min-height: 0; overflow: auto; padding: 8px 14px; }
+.app-console__entry + .app-console__entry { margin-top: 6px; }
+.app-console pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: inherit; }
+.app-console__in { color: var(--text-secondary); }
+.app-console__out { color: var(--text); }
+.app-console__out.is-error, .app-console__note.is-error { color: var(--status-error); }
+.app-console__note { margin: 0; color: var(--text-faint); font-family: var(--font-sans); font-size: 12px; }
+.app-console__table { overflow-x: auto; margin: 4px 0; }
+.app-console__table table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.app-console__table th, .app-console__table td { padding: 1px 12px 1px 0; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.app-console__table th { color: var(--text-secondary); font-weight: 600; }
+.app-console__table td.n { text-align: right; }
+.app-console__prompt { display: flex; gap: 8px; align-items: flex-start; padding: 6px 14px 8px; border-top: 1px solid var(--border); }
+.app-console__prompt span { color: var(--accent-text); line-height: 22px; }
+.app-console__prompt textarea { flex: 1; resize: none; border: 0; outline: none; background: transparent; color: var(--text); font: inherit; line-height: 22px; padding: 0; }
+.app-console__prompt textarea:focus, .app-console__prompt textarea:focus-visible { outline: none; box-shadow: none; }

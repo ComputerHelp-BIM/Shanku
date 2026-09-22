@@ -1,6 +1,6 @@
-# @shanku/web 0.9.0
+# @shanku/web 0.10.0
 
-The Shanku app. Requires `@shanku/engine >= 0.6.0`, `@shanku/ui >= 0.4.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.7.0`, `@shanku/ui >= 0.4.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.10.0 — 2026-09-22
+- **Python console** (Pyodide, runs on this device): `shanku` API 1.0.0 for read-only queries (`elements()`, `selection()`, `get()`, `levels()`, `info()`, `boq()`, `ElementList.volume / .where / .by`) and view actions (`select`, `isolate`, `hide`, `reset`, `fit`). Results that are lists show as tables; errors show their traceback. Enter runs, Shift + Enter adds a line, ↑ ↓ history, Ctrl + L clears. Try `shanku.help()`.
+- **Ctrl + ` opens the Python console** at the bottom (was Activity).
+- **Section box grips** (engine 0.7.0): drag the arrows to move faces, the ring to rotate, Ctrl + Z to undo; cut faces capped.
 
 ### 0.9.0 — 2026-09-22
 - Everything stays inside the Shanku tab: pop-out windows removed. Panels float over the whole workspace instead.

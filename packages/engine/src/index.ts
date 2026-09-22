@@ -11,4 +11,5 @@ export { DEFAULT_MARK_RULES, DEFAULT_GRADE_RULES, parseRules, rulePriority } fro
 export { buildBoq, type Boq, type BoqKey, type BoqRow } from './model/boq';
 export { siFactor } from './ifc/quantities';
 export { assessCompatibility, readViewDefinition, RECOMMENDED_EXPORT, type Compatibility, type CompatLevel } from './ifc/compat';
-export const ENGINE_VERSION = '0.6.0';
+export { type SectionBoxState } from './render/sectionBox';
+export const ENGINE_VERSION = '0.7.0';

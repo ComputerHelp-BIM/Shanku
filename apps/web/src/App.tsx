@@ -30,12 +30,13 @@ import { DrawingView, type DrawingViewHandle } from './components/DrawingView';
 import { DrawingProperties, LayersPanel } from './components/DrawingPanels';
 import { MarkRulesDialog } from './components/MarkRulesDialog';
 import { BoqWindow } from './components/BoqWindow';
+import { ConsolePanel } from './components/ConsolePanel';
 import { DockWorkspace, type DockWorkspaceHandle, type PanelId } from './components/DockWorkspace';
 import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.9.0';
+const APP_VERSION = '0.10.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -223,6 +224,10 @@ export function App() {
   useShortcut({ code: 'Escape' }, () => {
     if (zoomRegion) viewport.current?.cancelZoomRegion();
     else m.setSelection([]);
+  });
+  // Ctrl + Z: undo the last section-box edit (the only undoable action so far).
+  useShortcut({ code: 'KeyZ', ctrl: true }, () => {
+    if (sectionBox && !viewport.current?.undoSectionBox()) setNotice('Nothing to undo.');
   });
   useShortcut({ code: 'Home' }, () => (activeDoc ? drawingView.current?.fit() : viewport.current?.home()));
   const commandRef = useRef(runCommand);
@@ -562,7 +567,22 @@ export function App() {
                   </table>
                 );
               case 'console':
-                return <p className="app-empty-note">The Python console arrives in a later release.</p>;
+                return (
+                  <ConsolePanel
+                    model={m.model}
+                    selection={sel}
+                    onAction={(a) => {
+                      const ids = a.indices ?? [];
+                      if (a.type === 'select') m.setSelection(ids);
+                      else if (a.type === 'isolate' && m.model) {
+                        const keep = new Set(ids);
+                        setHidden(m.model.elements.filter((e) => !keep.has(e.index)).map((e) => e.index));
+                      } else if (a.type === 'hide') setHidden((h) => [...new Set([...h, ...ids])]);
+                      else if (a.type === 'reset') setHidden([]);
+                      else if (a.type === 'fit') viewport.current?.fit(a.indices ?? undefined);
+                    }}
+                  />
+                );
               case 'boq':
                 return m.model ? (
                   <BoqWindow
@@ -619,7 +639,7 @@ export function App() {
           <button
             type="button"
             className="app-panel-toggle"
-            aria-pressed={openPanels.some((p) => ['activity', 'keyboard', 'console'].includes(p))}
+            aria-pressed={openPanels.includes('console')}
             title="Show or hide the bottom panels (Ctrl + `)"
             onClick={() => dock.current?.toggleBottom()}
           >

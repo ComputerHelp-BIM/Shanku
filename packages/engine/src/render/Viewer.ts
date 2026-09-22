@@ -1,6 +1,11 @@
 import {
   Box3,
   BufferAttribute,
+  Color,
+  DoubleSide,
+  FrontSide,
+  Raycaster,
+  Vector2,
   BufferGeometry,
   LineSegments,
   Matrix4,
@@ -32,6 +37,7 @@ import {
   createStateTexture,
 } from './materials';
 import { decodePickId } from './pickId';
+import { SectionGizmo, aabbOf, axesOf, cloneState, metresPerPixel, moveFace, planesOf, snapDelta, type GripData, type SectionBoxState } from './sectionBox';
 
 export type ViewName = 'iso' | 'top' | 'front' | 'back' | 'left' | 'right';
 /** Revit visual styles: SD, CO, HL, WF. */
@@ -46,6 +52,8 @@ export interface ViewerEvents {
   onHover?: (index: number | null) => void;
   /** Fired when zoom-region mode ends (done or cancelled). */
   onZoomRegionEnd?: () => void;
+  /** Section box turned on/off or edited. */
+  onSectionBoxChange?: (active: boolean) => void;
 }
 
 interface CameraState {
@@ -102,6 +110,12 @@ export class Viewer {
   private style: DisplayStyle = 'shaded';
   private section: Box3 | null = null;
   private clipPlanes: Plane[] = [];
+  private sbox: SectionBoxState | null = null;
+  private sboxUndo: SectionBoxState[] = [];
+  private gizmo = new SectionGizmo();
+  private gizmoScene = new Scene();
+  private hotGrip: Mesh | null = null;
+  private raycaster = new Raycaster();
   private history: CameraState[] = [];
   private zoomRegionArmed = false;
   private frameRequested = false;
@@ -133,6 +147,7 @@ export class Viewer {
 
     this.camera = new OrthographicCamera(-1, 1, 1, -1, -1e4, 1e4);
     this.camera.up.copy(UP);
+    this.gizmoScene.add(this.gizmo.group);
     this.orient('iso');
 
     const ro = new ResizeObserver(() => this.resize());
@@ -319,20 +334,39 @@ export class Viewer {
   /** Section box (Revit BX) around the given elements, with a small margin; null removes it. */
   setSectionBox(indices: Iterable<number> | null): void {
     const box = indices ? this.boxOf(indices) : null;
-    this.section = box ? box.clone().expandByScalar(Math.max(0.1, box.getSize(new Vector3()).length() * 0.02)) : null;
+    if (box) {
+      const b = box.clone().expandByScalar(Math.max(0.1, box.getSize(new Vector3()).length() * 0.02));
+      this.sbox = { center: b.getCenter(new Vector3()), half: b.getSize(new Vector3()).multiplyScalar(0.5), angle: 0 };
+    } else this.sbox = null;
+    this.sboxUndo = [];
+    this.applySectionBox(true);
+  }
+
+  /** Undo the last grip drag or rotation of the section box. Returns false when there is nothing to undo. */
+  undoSectionBox(): boolean {
+    const prev = this.sboxUndo.pop();
+    if (!prev || !this.sbox) return false;
+    this.sbox = prev;
+    this.applySectionBox(false);
+    return true;
+  }
+
+  /** Current section box (centre, half-size, plan rotation), or null. */
+  get sectionBox(): SectionBoxState | null {
+    return this.sbox ? cloneState(this.sbox) : null;
+  }
+
+  private applySectionBox(toggled: boolean): void {
+    const st = this.sbox;
+    this.section = st ? aabbOf(st) : null;
     this.clipPlanes.length = 0;
-    if (this.section) {
-      const { min, max } = this.section;
-      this.clipPlanes.push(
-        new Plane(new Vector3(1, 0, 0), -min.x),
-        new Plane(new Vector3(-1, 0, 0), max.x),
-        new Plane(new Vector3(0, 1, 0), -min.y),
-        new Plane(new Vector3(0, -1, 0), max.y),
-        new Plane(new Vector3(0, 0, 1), -min.z),
-        new Plane(new Vector3(0, 0, -1), max.z),
-      );
+    if (st) this.clipPlanes.push(...planesOf(st));
+    if (toggled) {
+      // Caps need back faces while a section box is on; without it, front faces only (cheaper, no artefacts).
+      for (const m of [this.meshMat, this.pickMat]) if (m) m.side = st ? DoubleSide : FrontSide;
+      for (const m of [this.meshMat, this.edgeMat, this.pickMat]) if (m) m.needsUpdate = true;
     }
-    for (const m of [this.meshMat, this.edgeMat, this.pickMat]) if (m) m.needsUpdate = true;
+    this.events.onSectionBoxChange?.(st !== null);
     this.requestRender();
   }
 
@@ -547,10 +581,43 @@ export class Viewer {
     });
   }
 
+  /** The section-box grip under the pointer (within 14 px of its centre on screen), if any. */
+  private gripAt(clientX: number, clientY: number): Mesh | null {
+    if (!this.sbox) return null;
+    this.gizmo.update(this.sbox, metresPerPixel(this.camera, this.canvas.getBoundingClientRect().height), this.hotGrip);
+    let best: Mesh | null = null;
+    let bestD = 14;
+    for (const m of this.gizmo.targets) {
+      const d = this.toScreen(m.position).distanceTo(new Vector2(clientX, clientY));
+      if (d < bestD) {
+        bestD = d;
+        best = m;
+      }
+    }
+    return best;
+  }
+
+  /** Screen position (client px) of a world point. */
+  private toScreen(p: Vector3): Vector2 {
+    const r = this.canvas.getBoundingClientRect();
+    const v = p.clone().project(this.camera);
+    return new Vector2(r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height);
+  }
+
+  /** Point on the horizontal plane through the box centre under the pointer (for rotation). */
+  private planPoint(clientX: number, clientY: number, y: number): Vector3 | null {
+    const r = this.canvas.getBoundingClientRect();
+    this.raycaster.setFromCamera(new Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), this.camera);
+    return this.raycaster.ray.intersectPlane(new Plane(new Vector3(0, 1, 0), -y), new Vector3());
+  }
+
   private bindInput(): void {
     const c = this.canvas;
-    type DragMode = 'pan' | 'orbit' | 'select' | 'zoomRegion';
-    type Drag = { mode: DragMode; x: number; y: number; sx: number; sy: number; pivot: Vector3; moved: boolean; recorded: boolean };
+    type DragMode = 'pan' | 'orbit' | 'select' | 'zoomRegion' | 'grip';
+    type Drag = {
+      mode: DragMode; x: number; y: number; sx: number; sy: number; pivot: Vector3; moved: boolean; recorded: boolean;
+      grip?: GripData; start?: SectionBoxState; screenDir?: Vector2; startAngle?: number;
+    };
     let drag: Drag | null = null;
     let lastMiddleDown = 0;
     let hoverQueued = false;
@@ -571,6 +638,26 @@ export class Viewer {
         lastMiddleDown = t;
         mode = e.shiftKey ? 'orbit' : 'pan';
       } else if (e.button === 0) {
+        const grip = !this.zoomRegionArmed && !e.altKey ? this.gripAt(e.clientX, e.clientY) : null;
+        if (grip && this.sbox) {
+          e.preventDefault();
+          c.setPointerCapture(e.pointerId);
+          const data = grip.userData as GripData;
+          const start = cloneState(this.sbox);
+          const d: Drag = { mode: 'grip', x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pivot: this.target.clone(), moved: false, recorded: false, grip: data, start };
+          if (data.kind === 'face') {
+            // Pixels per metre along the face normal, on screen: drags follow the arrow at any view angle.
+            const n = axesOf(start.angle)[data.axis].clone().multiplyScalar(data.sign);
+            const h = [start.half.x, start.half.y, start.half.z][data.axis];
+            const p0 = start.center.clone().addScaledVector(n, h);
+            d.screenDir = this.toScreen(p0.clone().add(n)).sub(this.toScreen(p0));
+          } else {
+            const p = this.planPoint(e.clientX, e.clientY, start.center.y);
+            d.startAngle = p ? Math.atan2(-(p.z - start.center.z), p.x - start.center.x) : 0;
+          }
+          drag = d;
+          return;
+        }
         if (this.zoomRegionArmed) mode = 'zoomRegion';
         else if (e.altKey) mode = e.shiftKey ? 'pan' : 'orbit';
         else mode = 'select';
@@ -589,6 +676,26 @@ export class Viewer {
         drag.y = e.clientY;
         if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > CLICK_TOLERANCE_PX) drag.moved = true;
         if (!drag.moved) return;
+        if (drag.mode === 'grip' && drag.start && drag.grip) {
+          const st = drag.start;
+          if (drag.grip.kind === 'face' && drag.screenDir) {
+            const sd = drag.screenDir;
+            const len2 = sd.lengthSq();
+            if (len2 < 1e-6) return; // arrow points straight at the viewer: no usable direction
+            const m = new Vector2(e.clientX - drag.sx, e.clientY - drag.sy);
+            let delta = m.dot(sd) / len2;
+            if (e.shiftKey) delta = snapDelta(st, drag.grip.axis, drag.grip.sign, delta, 0.1);
+            this.sbox = moveFace(st, drag.grip.axis, drag.grip.sign, delta);
+          } else if (drag.grip.kind === 'rotate') {
+            const p = this.planPoint(e.clientX, e.clientY, st.center.y);
+            if (!p) return;
+            let a = st.angle + Math.atan2(-(p.z - st.center.z), p.x - st.center.x) - (drag.startAngle ?? 0);
+            if (e.shiftKey) a = Math.round(a / (Math.PI / 12)) * (Math.PI / 12); // 15° steps
+            this.sbox = { ...cloneState(st), angle: a };
+          }
+          this.applySectionBox(false);
+          return;
+        }
         if (drag.mode === 'pan' || drag.mode === 'orbit') {
           if (!drag.recorded) {
             this.pushHistory();
@@ -607,7 +714,14 @@ export class Viewer {
       hoverQueued = true;
       requestAnimationFrame(() => {
         hoverQueued = false;
-        if (lastHover && !drag) this.setHover(this.pick(lastHover.clientX, lastHover.clientY));
+        if (!lastHover || drag) return;
+        const grip = this.gripAt(lastHover.clientX, lastHover.clientY);
+        if (grip !== this.hotGrip) {
+          this.hotGrip = grip;
+          c.style.cursor = grip ? ((grip.userData as GripData).kind === 'rotate' ? 'grab' : 'move') : '';
+          this.requestRender();
+        }
+        this.setHover(grip ? null : this.pick(lastHover.clientX, lastHover.clientY));
       });
     };
 
@@ -617,6 +731,10 @@ export class Viewer {
       drag = null;
       if (c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
       this.rectEl.style.display = 'none';
+      if (d.mode === 'grip') {
+        if (d.moved && d.start) this.sboxUndo.push(d.start);
+        return;
+      }
       if (d.mode === 'zoomRegion') {
         if (d.moved) this.zoomToRect(d.sx, d.sy, e.clientX, e.clientY);
         this.cancelZoomRegion();
@@ -688,6 +806,11 @@ export class Viewer {
     set(this.meshMat, 'uSelShade', t['selected-shade']);
     set(this.meshMat, 'uHover', t['hover-outline']);
     set(this.meshMat, 'uPaper', t.viewport);
+    // Cut faces: the shade colour taken a step darker, so caps read as solid section.
+    const cap = t['concrete-shade'];
+    set(this.meshMat, 'uCap', { r: cap.r * 0.78, g: cap.g * 0.78, b: cap.b * 0.78, a: 1 });
+    const accent = getComputedStyle(this.container).getPropertyValue('--accent').trim() || '#D9761E';
+    this.gizmo.setColors(new Color(accent), new Color(t['selected-top'].r, t['selected-top'].g, t['selected-top'].b));
     // Hidden line and wireframe draw edges as solid drawing lines; shaded styles use soft model edges.
     const edge = this.style === 'hiddenLine' ? t['line-cut'] : this.style === 'wireframe' ? t['line-projection'] : t['edge-model'];
     set(this.edgeMat, 'uEdge', edge);
@@ -711,6 +834,13 @@ export class Viewer {
       this.renderer.setRenderTarget(null);
       this.renderer.setClearColor(0x000000, 0);
       this.renderer.render(this.scene, this.camera);
+      if (this.sbox) {
+        const h = this.canvas.getBoundingClientRect().height;
+        this.gizmo.update(this.sbox, metresPerPixel(this.camera, h), this.hotGrip);
+        this.renderer.autoClear = false;
+        this.renderer.render(this.gizmoScene, this.camera);
+        this.renderer.autoClear = true;
+      } else this.gizmo.update(null, 1);
       this.lastFrameMs = performance.now() - t0;
     });
   }
@@ -719,6 +849,7 @@ export class Viewer {
     for (const d of this.disposers) d();
     this.clearModel();
     this.pickTarget.dispose();
+    this.gizmo.dispose();
     this.renderer.dispose();
     this.canvas.remove();
     this.rectEl.remove();

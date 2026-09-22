@@ -1,4 +1,4 @@
-# @shanku/engine 0.6.0
+# @shanku/engine 0.7.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.7.0 — 2026-09-22
+- Section box, Revit-style: six arrow grips move one face each along its own direction at any view angle (Shift snaps faces to 100 mm), a ring rotates the box in plan (Shift: 15°), the box outline always shows, `undoSectionBox()` steps back through edits, and cut members are capped with a flat cut colour so sections read solid. Maths in `render/sectionBox.ts` (tested); `onSectionBoxChange` event.
 
 ### 0.6.0 — 2026-09-22
 - Added `ElementRecord.dims` (length, width, depth, height in m, null where not meaningful): IFC Width/Depth/Height/Length and cross-section area where reliable, element bounds otherwise.

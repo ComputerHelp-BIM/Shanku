@@ -62,6 +62,8 @@ export function createModelMaterial(state: DataTexture): ShaderMaterial {
       uSelShade: { value: new Color() },
       uHover: { value: new Color() },
       uPaper: { value: new Color() },
+      // Section-box caps: back faces seen through a cut are painted flat, so cut members read solid.
+      uCap: { value: new Color() },
       uMode: { value: DISPLAY_SHADED },
       // Horizontal "light" direction in the XZ plane: faces turned toward it get the lit side colour.
       uLight: { value: new Vector2(0.8, 0.6).normalize() },
@@ -84,12 +86,13 @@ flat in int vState;
 flat in int vId;
 in vec3 vNormalW;
 ${CLIP_F_PARS}
-uniform vec3 uTop, uSide, uShade, uSelTop, uSelSide, uSelShade, uHover, uPaper;
+uniform vec3 uTop, uSide, uShade, uSelTop, uSelSide, uSelShade, uHover, uPaper, uCap;
 uniform vec2 uLight;
 uniform int uMode;
 void main() {
   ${CLIP_F}
   bool sel = (vState & ${STATE_SELECTED}) != 0;
+  if (!gl_FrontFacing) { outColor = vec4(sel ? uSelShade : uCap, 1.0); return; } // only drawn while a section box is on
   bool hov = (vState & ${STATE_HOVER}) != 0;
   vec3 n = normalize(vNormalW);
   vec3 top = sel ? uSelTop : uTop;

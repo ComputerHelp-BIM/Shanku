@@ -9,6 +9,8 @@ export interface ViewportHandle {
   startZoomRegion: () => void;
   cancelZoomRegion: () => void;
   setSectionBox: (indices: number[] | null) => void;
+  /** Undo the last section-box grip drag or rotation. */
+  undoSectionBox: () => boolean;
 }
 
 export interface ViewportProps {
@@ -41,6 +43,8 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     } catch (e) {
       setFailed(e instanceof Error ? e.message : String(e));
     }
+    // Test and console hook: the live viewer (read-only use).
+    (window as unknown as { __shankuViewer?: unknown }).__shankuViewer = viewer.current;
     return () => {
       viewer.current?.dispose();
       viewer.current = null;
@@ -54,6 +58,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
 
   useImperativeHandle(ref, () => ({
     fit: (indices) => viewer.current?.fit(indices),
+    undoSectionBox: () => viewer.current?.undoSectionBox() ?? false,
     home: () => viewer.current?.home(),
     setView: (v) => viewer.current?.setView(v),
     previousView: () => viewer.current?.previousView() ?? false,
