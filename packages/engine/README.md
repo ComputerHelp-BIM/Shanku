@@ -1,4 +1,4 @@
-# @shanku/engine 0.16.0
+# @shanku/engine 0.17.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.17.0 — 2026-09-23
+- Cursors follow the canvas: dark on Paper, light on Ink, each with a contrasting outline; a themed four-way pan arrow replaces the browser's `move`.
+- Temporary-dimension label plates and grip outlines use the canvas colour instead of white (they glared on Ink).
 
 ### 0.16.0 — 2026-09-23
 - Revit cursors (`cursors.ts`): orbit arrows while orbiting, four-way arrow while panning, and the selection arrow with + (Ctrl, add) or − (Shift, remove) at rest; both viewers, updated as the keys go down and up.

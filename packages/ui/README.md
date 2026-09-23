@@ -1,6 +1,6 @@
-# @shanku/ui 0.8.0
+# @shanku/ui 0.9.0
 
-React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.0.0` and `@shanku/brand >= 1.0.0`.
+React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.2.0` and `@shanku/brand >= 1.0.0`.
 
 ```tsx
 import '@shanku/tokens/tokens.css';
@@ -34,9 +34,18 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 
 ## Changelog
 
+### 0.9.0 — 2026-09-23
+- Merged the design-system branch's 0.8.0 (WCAG contrast, token-only CSS, stylelint guard) with this line's 0.8.0 (TitleBar `brandHref`); both lines had used 0.8.0.
+- `RibbonButton` `onClick` receives the click event (to open menus under the button).
+- Fixed: `FloatingWindow` took focus a frame after opening even when a field inside had it, which blurred autofocused fields (e.g. naming a new view template).
+
 ### 0.8.0 — 2026-09-23
 - `TitleBar` takes `brandHref`: the logo and name become a link (new tab), e.g. to the homepage.
 - Fixed (from the design-system branch, released there as 0.7.1): view-tab colour rules had been pasted into the shared button reset's selector list, so buttons, ribbon buttons, ribbon and bottom-panel tabs and view-tab labels lost `font: inherit` and fell back to the browser font instead of IBM Plex Sans. Reset restored; regression tests parse styles.css. (This line's own 0.7.1 was the brand 1.3.0 dependency bump; both are in 0.8.0.)
+- Requires @shanku/tokens 1.2.0.
+- Focus outlines and the focused property field use `focus-ring` (3:1 on every surface; the Paper outline was 2.5:1).
+- Secondary buttons and the command search use `control-border` (3:1; on Paper they were 1.3–1.5:1 and 1.3:1).
+- `FloatingWindow` uses `shadow-window`. No hard-coded colours remain in `styles.css`.
 
 ### 0.7.1 — 2026-09-23
 - Requires @shanku/brand 1.3.0 (visibility icon). No API change.

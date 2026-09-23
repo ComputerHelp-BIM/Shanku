@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 
 export interface RibbonTab {
@@ -61,7 +61,8 @@ export interface RibbonButtonProps {
   disabled?: boolean;
   /** Shown in the tooltip, e.g. "CL". */
   shortcutHint?: string;
-  onClick?: () => void;
+  /** Receives the click, e.g. to open a menu under the button. */
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
 }
 
 export function RibbonButton({ icon, label, twoTone, active, disabled, shortcutHint, onClick }: RibbonButtonProps) {

@@ -1,5 +1,5 @@
 {
- "version": "1.3.0",
+ "version": "1.4.0",
  "grid": 24,
  "strokeWidth": 1.5,
  "icons": {
@@ -135,6 +135,10 @@
   "visibility": {
    "label": "Visibility/Graphics",
    "outline": "<path d=\"M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z\"></path><circle cx=\"12\" cy=\"12\" r=\"2.8\"></circle>"
+  },
+  "template": {
+   "label": "View templates",
+   "outline": "<rect x=\"7\" y=\"3.5\" width=\"13\" height=\"13\" rx=\"1.5\"></rect><path d=\"M4 7.5v11a2 2 0 0 0 2 2h11\"></path><path d=\"M10 8h7M10 11h7M10 14h4\"></path>"
   }
  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "shanku",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "private": true,
   "description": "Shanku: open, IFC-native structural modelling in the browser.",
   "license": "UNLICENSED",
@@ -19,12 +19,16 @@
     "dev:playground": "npm run build -w @shanku/tokens && npm run dev -w @shanku/playground",
     "test": "npm run build -w @shanku/tokens && npm run test -w @shanku/ui && npm run test -w @shanku/engine && npm run test -w @shanku/web",
     "typecheck": "npm run build -w @shanku/tokens && npm run typecheck -w @shanku/ui && npm run typecheck -w @shanku/engine && npm run typecheck -w @shanku/playground && npm run typecheck -w @shanku/web",
-    "fixtures:large": "python tools/fixtures/make_sample_ifc.py large large-frame.ifc"
+    "fixtures:large": "python tools/fixtures/make_sample_ifc.py large large-frame.ifc",
+    "lint:css": "stylelint \"packages/ui/src/**/*.css\" \"apps/*/src/**/*.css\""
   },
   "engines": {
     "node": ">=20"
   },
   "overrides": {
     "uuid": "^11.1.1"
+  },
+  "devDependencies": {
+    "stylelint": "^17.15.0"
   }
 }

@@ -23,7 +23,7 @@ import {
 } from 'three';
 import type { ElementRecord, ParsedModel } from '../model/types';
 import { orbitAround, wheelZoomFactor, worldPerPixel, zoomShift } from './cameraMath';
-import { CURSOR, modifierCursor } from './cursors';
+import { cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './cursors';
 import { readViewerTokens, type Rgba } from './cssColor';
 import {
   DISPLAY_CONSISTENT,
@@ -133,6 +133,8 @@ export class Viewer {
   private hotGrip: Mesh | null = null;
   private raycaster = new Raycaster();
   private pivotEl: HTMLDivElement;
+  /** Cursors drawn for the canvas: dark on Paper, light on Ink. */
+  private cur: CursorSet = cursorsFor(false);
   private dimEl: SVGSVGElement;
   private edgesOn = true;
   private future: CameraState[] = [];
@@ -777,7 +779,9 @@ export class Viewer {
       return [p.x - r.left, p.y - r.top] as [number, number];
     };
     const c = P((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-    const color = getComputedStyle(this.container).getPropertyValue('--select-window').trim() || '#2F7FD8';
+    const cs = getComputedStyle(this.container);
+    const color = cs.getPropertyValue('--select-window').trim() || '#2F7FD8';
+    const labelBg = cs.getPropertyValue('--viewport').trim() || '#FFFFFF'; // label plate matches the canvas (Paper or Ink)
     const edges: Array<[[number, number], [number, number], number]> = [
       [P(x0, yb, zs), P(x1, yb, zs), x1 - x0],
       [P(xs, yb, z0), P(xs, yb, z1), z1 - z0],
@@ -814,7 +818,7 @@ export class Viewer {
       if (deg < -90) deg += 180;
       const mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
       const w = label.length * 7 + 8;
-      el('rect', { x: mx - w / 2, y: my - 16, width: w, height: 14, rx: 3, fill: 'rgba(255,255,255,0.9)', transform: `rotate(${deg} ${mx} ${my})` });
+      el('rect', { x: mx - w / 2, y: my - 16, width: w, height: 14, rx: 3, fill: labelBg, 'fill-opacity': 0.92, transform: `rotate(${deg} ${mx} ${my})` });
       const t = el('text', { x: mx, y: my - 5, 'text-anchor': 'middle', fill: color, 'font-size': 11.5, 'font-weight': 600, 'font-family': 'IBM Plex Sans, sans-serif', transform: `rotate(${deg} ${mx} ${my})` });
       t.textContent = label;
     }
@@ -822,7 +826,7 @@ export class Viewer {
 
   /** Cursor at rest: zoom region, else + / − for Ctrl / Shift (add to / remove from the selection). */
   private idleCursor(e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }): string {
-    return this.zoomRegionArmed ? CURSOR.zoom : modifierCursor(e);
+    return this.zoomRegionArmed ? this.cur.zoom : modifierCursor(e, this.cur);
   }
 
   /** Shows or hides the orbit centre marker at a world point. */
@@ -965,8 +969,8 @@ export class Viewer {
       e.preventDefault();
       c.setPointerCapture(e.pointerId);
       drag = { mode, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pivot: this.orbitPivot(), moved: false, recorded: false };
-      if (mode === 'orbit') c.style.cursor = CURSOR.orbit;
-      else if (mode === 'pan') c.style.cursor = CURSOR.pan;
+      if (mode === 'orbit') c.style.cursor = this.cur.orbit;
+      else if (mode === 'pan') c.style.cursor = this.cur.pan;
     };
 
     const onMove = (e: PointerEvent) => {
@@ -1126,6 +1130,7 @@ export class Viewer {
   }
 
   applyTheme(): void {
+    this.cur = cursorsFor(isDarkColor(getComputedStyle(this.container).getPropertyValue('--viewport')));
     const t = readViewerTokens(this.container);
     const set = (m: ShaderMaterial | null, name: string, c: Rgba) => m?.uniforms[name]?.value.setRGB(c.r, c.g, c.b);
     const setMesh = (name: string, c: Rgba) => {

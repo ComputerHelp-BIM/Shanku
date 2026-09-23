@@ -20,7 +20,7 @@ import { wheelZoomFactor } from './cameraMath';
 import { readViewerTokens, parseCssColor, type Rgba } from './cssColor';
 import { resolvePalette, toCss } from './drawingColors';
 import { tempDims, type Dim2 } from './tempDims';
-import { CURSOR, modifierCursor } from './cursors';
+import { cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './cursors';
 
 export interface DrawingViewerEvents {
   /** Cursor position in real drawing coordinates (origin added back), or null when outside. */
@@ -83,6 +83,9 @@ export class DrawingViewer {
   private highlightMat = new LineBasicMaterial({ depthTest: false, transparent: true, opacity: 1 });
   private accentCss = '#D9761E';
   private dimCss = '#2F7FD8';
+  private plateCss = '#FFFFFF';
+  /** Cursors drawn for the canvas: dark on Paper, light on Ink. */
+  private cur: CursorSet = cursorsFor(false);
   /** Selected geometry for the overlay: segments per selected entity, and temporary dimensions. */
   private selSegs: Array<Array<[number, number, number, number]>> = [];
   private dims: Dim2[] = [];
@@ -394,7 +397,7 @@ export class DrawingViewer {
     ctx.lineWidth = 1 * dpr;
     for (const [x, y] of grips.values()) {
       ctx.fillStyle = this.dimCss;
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = this.plateCss;
       ctx.fillRect(sx(x) - g / 2, sy(y) - g / 2, g, g);
       ctx.strokeRect(sx(x) - g / 2, sy(y) - g / 2, g, g);
     }
@@ -438,8 +441,10 @@ export class DrawingViewer {
       ctx.translate(mx, my);
       ctx.rotate(r);
       const w = ctx.measureText(label).width + 8 * dpr;
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = this.plateCss;
       ctx.fillRect(-w / 2, -16 * dpr, w, 15 * dpr);
+      ctx.globalAlpha = 1;
       ctx.fillStyle = this.dimCss;
       ctx.fillText(label, 0, -3 * dpr);
       ctx.restore();
@@ -551,7 +556,7 @@ export class DrawingViewer {
       e.preventDefault();
       c.setPointerCapture(e.pointerId);
       drag = { x: e.clientX, y: e.clientY };
-      c.style.cursor = CURSOR.pan;
+      c.style.cursor = this.cur.pan;
     };
     let hoverQueued = false;
     let lastHoverEv: PointerEvent | null = null;
@@ -596,7 +601,7 @@ export class DrawingViewer {
         this.select(next);
         this.events.onSelect?.(next);
       }
-      c.style.cursor = modifierCursor(e);
+      c.style.cursor = modifierCursor(e, this.cur);
       click = null;
       drag = null;
       if (c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
@@ -613,7 +618,7 @@ export class DrawingViewer {
     const noAuto = (e: MouseEvent) => e.button === 1 && e.preventDefault();
     let over = false;
     const onKeyMod = (e: KeyboardEvent) => {
-      if (over && !drag && (e.key === 'Control' || e.key === 'Shift' || e.key === 'Meta')) c.style.cursor = modifierCursor(e);
+      if (over && !drag && (e.key === 'Control' || e.key === 'Shift' || e.key === 'Meta')) c.style.cursor = modifierCursor(e, this.cur);
     };
     const onEnter = () => (over = true);
     const onOut = () => (over = false);
@@ -667,6 +672,8 @@ export class DrawingViewer {
     this.accentCss = getComputedStyle(this.container).getPropertyValue('--accent').trim() || '#D9761E';
     this.highlightMat.color.set(this.accentCss);
     this.dimCss = getComputedStyle(this.container).getPropertyValue('--select-window').trim() || '#2F7FD8';
+    this.plateCss = getComputedStyle(this.container).getPropertyValue('--viewport').trim() || '#FFFFFF';
+    this.cur = cursorsFor(isDarkColor(this.plateCss));
     this.requestRender();
   }
 

@@ -1,4 +1,5 @@
-# @shanku/brand 1.3.0
+# @shanku/brand 1.4.0
+# @shanku/brand 1.2.1
 
 Logos, the custom structural icon set and the brand book (`BRAND.md`, the full design-system guidelines: voice, themes, colour rules, type, iconography, layout, shortcuts, accessibility).
 
@@ -19,8 +20,13 @@ Round 1: 20 icons on a 24 px grid, 1.5 px round strokes, `currentColor`. `icons.
 
 ## Changelog
 
+### 1.4.0 — 2026-09-23
+- Added the template icon (View Templates). Includes the visibility icon (1.3.0) and BRAND.md (1.2.1 on the design-system branch).
+
 ### 1.3.0 — 2026-09-23
 - Added the visibility icon (Visibility/Graphics).
+### 1.2.1 — 2026-09-23
+- BRAND.md: focus ring, control borders, elevation, stacking and view-mode frames (@shanku/tokens 1.2.0); accessibility rules now state the 3:1 floor and the build-time contrast check.
 
 ### 1.2.0 — 2026-09-22
 - Added edges, reveal, undo, redo and isolate icons.

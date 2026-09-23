@@ -43,6 +43,8 @@ import { QuickAccess } from './components/QuickAccess';
 import { ContextMenu, item, sep, type MenuItem } from './components/ContextMenu';
 import { ElementGraphicsDialog, VisibilityGraphicsDialog } from './components/VisibilityGraphics';
 import { FiltersManager } from './components/Filters';
+import { ViewTemplatesDialog } from './components/ViewTemplates';
+import { applyTemplate, loadTemplates, saveTemplates, templateFromView, type ViewState, type ViewTemplate } from './lib/viewTemplates';
 import type { AppliedFilter, ViewFilter } from './lib/filters';
 import { EMPTY_GRAPHICS, countOverrides, resolveGraphics, type CategoryOverrides, type GraphicsOverride, type ViewGraphics } from './lib/visibility';
 import { DockWorkspace, type DockWorkspaceHandle, type PanelId } from './components/DockWorkspace';
@@ -50,7 +52,7 @@ import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.18.0';
+const APP_VERSION = '0.19.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -114,6 +116,15 @@ export function App({ start }: { start?: AppStart } = {}) {
   const [vgOpen, setVgOpen] = useState<{ focus?: string } | null>(null);
   const [elemVgOpen, setElemVgOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // View Templates (kept on this device, shared by export / import)
+  const [templates, setTemplatesState] = useState<ViewTemplate[]>(loadTemplates);
+  const setTemplates = (t: ViewTemplate[]) => {
+    setTemplatesState(t);
+    saveTemplates(t);
+  };
+  const [vtOpen, setVtOpen] = useState(false);
+  const [vtFocus, setVtFocus] = useState<{ id: string; rename: boolean } | null>(null);
+  const [vtMenu, setVtMenu] = useState<{ x: number; y: number } | null>(null);
   const graphicsFor = useRef<string | null>(null);
   // Save the view's graphics per file (after they were loaded for it, so a reset never overwrites them).
   useEffect(() => {
@@ -419,6 +430,21 @@ export function App({ start }: { start?: AppStart } = {}) {
     changeGraphics(o ? 'Override Graphics in View' : 'Reset element graphics', { ...graphicsRef.current, elements });
   };
 
+  const viewState = (): ViewState => ({ graphics: graphicsRef.current, displayStyle, edges });
+  /** Revit: Apply Template Properties to Current View, as one undoable step named after the template. */
+  const applyViewTemplate = (t: ViewTemplate) => {
+    const before = viewState();
+    const after = applyTemplate(before, t);
+    history.run(`Apply View Template: ${t.name}`, (tx) =>
+      tx.change('view-state', before, after, (v) => {
+        setGraphics(v.graphics);
+        setDisplayStyle(v.displayStyle);
+        setEdges(v.edges);
+      }),
+    );
+    m.log(`Applied view template ${t.name}.`);
+  };
+
   /** Commands the right-click menu can repeat (Revit's Repeat Last Command). */
   const run = (id: CommandId, label: string) => {
     setLastCommand({ id, label });
@@ -617,6 +643,16 @@ export function App({ start }: { start?: AppStart } = {}) {
               shortcutHint="canvas theme, separate from the interface"
             />
             <RibbonButton icon="visibility" label="Visibility/ Graphics" active={!!vgOpen || countOverrides(graphics) > 0} disabled={!m.model} onClick={() => setVgOpen({})} shortcutHint="VG" />
+            <RibbonButton
+              icon="template"
+              label="View Templates"
+              disabled={!m.model}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setVtMenu({ x: r.left, y: r.bottom + 4 });
+              }}
+              shortcutHint="apply, create or manage view templates"
+            />
             <RibbonButton icon="edges" label="Edges" active={edges} disabled={!m.model} onClick={() => setEdges((v) => !v)} shortcutHint="show or hide model edges" />
             <RibbonButton icon="reveal" label="Reveal" active={reveal} disabled={!m.model} onClick={() => setReveal((v) => !v)} shortcutHint="reveal hidden elements (RH)" />
           </RibbonGroup>
@@ -804,6 +840,27 @@ export function App({ start }: { start?: AppStart } = {}) {
                   </table>
                 )}
           </FloatingWindow>
+          {vtMenu && m.model ? (
+            <ContextMenu
+              x={vtMenu.x}
+              y={vtMenu.y}
+              onClose={() => setVtMenu(null)}
+              items={[
+                item('Apply Template Properties to Current View', undefined, {
+                  disabled: !templates.length,
+                  submenu: templates.map((t) => item(t.name, () => applyViewTemplate(t))),
+                }),
+                item('Create Template from Current View', () => {
+                  const t = templateFromView(`Structural 3D ${templates.length + 1}`, viewState());
+                  setTemplates([...templates, t]);
+                  setVtFocus({ id: t.id, rename: true });
+                  setVtOpen(true);
+                  m.log(`Created view template ${t.name} from the current view.`);
+                }),
+                item('Manage View Templates…', () => setVtOpen(true)),
+              ]}
+            />
+          ) : null}
           {ctxMenu && m.model ? (
             <ContextMenu x={ctxMenu.x} y={ctxMenu.y} onClose={() => setCtxMenu(null)} items={contextItems()} />
           ) : null}
@@ -831,6 +888,9 @@ export function App({ start }: { start?: AppStart } = {}) {
                 onClose={() => setFiltersOpen(false)}
               />
             ) : null}
+          </FloatingWindow>
+          <FloatingWindow id="view-templates" title="View Templates" open={vtOpen} onClose={() => setVtOpen(false)} initial={{ w: 820, h: 460 }} minWidth={620} minHeight={320}>
+            <ViewTemplatesDialog templates={templates} current={viewState()} onChange={setTemplates} onApplyToView={applyViewTemplate} onClose={() => setVtOpen(false)} onLog={m.log} focus={vtFocus} />
           </FloatingWindow>
           <FloatingWindow id="vg-element" title="View-Specific Element Graphics" open={elemVgOpen && sel.length > 0} onClose={() => setElemVgOpen(false)} initial={{ w: 420, h: 260 }} minWidth={360} minHeight={220}>
             <ElementGraphicsDialog count={sel.length} value={sel.length ? graphics.elements[sel[0]] ?? {} : {}} onApply={applyElementGraphics} onClose={() => setElemVgOpen(false)} />

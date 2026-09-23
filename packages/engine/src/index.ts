@@ -17,5 +17,5 @@ export type { PipelineOptions } from './dxf/protocol';
 export { PYODIDE_VERSION, PYODIDE_INDEX_URL } from './pyodide';
 export { History, Transaction, TransactionError, type Change, type CommittedTransaction } from './doc/transactions';
 export { tempDims, type Dim2 } from './render/tempDims';
-export { CURSOR, modifierCursor } from './render/cursors';
-export const ENGINE_VERSION = '0.16.0';
+export { CURSOR, cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './render/cursors';
+export const ENGINE_VERSION = '0.17.0';

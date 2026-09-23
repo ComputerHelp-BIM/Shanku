@@ -54,7 +54,10 @@ export function FloatingWindow({ id, title, subtitle, open, onClose, initial, mi
   useEffect(() => {
     if (!open) return;
     setZ(++topZ);
-    requestAnimationFrame(() => ref.current?.focus({ preventScroll: true }));
+    // Take focus for Esc, unless something inside (e.g. an autofocused field) already has it.
+    requestAnimationFrame(() => {
+      if (ref.current && !ref.current.contains(document.activeElement)) ref.current.focus({ preventScroll: true });
+    });
     setGeom((g) => clampGeom(g, minWidth, minHeight));
   }, [open, minWidth, minHeight]);
   useEffect(() => {

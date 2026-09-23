@@ -1,6 +1,9 @@
-# @shanku/web 0.18.0
+# @shanku/web 0.19.0
 
-The Shanku app. Requires `@shanku/engine >= 0.16.0`, `@shanku/ui >= 0.8.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.17.0`, `@shanku/ui >= 0.9.0`, `@shanku/tokens >= 1.0.0`.
+# @shanku/web 0.16.2
+
+The Shanku app. Requires `@shanku/engine >= 0.17.0`, `@shanku/ui >= 0.9.0`, `@shanku/tokens >= 1.2.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -22,6 +25,11 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 
 ## Changelog
 
+### 0.19.0 — 2026-09-23
+- **View Templates** (View → Graphics → View Templates ▾): Apply Template Properties to Current View, Create Template from Current View, Manage View Templates (New from view, Duplicate, Rename, Delete, Update from current view, Include switches for V/G Model, V/G Filters, Visual Style, Edges; Import / Export as JSON). Kept on this device; applying is one undoable step named after the template; element overrides stay with the view, as in Revit.
+- Cursors: dark on a Paper canvas, light on Ink.
+- Merged the design-system branch (tokens 1.2.0: WCAG contrast fixes, token-only CSS, `npm run lint:css`).
+
 ### 0.18.0 — 2026-09-23
 - **View filters** (Revit): a Filters manager (New / Duplicate / Delete, categories, rules on Mark, Level, Type, Name, Grade, IFC class, Volume, Length with equals / contains / begins with / ends with / greater / less, AND or OR, live match count, value suggestions from the model) and a **Filters tab in Visibility/Graphics** (enable, visibility, colour, transparency, halftone, priority ↑↓). Precedence: element override > first matching filter > category. Undoable.
 - **Session kept across reloads**: the open model, open drawings and each file's Visibility/Graphics are stored in IndexedDB on this device and restored; closing a file forgets it.
@@ -33,6 +41,13 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 - **Override Graphics in View** from the right-click menu: By Element… (View-Specific Element Graphics: colour, transparency, halftone, Reset; wins over the category) and By Category… (opens VG on that category).
 - Elements hidden by the view are separate from Temporary Hide/Isolate: HR does not bring them back and the cyan frame shows only for temporary hides.
 - Deployment: `vercel.json` and `docs/deploy.md` (Vercel builds from the repository root into `apps/web/dist`).
+### 0.16.2 — 2026-09-23
+- Accessibility: visible focus rings and input, select and button edges now meet 3:1 contrast in both themes; orange text and faint text meet 4.5:1 everywhere.
+- The Temporary Hide/Isolate label is dark on the cyan frame (white was 2.8:1).
+- All colours, shadows and stacking layers in `app.css` and `home.css` now come from @shanku/tokens 1.2.0. Menus share one shadow (the right-click menu's was slightly larger) and floating dock groups use the FloatingWindow shadow.
+
+### 0.16.1 — 2026-09-23
+- Fixed: buttons, ribbon buttons and tabs now use IBM Plex Sans instead of the browser default font (@shanku/ui 0.7.1).
 
 ### 0.16.0 — 2026-09-22
 - **Right-click menus in the 3D view**, in Revit's layout: without a selection (Cancel, Repeat, Select Previous, Find in Project Browser, Zoom In Region, Zoom Out (2x), Zoom To Fit, Previous / Next Pan/Zoom, Browsers, Properties) and with one (plus Hide in View ▸ Elements / Category, Override Graphics ▸, Create Similar, Edit Family, Select All Instances ▸ Visible in View / In Entire Project, Delete). Entries that need editing or Visibility/Graphics are shown greyed, as in Revit.

@@ -2,10 +2,32 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.19.0 — 2026-09-23
+
+### Added
+- View Templates: create from the current view, include switches, apply as one undoable step, export / import JSON.
+
+### Changed
+- Cursors follow the canvas theme (dark on Paper, light on Ink); dimension plates and grips use the canvas colour.
+- Merged `claude/design-system-extraction-7vri1d` (c96726f): tokens 1.2.0 WCAG contrast fixes, token-only CSS, stylelint guard in CI.
+
+### Fixed
+- Floating windows stealing focus from a field that was focused on open.
+
 ## 0.18.0 — 2026-09-23
 
 ### Added
 - View filters (manager + VG Filters tab); session persistence (IndexedDB); fullscreen toggle; logo opens the homepage in a new tab; Revit cursors; Shift + right-drag orbit; Ctrl / Shift selection in DXF.
+## 0.16.2 — 2026-09-23
+
+### Added
+- Design tokens 1.2.0: `focus-ring`, `control-border`, shadow and z-index layers, and tokens for every colour that was hard-coded in app CSS.
+- A contrast check in the tokens build (94 colour pairs, both themes) and `npm run lint:css` (stylelint, also in CI) rejecting raw colours and ad-hoc z-index values.
+
+### Fixed
+- Focus rings, control borders, orange text, faint text on Ink and the Temporary Hide/Isolate label now meet WCAG 2 contrast.
+
+## 0.16.1 — 2026-09-23
 
 ### Fixed
 - Controls using the browser font instead of IBM Plex Sans (button reset), merged from `claude/design-system-extraction-7vri1d`.
