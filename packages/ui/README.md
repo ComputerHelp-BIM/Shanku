@@ -1,6 +1,6 @@
-# @shanku/ui 0.7.1
+# @shanku/ui 0.8.0
 
-React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.0.0` and `@shanku/brand >= 1.0.0`.
+React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.2.0` and `@shanku/brand >= 1.0.0`.
 
 ```tsx
 import '@shanku/tokens/tokens.css';
@@ -33,6 +33,12 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.8.0 — 2026-09-23
+- Requires @shanku/tokens 1.2.0.
+- Focus outlines and the focused property field use `focus-ring` (3:1 on every surface; the Paper outline was 2.5:1).
+- Secondary buttons and the command search use `control-border` (3:1; on Paper they were 1.3–1.5:1 and 1.3:1).
+- `FloatingWindow` uses `shadow-window`. No hard-coded colours remain in `styles.css`.
 
 ### 0.7.1 — 2026-09-23
 - Fixed: buttons, ribbon buttons and tabs showed the browser's default font instead of IBM Plex Sans. The document-colour view-tab rules had been pasted into the middle of the shared button reset's selector list, so `font: inherit; color: inherit; cursor: pointer` never applied to those controls. The reset is restored and the view-tab rules now sit with the other view-tab styles.

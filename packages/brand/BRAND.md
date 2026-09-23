@@ -28,9 +28,15 @@ Two themes from one token set: **Paper** (light, the default when the OS is ligh
 
 ## Colour
 
-**The one rule: orange (`accent`) means selected, or the brand. It never means a warning and never marks a category.** Use `accent-text` for orange text; `accent` itself fails contrast as text.
+**The one rule: orange (`accent`) means selected, or the brand. It never means a warning and never marks a category.** Use `accent-text` for orange text; `accent` itself fails contrast as text. Keyboard focus is a 2 px `focus-ring` outline, a darker orange on Paper so it stays visible on every surface.
 
 Chrome is neutral: `bg` for the ground, `panel` for dock panels, `ribbon` for the ribbon and status bar, `viewport` for the working surface. Panels are deliberately a shade apart from the viewport so the model area always reads as the work surface.
+
+**Edges.** `border` for hairlines between panels and rows, `border-strong` for menu and window edges. Anything you can type in or press (inputs, selects, secondary buttons, the command search) takes `control-border`, which stays at 3:1 on every surface.
+
+**Elevation.** Only things that float get a shadow: `shadow-tooltip`, `shadow-menu`, `shadow-window` (and `shadow-hero` on the homepage). Stacking follows the `z-*` layers, from view overlays up to the context menu. Modal dialogs dim the app with `scrim`.
+
+**View modes.** Reveal Hidden Elements draws a `reveal-frame` (magenta) around the view and Temporary Hide/Isolate a `temp-hide-frame` (cyan), each with its `on-…` label colour. The ViewCube keeps its light Revit grey (`viewcube-*`) in both themes.
 
 **3D view.** Elements are neutral concrete by default (`concrete-top`, `concrete-side`, `concrete-shade`), which keeps the selection (`selected-*`) unmistakable. Hover is an outline only (`hover-outline`). Edges follow the theme: `edge-model` is dark ink on Paper and soft off-white on Ink, never black on dark.
 
@@ -62,4 +68,4 @@ Keyboard: `Ctrl K` opens the command palette. `` Ctrl ` `` toggles the bottom pa
 
 ## Accessibility
 
-All text meets 4.5:1 against the surface its token note names, in both themes. Status is never shown by colour alone. Every icon-only button has an accessible label, and every action in the ribbon is reachable from the command palette.
+All text meets 4.5:1 against every surface its token note names, in both themes; focus rings and control borders meet 3:1. The tokens build checks these pairs and fails if one drops below. Status is never shown by colour alone. Every icon-only button has an accessible label, and every action in the ribbon is reachable from the command palette.

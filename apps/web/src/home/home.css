@@ -5,18 +5,18 @@
 .home h1, .home h2, .home h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
 .home-loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); color: var(--text-secondary); font-family: var(--font-sans); }
 
-.home-nav { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 28px; height: 60px; padding: 0 max(24px, calc((100% - 1120px) / 2)); background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+.home-nav { position: sticky; top: 0; z-index: var(--z-nav); display: flex; align-items: center; gap: 28px; height: 60px; padding: 0 max(24px, calc((100% - 1120px) / 2)); background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
 .home-brand { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-family: var(--font-display, 'Sora', sans-serif); font-weight: 600; font-size: 19px; }
 .home-nav nav { display: flex; gap: 22px; flex: 1; }
 .home-nav nav a { text-decoration: none; color: var(--text-secondary); font-size: 14px; }
 .home-nav nav a:hover { color: var(--text); }
 
-.home-btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: var(--radius-md); border: 1px solid var(--border-strong); background: var(--panel); color: var(--text); font: 600 14px/1 var(--font-sans); cursor: pointer; text-decoration: none; }
+.home-btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border-radius: var(--radius-md); border: 1px solid var(--control-border); background: var(--panel); color: var(--text); font: 600 14px/1 var(--font-sans); cursor: pointer; text-decoration: none; }
 .home-btn:hover { border-color: var(--text-faint); }
-.home-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--brand-ink, #17191E); }
+.home-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--brand-ink); }
 .home-btn--primary:hover { filter: brightness(1.05); border-color: var(--accent); }
 .home-btn--lg { height: 46px; padding: 0 24px; font-size: 16px; border-radius: var(--radius-lg); }
-.home-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.home-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 .home-hero { max-width: 1120px; margin: 0 auto; padding: 72px 24px 40px; text-align: center; }
 .home-badge { display: inline-block; margin: 0 0 20px; padding: 4px 12px; border-radius: 20px; background: var(--chip); color: var(--text-secondary); font-size: 13px; }
@@ -28,7 +28,7 @@
 .home-drop strong { color: var(--text); font-size: 15px; }
 .home-drop.is-over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .home-drop__note { color: var(--status-error); }
-.home-hero__shot { display: block; width: 100%; height: auto; margin: 48px auto 0; border-radius: var(--radius-xl); border: 1px solid var(--border); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.14); }
+.home-hero__shot { display: block; width: 100%; height: auto; margin: 48px auto 0; border-radius: var(--radius-xl); border: 1px solid var(--border); box-shadow: var(--shadow-hero); }
 
 .home-section { max-width: 1120px; margin: 0 auto; padding: 72px 24px 0; }
 .home-kicker { margin: 0 0 10px; color: var(--accent-text); font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -37,7 +37,7 @@
 
 .home-steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
 .home-steps li { padding: 22px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--panel); }
-.home-steps__n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 14px; background: var(--accent); color: var(--brand-ink, #17191E); font-weight: 600; font-size: 14px; }
+.home-steps__n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 14px; background: var(--accent); color: var(--brand-ink); font-weight: 600; font-size: 14px; }
 .home-steps h3 { margin-top: 14px; font-size: 18px; }
 .home-steps p, .home-grid p { margin: 6px 0 0; color: var(--text-secondary); font-size: 15px; }
 .home-good { margin: 28px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--text-secondary); }

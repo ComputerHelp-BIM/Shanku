@@ -2,6 +2,15 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.16.2 — 2026-09-23
+
+### Added
+- Design tokens 1.2.0: `focus-ring`, `control-border`, shadow and z-index layers, and tokens for every colour that was hard-coded in app CSS.
+- A contrast check in the tokens build (94 colour pairs, both themes) and `npm run lint:css` (stylelint, also in CI) rejecting raw colours and ad-hoc z-index values.
+
+### Fixed
+- Focus rings, control borders, orange text, faint text on Ink and the Temporary Hide/Isolate label now meet WCAG 2 contrast.
+
 ## 0.16.1 — 2026-09-23
 
 ### Fixed

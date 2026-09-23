@@ -1,6 +1,6 @@
-# @shanku/web 0.16.1
+# @shanku/web 0.16.2
 
-The Shanku app. Requires `@shanku/engine >= 0.14.0`, `@shanku/ui >= 0.7.1`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.14.0`, `@shanku/ui >= 0.8.0`, `@shanku/tokens >= 1.2.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.16.2 — 2026-09-23
+- Accessibility: visible focus rings and input, select and button edges now meet 3:1 contrast in both themes; orange text and faint text meet 4.5:1 everywhere.
+- The Temporary Hide/Isolate label is dark on the cyan frame (white was 2.8:1).
+- All colours, shadows and stacking layers in `app.css` and `home.css` now come from @shanku/tokens 1.2.0. Menus share one shadow (the right-click menu's was slightly larger) and floating dock groups use the FloatingWindow shadow.
 
 ### 0.16.1 — 2026-09-23
 - Fixed: buttons, ribbon buttons and tabs now use IBM Plex Sans instead of the browser default font (@shanku/ui 0.7.1).

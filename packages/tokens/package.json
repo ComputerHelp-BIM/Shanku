@@ -1,6 +1,6 @@
 {
   "name": "@shanku/tokens",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Shanku design tokens (Paper and Ink themes) as CSS custom properties and a typed JS object.",
   "license": "UNLICENSED",
   "type": "module",
@@ -22,6 +22,7 @@
     "*.css"
   ],
   "scripts": {
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/check-contrast.mjs && node scripts/build.mjs",
+    "check:contrast": "node scripts/check-contrast.mjs"
   }
 }
