@@ -1,4 +1,4 @@
-# @shanku/ui 0.7.0
+# @shanku/ui 0.7.1
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.0.0` and `@shanku/brand >= 1.0.0`.
 
@@ -33,6 +33,9 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.7.1 — 2026-09-23
+- Requires @shanku/brand 1.3.0 (visibility icon). No API change.
 
 ### 0.7.0 — 2026-09-22
 - Added `ThemeIcon`: sun (light), moon (dark) and a half-filled circle for Auto, so Auto never looks like Light or Dark.

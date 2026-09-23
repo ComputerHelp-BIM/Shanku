@@ -30,6 +30,9 @@ import {
   DISPLAY_SHADED,
   DISPLAY_WIREFRAME,
   STATE_GLASS,
+  OVERRIDE_COLOR,
+  OVERRIDE_HALFTONE,
+  createOverrideTexture,
   STATE_HIDDEN,
   STATE_HOVER,
   STATE_SELECTED,
@@ -106,6 +109,7 @@ export class Viewer {
   private frameHeight = 10;
   private model: ParsedModel | null = null;
   private state: DataTexture | null = null;
+  private overrideTex: DataTexture | null = null;
   private stateData: Uint8Array | null = null;
   private meshMat: ShaderMaterial | null = null;
   private glassMat: ShaderMaterial | null = null;
@@ -198,10 +202,11 @@ export class Viewer {
     if (!model) return this.requestRender();
 
     this.state = createStateTexture(model.elements.length);
+    this.overrideTex = createOverrideTexture(model.elements.length);
     this.stateData = this.state.image.data as Uint8Array;
-    this.meshMat = createModelMaterial(this.state);
+    this.meshMat = createModelMaterial(this.state, this.overrideTex);
     // Second pass for windows and doors: same geometry, transparent, drawn after the opaque model.
-    this.glassMat = createModelMaterial(this.state);
+    this.glassMat = createModelMaterial(this.state, this.overrideTex);
     this.glassMat.uniforms.uPass.value = 1;
     this.glassMat.transparent = true;
     this.glassMat.depthWrite = false;
@@ -209,8 +214,8 @@ export class Viewer {
     model.elements.forEach((e) => {
       if (e.ifcClass === 'IfcWindow' || e.ifcClass === 'IfcDoor') this.stateData![e.index * 4] |= STATE_GLASS;
     });
-    this.edgeMat = createEdgeMaterial(this.state);
-    this.pickMat = createPickMaterial(this.state);
+    this.edgeMat = createEdgeMaterial(this.state, this.overrideTex);
+    this.pickMat = createPickMaterial(this.state, this.overrideTex);
     for (const m of [this.meshMat, this.edgeMat, this.pickMat]) m.clippingPlanes = this.clipPlanes;
     this.applyTheme();
 
@@ -258,6 +263,8 @@ export class Viewer {
     this.edgeMat?.dispose();
     this.pickMat?.dispose();
     this.state?.dispose();
+    this.overrideTex?.dispose();
+    this.overrideTex = null;
     this.meshMat = this.edgeMat = this.pickMat = null;
     this.state = this.stateData = null;
     this.selection.clear();
@@ -586,6 +593,32 @@ export class Viewer {
   /** Camera orientation (camera to world), for the ViewCube. */
   get orientation(): Quaternion {
     return this.camera.quaternion.clone();
+  }
+
+  /**
+   * Visibility/Graphics overrides per element (replaces all previous ones): surface colour (0-255 RGB),
+   * transparency 0-100 % and halftone. Elements not listed have none.
+   */
+  setOverrides(list: Iterable<{ index: number; color?: readonly [number, number, number] | null; transparency?: number; halftone?: boolean }>): void {
+    const tex = this.overrideTex;
+    if (!tex) return;
+    const data = tex.image.data as Uint8Array;
+    data.fill(0);
+    for (const o of list) {
+      const i = o.index * 4;
+      if (i < 0 || i + 3 >= data.length) continue;
+      let flags = Math.round((Math.min(100, Math.max(0, o.transparency ?? 0)) / 100) * 63);
+      if (o.halftone) flags |= OVERRIDE_HALFTONE;
+      if (o.color) {
+        flags |= OVERRIDE_COLOR;
+        data[i] = o.color[0];
+        data[i + 1] = o.color[1];
+        data[i + 2] = o.color[2];
+      }
+      data[i + 3] = flags;
+    }
+    tex.needsUpdate = true;
+    this.requestRender();
   }
 
   /** Model edges on or off (Graphics → Edges). */

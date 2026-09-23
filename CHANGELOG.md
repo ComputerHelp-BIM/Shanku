@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.17.0 — 2026-09-23
+
+### Added
+- Visibility/Graphics by category and Override Graphics in View by element (colour, transparency, halftone, visibility), undoable.
+- `vercel.json` and deployment notes; the failed Vercel deployments were a missing output setting and a project rooted at `apps/web`.
+
 ## 0.16.0 — 2026-09-22
 
 ### Added

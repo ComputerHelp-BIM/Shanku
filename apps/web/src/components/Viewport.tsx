@@ -31,6 +31,10 @@ export interface ViewportProps {
   onBoxSelect: (indices: number[], mode: SelectMode) => void;
   onZoomRegionEnd?: () => void;
   onSectionBoxEdit?: (before: SectionBoxState, after: SectionBoxState) => void;
+  /** Visibility/Graphics overrides for the viewer. */
+  overrides?: Array<{ index: number; color: [number, number, number] | null; transparency: number; halftone: boolean }>;
+  /** Temporary Hide/Isolate is active (cyan frame); `hidden` also includes elements hidden by the view. */
+  temporary?: boolean;
   /** Right-click in the view. */
   onContextMenu?: (clientX: number, clientY: number) => void;
   /** Graphics → Edges */
@@ -103,6 +107,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   useEffect(() => viewer.current?.setDisplayStyle(displayStyle), [displayStyle, model]);
   useEffect(() => viewer.current?.setEdges(props.edges ?? true), [props.edges, model]);
   useEffect(() => viewer.current?.setReveal(!!props.reveal), [props.reveal, model]);
+  useEffect(() => viewer.current?.setOverrides(props.overrides ?? []), [props.overrides, model]);
   useEffect(() => viewer.current?.refreshTheme(), [props.canvasTheme]);
 
   useImperativeHandle(ref, () => ({
@@ -142,7 +147,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
         />
       ) : null}
       {props.reveal ? <div className="app-reveal-frame" aria-hidden="true"><span>Reveal Hidden Elements</span></div> : null}
-      {!props.reveal && props.hidden.length ? <div className="app-temp-frame" aria-hidden="true"><span>Temporary Hide/Isolate</span></div> : null}
+      {!props.reveal && props.temporary ? <div className="app-temp-frame" aria-hidden="true"><span>Temporary Hide/Isolate</span></div> : null}
       {tip && model?.elements[tip.index] ? (() => {
         const e = model.elements[tip.index];
         const r = host.current?.getBoundingClientRect();

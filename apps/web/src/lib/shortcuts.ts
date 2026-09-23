@@ -5,6 +5,7 @@ export type CommandId =
   | 'zoomRegion'
   | 'isolateElement'
   | 'hideCategory'
+  | 'visibilityGraphics'
   | 'revealHidden'
   | 'unhideElement'
   | 'isolateCategory'
@@ -30,6 +31,8 @@ export const SEQUENCES: Record<string, CommandId> = {
   HH: 'hideElement',
   HR: 'resetHidden',
   HC: 'hideCategory',
+  VG: 'visibilityGraphics',
+  VV: 'visibilityGraphics',
   RH: 'revealHidden',
   EU: 'unhideElement',
   WF: 'wireframe',
@@ -75,6 +78,7 @@ export const SHORTCUT_HELP: Array<{ keys: string; action: string }> = [
   { keys: 'HI · IC', action: 'Isolate element · isolate category' },
   { keys: 'HH · HR', action: 'Hide element · reset temporary hide/isolate' },
   { keys: 'HC', action: 'Hide the selected categories (temporary)' },
+  { keys: 'VG / VV', action: 'Visibility/Graphics: show, colour, transparency and halftone by category' },
   { keys: 'RH', action: 'Reveal Hidden Elements on/off (hidden show in magenta)' },
   { keys: 'EU', action: 'Unhide the selected elements (while revealing)' },
   { keys: 'BX', action: 'Section box around the selection (again to remove)' },

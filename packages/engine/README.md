@@ -1,4 +1,4 @@
-# @shanku/engine 0.14.0
+# @shanku/engine 0.15.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.15.0 — 2026-09-23
+- Visibility/Graphics overrides: a second per-element texture (colour, halftone, transparency 0-63 levels) read by every shader; `Viewer.setOverrides(list)`. A colour keeps the face's shading; halftone blends toward the paper and fades edges; transparent elements draw in the see-through pass with glass and the selection.
 
 ### 0.14.0 — 2026-09-22
 - Smooth camera transitions (ease in-out, ~0.45 s) for ViewCube clicks, Home, named views and Previous / Next Pan/Zoom; respects reduced motion.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import {
   AppShell,
   Button,
@@ -39,12 +39,14 @@ import { qaFocus, usePipeline } from './lib/usePipeline';
 import { useHistory } from './lib/useHistory';
 import { QuickAccess } from './components/QuickAccess';
 import { ContextMenu, item, sep, type MenuItem } from './components/ContextMenu';
+import { ElementGraphicsDialog, VisibilityGraphicsDialog } from './components/VisibilityGraphics';
+import { EMPTY_GRAPHICS, countOverrides, resolveGraphics, type CategoryOverrides, type GraphicsOverride, type ViewGraphics } from './lib/visibility';
 import { DockWorkspace, type DockWorkspaceHandle, type PanelId } from './components/DockWorkspace';
 import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.16.0';
+const APP_VERSION = '0.17.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -90,6 +92,12 @@ export function App({ start }: { start?: AppStart } = {}) {
   const [hideMenu, setHideMenu] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [browserFocus, setBrowserFocus] = useState<string | undefined>(undefined);
+  // Visibility/Graphics of the 3D view (per category, and per element via Override Graphics)
+  const [graphics, setGraphics] = useState<ViewGraphics>(EMPTY_GRAPHICS);
+  const graphicsRef = useRef(graphics);
+  graphicsRef.current = graphics;
+  const [vgOpen, setVgOpen] = useState<{ focus?: string } | null>(null);
+  const [elemVgOpen, setElemVgOpen] = useState(false);
   const [lastCommand, setLastCommand] = useState<{ id: CommandId; label: string } | null>(null);
   // Select Previous: the last non-empty selection before the current one.
   const prevSelection = useRef<number[]>([]);
@@ -153,6 +161,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   useEffect(() => {
     setHidden([]);
     setSectionBox(false);
+    setGraphics(EMPTY_GRAPHICS);
     history.clear();
     if (m.model) {
       setIfcColor((c) => c ?? nextDocColor(dx.docs.map((d) => d.color)));
@@ -296,6 +305,8 @@ export function App({ start }: { start?: AppStart } = {}) {
           setHidden((h) => [...new Set([...h, ...model.elements.filter((e) => cats.has(e.category)).map((e) => e.index)])]);
           return m.setSelection([]);
         }
+        case 'visibilityGraphics':
+          return setVgOpen({});
         case 'revealHidden':
           return setReveal((r) => !r);
         case 'unhideElement': {
@@ -344,6 +355,20 @@ export function App({ start }: { start?: AppStart } = {}) {
   }, [m.selection]);
 
   // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
+  const resolved = useMemo(() => (m.model ? resolveGraphics(m.model.elements, graphics) : { hidden: [], overrides: [] }), [m.model, graphics]);
+  const viewHidden = useMemo(() => (resolved.hidden.length ? [...new Set([...hidden, ...resolved.hidden])] : hidden), [hidden, resolved.hidden]);
+  const changeGraphics = (name: string, next: ViewGraphics) =>
+    history.run(name, (t) => t.change('view-graphics', graphicsRef.current, next, setGraphics));
+  const applyCategoryGraphics = (categories: CategoryOverrides) => changeGraphics('Visibility/Graphics', { ...graphicsRef.current, categories });
+  const applyElementGraphics = (o: GraphicsOverride | null) => {
+    const elements = { ...graphicsRef.current.elements };
+    for (const i of sel) {
+      if (o) elements[i] = o;
+      else delete elements[i];
+    }
+    changeGraphics(o ? 'Override Graphics in View' : 'Reset element graphics', { ...graphicsRef.current, elements });
+  };
+
   /** Commands the right-click menu can repeat (Revit's Repeat Last Command). */
   const run = (id: CommandId, label: string) => {
     setLastCommand({ id, label });
@@ -363,7 +388,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             submenu: [item('Elements', () => run('hideElement', 'Hide Elements'), { hint: 'HH' }), item('Category', () => run('hideCategory', 'Hide Category'), { hint: 'HC' })],
           }),
           item('Override Graphics in View', undefined, {
-            submenu: [item('By Element…', undefined, { disabled: true }), item('By Category…', undefined, { disabled: true })],
+            submenu: [item('By Element…', () => setElemVgOpen(true)), item('By Category…', () => setVgOpen({ focus: first?.category }))],
           }),
           sep,
           item('Create Similar', undefined, { disabled: true }),
@@ -535,6 +560,7 @@ export function App({ start }: { start?: AppStart } = {}) {
               onClick={cycleCanvasTheme}
               shortcutHint="canvas theme, separate from the interface"
             />
+            <RibbonButton icon="visibility" label="Visibility/ Graphics" active={!!vgOpen || countOverrides(graphics) > 0} disabled={!m.model} onClick={() => setVgOpen({})} shortcutHint="VG" />
             <RibbonButton icon="edges" label="Edges" active={edges} disabled={!m.model} onClick={() => setEdges((v) => !v)} shortcutHint="show or hide model edges" />
             <RibbonButton icon="reveal" label="Reveal" active={reveal} disabled={!m.model} onClick={() => setReveal((v) => !v)} shortcutHint="reveal hidden elements (RH)" />
           </RibbonGroup>
@@ -611,7 +637,9 @@ export function App({ start }: { start?: AppStart } = {}) {
             ref={viewport}
             model={m.model}
             selection={sel}
-            hidden={hidden}
+            hidden={viewHidden}
+            temporary={hidden.length > 0}
+            overrides={resolved.overrides}
             displayStyle={displayStyle}
             onPick={m.pick}
             onBoxSelect={m.boxSelect}
@@ -723,6 +751,20 @@ export function App({ start }: { start?: AppStart } = {}) {
           {ctxMenu && m.model ? (
             <ContextMenu x={ctxMenu.x} y={ctxMenu.y} onClose={() => setCtxMenu(null)} items={contextItems()} />
           ) : null}
+          <FloatingWindow id="vg" title="Visibility/Graphics Overrides for 3D View" subtitle={info?.fileName} open={!!vgOpen && !!m.model} onClose={() => setVgOpen(null)} initial={{ w: 760, h: 460 }} minWidth={560} minHeight={300}>
+            {m.model ? (
+              <VisibilityGraphicsDialog
+                categories={Object.entries(m.model.info.categories).map(([id, n]) => ({ id, label: CATEGORY_PLURAL[id as Category] ?? id, count: n ?? 0 }))}
+                value={graphics.categories}
+                focus={vgOpen?.focus}
+                onApply={applyCategoryGraphics}
+                onClose={() => setVgOpen(null)}
+              />
+            ) : null}
+          </FloatingWindow>
+          <FloatingWindow id="vg-element" title="View-Specific Element Graphics" open={elemVgOpen && sel.length > 0} onClose={() => setElemVgOpen(false)} initial={{ w: 420, h: 260 }} minWidth={360} minHeight={220}>
+            <ElementGraphicsDialog count={sel.length} value={sel.length ? graphics.elements[sel[0]] ?? {} : {}} onApply={applyElementGraphics} onClose={() => setElemVgOpen(false)} />
+          </FloatingWindow>
           <MarkRulesDialog open={markDialog} rules={m.markRules} defaults={DEFAULT_MARK_RULES} elements={m.model?.elements ?? []} onSave={(r) => history.run('Mark rules', (t) => t.change('mark-rules', m.markRules, r, (x) => void m.setMarkRules(x)))} onClose={() => setMarkDialog(false)} />
           <MarkRulesDialog
             open={gradeDialog}

@@ -1,6 +1,6 @@
-# @shanku/web 0.16.0
+# @shanku/web 0.17.0
 
-The Shanku app. Requires `@shanku/engine >= 0.14.0`, `@shanku/ui >= 0.7.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.15.0`, `@shanku/ui >= 0.7.1`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.17.0 — 2026-09-23
+- **Visibility/Graphics** (View → Graphics, or VG / VV), like Revit's Model Categories tab: visibility, surface colour, transparency and halftone per category; All / None / Invert / Clear overrides; OK / Cancel / Apply. Each Apply is one undoable transaction.
+- **Override Graphics in View** from the right-click menu: By Element… (View-Specific Element Graphics: colour, transparency, halftone, Reset; wins over the category) and By Category… (opens VG on that category).
+- Elements hidden by the view are separate from Temporary Hide/Isolate: HR does not bring them back and the cyan frame shows only for temporary hides.
+- Deployment: `vercel.json` and `docs/deploy.md` (Vercel builds from the repository root into `apps/web/dist`).
 
 ### 0.16.0 — 2026-09-22
 - **Right-click menus in the 3D view**, in Revit's layout: without a selection (Cancel, Repeat, Select Previous, Find in Project Browser, Zoom In Region, Zoom Out (2x), Zoom To Fit, Previous / Next Pan/Zoom, Browsers, Properties) and with one (plus Hide in View ▸ Elements / Category, Override Graphics ▸, Create Similar, Edit Family, Select All Instances ▸ Visible in View / In Entire Project, Delete). Entries that need editing or Visibility/Graphics are shown greyed, as in Revit.
