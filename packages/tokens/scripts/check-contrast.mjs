@@ -26,6 +26,7 @@ const RULES = [
   ['on-temp-hide-frame', ['temp-hide-frame'], 4.5, 'temporary hide/isolate label'],
   ['viewcube-text', ['viewcube-top', 'viewcube-side'], 4.5, 'ViewCube face labels'],
   ['viewcube-compass', ['viewcube-ring'], 4.5, 'ViewCube compass letters'],
+  ['on-viewcube-hot', ['viewcube-hot'], 4.5, 'ViewCube compass letters on hover'],
 ];
 
 function valueFor(name, theme) {

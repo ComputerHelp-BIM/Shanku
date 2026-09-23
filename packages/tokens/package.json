@@ -1,6 +1,6 @@
 {
   "name": "@shanku/tokens",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Shanku design tokens (Paper and Ink themes) as CSS custom properties and a typed JS object.",
   "license": "UNLICENSED",
   "type": "module",

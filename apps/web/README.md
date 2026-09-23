@@ -1,9 +1,6 @@
-# @shanku/web 0.19.0
+# @shanku/web 0.19.1
 
-The Shanku app. Requires `@shanku/engine >= 0.17.0`, `@shanku/ui >= 0.9.0`, `@shanku/tokens >= 1.0.0`.
-# @shanku/web 0.16.2
-
-The Shanku app. Requires `@shanku/engine >= 0.17.0`, `@shanku/ui >= 0.9.0`, `@shanku/tokens >= 1.2.0`.
+The Shanku app. Requires `@shanku/engine >= 0.17.0`, `@shanku/ui >= 0.9.1`, `@shanku/tokens >= 2.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -24,6 +21,10 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.19.1 — 2026-09-23
+- Accessibility: the ViewCube compass letters on hover are white on the new `viewcube-hot` blue (5.6:1); they were white on a 70% select-window tint (about 4:1 on Paper, 2.7:1 on Ink).
+- Uses @shanku/tokens 2.0.0 (`on-select-window` replaced by `on-viewcube-hot`).
 
 ### 0.19.0 — 2026-09-23
 - **View Templates** (View → Graphics → View Templates ▾): Apply Template Properties to Current View, Create Template from Current View, Manage View Templates (New from view, Duplicate, Rename, Delete, Update from current view, Include switches for V/G Model, V/G Filters, Visual Style, Edges; Import / Export as JSON). Kept on this device; applying is one undoable step named after the template; element overrides stay with the view, as in Revit.

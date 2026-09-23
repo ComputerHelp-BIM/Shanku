@@ -258,7 +258,7 @@
   --vc-ring: var(--viewcube-ring); --vc-hot: color-mix(in srgb, var(--select-window) 70%, transparent);
   opacity: 0.5; filter: grayscale(1); transition: opacity 0.2s, filter 0.2s; }
 /* Revit: the ViewCube is faded until you hover it or navigate; then it and its ring light up blue. */
-.vc.is-active { opacity: 1; filter: none; --vc-ring: color-mix(in srgb, var(--select-window) 55%, var(--on-select-window)); }
+.vc.is-active { opacity: 1; filter: none; --vc-ring: color-mix(in srgb, var(--select-window) 55%, var(--on-viewcube-hot)); }
 .vc-home { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 24px; height: 22px; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); cursor: pointer; }
 .vc-home:hover { color: var(--select-window); }
 .vc-stage { position: absolute; left: 0; right: 0; top: 18px; bottom: 0; display: grid; place-items: center; perspective: none; pointer-events: none; }
@@ -271,7 +271,7 @@
 .vc-ring { position: absolute; left: calc(50% - 59px); top: calc(50% - 59px); width: 118px; height: 118px; border-radius: 50%; box-sizing: border-box; pointer-events: none;
   border: 11px solid var(--vc-ring); box-shadow: 0 0 0 1px var(--viewcube-ring-edge), inset 0 0 0 1px var(--viewcube-ring-edge); transform-style: preserve-3d; }
 .vc-compass { position: absolute; left: -11px; top: -11px; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--viewcube-compass); font: 700 11px/18px var(--font-sans); cursor: pointer; pointer-events: auto; }
-.vc-compass:hover { background: var(--vc-hot); color: var(--on-select-window); }
+.vc-compass:hover { background: var(--viewcube-hot); color: var(--on-viewcube-hot); }
 .vc-menu-btn { position: absolute; right: 2px; bottom: 6px; width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid transparent; border-radius: var(--radius-sm); background: color-mix(in srgb, var(--panel) 80%, transparent); color: var(--text); cursor: pointer; }
 .vc-menu-btn:hover, .vc-menu-btn[aria-expanded='true'] { border-color: var(--border-strong); background: var(--panel); }
 .vc-menu { position: absolute; right: 0; top: 176px; z-index: var(--z-viewcube-menu); min-width: 200px; display: flex; flex-direction: column; padding: 4px; background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-menu); }
