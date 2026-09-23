@@ -1,4 +1,5 @@
 import { useState, type DragEvent } from 'react';
+import { useTheme } from '@shanku/ui';
 import { ShankuMark } from '@shanku/ui';
 import type { AppStart } from '../App';
 import './home.css';
@@ -27,11 +28,13 @@ const TOOLS = [
 ] as const;
 
 const SHOTS = [
-  ['shot-3d.webp', 'A structural frame in the 3D view', 'Revit-style workspace: ribbon, Project browser, Properties, ViewCube.'],
-  ['shot-boq.webp', 'Bill of quantities window', 'Quantities, dimensions, rates and amounts for every element.'],
-  ['shot-section.webp', 'Section box with grips', 'Drag an arrow to move a face; the cut updates live.'],
-  ['shot-console.webp', 'Python console', 'Ask the model questions in Python; answers come back as tables.'],
+  ['shot-3d', 'A structural frame in the 3D view', 'Revit-style workspace: ribbon, Project browser, Properties, ViewCube.'],
+  ['shot-boq', 'Bill of quantities window', 'Quantities, dimensions, rates and amounts for every element.'],
+  ['shot-section', 'Section box with grips', 'Drag an arrow to move a face; the cut updates live.'],
+  ['shot-console', 'Python console', 'Ask the model questions in Python; answers come back as tables.'],
 ] as const;
+
+const THEME_LABEL = { system: 'Theme: follows your system', paper: 'Theme: light', ink: 'Theme: dark' } as const;
 
 const SPECS = [
   ['Opens', 'IFC2x3, IFC4 (IFC4x3 experimental), DXF from AutoCAD R12 to 2018+'],
@@ -52,6 +55,9 @@ const FAQ = [
 ] as const;
 
 export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
+  const { preference, resolved, cycle } = useTheme();
+  // Screenshots come in both themes, so the page never shows a light app on a dark page.
+  const shot = (name: string) => `${BASE}home/${name}-${resolved === 'ink' ? 'ink' : 'paper'}.webp`;
   const [over, setOver] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -78,6 +84,13 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
           <a href="#faq">FAQ</a>
           <a href={REPO} target="_blank" rel="noreferrer">GitHub</a>
         </nav>
+        <button type="button" className="home-btn home-btn--icon" onClick={cycle} title={THEME_LABEL[preference]} aria-label={THEME_LABEL[preference]}>
+          {resolved === 'ink' ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" strokeLinecap="round" /></svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M20 13.5A8 8 0 1 1 10.5 4a6.5 6.5 0 0 0 9.5 9.5z" strokeLinejoin="round" /></svg>
+          )}
+        </button>
         <button type="button" className="home-btn home-btn--primary" onClick={() => onOpen()}>
           Open Shanku
         </button>
@@ -111,7 +124,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
             <span>It opens straight in the app, full screen.</span>
             {note ? <span className="home-drop__note">{note}</span> : null}
           </div>
-          <img className="home-hero__shot" src={`${BASE}home/shot-3d.webp`} alt="Shanku showing a structural frame in 3D with the Project browser, Properties and ViewCube" width={1440} height={900} />
+          <img className="home-hero__shot" src={shot('shot-3d')} alt="Shanku showing a structural frame in 3D with the Project browser, Properties and ViewCube" width={1440} height={900} />
         </section>
 
         <section id="how" className="home-section">
@@ -151,7 +164,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
           <div className="home-shots">
             {SHOTS.map(([f, alt, cap]) => (
               <figure key={f}>
-                <img src={`${BASE}home/${f}`} alt={alt} loading="lazy" width={1440} height={900} />
+                <img src={shot(f)} alt={alt} loading="lazy" width={1440} height={900} />
                 <figcaption>
                   <strong>{alt}</strong> {cap}
                 </figcaption>

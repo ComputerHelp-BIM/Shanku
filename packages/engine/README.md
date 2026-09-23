@@ -1,4 +1,4 @@
-# @shanku/engine 0.11.0
+# @shanku/engine 0.12.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,13 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.12.0 — 2026-09-22
+- Selected elements draw see-through (Revit-like): they move to the transparent pass, so what is behind them stays visible.
+- Section cuts read as solid: the cap colour is now a flat concrete tone between the top and side faces, not a dark hole.
+- Orbit shows the centre of rotation while dragging (selection, else section box, else model).
+- Selection box follows AutoCAD: drag right = window (blue, solid, fully inside), drag left = crossing (green, dashed, anything touched). Same in the DXF viewer, which gained box selection (`selectInRect`), multi-object highlight and per-entity bounds.
+- `refreshTheme()` on both viewers, for a canvas theme separate from the interface theme.
 
 ### 0.11.0 — 2026-09-22
 - Added transactions modelled on the Revit API (`History`, `Transaction`): named transactions that commit as one undo step or roll back completely, one open at a time, groups with `assimilate()` / `rollBackGroup()`, undo/redo lists and listeners. Built to be opened to plugins.

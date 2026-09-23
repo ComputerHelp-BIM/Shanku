@@ -30,6 +30,8 @@ export interface ViewportProps {
   edges?: boolean;
   /** Reveal Hidden Elements */
   reveal?: boolean;
+  /** Canvas (3D background) theme, independent of the interface theme. */
+  canvasTheme?: 'follow' | 'paper' | 'ink';
 }
 
 /** Hosts the engine's Viewer and keeps it in sync with React state. */
@@ -79,6 +81,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   useEffect(() => viewer.current?.setDisplayStyle(displayStyle), [displayStyle, model]);
   useEffect(() => viewer.current?.setEdges(props.edges ?? true), [props.edges, model]);
   useEffect(() => viewer.current?.setReveal(!!props.reveal), [props.reveal, model]);
+  useEffect(() => viewer.current?.refreshTheme(), [props.canvasTheme]);
 
   useImperativeHandle(ref, () => ({
     fit: (indices) => viewer.current?.fit(indices),
@@ -101,7 +104,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     );
   }
   return (
-    <div ref={host} className="app-viewport">
+    <div ref={host} className="app-viewport" data-theme={props.canvasTheme && props.canvasTheme !== 'follow' ? props.canvasTheme : undefined}>
       {model ? (
         <ViewCube
           orientation={orientation}

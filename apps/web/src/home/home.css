@@ -77,3 +77,4 @@
   .home-shots { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .home { scroll-behavior: auto; } }
+.home-btn--icon { width: 36px; padding: 0; }

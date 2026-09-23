@@ -1,4 +1,4 @@
-# @shanku/tokens 1.0.0
+# @shanku/tokens 1.1.0
 
 Design tokens for Shanku, generated from `tokens.json` (the approved design system).
 
@@ -24,6 +24,9 @@ Every colour token has a Paper and an Ink value. Spacing, radius, size and opaci
 - Edit `tokens.json`, run `npm run build`, bump the version.
 
 ## Changelog
+
+### 1.1.0 — 2026-09-22
+- Added `select-window` (blue) and `select-crossing` (green) for the selection box, following AutoCAD's convention.
 
 ### 1.0.0 — 2026-09-21
 - First release from the approved Shanku design system: 50 colour tokens (Paper and Ink), 8 type styles, spacing, radius, size and opacity scales.

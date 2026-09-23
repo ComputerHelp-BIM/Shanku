@@ -122,6 +122,7 @@ export class Viewer {
   private gizmoScene = new Scene();
   private hotGrip: Mesh | null = null;
   private raycaster = new Raycaster();
+  private pivotEl: HTMLDivElement;
   private edgesOn = true;
   private revealOn = false;
   private history: CameraState[] = [];
@@ -148,10 +149,17 @@ export class Viewer {
       position: 'absolute',
       display: 'none',
       pointerEvents: 'none',
-      border: '1px solid var(--accent)',
-      background: 'color-mix(in srgb, var(--accent) 8%, transparent)',
+      borderWidth: '1px',
+      borderStyle: 'solid',
     });
     container.appendChild(this.rectEl);
+    // Revit shows the centre of rotation while orbiting.
+    this.pivotEl = document.createElement('div');
+    Object.assign(this.pivotEl.style, {
+      position: 'absolute', display: 'none', pointerEvents: 'none', width: '11px', height: '11px', marginLeft: '-6px', marginTop: '-6px',
+      borderRadius: '6px', border: '2px solid var(--accent)', background: 'color-mix(in srgb, var(--accent) 35%, transparent)',
+    });
+    container.appendChild(this.pivotEl);
 
     this.camera = new OrthographicCamera(-1, 1, 1, -1, -1e4, 1e4);
     this.camera.up.copy(UP);
@@ -608,6 +616,17 @@ export class Viewer {
     this.requestRender();
   }
 
+  /** Shows or hides the orbit centre marker at a world point. */
+  private showPivot(p: Vector3 | null): void {
+    if (!p) {
+      this.pivotEl.style.display = 'none';
+      return;
+    }
+    const r = this.container.getBoundingClientRect();
+    const s = this.toScreen(p);
+    Object.assign(this.pivotEl.style, { display: 'block', left: `${s.x - r.left}px`, top: `${s.y - r.top}px` });
+  }
+
   private orbit(dxPx: number, dyPx: number, pivot: Vector3): void {
     const right = new Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
     const { position, target, rotation } = orbitAround(this.camera.position, this.target, pivot, UP, -dxPx * 0.008, -dyPx * 0.008, right);
@@ -641,7 +660,10 @@ export class Viewer {
       top: `${Math.min(y0, y1) - c.top}px`,
       width: `${Math.abs(x1 - x0)}px`,
       height: `${Math.abs(y1 - y0)}px`,
+      // AutoCAD convention: drag right (window, fully inside) blue and solid; drag left (crossing) green and dashed.
       borderStyle: dashed ? 'dashed' : 'solid',
+      borderColor: dashed ? 'var(--select-crossing, #1F9E89)' : 'var(--select-window, #2F7FD8)',
+      background: dashed ? 'color-mix(in srgb, var(--select-crossing, #1F9E89) 12%, transparent)' : 'color-mix(in srgb, var(--select-window, #2F7FD8) 12%, transparent)',
     });
   }
 
@@ -795,6 +817,7 @@ export class Viewer {
       drag = null;
       if (c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
       this.rectEl.style.display = 'none';
+      this.showPivot(null);
       if (d.mode === 'grip') {
         if (d.moved && d.start && this.sbox) this.events.onSectionBoxEdit?.(d.start, cloneState(this.sbox));
         return;
@@ -859,6 +882,11 @@ export class Viewer {
   }
 
   /** Re-reads colour tokens; runs automatically when the theme changes. */
+  /** Re-reads the theme from the container (used when the canvas theme changes). */
+  refreshTheme(): void {
+    this.applyTheme();
+  }
+
   applyTheme(): void {
     const t = readViewerTokens(this.container);
     const set = (m: ShaderMaterial | null, name: string, c: Rgba) => m?.uniforms[name]?.value.setRGB(c.r, c.g, c.b);
@@ -925,5 +953,6 @@ export class Viewer {
     this.renderer.dispose();
     this.canvas.remove();
     this.rectEl.remove();
+    this.pivotEl.remove();
   }
 }

@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@shanku/brand": "1.2.0",
-    "@shanku/tokens": "1.0.0"
+    "@shanku/tokens": "1.1.0"
   },
   "peerDependencies": {
     "react": "^18.2.0",

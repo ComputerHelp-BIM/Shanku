@@ -23,8 +23,8 @@ import { resolvePalette, toCss } from './drawingColors';
 export interface DrawingViewerEvents {
   /** Cursor position in real drawing coordinates (origin added back), or null when outside. */
   onCursor?: (x: number, y: number) => void;
-  /** A click picked a DXF object (index into drawing.handles), or empty space (null). */
-  onSelect?: (entity: number | null) => void;
+  /** Objects picked by a click or a selection box (indices into drawing.handles); empty when nothing. */
+  onSelect?: (entities: number[]) => void;
 }
 
 /** Pick box half-size in screen pixels, like AutoCAD's PICKBOX. */
@@ -72,7 +72,9 @@ export class DrawingViewer {
   private viewHeight = 1;
   private frameRequested = false;
   private disposers: Array<() => void> = [];
-  private selected: number | null = null;
+  private selected: number[] = [];
+  private bounds: Float32Array | null = null; // per entity: minx, miny, maxx, maxy
+  private rectEl: HTMLDivElement;
   private highlight: LineSegments | null = null;
   private highlightMat = new LineBasicMaterial({ depthTest: false, transparent: true, opacity: 1 });
   private accentCss = '#D9761E';
@@ -89,6 +91,9 @@ export class DrawingViewer {
     Object.assign(this.overlay.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none' });
     container.append(c, this.overlay);
     this.ctx2d = this.overlay.getContext('2d') as CanvasRenderingContext2D;
+    this.rectEl = document.createElement('div');
+    Object.assign(this.rectEl.style, { position: 'absolute', display: 'none', pointerEvents: 'none', borderWidth: '1px', borderStyle: 'solid' });
+    container.appendChild(this.rectEl);
     this.camera.position.set(0, 0, 5);
     const ro = new ResizeObserver(() => this.resize());
     ro.observe(container);
@@ -225,21 +230,81 @@ export class DrawingViewer {
     return null;
   }
 
+  /** Bounding box per entity, for box selection. */
+  private entityBounds(): Float32Array {
+    const d = this.drawing!;
+    if (this.bounds) return this.bounds;
+    const n = d.handles.length;
+    const b = new Float32Array(n * 4).fill(0);
+    const seen = new Uint8Array(n);
+    const add = (e: number, x: number, y: number) => {
+      const o = e * 4;
+      if (!seen[e]) {
+        seen[e] = 1;
+        b[o] = b[o + 2] = x;
+        b[o + 1] = b[o + 3] = y;
+        return;
+      }
+      b[o] = Math.min(b[o], x);
+      b[o + 1] = Math.min(b[o + 1], y);
+      b[o + 2] = Math.max(b[o + 2], x);
+      b[o + 3] = Math.max(b[o + 3], y);
+    };
+    for (let i = 0; i < d.segEnt.length; i++) {
+      add(d.segEnt[i], d.seg[i * 4], d.seg[i * 4 + 1]);
+      add(d.segEnt[i], d.seg[i * 4 + 2], d.seg[i * 4 + 3]);
+    }
+    for (let i = 0; i < d.polyColor.length; i++) {
+      const a = d.polyStart[i], e = i + 1 < d.polyStart.length ? d.polyStart[i + 1] : d.poly.length / 2;
+      for (let k = a; k < e; k++) add(d.polyEnt[i], d.poly[k * 2], d.poly[k * 2 + 1]);
+    }
+    for (const t of d.texts) add(t[9], t[0], t[1]);
+    this.bounds = b;
+    return b;
+  }
+
+  /**
+   * Objects in a screen rectangle. Dragging right (window) takes objects fully inside; dragging left
+   * (crossing) takes anything it touches — the AutoCAD convention.
+   */
+  selectInRect(x0: number, y0: number, x1: number, y1: number, crossing: boolean): number[] {
+    const d = this.drawing;
+    if (!d) return [];
+    const a = this.toWorld(Math.min(x0, x1), Math.max(y0, y1));
+    const b = this.toWorld(Math.max(x0, x1), Math.min(y0, y1));
+    const bb = this.entityBounds();
+    const out: number[] = [];
+    const layerOf = new Int32Array(d.handles.length).fill(-1);
+    for (let i = 0; i < d.segEnt.length; i++) if (layerOf[d.segEnt[i]] < 0) layerOf[d.segEnt[i]] = d.segLayer[i];
+    for (const t of d.texts) if (layerOf[t[9]] < 0) layerOf[t[9]] = t[8];
+    for (let e = 0; e < d.handles.length; e++) {
+      const o = e * 4;
+      if (bb[o] === 0 && bb[o + 2] === 0 && bb[o + 1] === 0 && bb[o + 3] === 0) continue; // nothing drawn
+      const lay = layerOf[e];
+      if (lay >= 0 && !this.layerOn[lay]) continue;
+      const inside = bb[o] >= a.x && bb[o + 1] >= a.y && bb[o + 2] <= b.x && bb[o + 3] <= b.y;
+      const touches = bb[o] <= b.x && bb[o + 2] >= a.x && bb[o + 1] <= b.y && bb[o + 3] >= a.y;
+      if (crossing ? touches : inside) out.push(e);
+    }
+    return out;
+  }
+
   /** Highlights one DXF object (its lines in the accent colour, its text in the accent colour). */
-  select(entity: number | null): void {
-    this.selected = entity;
+  select(entities: number[] | number | null): void {
+    this.selected = entities === null ? [] : typeof entities === 'number' ? [entities] : [...entities];
+    const set = new Set(this.selected);
     this.highlight?.removeFromParent();
     this.highlight?.geometry.dispose();
     this.highlight = null;
     const d = this.drawing;
-    if (d && entity !== null) {
+    if (d && set.size) {
       const pts: number[] = [];
       for (let i = 0, n = d.segEnt.length; i < n; i++) {
-        if (d.segEnt[i] !== entity) continue;
+        if (!set.has(d.segEnt[i])) continue;
         pts.push(d.seg[i * 4], d.seg[i * 4 + 1], 0.5, d.seg[i * 4 + 2], d.seg[i * 4 + 3], 0.5);
       }
       for (let i = 0; i < d.polyColor.length; i++) {
-        if (d.polyEnt[i] !== entity) continue;
+        if (!set.has(d.polyEnt[i])) continue;
         const a = d.polyStart[i], b = i + 1 < d.polyStart.length ? d.polyStart[i + 1] : d.poly.length / 2;
         for (let k = a; k < b; k++) {
           const j = k + 1 < b ? k + 1 : a;
@@ -326,13 +391,28 @@ export class DrawingViewer {
     return new Vector2(this.center.x + (clientX - r.left - r.width / 2) * k, this.center.y - (clientY - r.top - r.height / 2) * k);
   }
 
+  /** Rubber band: window (blue, solid) dragging right, crossing (green, dashed) dragging left. */
+  private drawRect(x0: number, y0: number, x1: number, y1: number, crossing: boolean): void {
+    const r = this.container.getBoundingClientRect();
+    Object.assign(this.rectEl.style, {
+      display: 'block',
+      left: `${Math.min(x0, x1) - r.left}px`,
+      top: `${Math.min(y0, y1) - r.top}px`,
+      width: `${Math.abs(x1 - x0)}px`,
+      height: `${Math.abs(y1 - y0)}px`,
+      borderStyle: crossing ? 'dashed' : 'solid',
+      borderColor: crossing ? 'var(--select-crossing, #1F9E89)' : 'var(--select-window, #2F7FD8)',
+      background: crossing ? 'color-mix(in srgb, var(--select-crossing, #1F9E89) 12%, transparent)' : 'color-mix(in srgb, var(--select-window, #2F7FD8) 12%, transparent)',
+    });
+  }
+
   private bindInput(c: HTMLCanvasElement): void {
     let drag: { x: number; y: number } | null = null;
     let lastMiddle = 0;
-    let click: { x: number; y: number } | null = null;
+    let click: { x: number; y: number; box: boolean } | null = null;
     const down = (e: PointerEvent) => {
       c.focus({ preventScroll: true });
-      click = e.button === 0 && !e.altKey ? { x: e.clientX, y: e.clientY } : null;
+      click = e.button === 0 && !e.altKey ? { x: e.clientX, y: e.clientY, box: false } : null;
       const pan = e.button === 1 || (e.button === 0 && e.altKey);
       if (e.button === 1) {
         const t = performance.now();
@@ -354,6 +434,12 @@ export class DrawingViewer {
         const w = this.toWorld(e.clientX, e.clientY);
         this.events.onCursor(w.x + this.drawing.info.origin[0], w.y + this.drawing.info.origin[1]);
       }
+      if (click && !drag) {
+        if (!click.box && Math.hypot(e.clientX - click.x, e.clientY - click.y) < 4) return;
+        click.box = true;
+        this.drawRect(click.x, click.y, e.clientX, e.clientY, e.clientX < click.x);
+        return;
+      }
       if (!drag) return;
       const k = this.viewHeight / Math.max(1, this.container.getBoundingClientRect().height);
       this.center.x -= (e.clientX - drag.x) * k;
@@ -362,10 +448,17 @@ export class DrawingViewer {
       this.updateCamera();
     };
     const up = (e: PointerEvent) => {
-      if (click && e.button === 0 && Math.hypot(e.clientX - click.x, e.clientY - click.y) < 4) {
-        const hit = this.pickAt(e.clientX, e.clientY);
-        this.select(hit);
-        this.events.onSelect?.(hit);
+      if (click && e.button === 0) {
+        this.rectEl.style.display = 'none';
+        if (click.box) {
+          const hits = this.selectInRect(click.x, click.y, e.clientX, e.clientY, e.clientX < click.x);
+          this.select(hits);
+          this.events.onSelect?.(hits);
+        } else {
+          const hit = this.pickAt(e.clientX, e.clientY);
+          this.select(hit);
+          this.events.onSelect?.(hit === null ? [] : [hit]);
+        }
       }
       click = null;
       drag = null;
@@ -397,6 +490,11 @@ export class DrawingViewer {
       c.removeEventListener('contextmenu', noMenu);
       c.removeEventListener('mousedown', noAuto);
     });
+  }
+
+  /** Re-reads the theme from the container (used when the canvas theme changes). */
+  refreshTheme(): void {
+    this.applyTheme();
   }
 
   applyTheme(): void {
@@ -451,7 +549,7 @@ export class DrawingViewer {
       ctx.setTransform(1, 0, 0, 1, sx, sy);
       if (rot) ctx.rotate((-rot * Math.PI) / 180);
       ctx.font = `${px}px ${font}`;
-      ctx.fillStyle = ent === this.selected ? this.accentCss : this.screenPalette[ci] ?? 'currentColor';
+      ctx.fillStyle = this.selected.includes(ent) ? this.accentCss : this.screenPalette[ci] ?? 'currentColor';
       ctx.textAlign = ah;
       const lines = text.split('\n');
       ctx.textBaseline = BASELINE[av] ?? 'alphabetic';
@@ -465,7 +563,8 @@ export class DrawingViewer {
     this.highlight?.removeFromParent();
     this.highlight?.geometry.dispose();
     this.highlight = null;
-    this.selected = null;
+    this.selected = [];
+    this.bounds = null;
     for (const o of this.objects) {
       o.removeFromParent();
       o.geometry.dispose();
@@ -482,6 +581,7 @@ export class DrawingViewer {
   dispose(): void {
     for (const f of this.disposers) f();
     this.clear();
+    this.rectEl.remove();
     this.highlightMat.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();

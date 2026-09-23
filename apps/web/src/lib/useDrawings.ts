@@ -11,8 +11,8 @@ export interface DrawingDoc {
   layerOn: boolean[];
   /** User override when the file's $INSUNITS is wrong (common in client files). */
   units: string;
-  /** Selected DXF object (index into drawing.handles) and its properties once loaded. */
-  selected: { entity: number; props: Record<string, string | number | number[]> | null } | null;
+  /** Selected DXF objects (indices into drawing.handles); props are those of the first one. */
+  selected: { entities: number[]; props: Record<string, string | number | number[]> | null } | null;
 }
 
 /** Open DXF drawings, one 2D view tab each. */
@@ -62,13 +62,14 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
   }, []);
 
   /** Selects a DXF object (or clears with null) and loads its properties from the worker. */
-  const select = useCallback((id: string, entity: number | null) => {
-    setDocs((ds) => ds.map((d) => (d.id === id ? { ...d, selected: entity === null ? null : { entity, props: null } } : d)));
-    if (entity === null) return;
+  const select = useCallback((id: string, entities: number[] | null) => {
+    const list = entities?.length ? entities : null;
+    setDocs((ds) => ds.map((d) => (d.id === id ? { ...d, selected: list ? { entities: list, props: null } : null } : d)));
+    if (!list) return;
     const doc = docsRef.current.find((d) => d.id === id);
     if (!doc || !client.current) return;
-    void client.current.entity(doc.drawing.drawingId, doc.drawing.handles[entity]).then((props) =>
-      setDocs((ds) => ds.map((d) => (d.id === id && d.selected?.entity === entity ? { ...d, selected: { entity, props } } : d))),
+    void client.current.entity(doc.drawing.drawingId, doc.drawing.handles[list[0]]).then((props) =>
+      setDocs((ds) => ds.map((d) => (d.id === id && d.selected?.entities[0] === list[0] ? { ...d, selected: { entities: list, props } } : d))),
     );
   }, []);
 

@@ -1,6 +1,6 @@
-# @shanku/web 0.13.0
+# @shanku/web 0.14.0
 
-The Shanku app. Requires `@shanku/engine >= 0.11.0`, `@shanku/ui >= 0.6.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.12.0`, `@shanku/ui >= 0.6.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,14 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.14.0 — 2026-09-22
+- **Canvas theme is separate from the interface theme** (View → Canvas: Auto / Light / Dark), as in Revit: a dark interface can keep a light canvas. Remembered between visits.
+- **Selected elements are see-through**, so elements behind them stay visible.
+- **Section cuts look solid**, not hollow.
+- **Selection box in AutoCAD colours** in both the 3D and DXF views: drag right is a blue solid window, drag left a green dashed crossing. The DXF view now supports box selection and multiple objects.
+- **Orbit shows its centre** while you drag (selection, else section box, else model).
+- **Homepage**: theme toggle in the nav, and screenshots in both themes so a dark page never shows a light app.
 
 ### 0.13.0 — 2026-09-22
 - **Homepage** in front of the app (hero, how it works, toolkit, real screenshots, specs, FAQ). **Try Shanku free** opens the app full screen in the same page (browsers only allow fullscreen on a click in the same page); dropping an .ifc or .dxf on the homepage opens it directly. `#app` links straight to the app. The app is loaded on demand, so the homepage stays small.

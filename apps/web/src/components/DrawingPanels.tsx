@@ -12,7 +12,11 @@ export function DrawingProperties({ doc, onUnits }: { doc: DrawingDoc; onUnits: 
     const fmt = (v: string | number | number[]) => (Array.isArray(v) ? v.map((n) => n.toLocaleString('en-IN', { maximumFractionDigits: 3 })).join(', ') : typeof v === 'number' ? v.toLocaleString('en-IN', { maximumFractionDigits: 3 }) : v);
     return (
       <DockPanel title="Properties">
-        <TypeSelector icon="dxf" category="DXF object · Esc clears" typeName={p ? String(p.Type) : 'Loading…'} />
+        <TypeSelector
+          icon="dxf"
+          category={sel.entities.length > 1 ? `${sel.entities.length} DXF objects · Esc clears` : 'DXF object · Esc clears'}
+          typeName={p ? (sel.entities.length > 1 ? `${p.Type} and ${sel.entities.length - 1} more` : String(p.Type)) : 'Loading…'}
+        />
         {p ? (
           <>
             <PropertySection title="General">

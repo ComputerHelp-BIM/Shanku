@@ -102,8 +102,9 @@ uniform int uPass;
 void main() {
   ${CLIP_F}
   bool glass = (vState & ${STATE_GLASS}) != 0;
-  if (glass != (uPass == 1)) discard;
   bool sel = (vState & ${STATE_SELECTED}) != 0;
+  // Pass 0 is opaque; pass 1 draws glass and the selection, so selected elements show what is behind.
+  if ((glass || sel) != (uPass == 1)) discard;
   if (!gl_FrontFacing) { outColor = vec4(sel ? uSelShade : uCap, 1.0); return; } // only drawn while a section box is on
   bool hov = (vState & ${STATE_HOVER}) != 0;
   vec3 n = normalize(vNormalW);
@@ -129,8 +130,8 @@ void main() {
     return;
   }
   if (uPass == 1) {
-    // Glass: tinted and see-through; selection still reads orange.
-    outColor = sel ? vec4(uSelTop, 0.6) : vec4(mix(uGlass, col, 0.25), hov ? 0.45 : 0.3);
+    // Glass, and the selection: orange and see-through, as in Revit.
+    outColor = glass && !sel ? vec4(mix(uGlass, col, 0.25), hov ? 0.45 : 0.3) : vec4(col, hov ? 0.78 : 0.66);
     return;
   }
   outColor = vec4(col, 1.0);

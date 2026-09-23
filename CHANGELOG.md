@@ -2,6 +2,17 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.14.0 — 2026-09-22
+
+### Added
+- Canvas theme separate from the interface theme; homepage theme toggle with screenshots in both themes.
+- AutoCAD-style window / crossing selection colours in both views; box selection in the DXF view.
+- Orbit centre marker.
+
+### Changed
+- Selected elements are see-through; section cut faces read as solid concrete.
+- Tokens 1.1.0: `select-window`, `select-crossing`.
+
 ## 0.13.0 — 2026-09-22
 
 ### Added

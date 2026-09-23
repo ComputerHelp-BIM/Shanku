@@ -42,7 +42,7 @@ import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.13.0';
+const APP_VERSION = '0.14.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -77,6 +77,21 @@ export function App({ start }: { start?: AppStart } = {}) {
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>('shaded');
   const [sectionBox, setSectionBox] = useState(false);
   const [edges, setEdges] = useState(true);
+  // Canvas theme is separate from the interface theme (Revit's Canvas Theme).
+  const [canvasTheme, setCanvasTheme] = useState<'follow' | 'paper' | 'ink'>(() => {
+    const v = localStorage.getItem('shanku.canvasTheme');
+    return v === 'paper' || v === 'ink' ? v : 'follow';
+  });
+  const cycleCanvasTheme = () =>
+    setCanvasTheme((t) => {
+      const next = t === 'follow' ? 'paper' : t === 'paper' ? 'ink' : 'follow';
+      try {
+        localStorage.setItem('shanku.canvasTheme', next);
+      } catch {
+        /* storage unavailable */
+      }
+      return next;
+    });
   const [hideMenu, setHideMenu] = useState(false);
   const [reveal, setReveal] = useState(false);
   // Revit-style transactions: every undoable change goes through history.run(...)
@@ -447,6 +462,12 @@ export function App({ start }: { start?: AppStart } = {}) {
             <RibbonButton icon="section" label="Box" active={sectionBox} disabled={!m.model} onClick={() => runCommand('sectionBox')} shortcutHint="BX" />
           </RibbonGroup>
           <RibbonGroup label="Graphics">
+            <RibbonButton
+              icon="view3d"
+              label={canvasTheme === 'follow' ? 'Canvas: Auto' : canvasTheme === 'paper' ? 'Canvas: Light' : 'Canvas: Dark'}
+              onClick={cycleCanvasTheme}
+              shortcutHint="canvas theme, separate from the interface"
+            />
             <RibbonButton icon="edges" label="Edges" active={edges} disabled={!m.model} onClick={() => setEdges((v) => !v)} shortcutHint="show or hide model edges" />
             <RibbonButton icon="reveal" label="Reveal" active={reveal} disabled={!m.model} onClick={() => setReveal((v) => !v)} shortcutHint="reveal hidden elements (RH)" />
           </RibbonGroup>
@@ -516,7 +537,7 @@ export function App({ start }: { start?: AppStart } = {}) {
           }}
         >
           {dx.docs.map((d) =>
-            d.id === activeView ? <DrawingView key={d.id} ref={drawingView} doc={d} onCursor={(x, y) => setCursor({ x, y })} onSelect={(e) => dx.select(d.id, e)} /> : null,
+            d.id === activeView ? <DrawingView key={d.id} ref={drawingView} doc={d} onCursor={(x, y) => setCursor({ x, y })} onSelect={(e) => dx.select(d.id, e)} canvasTheme={canvasTheme} /> : null,
           )}
           <div className="app-view3d" hidden={activeDoc !== null}>
           <Viewport
@@ -528,6 +549,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             onPick={m.pick}
             onBoxSelect={m.boxSelect}
             edges={edges}
+            canvasTheme={canvasTheme}
             reveal={reveal}
             onZoomRegionEnd={() => setZoomRegion(false)}
             onSectionBoxEdit={(before, after) =>

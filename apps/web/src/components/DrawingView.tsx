@@ -8,7 +8,7 @@ export interface DrawingViewHandle {
 }
 
 /** One 2D view per open DXF. */
-export const DrawingView = forwardRef<DrawingViewHandle, { doc: DrawingDoc; onCursor: (x: number, y: number) => void; onSelect: (entity: number | null) => void }>(function DrawingView({ doc, onCursor, onSelect }, ref) {
+export const DrawingView = forwardRef<DrawingViewHandle, { doc: DrawingDoc; onCursor: (x: number, y: number) => void; onSelect: (entities: number[]) => void; canvasTheme?: 'follow' | 'paper' | 'ink' }>(function DrawingView({ doc, onCursor, onSelect, canvasTheme }, ref) {
   const host = useRef<HTMLDivElement>(null);
   const viewer = useRef<DrawingViewer | null>(null);
   const cursor = useRef(onCursor);
@@ -30,7 +30,8 @@ export const DrawingView = forwardRef<DrawingViewHandle, { doc: DrawingDoc; onCu
 
   useEffect(() => viewer.current?.setLayerVisibility(doc.layerOn), [doc.layerOn]);
   // Keep the highlight in step with selection changes made outside the view (e.g. Esc).
-  useEffect(() => viewer.current?.select(doc.selected?.entity ?? null), [doc.selected?.entity]);
+  useEffect(() => viewer.current?.select(doc.selected?.entities ?? null), [doc.selected?.entities]);
+  useEffect(() => viewer.current?.refreshTheme(), [canvasTheme]);
   useImperativeHandle(ref, () => ({ fit: () => viewer.current?.fit(), zoomTo: (a, b, c, d) => viewer.current?.zoomTo(a, b, c, d) }));
-  return <div ref={host} className="app-viewport" />;
+  return <div ref={host} className="app-viewport" data-theme={canvasTheme && canvasTheme !== 'follow' ? canvasTheme : undefined} />;
 });
