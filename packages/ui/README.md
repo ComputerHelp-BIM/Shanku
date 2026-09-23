@@ -1,4 +1,4 @@
-# @shanku/ui 0.7.0
+# @shanku/ui 0.7.1
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.0.0` and `@shanku/brand >= 1.0.0`.
 
@@ -33,6 +33,10 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.7.1 — 2026-09-23
+- Fixed: buttons, ribbon buttons and tabs showed the browser's default font instead of IBM Plex Sans. The document-colour view-tab rules had been pasted into the middle of the shared button reset's selector list, so `font: inherit; color: inherit; cursor: pointer` never applied to those controls. The reset is restored and the view-tab rules now sit with the other view-tab styles.
+- Added a regression test that checks the reset in `styles.css`.
 
 ### 0.7.0 — 2026-09-22
 - Added `ThemeIcon`: sun (light), moon (dark) and a half-filled circle for Auto, so Auto never looks like Light or Dark.

@@ -1,4 +1,4 @@
-/* @shanku/ui 0.7.0 — requires @shanku/tokens/tokens.css loaded first. */
+/* @shanku/ui 0.7.1 — requires @shanku/tokens/tokens.css loaded first. */
 
 /* ---------- base ---------- */
 .sk-shell,
@@ -60,8 +60,6 @@
 .sk-ribbon-tab,
 .sk-bottom-panel__tab,
 .sk-view-tab__label,
-.sk-view-tab.has-color { box-shadow: inset 0 3px 0 var(--tab-color); background: color-mix(in srgb, var(--tab-color) 10%, transparent); }
-.sk-view-tab.has-color.is-active { background: color-mix(in srgb, var(--tab-color) 14%, var(--viewport)); }
 .sk-view-tab__close {
   font: inherit;
   color: inherit;
@@ -305,6 +303,9 @@
 }
 .sk-view-tab { height: 28px; display: flex; align-items: center; border: 1px solid transparent; border-bottom: 0; border-radius: var(--radius-md) var(--radius-md) 0 0; }
 .sk-view-tab.is-active { background: var(--viewport); border-color: var(--border); }
+/* Document colour (ViewTab.color): 3 px top stripe and a light tint. */
+.sk-view-tab.has-color { box-shadow: inset 0 3px 0 var(--tab-color); background: color-mix(in srgb, var(--tab-color) 10%, transparent); }
+.sk-view-tab.has-color.is-active { background: color-mix(in srgb, var(--tab-color) 14%, var(--viewport)); }
 .sk-view-tab__label { height: 100%; padding: 0 var(--space-md); border: 0; background: transparent; color: var(--text-secondary); }
 .sk-view-tab.is-active .sk-view-tab__label { color: var(--text); font-weight: 600; }
 .sk-view-tab__close { height: 100%; padding: 0 var(--space-sm) 0 0; border: 0; background: transparent; color: var(--text-faint); }

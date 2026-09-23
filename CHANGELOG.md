@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.16.1 — 2026-09-23
+
+### Fixed
+- Buttons, ribbon buttons and tabs showed the browser's default font instead of IBM Plex Sans: a misplaced CSS rule had broken the shared button reset in `@shanku/ui` (0.7.1).
+
 ## 0.16.0 — 2026-09-22
 
 ### Added
