@@ -26,6 +26,8 @@ export interface DrawingViewerEvents {
   onCursor?: (x: number, y: number) => void;
   /** Objects picked by a click or a selection box (indices into drawing.handles); empty when nothing. */
   onSelect?: (entities: number[]) => void;
+  /** Object under the pointer (for tooltips), checked once per frame while the pointer moves. */
+  onHover?: (entity: number | null, clientX: number, clientY: number) => void;
 }
 
 /** Pick box half-size in screen pixels, like AutoCAD's PICKBOX. */
@@ -549,7 +551,23 @@ export class DrawingViewer {
       c.setPointerCapture(e.pointerId);
       drag = { x: e.clientX, y: e.clientY };
     };
+    let hoverQueued = false;
+    let lastHoverEv: PointerEvent | null = null;
+    let lastHit: number | null = null;
     const move = (e: PointerEvent) => {
+      if (!drag && !click && this.events.onHover) {
+        lastHoverEv = e;
+        if (!hoverQueued) {
+          hoverQueued = true;
+          requestAnimationFrame(() => {
+            hoverQueued = false;
+            if (!lastHoverEv) return;
+            const hit = this.pickAt(lastHoverEv.clientX, lastHoverEv.clientY);
+            if (hit !== lastHit || hit !== null) this.events.onHover?.(hit, lastHoverEv.clientX, lastHoverEv.clientY);
+            lastHit = hit;
+          });
+        }
+      }
       if (this.drawing && this.events.onCursor) {
         const w = this.toWorld(e.clientX, e.clientY);
         this.events.onCursor(w.x + this.drawing.info.origin[0], w.y + this.drawing.info.origin[1]);

@@ -51,11 +51,14 @@ export interface ViewerEvents {
   onPick?: (index: number | null, mode: SelectMode) => void;
   /** Drag-box result. `crossing` is true for right-to-left drags. */
   onBoxSelect?: (indices: number[], mode: SelectMode, crossing: boolean) => void;
-  onHover?: (index: number | null) => void;
+  /** Element under the pointer (for tooltips), with the pointer position in client pixels. */
+  onHover?: (index: number | null, clientX?: number, clientY?: number) => void;
   /** Fired when zoom-region mode ends (done or cancelled). */
   onZoomRegionEnd?: () => void;
   /** Section box turned on/off or edited. */
   onSectionBoxChange?: (active: boolean) => void;
+  /** The user started or stopped navigating (orbit, pan, zoom, transitions): the ViewCube wakes up. */
+  onNavigate?: (active: boolean) => void;
   /** The camera moved (every rendered frame after a change): for the ViewCube. */
   onCamera?: (orientation: Quaternion) => void;
   /** A grip drag or rotation finished: record it as one undoable change (the viewer keeps no undo stack). */
@@ -67,6 +70,8 @@ interface CameraState {
   target: Vector3;
   zoom: number;
   frameHeight: number;
+  /** Orientation too: orbiting can leave the camera upside down, which lookAt cannot restore. */
+  quaternion: Quaternion;
 }
 
 const UP = new Vector3(0, 1, 0);
@@ -125,6 +130,11 @@ export class Viewer {
   private pivotEl: HTMLDivElement;
   private dimEl: SVGSVGElement;
   private edgesOn = true;
+  private future: CameraState[] = [];
+  private lastPointer: [number, number] = [0, 0];
+  private animToken = 0;
+  private navActive = false;
+  private navTimer: ReturnType<typeof setTimeout> | undefined;
   private revealOn = false;
   private history: CameraState[] = [];
   private zoomRegionArmed = false;
@@ -287,7 +297,7 @@ export class Viewer {
     this.hovered = index;
     if (index !== null) this.stateData[index * 4] |= STATE_HOVER;
     this.state.needsUpdate = true;
-    this.events.onHover?.(index);
+    this.events.onHover?.(index, this.lastPointer[0], this.lastPointer[1]);
     this.requestRender();
   }
 
@@ -411,40 +421,119 @@ export class Viewer {
   // ----------------------------------------------------------------- camera
 
   private snapshot(): CameraState {
-    return { position: this.camera.position.clone(), target: this.target.clone(), zoom: this.camera.zoom, frameHeight: this.frameHeight };
+    return { position: this.camera.position.clone(), target: this.target.clone(), zoom: this.camera.zoom, frameHeight: this.frameHeight, quaternion: this.camera.quaternion.clone() };
   }
 
   private pushHistory(): void {
     this.history.push(this.snapshot());
     if (this.history.length > HISTORY_LIMIT) this.history.shift();
+    this.future = [];
+  }
+
+  /** Revit Next Pan/Zoom (after Previous). */
+  nextView(): boolean {
+    const s = this.future.pop();
+    if (!s) return false;
+    this.history.push(this.snapshot());
+    this.animateTo(s);
+    return true;
+  }
+
+  get canGoPrevious(): boolean {
+    return this.history.length > 0;
+  }
+
+  get canGoNext(): boolean {
+    return this.future.length > 0;
+  }
+
+  /** Revit Zoom Out (2x), about the view centre. */
+  zoomOut2x(): void {
+    this.pushHistory();
+    const end = this.snapshot();
+    end.frameHeight *= 2;
+    this.animateTo(end);
+  }
+
+  /**
+   * Smooth camera move to a state, like Revit's ViewCube transitions (ease in-out, ~0.45 s).
+   * Position and target move in a straight line, orientation turns along the shortest arc.
+   */
+  private animateTo(end: CameraState, ms = 450): void {
+    const start = this.snapshot();
+    const t0 = performance.now();
+    this.animToken++;
+    const token = this.animToken;
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const step = () => {
+      if (token !== this.animToken) return; // a newer move took over
+      const k = reduce ? 1 : Math.min(1, (performance.now() - t0) / ms);
+      const e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2; // ease in-out cubic
+      this.camera.position.lerpVectors(start.position, end.position, e);
+      this.target.lerpVectors(start.target, end.target, e);
+      this.camera.quaternion.slerpQuaternions(start.quaternion, end.quaternion, e);
+      this.frameHeight = start.frameHeight + (end.frameHeight - start.frameHeight) * e;
+      this.camera.zoom = start.zoom + (end.zoom - start.zoom) * e;
+      this.updateFrustum();
+      this.navigating();
+      this.requestRender();
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  /** Runs a camera change, captures where it ends, and animates there from where it started. */
+  private animated(change: () => void): void {
+    const start = this.snapshot();
+    change();
+    const end = this.snapshot();
+    this.camera.position.copy(start.position);
+    this.target.copy(start.target);
+    this.camera.quaternion.copy(start.quaternion);
+    this.camera.zoom = start.zoom;
+    this.frameHeight = start.frameHeight;
+    this.updateFrustum();
+    this.animateTo(end);
+  }
+
+  /** Tells listeners the view is being navigated (the ViewCube lights up), then idle after a pause. */
+  private navigating(): void {
+    if (!this.navActive) {
+      this.navActive = true;
+      this.events.onNavigate?.(true);
+    }
+    clearTimeout(this.navTimer);
+    this.navTimer = setTimeout(() => {
+      this.navActive = false;
+      this.events.onNavigate?.(false);
+    }, 700);
   }
 
   /** Revit ZP / ZC: back to the previous pan/zoom. Returns false when there is none. */
   previousView(): boolean {
     const s = this.history.pop();
     if (!s) return false;
-    this.camera.position.copy(s.position);
-    this.target.copy(s.target);
-    this.camera.zoom = s.zoom;
-    this.frameHeight = s.frameHeight;
-    this.camera.lookAt(this.target);
-    this.updateFrustum();
-    this.requestRender();
+    this.future.push(this.snapshot());
+    this.animateTo(s);
     return true;
   }
 
   /** Revit Home: default orientation, whole model in view. */
   home(): void {
     this.pushHistory();
-    if (this.homeDir) this.aim(this.homeDir);
-    else this.orient('iso');
-    this.fit(undefined, false);
+    this.animated(() => {
+      if (this.homeDir) this.aim(this.homeDir);
+      else this.orient('iso');
+      this.fit(undefined, false);
+    });
   }
 
   setView(view: ViewName): void {
     this.pushHistory();
-    this.orient(view);
-    this.fit(undefined, false);
+    this.animated(() => {
+      this.orient(view);
+      this.fit(undefined, false);
+    });
   }
 
   private orient(view: ViewName): void {
@@ -482,12 +571,15 @@ export class Viewer {
   /** ViewCube: look from the direction `dir` (world, from the model towards the camera), then fit. */
   lookFrom(dir: Vector3 | readonly [number, number, number]): void {
     this.pushHistory();
-    this.aim(Array.isArray(dir) ? new Vector3(dir[0], dir[1], dir[2]) : (dir as Vector3));
-    this.fit(undefined, false);
+    this.animated(() => {
+      this.aim(Array.isArray(dir) ? new Vector3(dir[0], dir[1], dir[2]) : (dir as Vector3));
+      this.fit(undefined, false);
+    });
   }
 
   /** ViewCube drag: orbit by screen pixels about the selection, section box or model. */
   orbitBy(dxPx: number, dyPx: number): void {
+    this.navigating();
     this.orbit(dxPx, dyPx, this.orbitPivot());
   }
 
@@ -868,7 +960,11 @@ export class Viewer {
             drag.recorded = true;
           }
           if (drag.mode === 'pan') this.pan(dx, dy);
-          else this.orbit(dx, dy, drag.pivot);
+          else {
+            this.orbit(dx, dy, drag.pivot);
+            this.showPivot(drag.pivot);
+          }
+          this.navigating();
         } else {
           // Revit: left→right is a window (solid), right→left a crossing (dashed).
           this.showRect(drag.sx, drag.sy, e.clientX, e.clientY, drag.mode === 'select' && e.clientX < drag.sx);
@@ -876,6 +972,7 @@ export class Viewer {
         return;
       }
       lastHover = e;
+      this.lastPointer = [e.clientX, e.clientY];
       if (hoverQueued) return;
       hoverQueued = true;
       requestAnimationFrame(() => {
@@ -917,6 +1014,7 @@ export class Viewer {
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      this.navigating();
       if (!wheelTimer) this.pushHistory(); // one history step per wheel gesture
       else clearTimeout(wheelTimer);
       wheelTimer = setTimeout(() => (wheelTimer = null), 400);
@@ -1036,5 +1134,7 @@ export class Viewer {
     this.rectEl.remove();
     this.pivotEl.remove();
     this.dimEl.remove();
+    clearTimeout(this.navTimer);
+    this.animToken++;
   }
 }

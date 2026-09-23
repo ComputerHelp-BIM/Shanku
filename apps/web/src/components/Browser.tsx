@@ -10,7 +10,7 @@ export interface BrowserProps {
 }
 
 /** Project browser: levels and categories. Choosing one selects its elements. */
-export function Browser({ model, onSelectLevel, onSelectCategory }: BrowserProps) {
+export function Browser({ model, onSelectLevel, onSelectCategory, activeId }: BrowserProps & { activeId?: string }) {
   const nodes = useMemo<TreeNode[]>(() => {
     if (!model) return [];
     return [
@@ -38,6 +38,7 @@ export function Browser({ model, onSelectLevel, onSelectCategory }: BrowserProps
           nodes={nodes}
           label="Project browser"
           defaultExpanded={['levels', 'categories']}
+          activeId={activeId}
           onSelect={(node) => {
             if (node.id.startsWith('level:')) onSelectLevel(node.id.slice(6));
             else if (node.id.startsWith('category:')) onSelectCategory(node.id.slice(9) as Category);

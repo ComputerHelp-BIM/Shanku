@@ -1,4 +1,4 @@
-# @shanku/engine 0.13.0
+# @shanku/engine 0.14.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,12 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.14.0 — 2026-09-22
+- Smooth camera transitions (ease in-out, ~0.45 s) for ViewCube clicks, Home, named views and Previous / Next Pan/Zoom; respects reduced motion.
+- Fixed: the orbit centre marker never showed (the orbit code path that runs did not call it).
+- `zoomOut2x()`, `nextView()`, `canGoPrevious` / `canGoNext`; camera history keeps orientation (restores upside-down views correctly).
+- Events: `onNavigate(active)` while orbiting, panning, zooming or animating; `onHover` carries the pointer position. DXF viewer: `onHover(entity, x, y)` once per frame.
 
 ### 0.13.0 — 2026-09-22
 - Orbit no longer stops at straight down / up: the camera carries on over the top or under the bottom, and horizontal drags reverse while upside down (as in Revit), so it never gets stuck under the model.

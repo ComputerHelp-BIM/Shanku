@@ -1,6 +1,6 @@
-# @shanku/web 0.15.0
+# @shanku/web 0.16.0
 
-The Shanku app. Requires `@shanku/engine >= 0.13.0`, `@shanku/ui >= 0.7.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.14.0`, `@shanku/ui >= 0.7.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,14 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.16.0 — 2026-09-22
+- **Right-click menus in the 3D view**, in Revit's layout: without a selection (Cancel, Repeat, Select Previous, Find in Project Browser, Zoom In Region, Zoom Out (2x), Zoom To Fit, Previous / Next Pan/Zoom, Browsers, Properties) and with one (plus Hide in View ▸ Elements / Category, Override Graphics ▸, Create Similar, Edit Family, Select All Instances ▸ Visible in View / In Entire Project, Delete). Entries that need editing or Visibility/Graphics are shown greyed, as in Revit.
+- **Hover tooltips** after half a second: 3D shows Category : Type, then Mark · Level · ID; DXF shows type · layer, then its main size and handle.
+- **ViewCube** is faded and grey at rest and lights up (blue ring) on hover or while you navigate; **smooth transitions** when you click it; a larger ▾ options button.
+- **Temporary Hide/Isolate** shows Revit's cyan frame around the view.
+- View bar keeps only **Fit** (the ViewCube does the rest).
+- Fixed: the orbit centre marker now shows while orbiting.
 
 ### 0.15.0 — 2026-09-22
 - **ViewCube after Revit's**: shaded cube with 26 clickable directions (named by direction), a compass ring under it (drag to turn in plan, click N/E/S/W to face that side), Home, and a ▾ menu (Go Home, Set Current View as Home, Reset Home, Orient to Front/Top).

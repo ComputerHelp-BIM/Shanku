@@ -2,6 +2,17 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.16.0 — 2026-09-22
+
+### Added
+- Revit-layout right-click menus in 3D (with and without a selection); hover tooltips in 3D and DXF views; smooth ViewCube transitions; Next Pan/Zoom and Zoom Out (2x).
+
+### Changed
+- ViewCube faded at rest, lit while in use; cyan Temporary Hide/Isolate frame; view bar keeps only Fit.
+
+### Fixed
+- Orbit centre marker not showing.
+
 ## 0.15.0 — 2026-09-22
 
 ### Added

@@ -38,12 +38,13 @@ import { PipelinePanel } from './components/PipelinePanel';
 import { qaFocus, usePipeline } from './lib/usePipeline';
 import { useHistory } from './lib/useHistory';
 import { QuickAccess } from './components/QuickAccess';
+import { ContextMenu, item, sep, type MenuItem } from './components/ContextMenu';
 import { DockWorkspace, type DockWorkspaceHandle, type PanelId } from './components/DockWorkspace';
 import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.15.0';
+const APP_VERSION = '0.16.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -87,6 +88,12 @@ export function App({ start }: { start?: AppStart } = {}) {
       return next;
     });
   const [hideMenu, setHideMenu] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [browserFocus, setBrowserFocus] = useState<string | undefined>(undefined);
+  const [lastCommand, setLastCommand] = useState<{ id: CommandId; label: string } | null>(null);
+  // Select Previous: the last non-empty selection before the current one.
+  const prevSelection = useRef<number[]>([]);
+  const curSelection = useRef<number[]>([]);
   const [reveal, setReveal] = useState(false);
   // Revit-style transactions: every undoable change goes through history.run(...)
   const history = useHistory();
@@ -331,7 +338,73 @@ export function App({ start }: { start?: AppStart } = {}) {
     else if (zoomRegion) viewport.current?.cancelZoomRegion();
     else m.setSelection([]);
   });
+  useEffect(() => {
+    if (curSelection.current.length && curSelection.current.join() !== m.selection.join()) prevSelection.current = curSelection.current;
+    curSelection.current = m.selection;
+  }, [m.selection]);
+
   // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
+  /** Commands the right-click menu can repeat (Revit's Repeat Last Command). */
+  const run = (id: CommandId, label: string) => {
+    setLastCommand({ id, label });
+    runCommand(id);
+  };
+
+  /** Right-click menu in the 3D view: Revit's layout, with element entries when something is selected. */
+  const contextItems = (): MenuItem[] => {
+    const model = m.model!;
+    const v = viewport.current;
+    const has = sel.length > 0;
+    const first = has ? model.elements[sel[0]] : null;
+    const sameType = (e: (typeof model.elements)[number]) => !!first && e.category === first.category && e.typeName === first.typeName;
+    const elementItems: MenuItem[] = has
+      ? [
+          item('Hide in View', undefined, {
+            submenu: [item('Elements', () => run('hideElement', 'Hide Elements'), { hint: 'HH' }), item('Category', () => run('hideCategory', 'Hide Category'), { hint: 'HC' })],
+          }),
+          item('Override Graphics in View', undefined, {
+            submenu: [item('By Element…', undefined, { disabled: true }), item('By Category…', undefined, { disabled: true })],
+          }),
+          sep,
+          item('Create Similar', undefined, { disabled: true }),
+          item('Edit Family', undefined, { disabled: true }),
+          item('Select Previous', () => m.setSelection(prevSelection.current), { disabled: !prevSelection.current.length }),
+          item('Select All Instances', undefined, {
+            submenu: [
+              item('Visible in View', () => m.setSelection(model.elements.filter((e) => sameType(e) && !hidden.includes(e.index)).map((e) => e.index))),
+              item('In Entire Project', () => m.setSelection(model.elements.filter(sameType).map((e) => e.index))),
+            ],
+          }),
+          item('Delete', undefined, { disabled: true }),
+          sep,
+        ]
+      : [item('Select Previous', () => m.setSelection(prevSelection.current), { disabled: !prevSelection.current.length }), sep];
+    return [
+      item('Cancel', () => undefined),
+      sep,
+      item(lastCommand ? `Repeat [${lastCommand.label}]` : 'Repeat Last Command', () => lastCommand && runCommand(lastCommand.id), { disabled: !lastCommand }),
+      sep,
+      ...elementItems,
+      item('Find in Project Browser', () => {
+        if (!first) return;
+        dock.current?.open('browser');
+        setBrowserFocus(`category:${first.category}`);
+      }, { disabled: !has }),
+      sep,
+      item('Zoom In Region', () => run('zoomRegion', 'Zoom In Region'), { hint: 'ZR' }),
+      item('Zoom Out (2x)', () => v?.zoomOut2x()),
+      item('Zoom To Fit', () => run('fit', 'Zoom To Fit'), { hint: 'ZF' }),
+      sep,
+      item('Previous Pan/Zoom', () => run('previous', 'Previous Pan/Zoom'), { disabled: !v?.canPrevious(), hint: 'ZP' }),
+      item('Next Pan/Zoom', () => v?.nextView(), { disabled: !v?.canNext() }),
+      sep,
+      item('Browsers', undefined, {
+        submenu: [item('Project Browser', () => dock.current?.toggle('browser'), { checked: openPanels.includes('browser') })],
+      }),
+      item('Properties', () => dock.current?.toggle('properties'), { checked: openPanels.includes('properties') }),
+    ];
+  };
+
   const undo = useCallback(() => {
     const done = history.undo();
     setNotice(done.length ? `Undid: ${done[0]}` : 'Nothing to undo.');
@@ -531,7 +604,7 @@ export function App({ start }: { start?: AppStart } = {}) {
           }}
         >
           {dx.docs.map((d) =>
-            d.id === activeView ? <DrawingView key={d.id} ref={drawingView} doc={d} onCursor={(x, y) => setCursor({ x, y })} onSelect={(e) => dx.select(d.id, e)} canvasTheme={canvasTheme} /> : null,
+            d.id === activeView ? <DrawingView key={d.id} ref={drawingView} doc={d} onCursor={(x, y) => setCursor({ x, y })} onSelect={(e) => dx.select(d.id, e)} canvasTheme={canvasTheme} describe={(ent) => dx.getClient().entity(d.drawing.drawingId, d.drawing.handles[ent])} /> : null,
           )}
           <div className="app-view3d" hidden={activeDoc !== null}>
           <Viewport
@@ -544,6 +617,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             onBoxSelect={m.boxSelect}
             edges={edges}
             canvasTheme={canvasTheme}
+            onContextMenu={(x, y) => m.model && setCtxMenu({ x, y })}
             reveal={reveal}
             onZoomRegionEnd={() => setZoomRegion(false)}
             onSectionBoxEdit={(before, after) =>
@@ -551,9 +625,8 @@ export function App({ start }: { start?: AppStart } = {}) {
             }
           />
           </div>
-          {!activeDoc && m.model && (hidden.length || sectionBox || zoomRegion) ? (
+          {!activeDoc && m.model && (sectionBox || zoomRegion) ? (
             <div className="app-viewstate" role="status">
-              {hidden.length ? <span>Temporary hide/isolate · HR resets</span> : null}
               {sectionBox ? <span>Section box · BX removes</span> : null}
               {zoomRegion ? <span>Drag a region to zoom · Esc cancels</span> : null}
             </div>
@@ -647,6 +720,9 @@ export function App({ start }: { start?: AppStart } = {}) {
                   </table>
                 )}
           </FloatingWindow>
+          {ctxMenu && m.model ? (
+            <ContextMenu x={ctxMenu.x} y={ctxMenu.y} onClose={() => setCtxMenu(null)} items={contextItems()} />
+          ) : null}
           <MarkRulesDialog open={markDialog} rules={m.markRules} defaults={DEFAULT_MARK_RULES} elements={m.model?.elements ?? []} onSave={(r) => history.run('Mark rules', (t) => t.change('mark-rules', m.markRules, r, (x) => void m.setMarkRules(x)))} onClose={() => setMarkDialog(false)} />
           <MarkRulesDialog
             open={gradeDialog}
@@ -677,18 +753,6 @@ export function App({ start }: { start?: AppStart } = {}) {
         <>
           <Button size="sm" variant="ghost" onClick={() => viewport.current?.fit()} title="Zoom to fit (ZF)">
             Fit
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => viewport.current?.home()} title="Default 3D view (Home)">
-            Home
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => viewport.current?.setView('top')}>
-            Top
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => viewport.current?.setView('front')}>
-            Front
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => viewport.current?.setView('right')}>
-            Right
           </Button>
           <span className="app-divider" aria-hidden="true" />
           <div className="app-segmented" role="radiogroup" aria-label="Visual style">
@@ -755,7 +819,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                 return activeDoc ? (
                   <LayersPanel doc={activeDoc} onChange={(on) => dx.update(activeDoc.id, { layerOn: on })} />
                 ) : (
-                  <Browser model={m.model} onSelectLevel={selectLevel} onSelectCategory={selectCategory} />
+                  <Browser model={m.model} onSelectLevel={selectLevel} onSelectCategory={selectCategory} activeId={browserFocus} />
                 );
               case 'activity':
                 return m.activity.length ? (

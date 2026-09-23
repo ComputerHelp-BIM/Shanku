@@ -53,13 +53,16 @@ export interface ViewCubeProps {
   /** Drag on the cube orbits freely; drag on the ring turns in plan only (dy = 0). */
   onOrbit: (dx: number, dy: number) => void;
   onSetHome: (current: boolean) => void;
+  /** The view is being navigated: light up like Revit's ViewCube does while in use. */
+  active?: boolean;
 }
 
 /**
  * Revit's ViewCube: shaded cube with clickable faces, edges and corners (26 directions), a compass
  * ring that turns the view in plan (drag) or faces a side (click N/E/S/W), Home, and a ▾ menu.
  */
-export function ViewCube({ orientation, onLookFrom, onHome, onOrbit, onSetHome }: ViewCubeProps) {
+export function ViewCube({ orientation, onLookFrom, onHome, onOrbit, onSetHome, active }: ViewCubeProps) {
+  const [hover, setHover] = useState(false);
   const [hot, setHot] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const drag = useRef<{ x: number; y: number; moved: boolean; ring: boolean } | null>(null);
@@ -122,8 +125,10 @@ export function ViewCube({ orientation, onLookFrom, onHome, onOrbit, onSetHome }
 
   return (
     <div
-      className="vc"
+      className={['vc', (active || hover || menu) && 'is-active'].filter(Boolean).join(' ')}
       ref={root}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
       aria-label="ViewCube"
       onPointerDown={(e) => {
         // Presses that reach the frame (not a face, edge, corner or letter): drag the ring if on its band.
@@ -185,8 +190,10 @@ export function ViewCube({ orientation, onLookFrom, onHome, onOrbit, onSetHome }
           </div>
         </div>
       </div>
-      <button type="button" className="vc-menu-btn" aria-label="ViewCube options" aria-expanded={menu} onClick={() => setMenu((o) => !o)}>
-        ▾
+      <button type="button" className="vc-menu-btn" aria-label="ViewCube options" aria-expanded={menu} title="ViewCube options" onClick={() => setMenu((o) => !o)}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M5 8h14l-7 9z" />
+        </svg>
       </button>
       {menu ? (
         <div className="vc-menu" role="menu">

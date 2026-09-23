@@ -11,6 +11,11 @@ export interface ViewportHandle {
   startZoomRegion: () => void;
   cancelZoomRegion: () => void;
   setSectionBox: (indices: number[] | null) => void;
+  /** Revit Zoom Out (2x) and Next Pan/Zoom; can* tell the context menu what is available. */
+  zoomOut2x: () => void;
+  nextView: () => boolean;
+  canPrevious: () => boolean;
+  canNext: () => boolean;
   /** Current section box state (null when off). */
   sectionBoxState: () => SectionBoxState | null;
   /** Restores an exact section box state (undo/redo). */
@@ -26,6 +31,8 @@ export interface ViewportProps {
   onBoxSelect: (indices: number[], mode: SelectMode) => void;
   onZoomRegionEnd?: () => void;
   onSectionBoxEdit?: (before: SectionBoxState, after: SectionBoxState) => void;
+  /** Right-click in the view. */
+  onContextMenu?: (clientX: number, clientY: number) => void;
   /** Graphics → Edges */
   edges?: boolean;
   /** Reveal Hidden Elements */
@@ -40,6 +47,10 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   const host = useRef<HTMLDivElement>(null);
   const viewer = useRef<Viewer | null>(null);
   const [orientation, setOrientation] = useState<Orientation>({ x: 0, y: 0, z: 0, w: 1 });
+  const [navActive, setNavActive] = useState(false);
+  // Revit-like tooltip after resting on an element for a moment.
+  const [tip, setTip] = useState<{ index: number; x: number; y: number } | null>(null);
+  const tipTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const orientRef = useRef<Orientation>(orientation);
   const handlers = useRef(props);
   handlers.current = props;
@@ -53,6 +64,16 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
         onBoxSelect: (ids, mode) => handlers.current.onBoxSelect(ids, mode),
         onZoomRegionEnd: () => handlers.current.onZoomRegionEnd?.(),
         onSectionBoxEdit: (a, b) => handlers.current.onSectionBoxEdit?.(a, b),
+        onNavigate: (active) => {
+          setNavActive(active);
+          if (active) setTip(null);
+        },
+        onHover: (index, x, y) => {
+          clearTimeout(tipTimer.current);
+          setTip(null);
+          if (index === null || x === undefined || y === undefined) return;
+          tipTimer.current = setTimeout(() => setTip({ index, x, y }), 500);
+        },
         onCamera: (q) => {
           // Only re-render the ViewCube when the orientation really changed.
           const o = orientRef.current;
@@ -67,6 +88,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     // Test and console hook: the live viewer (read-only use).
     (window as unknown as { __shankuViewer?: unknown }).__shankuViewer = viewer.current;
     return () => {
+      clearTimeout(tipTimer.current);
       viewer.current?.dispose();
       viewer.current = null;
     };
@@ -85,6 +107,10 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
 
   useImperativeHandle(ref, () => ({
     fit: (indices) => viewer.current?.fit(indices),
+    zoomOut2x: () => viewer.current?.zoomOut2x(),
+    nextView: () => viewer.current?.nextView() ?? false,
+    canPrevious: () => viewer.current?.canGoPrevious ?? false,
+    canNext: () => viewer.current?.canGoNext ?? false,
     sectionBoxState: () => viewer.current?.sectionBox ?? null,
     setSectionBoxState: (st) => viewer.current?.setSectionBoxState(st),
     home: () => viewer.current?.home(),
@@ -104,7 +130,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     );
   }
   return (
-    <div ref={host} className="app-viewport" data-theme={props.canvasTheme && props.canvasTheme !== 'follow' ? props.canvasTheme : undefined}>
+    <div ref={host} className="app-viewport" onContextMenu={(e) => { e.preventDefault(); props.onContextMenu?.(e.clientX, e.clientY); }} data-theme={props.canvasTheme && props.canvasTheme !== 'follow' ? props.canvasTheme : undefined}>
       {model ? (
         <ViewCube
           orientation={orientation}
@@ -112,9 +138,21 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
           onHome={() => viewer.current?.home()}
           onOrbit={(dx, dy) => viewer.current?.orbitBy(dx, dy)}
           onSetHome={(current) => viewer.current?.setHomeView(current)}
+          active={navActive}
         />
       ) : null}
       {props.reveal ? <div className="app-reveal-frame" aria-hidden="true"><span>Reveal Hidden Elements</span></div> : null}
+      {!props.reveal && props.hidden.length ? <div className="app-temp-frame" aria-hidden="true"><span>Temporary Hide/Isolate</span></div> : null}
+      {tip && model?.elements[tip.index] ? (() => {
+        const e = model.elements[tip.index];
+        const r = host.current?.getBoundingClientRect();
+        return (
+          <div className="app-tip" role="tooltip" style={{ left: tip.x - (r?.left ?? 0) + 14, top: tip.y - (r?.top ?? 0) + 18 }}>
+            <strong>{e.category === 'Other' ? e.ifcClass : e.category} : {e.typeName || e.name || e.ifcClass}</strong>
+            <span>{[e.mark && `Mark ${e.mark}`, e.level, `ID ${e.expressId}`].filter(Boolean).join(' · ')}</span>
+          </div>
+        );
+      })() : null}
     </div>
   );
 });
