@@ -1,3 +1,4 @@
+import { clearModel as clearSavedModel, saveModel as saveSessionModel } from './session';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, IfcClient, type Category, type ParsedModel, type PropertyGroup, type SelectMode } from '@shanku/engine';
 import { fmtBytes, fmtCount, fmtMs } from './format';
@@ -59,6 +60,7 @@ export function useShankuModel() {
 
   /** Closes the open model: frees it in the worker and clears selection and properties. */
   const close = useCallback(() => {
+    void clearSavedModel();
     clientRef.current?.closeModel();
     setModel(null);
     setSelection([]);
@@ -71,6 +73,7 @@ export function useShankuModel() {
       const client = clientRef.current;
       if (!client) return;
       const size = file.bytes.byteLength;
+      const keep = file.bytes.slice(0); // the worker takes the original buffer; keep a copy for the session
       setLoad({ status: 'loading', fileName: file.name, done: 0, total: 0 });
       setSelection([]);
       setProperties(null);
@@ -85,6 +88,7 @@ export function useShankuModel() {
         );
         const wall = performance.now() - t0;
         setModel(parsed);
+        void saveSessionModel({ name: file.name, bytes: keep }); // restored after a reload
         setLoad({ status: 'ready' });
         const t = parsed.info.timings;
         log(

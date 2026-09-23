@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.18.0 — 2026-09-23
+
+### Added
+- View filters (manager + VG Filters tab); session persistence (IndexedDB); fullscreen toggle; logo opens the homepage in a new tab; Revit cursors; Shift + right-drag orbit; Ctrl / Shift selection in DXF.
+
+### Fixed
+- Controls using the browser font instead of IBM Plex Sans (button reset), merged from `claude/design-system-extraction-7vri1d`.
+
 ## 0.17.0 — 2026-09-23
 
 ### Added

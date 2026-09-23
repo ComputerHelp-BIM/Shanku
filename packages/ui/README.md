@@ -1,4 +1,4 @@
-# @shanku/ui 0.7.1
+# @shanku/ui 0.8.0
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.0.0` and `@shanku/brand >= 1.0.0`.
 
@@ -33,6 +33,10 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.8.0 — 2026-09-23
+- `TitleBar` takes `brandHref`: the logo and name become a link (new tab), e.g. to the homepage.
+- Fixed (from the design-system branch, released there as 0.7.1): view-tab colour rules had been pasted into the shared button reset's selector list, so buttons, ribbon buttons, ribbon and bottom-panel tabs and view-tab labels lost `font: inherit` and fell back to the browser font instead of IBM Plex Sans. Reset restored; regression tests parse styles.css. (This line's own 0.7.1 was the brand 1.3.0 dependency bump; both are in 0.8.0.)
 
 ### 0.7.1 — 2026-09-23
 - Requires @shanku/brand 1.3.0 (visibility icon). No API change.

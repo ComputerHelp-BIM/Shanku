@@ -37,16 +37,20 @@ import { ConsolePanel } from './components/ConsolePanel';
 import { PipelinePanel } from './components/PipelinePanel';
 import { qaFocus, usePipeline } from './lib/usePipeline';
 import { useHistory } from './lib/useHistory';
+import { loadDrawings, loadGraphics, loadModel, saveGraphics } from './lib/session';
+import { enterFullscreen } from './lib/fullscreen';
 import { QuickAccess } from './components/QuickAccess';
 import { ContextMenu, item, sep, type MenuItem } from './components/ContextMenu';
 import { ElementGraphicsDialog, VisibilityGraphicsDialog } from './components/VisibilityGraphics';
+import { FiltersManager } from './components/Filters';
+import type { AppliedFilter, ViewFilter } from './lib/filters';
 import { EMPTY_GRAPHICS, countOverrides, resolveGraphics, type CategoryOverrides, type GraphicsOverride, type ViewGraphics } from './lib/visibility';
 import { DockWorkspace, type DockWorkspaceHandle, type PanelId } from './components/DockWorkspace';
 import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.17.0';
+const APP_VERSION = '0.18.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -91,6 +95,17 @@ export function App({ start }: { start?: AppStart } = {}) {
     });
   const [hideMenu, setHideMenu] = useState(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  // Full screen toggle (title bar), kept in step with F11 / Esc exits.
+  const [fullscreen, setFullscreen] = useState(() => typeof document !== 'undefined' && !!document.fullscreenElement);
+  useEffect(() => {
+    const on = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    else void enterFullscreen();
+  };
   const [browserFocus, setBrowserFocus] = useState<string | undefined>(undefined);
   // Visibility/Graphics of the 3D view (per category, and per element via Override Graphics)
   const [graphics, setGraphics] = useState<ViewGraphics>(EMPTY_GRAPHICS);
@@ -98,6 +113,28 @@ export function App({ start }: { start?: AppStart } = {}) {
   graphicsRef.current = graphics;
   const [vgOpen, setVgOpen] = useState<{ focus?: string } | null>(null);
   const [elemVgOpen, setElemVgOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const graphicsFor = useRef<string | null>(null);
+  // Save the view's graphics per file (after they were loaded for it, so a reset never overwrites them).
+  useEffect(() => {
+    const name = m.model?.info.fileName;
+    if (name && graphicsFor.current === name) void saveGraphics(name, graphics);
+  }, [graphics, m.model?.info.fileName]);
+  // Reload: bring back the model and drawings that were open (unless the homepage handed over a file).
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || start?.file || start?.sample) return;
+    restored.current = true;
+    void (async () => {
+      const model = await loadModel();
+      if (model) {
+        m.log(`Restored ${model.name} from your last session.`);
+        await m.open(model);
+      }
+      for (const d of await loadDrawings()) await dx.open(d).catch(() => undefined);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [lastCommand, setLastCommand] = useState<{ id: CommandId; label: string } | null>(null);
   // Select Previous: the last non-empty selection before the current one.
   const prevSelection = useRef<number[]>([]);
@@ -162,7 +199,14 @@ export function App({ start }: { start?: AppStart } = {}) {
     setHidden([]);
     setSectionBox(false);
     setGraphics(EMPTY_GRAPHICS);
+    graphicsFor.current = null;
     history.clear();
+    const name = m.model?.info.fileName;
+    if (name)
+      void loadGraphics<ViewGraphics>(name).then((g) => {
+        if (g) setGraphics({ ...EMPTY_GRAPHICS, ...g });
+        graphicsFor.current = name; // from now on, changes are saved for this file
+      });
     if (m.model) {
       setIfcColor((c) => c ?? nextDocColor(dx.docs.map((d) => d.color)));
       setActiveView('3d');
@@ -359,7 +403,13 @@ export function App({ start }: { start?: AppStart } = {}) {
   const viewHidden = useMemo(() => (resolved.hidden.length ? [...new Set([...hidden, ...resolved.hidden])] : hidden), [hidden, resolved.hidden]);
   const changeGraphics = (name: string, next: ViewGraphics) =>
     history.run(name, (t) => t.change('view-graphics', graphicsRef.current, next, setGraphics));
-  const applyCategoryGraphics = (categories: CategoryOverrides) => changeGraphics('Visibility/Graphics', { ...graphicsRef.current, categories });
+  const applyViewGraphics = (next: { categories: CategoryOverrides; applied: AppliedFilter[] }) =>
+    changeGraphics('Visibility/Graphics', { ...graphicsRef.current, categories: next.categories, applied: next.applied });
+  const applyFilterDefs = (filters: ViewFilter[]) => {
+    const ids = new Set(filters.map((f) => f.id));
+    // Deleting a filter also removes it from the view, as in Revit.
+    changeGraphics('Filters', { ...graphicsRef.current, filters, applied: graphicsRef.current.applied.filter((a) => ids.has(a.filterId)) });
+  };
   const applyElementGraphics = (o: GraphicsOverride | null) => {
     const elements = { ...graphicsRef.current.elements };
     for (const i of sel) {
@@ -499,11 +549,17 @@ export function App({ start }: { start?: AppStart } = {}) {
       titleBar={
         <TitleBar
           fileName={info?.fileName ?? 'No model open'}
+          brandHref={import.meta.env.BASE_URL}
           quickAccess={<QuickAccess history={history} onOpen={openFromDisk} onHome={() => viewport.current?.home()} canHome={!!m.model} />}
           saveState={info ? 'Opened from this device' : undefined}
           search={<CommandSearch ref={search} onKeyDown={onSearchKey} placeholder="Find by mark, Element ID, GlobalId or name…   Ctrl + K" />}
           actions={
             <>
+              <IconButton label={fullscreen ? 'Exit full screen' : 'Full screen'} onClick={toggleFullscreen}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  {fullscreen ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}
+                </svg>
+              </IconButton>
               <IconButton label={`Interface theme: ${{ system: 'Auto (follows your system)', paper: 'Light', ink: 'Dark' }[preference]}. Click to change`} onClick={cycle}>
                 <ThemeIcon preference={preference} />
               </IconButton>
@@ -756,9 +812,23 @@ export function App({ start }: { start?: AppStart } = {}) {
               <VisibilityGraphicsDialog
                 categories={Object.entries(m.model.info.categories).map(([id, n]) => ({ id, label: CATEGORY_PLURAL[id as Category] ?? id, count: n ?? 0 }))}
                 value={graphics.categories}
+                applied={graphics.applied}
+                filters={graphics.filters}
                 focus={vgOpen?.focus}
-                onApply={applyCategoryGraphics}
+                onApply={applyViewGraphics}
+                onEditFilters={() => setFiltersOpen(true)}
                 onClose={() => setVgOpen(null)}
+              />
+            ) : null}
+          </FloatingWindow>
+          <FloatingWindow id="filters" title="Filters" open={filtersOpen && !!m.model} onClose={() => setFiltersOpen(false)} initial={{ w: 820, h: 520 }} minWidth={640} minHeight={360}>
+            {m.model ? (
+              <FiltersManager
+                filters={graphics.filters}
+                categories={Object.entries(m.model.info.categories).map(([id, n]) => ({ id, label: CATEGORY_PLURAL[id as Category] ?? id, count: n ?? 0 }))}
+                elements={m.model.elements}
+                onApply={applyFilterDefs}
+                onClose={() => setFiltersOpen(false)}
               />
             ) : null}
           </FloatingWindow>

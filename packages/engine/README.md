@@ -1,4 +1,4 @@
-# @shanku/engine 0.15.0
+# @shanku/engine 0.16.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,11 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.16.0 — 2026-09-23
+- Revit cursors (`cursors.ts`): orbit arrows while orbiting, four-way arrow while panning, and the selection arrow with + (Ctrl, add) or − (Shift, remove) at rest; both viewers, updated as the keys go down and up.
+- 3D: Shift + right-drag orbits, as in Revit.
+- DXF: Ctrl adds to and Shift removes from the selection (click and box), as in AutoCAD.
 
 ### 0.15.0 — 2026-09-23
 - Visibility/Graphics overrides: a second per-element texture (colour, halftone, transparency 0-63 levels) read by every shader; `Viewer.setOverrides(list)`. A colour keeps the face's shading; halftone blends toward the paper and fades edges; transparent elements draw in the see-through pass with glass and the selection.

@@ -1,6 +1,6 @@
-# @shanku/web 0.17.0
+# @shanku/web 0.18.0
 
-The Shanku app. Requires `@shanku/engine >= 0.15.0`, `@shanku/ui >= 0.7.1`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.16.0`, `@shanku/ui >= 0.8.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.18.0 — 2026-09-23
+- **View filters** (Revit): a Filters manager (New / Duplicate / Delete, categories, rules on Mark, Level, Type, Name, Grade, IFC class, Volume, Length with equals / contains / begins with / ends with / greater / less, AND or OR, live match count, value suggestions from the model) and a **Filters tab in Visibility/Graphics** (enable, visibility, colour, transparency, halftone, priority ↑↓). Precedence: element override > first matching filter > category. Undoable.
+- **Session kept across reloads**: the open model, open drawings and each file's Visibility/Graphics are stored in IndexedDB on this device and restored; closing a file forgets it.
+- **Full screen toggle** in the title bar; the **Shanku logo** opens the homepage in a new tab.
+- Revit cursors and Shift + right-drag orbit (engine 0.16.0); Shift + right-click opens no menu.
 
 ### 0.17.0 — 2026-09-23
 - **Visibility/Graphics** (View → Graphics, or VG / VV), like Revit's Model Categories tab: visibility, surface colour, transparency and halftone per category; All / None / Invert / Clear overrides; OK / Cancel / Apply. Each Apply is one undoable transaction.

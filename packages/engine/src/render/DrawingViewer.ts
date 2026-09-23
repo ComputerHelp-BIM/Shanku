@@ -20,6 +20,7 @@ import { wheelZoomFactor } from './cameraMath';
 import { readViewerTokens, parseCssColor, type Rgba } from './cssColor';
 import { resolvePalette, toCss } from './drawingColors';
 import { tempDims, type Dim2 } from './tempDims';
+import { CURSOR, modifierCursor } from './cursors';
 
 export interface DrawingViewerEvents {
   /** Cursor position in real drawing coordinates (origin added back), or null when outside. */
@@ -550,6 +551,7 @@ export class DrawingViewer {
       e.preventDefault();
       c.setPointerCapture(e.pointerId);
       drag = { x: e.clientX, y: e.clientY };
+      c.style.cursor = CURSOR.pan;
     };
     let hoverQueued = false;
     let lastHoverEv: PointerEvent | null = null;
@@ -588,16 +590,13 @@ export class DrawingViewer {
     const up = (e: PointerEvent) => {
       if (click && e.button === 0) {
         this.rectEl.style.display = 'none';
-        if (click.box) {
-          const hits = this.selectInRect(click.x, click.y, e.clientX, e.clientY, e.clientX < click.x);
-          this.select(hits);
-          this.events.onSelect?.(hits);
-        } else {
-          const hit = this.pickAt(e.clientX, e.clientY);
-          this.select(hit);
-          this.events.onSelect?.(hit === null ? [] : [hit]);
-        }
+        const hits = click.box ? this.selectInRect(click.x, click.y, e.clientX, e.clientY, e.clientX < click.x) : [this.pickAt(e.clientX, e.clientY)].filter((h): h is number => h !== null);
+        // AutoCAD / Revit: Ctrl adds to the selection, Shift removes from it, otherwise replace.
+        const next = e.ctrlKey || e.metaKey ? [...new Set([...this.selected, ...hits])] : e.shiftKey ? this.selected.filter((x) => !hits.includes(x)) : hits;
+        this.select(next);
+        this.events.onSelect?.(next);
       }
+      c.style.cursor = modifierCursor(e);
       click = null;
       drag = null;
       if (c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
@@ -612,6 +611,22 @@ export class DrawingViewer {
     };
     const noMenu = (e: Event) => e.preventDefault();
     const noAuto = (e: MouseEvent) => e.button === 1 && e.preventDefault();
+    let over = false;
+    const onKeyMod = (e: KeyboardEvent) => {
+      if (over && !drag && (e.key === 'Control' || e.key === 'Shift' || e.key === 'Meta')) c.style.cursor = modifierCursor(e);
+    };
+    const onEnter = () => (over = true);
+    const onOut = () => (over = false);
+    window.addEventListener('keydown', onKeyMod);
+    window.addEventListener('keyup', onKeyMod);
+    c.addEventListener('pointerenter', onEnter);
+    c.addEventListener('pointerleave', onOut);
+    this.disposers.push(() => {
+      window.removeEventListener('keydown', onKeyMod);
+      window.removeEventListener('keyup', onKeyMod);
+      c.removeEventListener('pointerenter', onEnter);
+      c.removeEventListener('pointerleave', onOut);
+    });
     c.addEventListener('pointerdown', down);
     c.addEventListener('pointermove', move);
     c.addEventListener('pointerup', up);

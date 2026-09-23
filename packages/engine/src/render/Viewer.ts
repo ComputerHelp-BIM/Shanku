@@ -23,6 +23,7 @@ import {
 } from 'three';
 import type { ElementRecord, ParsedModel } from '../model/types';
 import { orbitAround, wheelZoomFactor, worldPerPixel, zoomShift } from './cameraMath';
+import { CURSOR, modifierCursor } from './cursors';
 import { readViewerTokens, type Rgba } from './cssColor';
 import {
   DISPLAY_CONSISTENT,
@@ -819,6 +820,11 @@ export class Viewer {
     }
   }
 
+  /** Cursor at rest: zoom region, else + / − for Ctrl / Shift (add to / remove from the selection). */
+  private idleCursor(e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }): string {
+    return this.zoomRegionArmed ? CURSOR.zoom : modifierCursor(e);
+  }
+
   /** Shows or hides the orbit centre marker at a world point. */
   private showPivot(p: Vector3 | null): void {
     if (!p) {
@@ -952,11 +958,15 @@ export class Viewer {
         if (this.zoomRegionArmed) mode = 'zoomRegion';
         else if (e.altKey) mode = e.shiftKey ? 'pan' : 'orbit';
         else mode = 'select';
+      } else if (e.button === 2 && e.shiftKey) {
+        mode = 'orbit'; // Revit: Shift + right-drag orbits (the right-click menu is not opened with Shift)
       }
       if (!mode) return;
       e.preventDefault();
       c.setPointerCapture(e.pointerId);
       drag = { mode, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pivot: this.orbitPivot(), moved: false, recorded: false };
+      if (mode === 'orbit') c.style.cursor = CURSOR.orbit;
+      else if (mode === 'pan') c.style.cursor = CURSOR.pan;
     };
 
     const onMove = (e: PointerEvent) => {
@@ -1014,7 +1024,7 @@ export class Viewer {
         const grip = this.gripAt(lastHover.clientX, lastHover.clientY);
         if (grip !== this.hotGrip) {
           this.hotGrip = grip;
-          c.style.cursor = grip ? ((grip.userData as GripData).kind === 'rotate' ? 'grab' : 'move') : '';
+          c.style.cursor = grip ? ((grip.userData as GripData).kind === 'rotate' ? 'grab' : 'move') : this.idleCursor(e);
           this.requestRender();
         }
         this.setHover(grip ? null : this.pick(lastHover.clientX, lastHover.clientY));
@@ -1028,6 +1038,7 @@ export class Viewer {
       if (c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
       this.rectEl.style.display = 'none';
       this.showPivot(null);
+      c.style.cursor = this.idleCursor(e);
       if (d.mode === 'grip') {
         if (d.moved && d.start && this.sbox) this.events.onSectionBoxEdit?.(d.start, cloneState(this.sbox));
         return;
@@ -1057,6 +1068,22 @@ export class Viewer {
     const noMenu = (e: Event) => e.preventDefault();
     const noAutoscroll = (e: MouseEvent) => e.button === 1 && e.preventDefault();
 
+    let over = false;
+    const onKeyMod = (e: KeyboardEvent) => {
+      if (over && !drag && (e.key === 'Control' || e.key === 'Shift' || e.key === 'Meta')) c.style.cursor = this.idleCursor(e);
+    };
+    const onEnter = () => (over = true);
+    const onOut = () => (over = false);
+    window.addEventListener('keydown', onKeyMod);
+    window.addEventListener('keyup', onKeyMod);
+    c.addEventListener('pointerenter', onEnter);
+    c.addEventListener('pointerleave', onOut);
+    this.disposers.push(() => {
+      window.removeEventListener('keydown', onKeyMod);
+      window.removeEventListener('keyup', onKeyMod);
+      c.removeEventListener('pointerenter', onEnter);
+      c.removeEventListener('pointerleave', onOut);
+    });
     c.addEventListener('pointerdown', onDown);
     c.addEventListener('pointermove', onMove);
     c.addEventListener('pointerup', onUp);

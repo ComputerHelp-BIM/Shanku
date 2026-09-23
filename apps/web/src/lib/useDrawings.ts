@@ -1,3 +1,4 @@
+import { saveDrawings, type SavedFile } from './session';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DxfClient, type ParsedDrawing } from '@shanku/engine';
 import { nextDocColor } from './documents';
@@ -20,6 +21,8 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
   const client = useRef<DxfClient | null>(null);
   const [docs, setDocs] = useState<DrawingDoc[]>([]);
   const docsRef = useRef(docs);
+  /** Open drawings' bytes, persisted so a reload brings them back. */
+  const saved = useRef(new Map<string, SavedFile>());
   docsRef.current = docs;
   const [loading, setLoading] = useState<{ name: string; phase: string } | null>(null);
   const seq = useRef(0);
@@ -29,11 +32,14 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
   const open = useCallback(
     async (file: PickedFile): Promise<string | null> => {
       client.current ??= new DxfClient();
+      const keep = file.bytes.slice(0); // the worker takes the original buffer; keep a copy for the session
       setLoading({ name: file.name, phase: 'Preparing…' });
       const t0 = performance.now();
       try {
         const drawing = await client.current.open(file.name, file.bytes, (phase) => setLoading({ name: file.name, phase }));
         const id = `dxf-${++seq.current}`;
+        saved.current.set(id, { name: file.name, bytes: keep });
+        void saveDrawings([...saved.current.values()]);
         const color = nextDocColor([...colorsInUse(), ...docs.map((d) => d.color)]);
         setDocs((ds) => [...ds, { id, name: file.name, color, drawing, layerOn: drawing.layers.map((l) => l.on), units: drawing.info.units, selected: null }]);
         const i = drawing.info;
@@ -54,6 +60,8 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
   );
 
   const close = useCallback((id: string) => {
+    saved.current.delete(id);
+    void saveDrawings([...saved.current.values()]);
     setDocs((ds) => {
       const d = ds.find((x) => x.id === id);
       if (d) client.current?.forget(d.drawing.drawingId); // the worker keeps each drawing open for selection

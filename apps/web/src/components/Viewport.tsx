@@ -135,7 +135,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     );
   }
   return (
-    <div ref={host} className="app-viewport" onContextMenu={(e) => { e.preventDefault(); props.onContextMenu?.(e.clientX, e.clientY); }} data-theme={props.canvasTheme && props.canvasTheme !== 'follow' ? props.canvasTheme : undefined}>
+    <div ref={host} className="app-viewport" onContextMenu={(e) => { e.preventDefault(); if (!e.shiftKey) props.onContextMenu?.(e.clientX, e.clientY); /* Shift + right-drag orbits instead */ }} data-theme={props.canvasTheme && props.canvasTheme !== 'follow' ? props.canvasTheme : undefined}>
       {model ? (
         <ViewCube
           orientation={orientation}

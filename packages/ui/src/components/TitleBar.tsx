@@ -35,15 +35,24 @@ export interface TitleBarProps {
   actions?: ReactNode;
   /** Revit's Quick Access Toolbar: open, undo, redo… right after the logo. */
   quickAccess?: ReactNode;
+  /** When set, the logo and name link here (opened in a new tab), e.g. the homepage. */
+  brandHref?: string;
 }
 
-export function TitleBar({ fileName, saveState, search, actions, quickAccess }: TitleBarProps) {
+export function TitleBar({ fileName, saveState, search, actions, quickAccess, brandHref }: TitleBarProps) {
   return (
     <header className="sk-titlebar">
-      <div className="sk-titlebar__brand">
+      {brandHref ? (
+        <a className="sk-titlebar__brand" href={brandHref} target="_blank" rel="noopener" title="Shanku home (opens in a new tab)">
         <ShankuMark size={26} />
         <span className="sk-titlebar__wordmark">shanku</span>
-      </div>
+        </a>
+      ) : (
+        <div className="sk-titlebar__brand">
+        <ShankuMark size={26} />
+        <span className="sk-titlebar__wordmark">shanku</span>
+        </div>
+      )}
       {quickAccess ? <div className="sk-titlebar__qat" role="toolbar" aria-label="Quick Access Toolbar">{quickAccess}</div> : null}
       <span className="sk-titlebar__divider" aria-hidden="true" />
       <span className="sk-titlebar__file">{fileName}</span>
