@@ -23,11 +23,17 @@ export interface PropertiesPanelProps {
   selection: number[];
   properties: { index: number; groups: PropertyGroup[] | null; error?: string } | null;
   onEditMarkRules: () => void;
+  /** Revit shows the active view's properties when nothing is selected. */
+  view?: {
+    kind: string;
+    name: string;
+    rows: Array<{ section: string; label: string; value: string | number; unit?: string; onCommit?: (v: string) => void }>;
+  };
 }
 
 const LEVEL_LABEL = { recommended: 'Recommended', supported: 'Supported', limited: 'Limited', experimental: 'Experimental' } as const;
 
-export function PropertiesPanel({ model, selection, properties, onEditMarkRules }: PropertiesPanelProps) {
+export function PropertiesPanel({ model, selection, properties, onEditMarkRules, view }: PropertiesPanelProps) {
   if (!model) {
     return (
       <DockPanel title="Properties">
@@ -40,7 +46,22 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules 
     const i = model.info;
     return (
       <DockPanel title="Properties">
-        <TypeSelector icon="view3d" category="Model" typeName={i.projectName || i.fileName} />
+        {view ? (
+          <>
+            <TypeSelector icon={view.kind === 'Structural Plan' ? 'plan' : view.kind === '3D View' ? 'view3d' : 'section'} category={view.kind} typeName={view.name} />
+            {[...new Set(view.rows.map((r) => r.section))].map((sec) => (
+              <PropertySection key={sec} title={sec}>
+                {view.rows
+                  .filter((r) => r.section === sec)
+                  .map((r) => (
+                    <PropertyRow key={r.label} label={r.label} value={r.value} unit={r.unit} onCommit={r.onCommit} readOnly={!r.onCommit} />
+                  ))}
+              </PropertySection>
+            ))}
+          </>
+        ) : (
+          <TypeSelector icon="view3d" category="Model" typeName={i.projectName || i.fileName} />
+        )}
         <PropertySection title="File">
           <PropertyRow label="Name" value={i.fileName} />
           <PropertyRow label="Size" value={fmtBytes(i.fileSize)} />

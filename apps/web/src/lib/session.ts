@@ -44,3 +44,6 @@ export const loadDrawings = async () => (await tx<SavedFile[]>('readonly', (s) =
 
 export const saveGraphics = (fileName: string, g: unknown) => tx('readwrite', (s) => s.put(g, `graphics:${fileName}`));
 export const loadGraphics = <T>(fileName: string) => tx<T>('readonly', (s) => s.get(`graphics:${fileName}`));
+
+export const saveViews = (fileName: string, views: unknown) => tx('readwrite', (s) => s.put(views, `views:${fileName}`));
+export const loadViews = <T>(fileName: string) => tx<T>('readonly', (s) => s.get(`views:${fileName}`));

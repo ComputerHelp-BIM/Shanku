@@ -1,4 +1,4 @@
-# @shanku/ui 0.9.0
+# @shanku/ui 0.10.0
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.2.0` and `@shanku/brand >= 1.0.0`.
 
@@ -33,6 +33,9 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.10.0 — 2026-09-23
+- `TreeView` `onContextMenu(node, x, y)`: right-click on rows (Revit's view menu in the Project Browser).
 
 ### 0.9.0 — 2026-09-23
 - Merged the design-system branch's 0.8.0 (WCAG contrast, token-only CSS, stylelint guard) with this line's 0.8.0 (TitleBar `brandHref`); both lines had used 0.8.0.

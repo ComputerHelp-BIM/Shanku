@@ -125,7 +125,13 @@ void main() {
   float ovAlpha = 1.0 - float(ovFlags & 63) / 63.0;
   // Pass 0 is opaque; pass 1 draws glass, the selection and transparent overrides, so what is behind shows.
   if ((glass || sel || ovAlpha < 0.999) != (uPass == 1)) discard;
-  if (!gl_FrontFacing) { outColor = vec4(sel ? uSelShade : uCap, 1.0); return; } // only drawn while a section box is on
+  // Back faces are only drawn while a section box is on, as solid cut faces of opaque elements. In the
+  // see-through pass they are skipped: a transparent slab must not paint its own underside opaque.
+  if (!gl_FrontFacing) {
+    if (uPass == 1) discard;
+    outColor = vec4(sel ? uSelShade : uCap, 1.0);
+    return;
+  }
   bool hov = (vState & ${STATE_HOVER}) != 0;
   vec3 n = normalize(vNormalW);
   vec3 top = sel ? uSelTop : uTop;

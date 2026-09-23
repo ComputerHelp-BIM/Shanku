@@ -24,6 +24,11 @@ export interface SectionBoxState {
   angle: number;
 }
 
+/** A section box state from plain numbers (world metres), e.g. a plan's view range. */
+export function boxState(center: readonly [number, number, number], half: readonly [number, number, number], angle = 0): SectionBoxState {
+  return { center: new Vector3(center[0], center[1], center[2]), half: new Vector3(half[0], half[1], half[2]), angle };
+}
+
 export const MIN_HALF = 0.1; // m: a face cannot be dragged closer than 0.2 m to its opposite
 
 export const cloneState = (s: SectionBoxState): SectionBoxState => ({ center: s.center.clone(), half: s.half.clone(), angle: s.angle });

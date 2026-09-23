@@ -21,7 +21,7 @@ import {
   useShortcut,
   useTheme,
 } from '@shanku/ui';
-import { CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, type Category, type DisplayStyle, type PipelineQa } from '@shanku/engine';
+import { CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, boxState, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
 import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
@@ -37,7 +37,8 @@ import { ConsolePanel } from './components/ConsolePanel';
 import { PipelinePanel } from './components/PipelinePanel';
 import { qaFocus, usePipeline } from './lib/usePipeline';
 import { useHistory } from './lib/useHistory';
-import { loadDrawings, loadGraphics, loadModel, saveGraphics } from './lib/session';
+import { loadDrawings, loadGraphics, loadModel, loadViews, saveViews } from './lib/session';
+import { KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, nextSectionName, viewClip, viewDirection, type ModelView } from './lib/views';
 import { enterFullscreen } from './lib/fullscreen';
 import { QuickAccess } from './components/QuickAccess';
 import { ContextMenu, item, sep, type MenuItem } from './components/ContextMenu';
@@ -52,7 +53,7 @@ import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.19.0';
+const APP_VERSION = '0.20.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -116,6 +117,19 @@ export function App({ start }: { start?: AppStart } = {}) {
   const [vgOpen, setVgOpen] = useState<{ focus?: string } | null>(null);
   const [elemVgOpen, setElemVgOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // ---- Views (Revit Project Browser): each keeps its graphics, style, edges, camera, hides, box
+  const [views, setViews] = useState<ModelView[]>([]);
+  const viewsRef = useRef(views);
+  viewsRef.current = views;
+  const [openViews, setOpenViews] = useState<string[]>(['3d']);
+  const loadedView = useRef('3d');
+  const camStore = useRef(new Map<string, CameraState>());
+  const hideStore = useRef(new Map<string, number[]>());
+  const boxStore = useRef(new Map<string, SectionBoxState | null>());
+  const [viewMenu, setViewMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [renameView, setRenameView] = useState<{ id: string; name: string } | null>(null);
+  const [sectionTool, setSectionTool] = useState(false);
+  const sectionA = useRef<[number, number] | null>(null);
   // View Templates (kept on this device, shared by export / import)
   const [templates, setTemplatesState] = useState<ViewTemplate[]>(loadTemplates);
   const setTemplates = (t: ViewTemplate[]) => {
@@ -129,8 +143,9 @@ export function App({ start }: { start?: AppStart } = {}) {
   // Save the view's graphics per file (after they were loaded for it, so a reset never overwrites them).
   useEffect(() => {
     const name = m.model?.info.fileName;
-    if (name && graphicsFor.current === name) void saveGraphics(name, graphics);
-  }, [graphics, m.model?.info.fileName]);
+    if (!name || graphicsFor.current !== name || !views.length) return;
+    void saveViews(name, views.map((v) => (v.id === loadedView.current ? { ...v, graphics, displayStyle, edges } : v)));
+  }, [graphics, displayStyle, edges, views, m.model?.info.fileName]);
   // Reload: bring back the model and drawings that were open (unless the homepage handed over a file).
   const restored = useRef(false);
   useEffect(() => {
@@ -212,12 +227,35 @@ export function App({ start }: { start?: AppStart } = {}) {
     setGraphics(EMPTY_GRAPHICS);
     graphicsFor.current = null;
     history.clear();
+    camStore.current.clear();
+    hideStore.current.clear();
+    boxStore.current.clear();
+    loadedView.current = '3d';
+    setOpenViews(['3d']);
     const name = m.model?.info.fileName;
+    const defaults = m.model ? defaultViews(m.model.info.levels, levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length)) : [];
+    setViews(defaults);
+    viewport.current?.setViewMode({ nav2d: false, grips: true });
     if (name)
-      void loadGraphics<ViewGraphics>(name).then((g) => {
-        if (g) setGraphics({ ...EMPTY_GRAPHICS, ...g });
+      void (async () => {
+        const saved = await loadViews<ModelView[]>(name);
+        if (saved?.length) {
+          // Keep saved views (renamed, duplicated, sections), and add plans for levels they lack.
+          const have = new Set(saved.map((v) => v.id));
+          const merged = [...saved, ...defaults.filter((d) => !have.has(d.id))];
+          setViews(merged);
+          const v3 = merged.find((v) => v.id === '3d');
+          if (v3) {
+            setGraphics({ ...EMPTY_GRAPHICS, ...v3.graphics });
+            setDisplayStyle(v3.displayStyle);
+            setEdges(v3.edges);
+          }
+        } else {
+          const g = await loadGraphics<ViewGraphics>(name); // sessions saved before views existed
+          if (g) setGraphics({ ...EMPTY_GRAPHICS, ...g });
+        }
         graphicsFor.current = name; // from now on, changes are saved for this file
-      });
+      })();
     if (m.model) {
       setIfcColor((c) => c ?? nextDocColor(dx.docs.map((d) => d.color)));
       setActiveView('3d');
@@ -271,6 +309,11 @@ export function App({ start }: { start?: AppStart } = {}) {
   );
 
   const closeView = (id: string) => {
+    if (id !== '3d' && viewsRef.current.some((v) => v.id === id)) {
+      setOpenViews((o) => o.filter((x) => x !== id));
+      if (activeView === id) setActiveView('3d');
+      return;
+    }
     if (id === '3d') {
       m.close();
       setIfcColor(null);
@@ -372,6 +415,7 @@ export function App({ start }: { start?: AppStart } = {}) {
         case 'resetHidden':
           return setHidden([]);
         case 'sectionBox': {
+          if (isTwoD(activeModelView ?? undefined)) return setNotice('Section boxes are for 3D views; plans and sections have a view range (Properties).');
           if (!sectionBox && !sel.length) return void needSelection();
           const before = v.sectionBoxState();
           if (sectionBox) v.setSectionBox(null);
@@ -400,6 +444,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   );
 
   useShortcut({ code: 'Escape' }, () => {
+    if (sectionTool) return cancelSection();
     if (activeDoc) dx.select(activeDoc.id, null);
     else if (zoomRegion) viewport.current?.cancelZoomRegion();
     else m.setSelection([]);
@@ -410,6 +455,16 @@ export function App({ start }: { start?: AppStart } = {}) {
   }, [m.selection]);
 
   // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
+  const heights = useMemo(() => (m.model ? levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length) : new Map<string, number>()), [m.model?.info]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bounds = useMemo(() => {
+    const min: [number, number, number] = [Infinity, Infinity, Infinity], max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+    for (const e of m.model?.elements ?? []) for (let k = 0; k < 3; k++) {
+      min[k] = Math.min(min[k], e.bounds[k]);
+      max[k] = Math.max(max[k], e.bounds[k + 3]);
+    }
+    return { min, max };
+  }, [m.model?.info]); // eslint-disable-line react-hooks/exhaustive-deps
+  const activeModelView = views.find((v) => v.id === activeView) ?? null;
   const resolved = useMemo(() => (m.model ? resolveGraphics(m.model.elements, graphics) : { hidden: [], overrides: [] }), [m.model, graphics]);
   const viewHidden = useMemo(() => (resolved.hidden.length ? [...new Set([...hidden, ...resolved.hidden])] : hidden), [hidden, resolved.hidden]);
   const changeGraphics = (name: string, next: ViewGraphics) =>
@@ -443,6 +498,113 @@ export function App({ start }: { start?: AppStart } = {}) {
       }),
     );
     m.log(`Applied view template ${t.name}.`);
+  };
+
+  /** Puts a view's range, navigation, box and camera on the viewer. */
+  const showView = (v: ModelView) => {
+    const vp = viewport.current;
+    if (!vp) return;
+    const two = isTwoD(v);
+    vp.setViewMode({ nav2d: two, grips: !two });
+    const clip = viewClip(v, heights, bounds);
+    vp.setSectionBoxState(clip ? boxState(clip.center, clip.half, clip.angle) : boxStore.current.get(v.id) ?? null);
+    setSectionBox(!two && !!boxStore.current.get(v.id));
+    const cam = camStore.current.get(v.id);
+    if (cam) vp.setCamera(cam);
+    else {
+      const dir = viewDirection(v);
+      if (dir) vp.aimInstant(dir);
+      else vp.home();
+    }
+  };
+
+  /** Keeps the outgoing view's state and shows the incoming one (Revit: each view remembers its own). */
+  useEffect(() => {
+    const vp = viewport.current;
+    const v = viewsRef.current.find((x) => x.id === activeView);
+    if (!vp || !m.model || !v || loadedView.current === v.id) return;
+    const out = loadedView.current;
+    const cam = vp.getCamera();
+    if (cam) camStore.current.set(out, cam);
+    hideStore.current.set(out, hidden);
+    const outView = viewsRef.current.find((x) => x.id === out);
+    if (outView && !isTwoD(outView)) boxStore.current.set(out, sectionBox ? vp.sectionBoxState() : null);
+    // Capture now: a deferred updater would run after the incoming view's graphics replaced these.
+    const keep = { graphics: graphicsRef.current, displayStyle, edges };
+    setViews((vs) => vs.map((x) => (x.id === out ? { ...x, ...keep } : x)));
+    loadedView.current = v.id;
+    setGraphics(v.graphics);
+    setDisplayStyle(v.displayStyle);
+    setEdges(v.edges);
+    setHidden(hideStore.current.get(v.id) ?? []);
+    showView(v);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeView, m.model]);
+
+  const openView = (id: string) => {
+    setOpenViews((o) => (o.includes(id) ? o : [...o, id]));
+    setActiveView(id);
+  };
+  const setViewRange = (id: string, patch: Partial<ModelView>) => {
+    setViews((vs) => vs.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    const v = viewsRef.current.find((x) => x.id === id);
+    if (v && id === loadedView.current) {
+      const clip = viewClip({ ...v, ...patch }, heights, bounds);
+      if (clip) viewport.current?.setSectionBoxState(boxState(clip.center, clip.half, clip.angle));
+    }
+  };
+  const duplicateModelView = (id: string) => {
+    const v = viewsRef.current.find((x) => x.id === id);
+    if (!v) return;
+    const live = id === loadedView.current ? { ...v, graphics: graphicsRef.current, displayStyle, edges } : v;
+    const d = duplicateView(live, viewsRef.current);
+    const cam = id === loadedView.current ? viewport.current?.getCamera() : camStore.current.get(id);
+    if (cam) camStore.current.set(d.id, cam);
+    if (boxStore.current.has(id) || (id === loadedView.current && sectionBox)) boxStore.current.set(d.id, id === loadedView.current ? viewport.current?.sectionBoxState() ?? null : boxStore.current.get(id) ?? null);
+    setViews((vs) => [...vs, d]);
+    openView(d.id);
+    m.log(`Duplicated ${v.name} as ${d.name}.`);
+  };
+  const deleteModelView = (id: string) => {
+    if (id === '3d') return;
+    setViews((vs) => vs.filter((x) => x.id !== id));
+    setOpenViews((o) => o.filter((x) => x !== id));
+    if (activeView === id) setActiveView('3d');
+  };
+  const applyTemplateToView = (id: string, t: ViewTemplate) => {
+    if (id === loadedView.current) return applyViewTemplate(t);
+    const before = viewsRef.current;
+    const after = before.map((v) => (v.id === id ? { ...v, ...applyTemplate({ graphics: v.graphics, displayStyle: v.displayStyle, edges: v.edges }, t) } : v));
+    history.run(`Apply View Template: ${t.name}`, (tx) => tx.change('views', before, after, setViews));
+  };
+  /** Revit's Section tool: two clicks in a plan (or 3D) view draw the section line. */
+  const startSection = () => {
+    const v = activeModelView;
+    if (!v || (v.kind !== 'plan' && v.kind !== '3d')) return setNotice('Draw sections in a plan or 3D view.');
+    const y = v.kind === 'plan' && v.level ? heights.get(v.level) ?? 0 : bounds.min[1];
+    sectionA.current = null;
+    setSectionTool(true);
+    setNotice('Section: click the start of the line. Drawn left to right, it looks up the screen. Esc cancels.');
+    viewport.current?.startPointPick(y, (x, z) => {
+      if (!sectionA.current) {
+        sectionA.current = [x, z];
+        setNotice('Section: click the end of the line.');
+        return;
+      }
+      const a = sectionA.current, b: [number, number] = [x, z];
+      viewport.current?.stopPointPick();
+      setSectionTool(false);
+      if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 0.2) return setNotice('That section line is too short.');
+      const sv: ModelView = { id: `section:${Date.now().toString(36)}`, kind: 'section', name: nextSectionName(viewsRef.current), section: { a, b, depth: 5 }, graphics: structuredClone(EMPTY_GRAPHICS), displayStyle, edges: true };
+      setViews((vs) => [...vs, sv]);
+      openView(sv.id);
+      setNotice(`${sv.name} created. Far clip is 5 m; change it in Properties.`);
+    });
+  };
+  const cancelSection = () => {
+    viewport.current?.stopPointPick();
+    setSectionTool(false);
+    sectionA.current = null;
   };
 
   /** Commands the right-click menu can repeat (Revit's Repeat Last Command). */
@@ -628,9 +790,9 @@ export function App({ start }: { start?: AppStart } = {}) {
           ) : ribbonTab === 'view' ? (
             <>
           <RibbonGroup label="Create">
-            <RibbonButton icon="view3d" label="3D" onClick={() => viewport.current?.home()} shortcutHint="Home" />
-            <RibbonButton icon="plan" label="Top" onClick={() => viewport.current?.setView('top')} />
-            <RibbonButton icon="elevation" label="Front" onClick={() => viewport.current?.setView('front')} />
+            <RibbonButton icon="view3d" label="3D View" disabled={!m.model} onClick={() => openView('3d')} shortcutHint="open {3D}" />
+            <RibbonButton icon="elevation" label="Section" active={sectionTool} disabled={!m.model || !(activeModelView?.kind === 'plan' || activeModelView?.kind === '3d')} onClick={() => (sectionTool ? cancelSection() : startSection())} shortcutHint="two clicks in a plan or 3D view" />
+            <RibbonButton icon="plan" label="Duplicate View" disabled={!activeModelView} onClick={() => activeModelView && duplicateModelView(activeModelView.id)} shortcutHint="copy the current view with its settings" />
           </RibbonGroup>
           <RibbonGroup label="Section">
             <RibbonButton icon="section" label="Box" active={sectionBox} disabled={!m.model} onClick={() => runCommand('sectionBox')} shortcutHint="BX" />
@@ -692,7 +854,20 @@ export function App({ start }: { start?: AppStart } = {}) {
                     {<ViewTabs
           tabs={[
             // {3D} is the IFC model's view: closable when a model is open, hidden when only drawings are open.
-            ...(m.model || !dx.docs.length ? [{ id: '3d', label: '{3D}', closable: !!m.model, color: m.model ? ifcColor ?? undefined : undefined, title: m.model ? `${info?.fileName} (close to unload the model)` : undefined }] : []),
+            ...(m.model
+              ? openViews
+                  .map((id) => views.find((v) => v.id === id))
+                  .filter((v): v is ModelView => !!v)
+                  .map((v) => ({
+                    id: v.id,
+                    label: v.name,
+                    closable: true,
+                    color: ifcColor ?? undefined,
+                    title: v.id === '3d' ? `${info?.fileName} (close to unload the model)` : `${KIND_LABEL[v.kind]}: ${v.name}`,
+                  }))
+              : !dx.docs.length
+                ? [{ id: '3d', label: '{3D}', closable: false }]
+                : []),
             ...dx.docs.map((d) => ({ id: d.id, label: d.name.replace(/\.dxf$/i, ''), closable: true, color: d.color, title: `${d.name} (2D)` })),
           ]}
           activeId={activeView}
@@ -737,6 +912,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             onBoxSelect={m.boxSelect}
             edges={edges}
             canvasTheme={canvasTheme}
+            twoD={isTwoD(activeModelView ?? undefined)}
             onContextMenu={(x, y) => m.model && setCtxMenu({ x, y })}
             reveal={reveal}
             onZoomRegionEnd={() => setZoomRegion(false)}
@@ -840,6 +1016,26 @@ export function App({ start }: { start?: AppStart } = {}) {
                   </table>
                 )}
           </FloatingWindow>
+          {viewMenu && m.model ? (
+            <ContextMenu
+              x={viewMenu.x}
+              y={viewMenu.y}
+              onClose={() => setViewMenu(null)}
+              items={(() => {
+                const v = views.find((x) => x.id === viewMenu.id);
+                if (!v) return [];
+                return [
+                  item('Open', () => openView(v.id)),
+                  sep,
+                  item('Duplicate View', () => duplicateModelView(v.id)),
+                  item('Rename…', () => setRenameView({ id: v.id, name: v.name })),
+                  item('Delete', () => deleteModelView(v.id), { disabled: v.id === '3d' }),
+                  sep,
+                  item('Apply View Template', undefined, { disabled: !templates.length, submenu: templates.map((t) => item(t.name, () => applyTemplateToView(v.id, t))) }),
+                ];
+              })()}
+            />
+          ) : null}
           {vtMenu && m.model ? (
             <ContextMenu
               x={vtMenu.x}
@@ -891,6 +1087,29 @@ export function App({ start }: { start?: AppStart } = {}) {
           </FloatingWindow>
           <FloatingWindow id="view-templates" title="View Templates" open={vtOpen} onClose={() => setVtOpen(false)} initial={{ w: 820, h: 460 }} minWidth={620} minHeight={320}>
             <ViewTemplatesDialog templates={templates} current={viewState()} onChange={setTemplates} onApplyToView={applyViewTemplate} onClose={() => setVtOpen(false)} onLog={m.log} focus={vtFocus} />
+          </FloatingWindow>
+          <FloatingWindow id="rename-view" title="Rename View" open={!!renameView} onClose={() => setRenameView(null)} initial={{ w: 380, h: 150 }} minWidth={320} minHeight={140}>
+            {renameView ? (
+              <form
+                className="vg vg--small"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const name = renameView.name.trim();
+                  if (name) setViews((vs) => vs.map((x) => (x.id === renameView.id ? { ...x, name } : x)));
+                  setRenameView(null);
+                }}
+              >
+                <label className="vg-field">
+                  <span>Name</span>
+                  <input className="flt-input" aria-label="View name" autoFocus value={renameView.name} onChange={(e) => setRenameView({ ...renameView, name: e.target.value })} />
+                </label>
+                <div className="vg-actions">
+                  <span className="app-spacer" />
+                  <Button size="sm" variant="primary" type="submit">OK</Button>
+                  <Button size="sm" type="button" onClick={() => setRenameView(null)}>Cancel</Button>
+                </div>
+              </form>
+            ) : null}
           </FloatingWindow>
           <FloatingWindow id="vg-element" title="View-Specific Element Graphics" open={elemVgOpen && sel.length > 0} onClose={() => setElemVgOpen(false)} initial={{ w: 420, h: 260 }} minWidth={360} minHeight={220}>
             <ElementGraphicsDialog count={sel.length} value={sel.length ? graphics.elements[sel[0]] ?? {} : {}} onApply={applyElementGraphics} onClose={() => setElemVgOpen(false)} />
@@ -985,13 +1204,52 @@ export function App({ start }: { start?: AppStart } = {}) {
                 return activeDoc ? (
                   <DrawingProperties doc={activeDoc} onUnits={(u) => dx.update(activeDoc.id, { units: u })} />
                 ) : (
-                  <PropertiesPanel model={m.model} selection={sel} properties={m.properties} onEditMarkRules={() => setMarkDialog(true)} />
+                  <PropertiesPanel
+                    model={m.model}
+                    selection={sel}
+                    properties={m.properties}
+                    onEditMarkRules={() => setMarkDialog(true)}
+                    view={
+                      activeModelView
+                        ? {
+                            kind: KIND_LABEL[activeModelView.kind],
+                            name: activeModelView.name,
+                            rows: [
+                              { section: 'Identity Data', label: 'View Name', value: activeModelView.name, onCommit: (s: string) => s.trim() && setViews((vs) => vs.map((x) => (x.id === activeModelView.id ? { ...x, name: s.trim() } : x))) },
+                              ...(activeModelView.kind === 'plan'
+                                ? [
+                                    { section: 'Extents', label: 'Associated Level', value: activeModelView.level ?? '' },
+                                    { section: 'View Range', label: 'Cut Plane Offset', unit: 'mm', value: Math.round((activeModelView.cutOffset ?? 1.2) * 1000), onCommit: (s: string) => Number(s) > 0 && setViewRange(activeModelView.id, { cutOffset: Number(s) / 1000 }) },
+                                    { section: 'View Range', label: 'View Depth', unit: 'mm', value: Math.round((activeModelView.viewDepth ?? 1.2) * 1000), onCommit: (s: string) => Number(s) >= 0 && setViewRange(activeModelView.id, { viewDepth: Number(s) / 1000 }) },
+                                  ]
+                                : []),
+                              ...(activeModelView.kind === 'section' && activeModelView.section
+                                ? [{ section: 'Extents', label: 'Far Clip Offset', unit: 'mm', value: Math.round(activeModelView.section.depth * 1000), onCommit: (s: string) => Number(s) > 0 && setViewRange(activeModelView.id, { section: { ...activeModelView.section!, depth: Number(s) / 1000 } }) }]
+                                : []),
+                              { section: 'Graphics', label: 'Visual Style', value: STYLES.find((st) => st.id === displayStyle)?.label ?? displayStyle },
+                              { section: 'Graphics', label: 'Edges', value: edges ? 'On' : 'Off' },
+                            ],
+                          }
+                        : undefined
+                    }
+                  />
                 );
               case 'browser':
                 return activeDoc ? (
                   <LayersPanel doc={activeDoc} onChange={(on) => dx.update(activeDoc.id, { layerOn: on })} />
                 ) : (
-                  <Browser model={m.model} onSelectLevel={selectLevel} onSelectCategory={selectCategory} activeId={browserFocus} />
+                  <Browser
+                    model={m.model}
+                    onSelectLevel={selectLevel}
+                    onSelectCategory={selectCategory}
+                    activeId={browserFocus ?? (activeModelView ? `view:${activeModelView.id}` : undefined)}
+                    views={views.map((v) => ({ id: v.id, kind: v.kind, name: v.name }))}
+                    onOpenView={(id) => {
+                      setBrowserFocus(undefined);
+                      openView(id);
+                    }}
+                    onViewMenu={(id, x, y) => setViewMenu({ id, x, y })}
+                  />
                 );
               case 'activity':
                 return m.activity.length ? (

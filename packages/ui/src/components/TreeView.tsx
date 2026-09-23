@@ -12,6 +12,8 @@ export interface TreeViewProps {
   activeId?: string;
   defaultExpanded?: readonly string[];
   onSelect?: (node: TreeNode) => void;
+  /** Right-click on a row (e.g. Revit's view menu in the Project Browser). */
+  onContextMenu?: (node: TreeNode, clientX: number, clientY: number) => void;
 }
 
 interface Row {
@@ -29,7 +31,7 @@ function flatten(nodes: readonly TreeNode[], expanded: Set<string>, depth = 0, p
 }
 
 /** The Project browser tree: WAI-ARIA tree pattern with arrow-key navigation. */
-export function TreeView({ nodes, label, activeId, defaultExpanded = [], onSelect }: TreeViewProps) {
+export function TreeView({ nodes, label, activeId, defaultExpanded = [], onSelect, onContextMenu }: TreeViewProps) {
   const [expanded, setExpanded] = useState(() => new Set(defaultExpanded));
   const rows = useMemo(() => flatten(nodes, expanded), [nodes, expanded]);
   const [focusedId, setFocusedId] = useState<string | undefined>(activeId ?? rows[0]?.node.id);
@@ -109,6 +111,15 @@ export function TreeView({ nodes, label, activeId, defaultExpanded = [], onSelec
               if (hasChildren) toggle(node.id);
               else onSelect?.(node);
             }}
+            onContextMenu={
+              onContextMenu
+                ? (e) => {
+                    e.preventDefault();
+                    setFocusedId(node.id);
+                    onContextMenu(node, e.clientX, e.clientY);
+                  }
+                : undefined
+            }
           >
             <span className="sk-tree__chevron" aria-hidden="true">
               {hasChildren ? (

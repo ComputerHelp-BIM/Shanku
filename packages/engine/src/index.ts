@@ -11,11 +11,12 @@ export { DEFAULT_MARK_RULES, DEFAULT_GRADE_RULES, parseRules, rulePriority } fro
 export { buildBoq, type Boq, type BoqKey, type BoqRow } from './model/boq';
 export { siFactor } from './ifc/quantities';
 export { assessCompatibility, readViewDefinition, RECOMMENDED_EXPORT, type Compatibility, type CompatLevel } from './ifc/compat';
-export { type SectionBoxState } from './render/sectionBox';
+export { boxState, type SectionBoxState } from './render/sectionBox';
+export type { CameraState } from './render/Viewer';
 export type { PipelineSummary, PipelineLevel, PipelineQa } from './pipeline/types';
 export type { PipelineOptions } from './dxf/protocol';
 export { PYODIDE_VERSION, PYODIDE_INDEX_URL } from './pyodide';
 export { History, Transaction, TransactionError, type Change, type CommittedTransaction } from './doc/transactions';
 export { tempDims, type Dim2 } from './render/tempDims';
 export { CURSOR, cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './render/cursors';
-export const ENGINE_VERSION = '0.17.0';
+export const ENGINE_VERSION = '0.18.0';

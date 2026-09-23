@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ViewCube, type Orientation } from './ViewCube';
 import { Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName } from '@shanku/engine';
-import type { SectionBoxState } from '@shanku/engine';
+import type { CameraState, SectionBoxState } from '@shanku/engine';
 
 export interface ViewportHandle {
   fit: (indices?: number[]) => void;
@@ -11,6 +11,16 @@ export interface ViewportHandle {
   startZoomRegion: () => void;
   cancelZoomRegion: () => void;
   setSectionBox: (indices: number[] | null) => void;
+  /** Per-view camera (plans, elevations, sections and 3D views each keep theirs). */
+  getCamera: () => CameraState | null;
+  setCamera: (s: CameraState) => void;
+  /** 2D views pan and zoom only; `grips` false shows a view range without section box grips. */
+  setViewMode: (o: { nav2d: boolean; grips: boolean }) => void;
+  /** Aim from a direction (model → camera) and fit, instantly. */
+  aimInstant: (dir: [number, number, number]) => void;
+  /** Clicks report points on the plane y (world) instead of selecting, until stopped. */
+  startPointPick: (y: number, onPoint: (x: number, z: number) => void) => void;
+  stopPointPick: () => void;
   /** Revit Zoom Out (2x) and Next Pan/Zoom; can* tell the context menu what is available. */
   zoomOut2x: () => void;
   nextView: () => boolean;
@@ -35,6 +45,8 @@ export interface ViewportProps {
   overrides?: Array<{ index: number; color: [number, number, number] | null; transparency: number; halftone: boolean }>;
   /** Temporary Hide/Isolate is active (cyan frame); `hidden` also includes elements hidden by the view. */
   temporary?: boolean;
+  /** Plan, elevation or section: no ViewCube (Revit shows none in 2D views). */
+  twoD?: boolean;
   /** Right-click in the view. */
   onContextMenu?: (clientX: number, clientY: number) => void;
   /** Graphics → Edges */
@@ -113,6 +125,12 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   useImperativeHandle(ref, () => ({
     fit: (indices) => viewer.current?.fit(indices),
     zoomOut2x: () => viewer.current?.zoomOut2x(),
+    getCamera: () => viewer.current?.getCameraState() ?? null,
+    setCamera: (st) => viewer.current?.setCameraState(st),
+    setViewMode: (o) => viewer.current?.setViewMode(o),
+    aimInstant: (d) => viewer.current?.aimInstant(d),
+    startPointPick: (y, cb) => viewer.current?.startPointPick(y, (p) => cb(p.x, p.z)),
+    stopPointPick: () => viewer.current?.stopPointPick(),
     nextView: () => viewer.current?.nextView() ?? false,
     canPrevious: () => viewer.current?.canGoPrevious ?? false,
     canNext: () => viewer.current?.canGoNext ?? false,
@@ -136,7 +154,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   }
   return (
     <div ref={host} className="app-viewport" onContextMenu={(e) => { e.preventDefault(); if (!e.shiftKey) props.onContextMenu?.(e.clientX, e.clientY); /* Shift + right-drag orbits instead */ }} data-theme={props.canvasTheme && props.canvasTheme !== 'follow' ? props.canvasTheme : undefined}>
-      {model ? (
+      {model && !props.twoD ? (
         <ViewCube
           orientation={orientation}
           onLookFrom={(d) => viewer.current?.lookFrom(d)}

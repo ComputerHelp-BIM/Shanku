@@ -69,7 +69,7 @@ export interface ViewerEvents {
   onSectionBoxEdit?: (before: SectionBoxState, after: SectionBoxState) => void;
 }
 
-interface CameraState {
+export interface CameraState {
   position: Vector3;
   target: Vector3;
   zoom: number;
@@ -138,6 +138,12 @@ export class Viewer {
   private dimEl: SVGSVGElement;
   private edgesOn = true;
   private future: CameraState[] = [];
+  /** Plans, elevations and sections: pan and zoom only (orbit becomes pan), as in Revit. */
+  private nav2d = false;
+  /** The section box is a view range (plan / section) rather than a user box: no grips. */
+  private gripsOn = true;
+  /** Two-point pick in plan (e.g. drawing a section): clicks report points instead of selecting. */
+  private pointPick: { y: number; onPoint: (p: Vector3) => void } | null = null;
   private lastPointer: [number, number] = [0, 0];
   private animToken = 0;
   private navActive = false;
@@ -440,6 +446,49 @@ export class Viewer {
     this.future = [];
   }
 
+  /** The camera, to keep per view (plans, elevations, sections and 3D views each remember theirs). */
+  getCameraState(): CameraState {
+    return this.snapshot();
+  }
+
+  /** Restores a camera saved with getCameraState (instant, no animation). */
+  setCameraState(s: CameraState): void {
+    this.camera.position.copy(s.position);
+    this.target.copy(s.target);
+    this.camera.quaternion.copy(s.quaternion);
+    this.camera.zoom = s.zoom;
+    this.frameHeight = s.frameHeight;
+    this.updateFrustum();
+    this.requestRender();
+  }
+
+  /**
+   * View kind: 2D views (plan, elevation, section) pan and zoom only; `grips` false shows the section box
+   * as a view range without grips.
+   */
+  setViewMode(opts: { nav2d: boolean; grips: boolean }): void {
+    this.nav2d = opts.nav2d;
+    this.gripsOn = opts.grips;
+    this.requestRender();
+  }
+
+  /** Clicks report points on the horizontal plane at height y (world) until stopPointPick. */
+  startPointPick(y: number, onPoint: (p: Vector3) => void): void {
+    this.pointPick = { y, onPoint };
+    this.canvas.style.cursor = 'crosshair';
+  }
+
+  stopPointPick(): void {
+    this.pointPick = null;
+    this.canvas.style.cursor = '';
+  }
+
+  /** Aim along a direction and fit, without animation (setting up a view). */
+  aimInstant(dir: Vector3 | readonly [number, number, number], fitTo?: Iterable<number>): void {
+    this.aim(Array.isArray(dir) ? new Vector3(dir[0], dir[1], dir[2]) : (dir as Vector3));
+    this.fit(fitTo, false);
+  }
+
   /** Revit Next Pan/Zoom (after Previous). */
   nextView(): boolean {
     const s = this.future.pop();
@@ -589,6 +638,7 @@ export class Viewer {
 
   /** ViewCube drag: orbit by screen pixels about the selection, section box or model. */
   orbitBy(dxPx: number, dyPx: number): void {
+    if (this.nav2d) return;
     this.navigating();
     this.orbit(dxPx, dyPx, this.orbitPivot());
   }
@@ -884,7 +934,7 @@ export class Viewer {
 
   /** The section-box grip under the pointer (within 14 px of its centre on screen), if any. */
   private gripAt(clientX: number, clientY: number): Mesh | null {
-    if (!this.sbox) return null;
+    if (!this.sbox || !this.gripsOn || this.nav2d) return null;
     this.gizmo.update(this.sbox, metresPerPixel(this.camera, this.canvas.getBoundingClientRect().height), this.hotGrip);
     let best: Mesh | null = null;
     let bestD = 14;
@@ -966,6 +1016,7 @@ export class Viewer {
         mode = 'orbit'; // Revit: Shift + right-drag orbits (the right-click menu is not opened with Shift)
       }
       if (!mode) return;
+      if (this.nav2d && mode === 'orbit') mode = 'pan'; // plan, elevation, section: no orbit
       e.preventDefault();
       c.setPointerCapture(e.pointerId);
       drag = { mode, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pivot: this.orbitPivot(), moved: false, recorded: false };
@@ -1052,7 +1103,10 @@ export class Viewer {
         this.cancelZoomRegion();
       } else if (d.mode === 'select') {
         const mode = modeOf(e);
-        if (!d.moved) this.events.onPick?.(this.pick(e.clientX, e.clientY), mode);
+        if (!d.moved && this.pointPick) {
+          const p = this.planPoint(e.clientX, e.clientY, this.pointPick.y);
+          if (p) this.pointPick.onPoint(p);
+        } else if (!d.moved) this.events.onPick?.(this.pick(e.clientX, e.clientY), mode);
         else {
           const crossing = e.clientX < d.sx;
           this.events.onBoxSelect?.(this.elementsInRect(d.sx, d.sy, e.clientX, e.clientY, crossing), mode, crossing);
@@ -1176,7 +1230,7 @@ export class Viewer {
       this.renderer.setRenderTarget(null);
       this.renderer.setClearColor(0x000000, 0);
       this.renderer.render(this.scene, this.camera);
-      if (this.sbox) {
+      if (this.sbox && this.gripsOn) {
         const h = this.canvas.getBoundingClientRect().height;
         this.gizmo.update(this.sbox, metresPerPixel(this.camera, h), this.hotGrip);
         this.renderer.autoClear = false;

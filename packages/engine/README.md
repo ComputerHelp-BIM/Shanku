@@ -1,4 +1,4 @@
-# @shanku/engine 0.17.0
+# @shanku/engine 0.18.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.18.0 — 2026-09-23
+- Views: `getCameraState` / `setCameraState` (per-view cameras), `setViewMode({ nav2d, grips })` (plans, elevations and sections pan and zoom only; view ranges show no grips), `aimInstant`, `startPointPick` / `stopPointPick` (two clicks draw a section), `boxState` helper.
+- Fixed: in the see-through pass, back faces of transparent elements were painted as opaque cut faces (a see-through slab showed its underside and flickered against beam tops).
 
 ### 0.17.0 — 2026-09-23
 - Cursors follow the canvas: dark on Paper, light on Ink, each with a contrasting outline; a themed four-way pan arrow replaces the browser's `move`.

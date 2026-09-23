@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.20.0 — 2026-09-23
+
+### Added
+- Views and the Project Browser: structural plans per level with View Range, 3D views, elevations, sections (drawn in plan); per-view camera, graphics, filters, style, hides and box; duplicate, rename, delete, apply template per view; view properties; persisted per file.
+
+### Fixed
+- Transparent elements painting their back faces opaque.
+
 ## 0.19.0 — 2026-09-23
 
 ### Added
