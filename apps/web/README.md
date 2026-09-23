@@ -1,9 +1,10 @@
-# @shanku/web 0.20.0
+# @shanku/web 0.20.1
 
 The Shanku app. Requires `@shanku/engine >= 0.18.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.0.0`.
-# @shanku/web 0.16.2
 
 The Shanku app. Requires `@shanku/engine >= 0.18.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.2.0`.
+
+The Shanku app. Requires `@shanku/engine >= 0.17.0`, `@shanku/ui >= 0.9.1`, `@shanku/tokens >= 2.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -25,6 +26,9 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 
 ## Changelog
 
+### 0.20.1 — 2026-09-23
+- Merged the design-system branch (7679278): tokens 2.0.0 (ViewCube compass hover contrast via viewcube-hot / on-viewcube-hot; on-select-window removed), clearer token notes, duplicate README titles removed.
+
 ### 0.20.0 — 2026-09-23
 - **Views and the Project Browser** (Revit): Views (all) → Structural Plans (one per level, created automatically), 3D Views, Elevations (North, East, South, West) and Sections. Each view opens in its own tab and keeps its own camera, Visibility/Graphics and filters, visual style, edges, temporary hides and (3D) section box.
 - **Structural plans** look down with a View Range (cut plane 1200 mm above the level, view depth 1200 mm below; edit both in Properties); cut columns show solid; slabs are 70 % transparent by default so framing under them reads. Level heights come from the storey elevation when the geometry confirms it, else from slab tops, beam tops, then column bases.
@@ -33,6 +37,9 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 - **Project Browser right-click**: Open, Duplicate View (copies settings and camera), Rename…, Delete, Apply View Template ▸ (to any view, undoable).
 - **Properties** with nothing selected shows the active view (name, level, View Range, visual style), as Revit does.
 - Views are saved per file and restored on reload.
+### 0.19.1 — 2026-09-23
+- Accessibility: the ViewCube compass letters on hover are white on the new `viewcube-hot` blue (5.6:1); they were white on a 70% select-window tint (about 4:1 on Paper, 2.7:1 on Ink).
+- Uses @shanku/tokens 2.0.0 (`on-select-window` replaced by `on-viewcube-hot`).
 
 ### 0.19.0 — 2026-09-23
 - **View Templates** (View → Graphics → View Templates ▾): Apply Template Properties to Current View, Create Template from Current View, Manage View Templates (New from view, Duplicate, Rename, Delete, Update from current view, Include switches for V/G Model, V/G Filters, Visual Style, Edges; Import / Export as JSON). Kept on this device; applying is one undoable step named after the template; element overrides stay with the view, as in Revit.

@@ -53,7 +53,7 @@ import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.20.0';
+const APP_VERSION = '0.20.1';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },

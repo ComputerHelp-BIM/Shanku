@@ -1,4 +1,4 @@
-# @shanku/tokens 1.2.0
+# @shanku/tokens 2.0.0
 
 Design tokens for Shanku, generated from `tokens.json` (the approved design system).
 
@@ -26,6 +26,11 @@ Every colour token has a Paper and an Ink value. Spacing, radius, size, opacity,
 - Edit `tokens.json`, run `npm run build`, bump the version. The build runs `scripts/check-contrast.mjs` first and fails if a required colour pair drops below WCAG 2 (4.5:1 for text, 3:1 for focus rings and control borders) in either theme.
 
 ## Changelog
+
+### 2.0.0 — 2026-09-23
+- **Breaking:** removed `on-select-window`. No colour reaches 4.5:1 as text on the Paper `select-window` blue (best 4.3:1), and its one text use was the ViewCube compass. Use `on-viewcube-hot`; for a white tint, mix with `on-viewcube-hot` as well.
+- Added `viewcube-hot` (`#2968B3`, both themes) for the compass hover fill and `on-viewcube-hot` (`#FFFFFF`, 5.6:1 on it). The contrast check covers the pair (96 pairs).
+- Usage notes for `text`, `text-secondary`, `text-faint` and `accent-text` now name every surface they are checked against; `control-border` and `accent-text` notes no longer read as naming a wrong background (design-system tooling had judged `control-border` as text and `accent-text` against `accent`). Values unchanged.
 
 ### 1.2.0 — 2026-09-23
 - Added `focus-ring` (Paper `#B35F12`, Ink `#D9761E`): at least 3:1 on every surface. `accent` was only 2.5:1 as a focus outline on Paper panels.

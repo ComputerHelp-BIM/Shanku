@@ -32,4 +32,4 @@ export {
 } from './components/Workspace';
 export { FloatingWindow, type FloatingWindowProps } from './components/FloatingWindow';
 export { ThemeIcon } from './components/ThemeIcon';
-export const version = '0.10.0';
+export const version = '0.10.1';

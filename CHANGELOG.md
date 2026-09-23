@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.20.1 — 2026-09-23
+
+### Changed
+- Merged `claude/design-system-extraction-7vri1d` (7679278): tokens 2.0.0, ViewCube compass hover contrast, clearer token notes.
+
 ## 0.20.0 — 2026-09-23
 
 ### Added
@@ -9,6 +14,14 @@ All notable changes to this repository. Package-level detail lives in each packa
 
 ### Fixed
 - Transparent elements painting their back faces opaque.
+## 0.19.1 — 2026-09-23
+
+### Fixed
+- ViewCube compass hover letters now reach 4.5:1 (were about 4:1 on Paper and 2.7:1 on Ink).
+- Duplicate title lines left in the web and playground READMEs by the design-system merge.
+
+### Changed
+- @shanku/tokens 2.0.0: `on-select-window` removed in favour of `viewcube-hot` / `on-viewcube-hot`; clearer usage notes so design-system tooling checks each colour against the right surfaces.
 
 ## 0.19.0 — 2026-09-23
 

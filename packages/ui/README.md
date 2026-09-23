@@ -1,6 +1,6 @@
-# @shanku/ui 0.10.0
+# @shanku/ui 0.10.1
 
-React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.2.0` and `@shanku/brand >= 1.0.0`.
+React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 2.0.0` and `@shanku/brand >= 1.0.0`.
 
 ```tsx
 import '@shanku/tokens/tokens.css';
@@ -34,8 +34,13 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 
 ## Changelog
 
+### 0.10.1 — 2026-09-23
+- Requires @shanku/tokens 2.0.0 (merged from the design-system branch, released there as ui 0.9.1). No API change.
+
 ### 0.10.0 — 2026-09-23
 - `TreeView` `onContextMenu(node, x, y)`: right-click on rows (Revit's view menu in the Project Browser).
+### 0.9.1 — 2026-09-23
+- Requires @shanku/tokens 2.0.0. No component or style changes: ui never used the removed `on-select-window` token.
 
 ### 0.9.0 — 2026-09-23
 - Merged the design-system branch's 0.8.0 (WCAG contrast, token-only CSS, stylelint guard) with this line's 0.8.0 (TitleBar `brandHref`); both lines had used 0.8.0.
