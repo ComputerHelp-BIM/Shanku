@@ -1,6 +1,6 @@
-# @shanku/web 0.14.0
+# @shanku/web 0.15.0
 
-The Shanku app. Requires `@shanku/engine >= 0.12.0`, `@shanku/ui >= 0.6.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.13.0`, `@shanku/ui >= 0.7.0`, `@shanku/tokens >= 1.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,13 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.15.0 — 2026-09-22
+- **ViewCube after Revit's**: shaded cube with 26 clickable directions (named by direction), a compass ring under it (drag to turn in plan, click N/E/S/W to face that side), Home, and a ▾ menu (Go Home, Set Current View as Home, Reset Home, Orient to Front/Top).
+- **Temporary dimensions**: in 3D for one selected element; in the DXF view for the selected object (its size, and clear distances to the nearest parallel lines, like Revit), with a thick highlight and AutoCAD grips so a selection is obvious.
+- **Orbit never gets stuck** at the top or bottom.
+- Fixed: the Canvas theme now changes the view background, not only lines and outlines.
+- Theme buttons show a distinct Auto icon (half-filled circle), in the app and on the homepage.
 
 ### 0.14.0 — 2026-09-22
 - **Canvas theme is separate from the interface theme** (View → Canvas: Auto / Light / Dark), as in Revit: a dark interface can keep a light canvas. Remembered between visits.

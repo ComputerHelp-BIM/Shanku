@@ -16,4 +16,5 @@ export type { PipelineSummary, PipelineLevel, PipelineQa } from './pipeline/type
 export type { PipelineOptions } from './dxf/protocol';
 export { PYODIDE_VERSION, PYODIDE_INDEX_URL } from './pyodide';
 export { History, Transaction, TransactionError, type Change, type CommittedTransaction } from './doc/transactions';
-export const ENGINE_VERSION = '0.12.0';
+export { tempDims, type Dim2 } from './render/tempDims';
+export const ENGINE_VERSION = '0.13.0';

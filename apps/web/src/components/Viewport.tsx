@@ -111,6 +111,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
           onLookFrom={(d) => viewer.current?.lookFrom(d)}
           onHome={() => viewer.current?.home()}
           onOrbit={(dx, dy) => viewer.current?.orbitBy(dx, dy)}
+          onSetHome={(current) => viewer.current?.setHomeView(current)}
         />
       ) : null}
       {props.reveal ? <div className="app-reveal-frame" aria-hidden="true"><span>Reveal Hidden Elements</span></div> : null}

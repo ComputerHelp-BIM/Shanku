@@ -1,5 +1,5 @@
 import { useState, type DragEvent } from 'react';
-import { useTheme } from '@shanku/ui';
+import { ThemeIcon, useTheme } from '@shanku/ui';
 import { ShankuMark } from '@shanku/ui';
 import type { AppStart } from '../App';
 import './home.css';
@@ -34,7 +34,7 @@ const SHOTS = [
   ['shot-console', 'Python console', 'Ask the model questions in Python; answers come back as tables.'],
 ] as const;
 
-const THEME_LABEL = { system: 'Theme: follows your system', paper: 'Theme: light', ink: 'Theme: dark' } as const;
+const THEME_LABEL = { system: 'Theme: Auto (follows your system). Click to change', paper: 'Theme: Light. Click to change', ink: 'Theme: Dark. Click to change' } as const;
 
 const SPECS = [
   ['Opens', 'IFC2x3, IFC4 (IFC4x3 experimental), DXF from AutoCAD R12 to 2018+'],
@@ -85,11 +85,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
           <a href={REPO} target="_blank" rel="noreferrer">GitHub</a>
         </nav>
         <button type="button" className="home-btn home-btn--icon" onClick={cycle} title={THEME_LABEL[preference]} aria-label={THEME_LABEL[preference]}>
-          {resolved === 'ink' ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19" strokeLinecap="round" /></svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M20 13.5A8 8 0 1 1 10.5 4a6.5 6.5 0 0 0 9.5 9.5z" strokeLinejoin="round" /></svg>
-          )}
+          <ThemeIcon preference={preference} size={16} />
         </button>
         <button type="button" className="home-btn home-btn--primary" onClick={() => onOpen()}>
           Open Shanku

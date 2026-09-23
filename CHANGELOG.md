@@ -2,6 +2,15 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.15.0 — 2026-09-22
+
+### Added
+- Revit-style ViewCube with compass ring, Home and options menu.
+- Temporary dimensions in 3D and in the DXF view; AutoCAD grips on DXF selections.
+
+### Fixed
+- Orbit getting stuck under the model; canvas theme not changing the background; Auto theme icon looking like Light/Dark.
+
 ## 0.14.0 — 2026-09-22
 
 ### Added

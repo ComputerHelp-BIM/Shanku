@@ -123,6 +123,7 @@ export class Viewer {
   private hotGrip: Mesh | null = null;
   private raycaster = new Raycaster();
   private pivotEl: HTMLDivElement;
+  private dimEl: SVGSVGElement;
   private edgesOn = true;
   private revealOn = false;
   private history: CameraState[] = [];
@@ -160,6 +161,10 @@ export class Viewer {
       borderRadius: '6px', border: '2px solid var(--accent)', background: 'color-mix(in srgb, var(--accent) 35%, transparent)',
     });
     container.appendChild(this.pivotEl);
+    // Temporary dimensions of a single selected element (Revit-like; read-only for now).
+    this.dimEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    Object.assign(this.dimEl.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' });
+    container.appendChild(this.dimEl);
 
     this.camera = new OrthographicCamera(-1, 1, 1, -1, -1e4, 1e4);
     this.camera.up.copy(UP);
@@ -431,7 +436,8 @@ export class Viewer {
   /** Revit Home: default orientation, whole model in view. */
   home(): void {
     this.pushHistory();
-    this.orient('iso');
+    if (this.homeDir) this.aim(this.homeDir);
+    else this.orient('iso');
     this.fit(undefined, false);
   }
 
@@ -463,6 +469,14 @@ export class Viewer {
     this.camera.lookAt(this.target);
     if (vertical) this.camera.up.copy(UP);
     this.camera.updateMatrixWorld();
+  }
+
+  /** Home view direction (ViewCube ▾ → Set Current View as Home). Null = the default 3D view. */
+  private homeDir: Vector3 | null = null;
+
+  /** ViewCube ▾: make the current viewing direction the Home view (null resets to the default). */
+  setHomeView(current: boolean): void {
+    this.homeDir = current ? this.camera.position.clone().sub(this.target).normalize() : null;
   }
 
   /** ViewCube: look from the direction `dir` (world, from the model towards the camera), then fit. */
@@ -616,6 +630,70 @@ export class Viewer {
     this.requestRender();
   }
 
+  /**
+   * Temporary dimensions for one selected element: length, width and height along the edges of its
+   * box that face the camera, with the value in millimetres. Redrawn every frame so they follow the view.
+   */
+  private drawTempDims(): void {
+    const svg = this.dimEl;
+    while (svg.firstChild) svg.firstChild.remove();
+    if (this.selection.size !== 1 || !this.model) return;
+    const e = this.model.elements[[...this.selection][0]];
+    if (!e || this.hidden.has(e.index)) return;
+    const [x0, y0, z0, x1, y1, z1] = e.bounds;
+    const r = this.container.getBoundingClientRect();
+    const view = this.camera.position.clone().sub(this.target);
+    const zs = view.z > 0 ? z1 : z0; // the side facing the camera
+    const xs = view.x > 0 ? x1 : x0;
+    const yb = view.y >= 0 ? y0 : y1; // bottom edge unless looking up from below
+    const P = (x: number, y: number, z: number) => {
+      const p = this.toScreen(new Vector3(x, y, z));
+      return [p.x - r.left, p.y - r.top] as [number, number];
+    };
+    const c = P((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    const color = getComputedStyle(this.container).getPropertyValue('--select-window').trim() || '#2F7FD8';
+    const edges: Array<[[number, number], [number, number], number]> = [
+      [P(x0, yb, zs), P(x1, yb, zs), x1 - x0],
+      [P(xs, yb, z0), P(xs, yb, z1), z1 - z0],
+      [P(xs, y0, zs), P(xs, y1, zs), y1 - y0],
+    ];
+    const NS = 'http://www.w3.org/2000/svg';
+    const el = (tag: string, attrs: Record<string, string | number>) => {
+      const n = document.createElementNS(NS, tag);
+      for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+      svg.appendChild(n);
+      return n;
+    };
+    for (const [a, b, size] of edges) {
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 18 || size < 1e-4) continue; // edge seen end-on, or too small at this zoom
+      const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      let ox = m[0] - c[0], oy = m[1] - c[1];
+      const ol = Math.hypot(ox, oy) || 1;
+      ox = (ox / ol) * 16;
+      oy = (oy / ol) * 16;
+      const A = [a[0] + ox, a[1] + oy], B = [b[0] + ox, b[1] + oy];
+      const stroke = { stroke: color, 'stroke-width': 1.2 };
+      el('line', { x1: a[0], y1: a[1], x2: A[0], y2: A[1], ...stroke, 'stroke-opacity': 0.7 });
+      el('line', { x1: b[0], y1: b[1], x2: B[0], y2: B[1], ...stroke, 'stroke-opacity': 0.7 });
+      el('line', { x1: A[0], y1: A[1], x2: B[0], y2: B[1], ...stroke });
+      const ang = Math.atan2(B[1] - A[1], B[0] - A[0]);
+      for (const p of [A, B]) {
+        const t = 4.5;
+        el('line', { x1: p[0] - Math.cos(ang + Math.PI / 4) * t, y1: p[1] - Math.sin(ang + Math.PI / 4) * t, x2: p[0] + Math.cos(ang + Math.PI / 4) * t, y2: p[1] + Math.sin(ang + Math.PI / 4) * t, ...stroke });
+      }
+      const label = Math.round(size * 1000).toLocaleString('en-IN');
+      let deg = (ang * 180) / Math.PI;
+      if (deg > 90) deg -= 180;
+      if (deg < -90) deg += 180;
+      const mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
+      const w = label.length * 7 + 8;
+      el('rect', { x: mx - w / 2, y: my - 16, width: w, height: 14, rx: 3, fill: 'rgba(255,255,255,0.9)', transform: `rotate(${deg} ${mx} ${my})` });
+      const t = el('text', { x: mx, y: my - 5, 'text-anchor': 'middle', fill: color, 'font-size': 11.5, 'font-weight': 600, 'font-family': 'IBM Plex Sans, sans-serif', transform: `rotate(${deg} ${mx} ${my})` });
+      t.textContent = label;
+    }
+  }
+
   /** Shows or hides the orbit centre marker at a world point. */
   private showPivot(p: Vector3 | null): void {
     if (!p) {
@@ -629,7 +707,9 @@ export class Viewer {
 
   private orbit(dxPx: number, dyPx: number, pivot: Vector3): void {
     const right = new Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-    const { position, target, rotation } = orbitAround(this.camera.position, this.target, pivot, UP, -dxPx * 0.008, -dyPx * 0.008, right);
+    // Upside down (after orbiting over the top or under the bottom): reverse left/right, as Revit does.
+    const upsideDown = new Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion).y < 0;
+    const { position, target, rotation } = orbitAround(this.camera.position, this.target, pivot, UP, -dxPx * 0.008, -dyPx * 0.008, right, upsideDown);
     this.camera.position.copy(position);
     this.target.copy(target);
     // Rotate the camera's orientation directly (no lookAt): lookAt is undefined when looking straight
@@ -941,6 +1021,7 @@ export class Viewer {
         this.renderer.autoClear = true;
       } else this.gizmo.update(null, 1);
       this.lastFrameMs = performance.now() - t0;
+      this.drawTempDims();
       this.events.onCamera?.(this.camera.quaternion);
     });
   }
@@ -954,5 +1035,6 @@ export class Viewer {
     this.canvas.remove();
     this.rectEl.remove();
     this.pivotEl.remove();
+    this.dimEl.remove();
   }
 }

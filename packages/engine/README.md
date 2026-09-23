@@ -1,4 +1,4 @@
-# @shanku/engine 0.12.0
+# @shanku/engine 0.13.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,11 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.13.0 — 2026-09-22
+- Orbit no longer stops at straight down / up: the camera carries on over the top or under the bottom, and horizontal drags reverse while upside down (as in Revit), so it never gets stuck under the model.
+- `setHomeView(current)` for the ViewCube's Set Current View as Home / Reset Home.
+- Temporary dimensions: 3D (length, width, height in mm on the edges of a single selected element that face the camera, read-only) and 2D (`tempDims`: an object's own sizes, the distance from each straight edge to the nearest parallel line outside it, or between two selected parallel lines). The DXF view draws a thick highlight, AutoCAD grips (vertices and midpoints) and the dimensions.
 
 ### 0.12.0 — 2026-09-22
 - Selected elements draw see-through (Revit-like): they move to the transparent pass, so what is behind them stays visible.

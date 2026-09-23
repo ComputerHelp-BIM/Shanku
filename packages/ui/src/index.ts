@@ -31,4 +31,5 @@ export {
   type AppShellProps,
 } from './components/Workspace';
 export { FloatingWindow, type FloatingWindowProps } from './components/FloatingWindow';
-export const version = '0.6.0';
+export { ThemeIcon } from './components/ThemeIcon';
+export const version = '0.7.0';

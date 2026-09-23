@@ -3,8 +3,12 @@ import { Quaternion, Vector3 } from 'three';
 /**
  * Revit orbit: turn about the world vertical through the pivot (horizontal drag) and tilt about the
  * camera's own right axis (vertical drag). Returns the new position, target and the rotation to apply
- * to the camera orientation. Using the camera's right axis (not view × up) keeps orbiting working when
- * looking straight down or up, where view × up is zero and the camera used to freeze.
+ * to the camera orientation.
+ *
+ * The tilt is free: dragging past straight down or straight up carries the camera over the top or
+ * under the bottom instead of stopping there (stopping is what made it feel stuck). Once the camera
+ * is upside down, pass `upsideDown` so horizontal drags are reversed and the model still turns the
+ * way the hand moves.
  */
 export function orbitAround(
   position: Vector3,
@@ -14,21 +18,16 @@ export function orbitAround(
   dAzimuth: number,
   dElevation: number,
   cameraRight?: Vector3,
-  minPolar = 1e-4,
+  upsideDown = false,
 ): { position: Vector3; target: Vector3; rotation: Quaternion } {
   const viewDir = new Vector3().subVectors(target, position).normalize();
-  const polar = Math.acos(Math.min(1, Math.max(-1, -viewDir.dot(up)))); // 0 = looking straight down
-  const nextPolar = Math.min(Math.PI - minPolar, Math.max(minPolar, polar - dElevation));
-  const clampedElev = polar - nextPolar; // never tilt over the top: the horizon stays level
-
   const right = cameraRight?.clone() ?? new Vector3().crossVectors(viewDir, up);
-  right.sub(up.clone().multiplyScalar(right.dot(up))); // keep it horizontal
   if (right.lengthSq() < 1e-12) right.set(1, 0, 0);
   right.normalize();
 
-  const qAz = new Quaternion().setFromAxisAngle(up, dAzimuth);
+  const qAz = new Quaternion().setFromAxisAngle(up, upsideDown ? -dAzimuth : dAzimuth);
   const r = right.clone().applyQuaternion(qAz);
-  const qEl = new Quaternion().setFromAxisAngle(r, clampedElev);
+  const qEl = new Quaternion().setFromAxisAngle(r, dElevation);
   const rotation = qEl.multiply(qAz); // azimuth first, then tilt
   const rotate = (p: Vector3) => p.clone().sub(pivot).applyQuaternion(rotation).add(pivot);
   return { position: rotate(position), target: rotate(target), rotation };

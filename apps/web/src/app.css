@@ -1,6 +1,6 @@
 .app-drop { position: absolute; inset: 0; }
 .app-drop.is-dragging { outline: 2px dashed var(--accent); outline-offset: -8px; }
-.app-viewport { position: absolute; inset: 0; }
+.app-viewport { position: absolute; inset: 0; background: var(--viewport); } /* paints its own background so the canvas theme (data-theme here) applies */
 .app-viewport canvas:focus { outline: none; }
 
 .app-overlay {
@@ -252,16 +252,28 @@
 .pl-ok { color: var(--status-ok); }
 .sk-window__body > .app-keys { margin: 10px 16px; }
 
-/* ---- ViewCube (top-right of the 3D view) ---- */
-.vc { position: absolute; top: 10px; right: 12px; width: 104px; height: 104px; z-index: 4; user-select: none; }
-.vc-home { position: absolute; top: 0; left: 0; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); cursor: pointer; }
-.vc-home:hover { background: var(--chip); color: var(--text); }
-.vc-stage { position: absolute; inset: 12px 8px 8px 16px; display: grid; place-items: center; perspective: none; cursor: grab; touch-action: none; }
-.vc-cube { position: relative; width: 64px; height: 64px; transform-style: preserve-3d; pointer-events: none; } /* only the cells take the pointer: the flat container would steal hits from faces tilted behind it */
-.vc-face { position: absolute; inset: 0; display: grid; grid-template-columns: 12px 1fr 12px; grid-template-rows: 12px 1fr 12px; backface-visibility: hidden; pointer-events: none; background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--border-strong); box-sizing: border-box; }
-.vc-label { position: absolute; inset: 0; display: grid; place-items: center; font: 600 9.5px/1 var(--font-sans); letter-spacing: 0.04em; color: var(--text-secondary); pointer-events: none; }
-.vc-cell { border: 0; padding: 0; margin: 0; background: transparent; cursor: pointer; pointer-events: auto; }
-.vc-cell.is-hot { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+/* ---- ViewCube, after Revit's: shaded cube, compass ring, Home, ▾ menu ---- */
+.vc { position: absolute; top: 8px; right: 10px; width: 176px; height: 176px; z-index: 4; user-select: none;
+  --vc-top: #EEF0F2; --vc-side: #D9DCE0; --vc-side2: #CDD1D6; --vc-bottom: #C2C6CC; --vc-edge: #8E949C; --vc-text: #3A3F47;
+  --vc-ring: color-mix(in srgb, var(--select-window) 55%, #ffffff); --vc-hot: color-mix(in srgb, var(--select-window) 70%, transparent); }
+.vc-home { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 24px; height: 22px; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); cursor: pointer; }
+.vc-home:hover { color: var(--select-window); }
+.vc-stage { position: absolute; left: 0; right: 0; top: 18px; bottom: 0; display: grid; place-items: center; perspective: none; pointer-events: none; }
+.vc-scene { position: relative; width: 60px; height: 60px; transform-style: preserve-3d; pointer-events: none; }
+.vc-cube { position: absolute; inset: 0; transform-style: preserve-3d; cursor: grab; }
+.vc-face { position: absolute; inset: 0; display: grid; grid-template-columns: 11px 1fr 11px; grid-template-rows: 11px 1fr 11px; backface-visibility: hidden; pointer-events: none; border: 1px solid var(--vc-edge); border-radius: 3px; box-sizing: border-box; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55); }
+.vc-label { position: absolute; inset: 0; display: grid; place-items: center; font: 700 9.5px/1 var(--font-sans); letter-spacing: 0.05em; color: var(--vc-text); pointer-events: none; }
+.vc-cell { border: 0; padding: 0; margin: 0; background: transparent; cursor: pointer; pointer-events: auto; border-radius: 2px; }
+.vc-cell.is-hot { background: var(--vc-hot); }
+.vc-ring { position: absolute; left: calc(50% - 59px); top: calc(50% - 59px); width: 118px; height: 118px; border-radius: 50%; box-sizing: border-box; pointer-events: none;
+  border: 11px solid var(--vc-ring); box-shadow: 0 0 0 1px rgba(40, 80, 140, 0.35), inset 0 0 0 1px rgba(40, 80, 140, 0.35); transform-style: preserve-3d; }
+.vc-compass { position: absolute; left: -11px; top: -11px; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #1F3552; font: 700 11px/18px var(--font-sans); cursor: pointer; pointer-events: auto; }
+.vc-compass:hover { background: var(--vc-hot); color: #fff; }
+.vc-menu-btn { position: absolute; right: 0; bottom: 6px; width: 18px; height: 18px; border: 0; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 12px; }
+.vc-menu { position: absolute; right: 0; top: 176px; z-index: 6; min-width: 200px; display: flex; flex-direction: column; padding: 4px; background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); }
+.vc-menu button { height: 28px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.vc-menu button:hover { background: var(--chip); }
+
 /* Revit's Reveal Hidden Elements frame */
 .app-reveal-frame { position: absolute; inset: 0; border: 3px solid #B5179E; pointer-events: none; z-index: 3; }
 .app-reveal-frame span { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); padding: 2px 10px; border-radius: 10px; background: #B5179E; color: #fff; font: 600 12px/18px var(--font-sans); }

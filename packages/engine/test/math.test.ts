@@ -83,10 +83,22 @@ describe('orbit at the poles (regression: camera froze at top and bottom)', () =
     expect(down.position.distanceTo(target)).toBeCloseTo(10, 5);
   });
 
-  it('never tilts past straight down', async () => {
+  it('tilts over the top instead of stopping there (no more stuck at the poles)', async () => {
     const { Vector3: V } = await import('three');
     const { orbitAround } = await import('../src/render/cameraMath');
-    const r = orbitAround(new V(0, 10, 0.01), new V(0, 0, 0), new V(0, 0, 0), new V(0, 1, 0), 0, 1, new V(1, 0, 0));
-    expect(r.position.y).toBeGreaterThan(9.99);
+    const target = new V(0, 0, 0);
+    // camera just in front of straight-down; tilting further carries it over to the other side
+    const r = orbitAround(new V(0, 10, 0.5), target, target, new V(0, 1, 0), 0, -0.3, new V(1, 0, 0));
+    expect(r.position.z).toBeLessThan(0);
+    expect(r.position.distanceTo(target)).toBeCloseTo(Math.hypot(10, 0.5), 5);
+  });
+
+  it('reverses horizontal drags when upside down', async () => {
+    const { Vector3: V } = await import('three');
+    const { orbitAround } = await import('../src/render/cameraMath');
+    const t = new V(0, 0, 0), p = new V(0, 0, 10), up = new V(0, 1, 0);
+    const a = orbitAround(p, t, t, up, 0.4, 0, new V(1, 0, 0), false).position.x;
+    const b = orbitAround(p, t, t, up, 0.4, 0, new V(1, 0, 0), true).position.x;
+    expect(Math.sign(a)).toBe(-Math.sign(b));
   });
 });

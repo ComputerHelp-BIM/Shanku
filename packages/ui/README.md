@@ -1,4 +1,4 @@
-# @shanku/ui 0.6.0
+# @shanku/ui 0.7.0
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 1.0.0` and `@shanku/brand >= 1.0.0`.
 
@@ -33,6 +33,9 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.7.0 — 2026-09-22
+- Added `ThemeIcon`: sun (light), moon (dark) and a half-filled circle for Auto, so Auto never looks like Light or Dark.
 
 ### 0.6.0 — 2026-09-22
 - `TitleBar` takes `quickAccess` (Revit's Quick Access Toolbar, after the logo). Requires @shanku/brand 1.2.0.

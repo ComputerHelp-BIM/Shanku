@@ -4,6 +4,7 @@ import {
   Button,
   CommandSearch,
   FloatingWindow,
+  ThemeIcon,
   Icon,
   IconButton,
   LocalIndicator,
@@ -42,7 +43,7 @@ import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.14.0';
+const APP_VERSION = '0.15.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -51,13 +52,6 @@ const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
 ];
 const RIBBON_TABS = ['Model', 'View', 'Manage'].map((label) => ({ id: label.toLowerCase(), label }));
 
-function ThemeIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" />
-    </svg>
-  );
-}
 
 /** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
 export interface AppStart {
@@ -412,8 +406,8 @@ export function App({ start }: { start?: AppStart } = {}) {
           search={<CommandSearch ref={search} onKeyDown={onSearchKey} placeholder="Find by mark, Element ID, GlobalId or name…   Ctrl + K" />}
           actions={
             <>
-              <IconButton label={`Theme: ${preference}. Switch theme`} onClick={cycle}>
-                <ThemeIcon />
+              <IconButton label={`Interface theme: ${{ system: 'Auto (follows your system)', paper: 'Light', ink: 'Dark' }[preference]}. Click to change`} onClick={cycle}>
+                <ThemeIcon preference={preference} />
               </IconButton>
               <Button size="sm" disabled title="Accounts arrive with cloud features. Everything here works without one.">
                 Sign in

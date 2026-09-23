@@ -19,6 +19,7 @@ import type { ParsedDrawing } from '../dxf/types';
 import { wheelZoomFactor } from './cameraMath';
 import { readViewerTokens, parseCssColor, type Rgba } from './cssColor';
 import { resolvePalette, toCss } from './drawingColors';
+import { tempDims, type Dim2 } from './tempDims';
 
 export interface DrawingViewerEvents {
   /** Cursor position in real drawing coordinates (origin added back), or null when outside. */
@@ -78,6 +79,10 @@ export class DrawingViewer {
   private highlight: LineSegments | null = null;
   private highlightMat = new LineBasicMaterial({ depthTest: false, transparent: true, opacity: 1 });
   private accentCss = '#D9761E';
+  private dimCss = '#2F7FD8';
+  /** Selected geometry for the overlay: segments per selected entity, and temporary dimensions. */
+  private selSegs: Array<Array<[number, number, number, number]>> = [];
+  private dims: Dim2[] = [];
 
   constructor(private container: HTMLElement, private events: DrawingViewerEvents = {}) {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
@@ -293,6 +298,7 @@ export class DrawingViewer {
   select(entities: number[] | number | null): void {
     this.selected = entities === null ? [] : typeof entities === 'number' ? [entities] : [...entities];
     const set = new Set(this.selected);
+    this.collectSelection(set);
     this.highlight?.removeFromParent();
     this.highlight?.geometry.dispose();
     this.highlight = null;
@@ -321,6 +327,120 @@ export class DrawingViewer {
       }
     }
     this.requestRender();
+  }
+
+  /** Gathers the selected objects' segments and works out temporary dimensions (Revit / AutoCAD style). */
+  private collectSelection(set: Set<number>): void {
+    const d = this.drawing;
+    this.selSegs = [];
+    this.dims = [];
+    if (!d || !set.size) return;
+    const per = new Map<number, Array<[number, number, number, number]>>();
+    for (let i = 0; i < d.segEnt.length; i++) {
+      const e = d.segEnt[i];
+      if (!set.has(e)) continue;
+      let list = per.get(e);
+      if (!list) per.set(e, (list = []));
+      if (list.length < 20000) list.push([d.seg[i * 4], d.seg[i * 4 + 1], d.seg[i * 4 + 2], d.seg[i * 4 + 3]]);
+    }
+    this.selSegs = [...per.values()];
+    if (this.selSegs.length > 2) return;
+    const reach = Math.max(this.viewHeight, 1) * 1.5; // look for neighbours within about a screen and a half
+    this.dims = tempDims(
+      this.selSegs,
+      (visit) => {
+        for (let i = 0, n = d.segEnt.length; i < n; i++) {
+          if (set.has(d.segEnt[i]) || !this.layerOn[d.segLayer[i]]) continue;
+          visit([d.seg[i * 4], d.seg[i * 4 + 1], d.seg[i * 4 + 2], d.seg[i * 4 + 3]]);
+        }
+      },
+      reach,
+    );
+  }
+
+  /** Thick highlight, AutoCAD grips and temporary dimensions, drawn on the overlay. */
+  private drawSelection(ctx: CanvasRenderingContext2D, W: number, H: number, pxPerUnit: number): void {
+    if (!this.selSegs.length) return;
+    const dpr = this.renderer.getPixelRatio();
+    const sx = (x: number) => (x - this.center.x) * pxPerUnit + W / 2;
+    const sy = (y: number) => H / 2 - (y - this.center.y) * pxPerUnit;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // 1. highlight
+    ctx.lineWidth = 3 * dpr;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = this.accentCss;
+    ctx.beginPath();
+    for (const segs of this.selSegs) for (const s of segs) {
+      ctx.moveTo(sx(s[0]), sy(s[1]));
+      ctx.lineTo(sx(s[2]), sy(s[3]));
+    }
+    ctx.stroke();
+    // 2. grips: vertices, and midpoints of straight objects with few segments
+    const grips = new Map<string, [number, number]>();
+    for (const segs of this.selSegs) {
+      const few = segs.length <= 12;
+      for (const s of segs) {
+        if (grips.size > 400) break;
+        for (const [x, y] of few ? [[s[0], s[1]], [s[2], s[3]], [(s[0] + s[2]) / 2, (s[1] + s[3]) / 2]] : [[s[0], s[1]]]) {
+          grips.set(`${Math.round(x * 100)},${Math.round(y * 100)}`, [x, y]);
+        }
+      }
+      if (!few) break;
+    }
+    const g = 7 * dpr;
+    ctx.lineWidth = 1 * dpr;
+    for (const [x, y] of grips.values()) {
+      ctx.fillStyle = this.dimCss;
+      ctx.strokeStyle = '#ffffff';
+      ctx.fillRect(sx(x) - g / 2, sy(y) - g / 2, g, g);
+      ctx.strokeRect(sx(x) - g / 2, sy(y) - g / 2, g, g);
+    }
+    // 3. temporary dimensions
+    ctx.strokeStyle = this.dimCss;
+    ctx.fillStyle = this.dimCss;
+    ctx.lineWidth = 1 * dpr;
+    ctx.font = `600 ${12 * dpr}px ${getComputedStyle(this.container).getPropertyValue('--font-sans') || 'sans-serif'}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    for (const dm of this.dims) {
+      const off = (dm.kind === 'size' ? 22 : 0) * dpr;
+      const ox = dm.offset[0] * off, oy = -dm.offset[1] * off;
+      const ax = sx(dm.a[0]), ay = sy(dm.a[1]), bx = sx(dm.b[0]), by = sy(dm.b[1]);
+      const a2 = [ax + ox, ay + oy], b2 = [bx + ox, by + oy];
+      if (Math.hypot(b2[0] - a2[0], b2[1] - a2[1]) < 12 * dpr) continue; // too small to read at this zoom
+      ctx.beginPath();
+      if (off) {
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(a2[0], a2[1]);
+        ctx.moveTo(bx, by);
+        ctx.lineTo(b2[0], b2[1]);
+      }
+      ctx.moveTo(a2[0], a2[1]);
+      ctx.lineTo(b2[0], b2[1]);
+      // architectural ticks at both ends
+      const ang = Math.atan2(b2[1] - a2[1], b2[0] - a2[0]);
+      for (const p of [a2, b2]) {
+        const t = 5 * dpr;
+        ctx.moveTo(p[0] - Math.cos(ang + Math.PI / 4) * t, p[1] - Math.sin(ang + Math.PI / 4) * t);
+        ctx.lineTo(p[0] + Math.cos(ang + Math.PI / 4) * t, p[1] + Math.sin(ang + Math.PI / 4) * t);
+      }
+      ctx.stroke();
+      // label, kept upright
+      const mx = (a2[0] + b2[0]) / 2, my = (a2[1] + b2[1]) / 2;
+      let r = ang;
+      if (r > Math.PI / 2) r -= Math.PI;
+      if (r < -Math.PI / 2) r += Math.PI;
+      const label = Math.round(dm.value).toLocaleString('en-IN');
+      ctx.save();
+      ctx.translate(mx, my);
+      ctx.rotate(r);
+      const w = ctx.measureText(label).width + 8 * dpr;
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillRect(-w / 2, -16 * dpr, w, 15 * dpr);
+      ctx.fillStyle = this.dimCss;
+      ctx.fillText(label, 0, -3 * dpr);
+      ctx.restore();
+    }
   }
 
   /** Layer visibility by layer index. */
@@ -513,6 +633,7 @@ export class DrawingViewer {
     this.screenPalette = colors.map(toCss);
     this.accentCss = getComputedStyle(this.container).getPropertyValue('--accent').trim() || '#D9761E';
     this.highlightMat.color.set(this.accentCss);
+    this.dimCss = getComputedStyle(this.container).getPropertyValue('--select-window').trim() || '#2F7FD8';
     this.requestRender();
   }
 
@@ -557,6 +678,7 @@ export class DrawingViewer {
       const first = av === 'bottom' ? -(lines.length - 1) * lh : av === 'middle' ? (-(lines.length - 1) * lh) / 2 : 0;
       lines.forEach((ln, i) => ctx.fillText(ln, 0, first + i * lh));
     }
+    this.drawSelection(ctx, W, H, pxPerUnit);
   }
 
   private clear(): void {
@@ -564,6 +686,8 @@ export class DrawingViewer {
     this.highlight?.geometry.dispose();
     this.highlight = null;
     this.selected = [];
+    this.selSegs = [];
+    this.dims = [];
     this.bounds = null;
     for (const o of this.objects) {
       o.removeFromParent();
