@@ -141,15 +141,33 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   // Rebuild the scene only for a different file. Re-detected marks or grades give a new model object
   // with the same geometry; rebuilding then reset the camera and the section box.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => viewer.current?.setModel(model), [model?.info]);
-  useEffect(() => viewer.current?.setSelection(selection), [selection, model]);
-  useEffect(() => viewer.current?.setHidden(hidden), [hidden, model]);
-  useEffect(() => viewer.current?.setDisplayStyle(displayStyle), [displayStyle, model]);
-  useEffect(() => viewer.current?.setEdges(props.edges ?? true), [props.edges, model]);
-  useEffect(() => viewer.current?.setReveal(!!props.reveal), [props.reveal, model]);
-  useEffect(() => viewer.current?.setHiddenLines(!!props.hiddenLines), [props.hiddenLines, model]);
-  useEffect(() => viewer.current?.setAnnotations(props.annotations ?? []), [props.annotations, model]);
-  useEffect(() => viewer.current?.setAnnotationSelection(props.annotationSelection ?? []), [props.annotationSelection, model]);
+  useEffect(() => {
+    viewer.current?.setModel(model);
+  }, [model?.info]);
+  useEffect(() => {
+    viewer.current?.setSelection(selection);
+  }, [selection, model]);
+  useEffect(() => {
+    viewer.current?.setHidden(hidden);
+  }, [hidden, model]);
+  useEffect(() => {
+    viewer.current?.setDisplayStyle(displayStyle);
+  }, [displayStyle, model]);
+  useEffect(() => {
+    viewer.current?.setEdges(props.edges ?? true);
+  }, [props.edges, model]);
+  useEffect(() => {
+    viewer.current?.setReveal(!!props.reveal);
+  }, [props.reveal, model]);
+  useEffect(() => {
+    viewer.current?.setHiddenLines(!!props.hiddenLines);
+  }, [props.hiddenLines, model]);
+  useEffect(() => {
+    viewer.current?.setAnnotations(props.annotations ?? []);
+  }, [props.annotations, model]);
+  useEffect(() => {
+    viewer.current?.setAnnotationSelection(props.annotationSelection ?? []);
+  }, [props.annotationSelection, model]);
   // Exploded view: animate to the requested amount; null collapses the current mode.
   const explodeKey = props.explode ? [...props.explode.modes].sort().join('+') : null;
   const explodeAmount = props.explode?.amount ?? 0;
@@ -165,8 +183,12 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     if (modes.length) v.setExplode(modes, explodeKey ? explodeAmount : 0, true, refit);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [explodeKey, explodeAmount, model]);
-  useEffect(() => viewer.current?.setOverrides(props.overrides ?? []), [props.overrides, model]);
-  useEffect(() => viewer.current?.refreshTheme(), [props.canvasTheme]);
+  useEffect(() => {
+    viewer.current?.setOverrides(props.overrides ?? []);
+  }, [props.overrides, model]);
+  useEffect(() => {
+    viewer.current?.refreshTheme();
+  }, [props.canvasTheme]);
 
   useImperativeHandle(ref, () => ({
     fit: (indices) => viewer.current?.fit(indices),

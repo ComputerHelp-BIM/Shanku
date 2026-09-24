@@ -91,7 +91,9 @@ export function GuidePanel({ initial }: GuidePanelProps) {
   const hits = useMemo(() => searchGuide(query), [query]);
   // While searching, show every matching section in one scroll; otherwise the chosen one.
   const shown: GuideSection[] = query.trim() ? hits : GUIDE.filter((s) => s.id === current);
-  useEffect(() => body.current?.scrollTo({ top: 0 }), [current, query]);
+  useEffect(() => {
+    body.current?.scrollTo({ top: 0 });
+  }, [current, query]);
   const groups = ['Guide', 'Answers', 'About'] as const;
   return (
     <div className="app-guide">

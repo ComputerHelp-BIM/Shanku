@@ -68,7 +68,9 @@ export function PropertyRow({ label, value, unit, mono, readOnly, varies, onComm
   const editable = Boolean(onCommit) && !readOnly;
   const initial = varies ? '' : value === null ? '' : String(value);
   const [draft, setDraft] = useState(initial);
-  useEffect(() => setDraft(initial), [initial]);
+  useEffect(() => {
+    setDraft(initial);
+  }, [initial]);
 
   const commit = () => {
     if (!onCommit || draft === initial) return;

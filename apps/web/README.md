@@ -1,10 +1,10 @@
-# @shanku/web 0.28.1
+# @shanku/web 0.28.2
 
-The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.0`, `@shanku/tokens >= 2.0.0`.
-The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.0`, `@shanku/tokens >= 2.1.0`.
+The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
 # @shanku/web 0.27.0
 
-The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.0`, `@shanku/tokens >= 2.1.0`.
+The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -25,6 +25,10 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.28.2 — 2026-09-24
+- **Fixed: Guide & FAQ crashed the app in Chrome 154** (`TypeError: n is not a function`) when changing section or closing the window. The guide scrolled back to the top with `useEffect(() => body.current?.scrollTo(...))`; the arrow's value becomes the effect's cleanup, and Chrome 154's `scrollTo()` returns a Promise, which React then called. Reproduced by emulating the Promise-returning scroll methods; fixed with a block body.
+- The same pattern was removed from every effect (22 more, in Viewport, DrawingView, VG, Filters, Properties), and a test now fails if an effect returns anything but a real unsubscribe function.
 
 ### 0.28.1 — 2026-09-24
 - Fixed: an error in one window or panel could wipe out the whole app and leave a blank page (seen with the Guide & FAQ window on shanku.vercel.app). Every floating window and docked panel now keeps its errors to itself and shows **Try again** / **Copy details**; an error that still escapes shows a report with **Copy details**, **Reload** and **Reset panels & windows** instead of a blank page. Errors outside a redraw go to the Activity panel.

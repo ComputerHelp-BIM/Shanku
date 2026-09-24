@@ -29,7 +29,9 @@ export function FiltersManager({
 }) {
   const [draft, setDraft] = useState<ViewFilter[]>(filters);
   const [cur, setCur] = useState<string | null>(filters[0]?.id ?? null);
-  useEffect(() => setDraft(filters), [filters]);
+  useEffect(() => {
+    setDraft(filters);
+  }, [filters]);
   const f = draft.find((x) => x.id === cur) ?? null;
   const update = (patch: Partial<ViewFilter>) => setDraft((d) => d.map((x) => (x.id === cur ? { ...x, ...patch } : x)));
   const matches = useMemo(() => (f ? elements.filter((e) => filterMatches(e, f)).length : 0), [f, elements]);

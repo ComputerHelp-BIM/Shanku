@@ -88,13 +88,25 @@ export const DrawingView = forwardRef<DrawingViewHandle, DrawingViewProps>(funct
     };
   }, [doc.drawing]);
 
-  useEffect(() => viewer.current?.setLayerVisibility(doc.layerOn), [doc.layerOn]);
-  useEffect(() => viewer.current?.setHiddenObjects(hiddenMask(doc.objects, doc.drawing.handles.length)), [doc.objects, doc.drawing]);
-  useEffect(() => viewer.current?.setDisplay(display), [display]);
-  useEffect(() => viewer.current?.setTool(tool), [tool]);
+  useEffect(() => {
+    viewer.current?.setLayerVisibility(doc.layerOn);
+  }, [doc.layerOn]);
+  useEffect(() => {
+    viewer.current?.setHiddenObjects(hiddenMask(doc.objects, doc.drawing.handles.length));
+  }, [doc.objects, doc.drawing]);
+  useEffect(() => {
+    viewer.current?.setDisplay(display);
+  }, [display]);
+  useEffect(() => {
+    viewer.current?.setTool(tool);
+  }, [tool]);
   // Keep the highlight in step with selection changes made outside the view (e.g. Esc).
-  useEffect(() => viewer.current?.select(doc.selected?.entities ?? null), [doc.selected?.entities]);
-  useEffect(() => viewer.current?.refreshTheme(), [canvasTheme]);
+  useEffect(() => {
+    viewer.current?.select(doc.selected?.entities ?? null);
+  }, [doc.selected?.entities]);
+  useEffect(() => {
+    viewer.current?.refreshTheme();
+  }, [canvasTheme]);
   useImperativeHandle(ref, () => ({
     fit: () => viewer.current?.fit(),
     zoomTo: (a, b, c, d) => viewer.current?.zoomTo(a, b, c, d),

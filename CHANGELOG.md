@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.28.2 — 2026-09-24
+
+### Fixed
+- Chrome 154: Guide & FAQ crashed the app (`n is not a function`) on changing section or closing. An effect returned `scrollTo()`'s value, a Promise in Chrome 154, which React called as the cleanup. All effects now use block bodies; a test guards the pattern.
+
 ## 0.28.1 — 2026-09-24
 
 ### Fixed

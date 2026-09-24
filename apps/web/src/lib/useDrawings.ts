@@ -30,7 +30,9 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
   const [loading, setLoading] = useState<{ name: string; phase: string } | null>(null);
   const seq = useRef(0);
 
-  useEffect(() => () => client.current?.dispose(), []);
+  useEffect(() => {
+    () => client.current?.dispose();
+  }, []);
 
   const open = useCallback(
     async (file: PickedFile): Promise<string | null> => {

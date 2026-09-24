@@ -36,8 +36,12 @@ export function VisibilityGraphicsDialog({
   const [draft, setDraft] = useState<CategoryOverrides>(value);
   const [appliedDraft, setAppliedDraft] = useState<AppliedFilter[]>(applied);
   const [tab, setTab] = useState(initialTab);
-  useEffect(() => setDraft(value), [value]);
-  useEffect(() => setAppliedDraft(applied), [applied]);
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+  useEffect(() => {
+    setAppliedDraft(applied);
+  }, [applied]);
   const setA = (i: number, patch: Partial<AppliedFilter>) => setAppliedDraft((a) => a.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const setAo = (i: number, patch: GraphicsOverride) => setAppliedDraft((a) => a.map((x, j) => (j === i ? { ...x, override: { ...x.override, ...patch } } : x)));
   const move = (i: number, d: -1 | 1) => setAppliedDraft((a) => {
@@ -208,7 +212,9 @@ export function ElementGraphicsDialog({
   onClose: () => void;
 }) {
   const [d, setD] = useState<GraphicsOverride>(value);
-  useEffect(() => setD(value), [value]);
+  useEffect(() => {
+    setD(value);
+  }, [value]);
   return (
     <div className="vg vg--small">
       <p className="vg-faint">Applies to {count.toLocaleString('en-IN')} selected element{count === 1 ? '' : 's'} in this view. Overrides the category settings.</p>
