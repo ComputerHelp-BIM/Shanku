@@ -25,6 +25,7 @@ import {
 import type { ElementRecord, ParsedModel } from '../model/types';
 import { orbitAround, wheelZoomFactor, worldPerPixel, zoomShift } from './cameraMath';
 import { cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './cursors';
+import { drawAnnotations, type Annotation } from './annotations';
 import { readViewerTokens, type Rgba } from './cssColor';
 import {
   DISPLAY_CONSISTENT,
@@ -62,6 +63,8 @@ export interface ViewerEvents {
   onZoomRegionEnd?: () => void;
   /** Section box turned on/off or edited. */
   onSectionBoxChange?: (active: boolean) => void;
+  /** A view symbol was double-clicked (section head, elevation mark, level head). */
+  onOpenView?: (id: string) => void;
   /** The user started or stopped navigating (orbit, pan, zoom, transitions): the ViewCube wakes up. */
   onNavigate?: (active: boolean) => void;
   /** The camera moved (every rendered frame after a change): for the ViewCube. */
@@ -137,6 +140,10 @@ export class Viewer {
   /** Cursors drawn for the canvas: dark on Paper, light on Ink. */
   private cur: CursorSet = cursorsFor(false);
   private dimEl: SVGSVGElement;
+  /** View symbols (section / elevation marks, level lines) over the model. */
+  private annEl: SVGSVGElement;
+  private annotations: Annotation[] = [];
+  private annHot: string | null = null;
   private edgesOn = true;
   private future: CameraState[] = [];
   /** Plans, elevations and sections: pan and zoom only (orbit becomes pan), as in Revit. */
@@ -193,6 +200,26 @@ export class Viewer {
     this.dimEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     Object.assign(this.dimEl.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' });
     container.appendChild(this.dimEl);
+    this.annEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    Object.assign(this.annEl.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' });
+    container.appendChild(this.annEl);
+    // Heads: hover highlights, double-click opens the view (Revit).
+    const headOf = (t: EventTarget | null) => (t as Element | null)?.closest?.('[data-view]')?.getAttribute('data-view') ?? null;
+    this.annEl.addEventListener('pointerover', (e) => {
+      const id = headOf(e.target);
+      if (id !== this.annHot) {
+        this.annHot = id;
+        this.requestRender();
+      }
+    });
+    this.annEl.addEventListener('pointerout', () => {
+      this.annHot = null;
+      this.requestRender();
+    });
+    this.annEl.addEventListener('dblclick', (e) => {
+      const id = headOf(e.target);
+      if (id) this.events.onOpenView?.(id);
+    });
 
     this.camera = new OrthographicCamera(-1, 1, 1, -1, -1e4, 1e4);
     this.camera.up.copy(UP);
@@ -909,6 +936,40 @@ export class Viewer {
     return this.zoomRegionArmed ? this.cur.zoom : modifierCursor(e, this.cur);
   }
 
+  /** Replaces the view symbols drawn over the model (see annotations.ts). */
+  setAnnotations(list: Annotation[]): void {
+    this.annotations = list;
+    this.requestRender();
+  }
+
+  private drawAnnotationLayer(): void {
+    if (!this.annotations.length) {
+      while (this.annEl.firstChild) this.annEl.firstChild.remove();
+      return;
+    }
+    const r = this.container.getBoundingClientRect();
+    const cs = getComputedStyle(this.container);
+    const v = new Vector3();
+    drawAnnotations(
+      this.annEl,
+      this.annotations,
+      (p) => {
+        v.set(p[0], p[1], p[2]).project(this.camera);
+        if (v.z < -1 || v.z > 1) return null;
+        return [((v.x + 1) / 2) * r.width, ((1 - v.y) / 2) * r.height];
+      },
+      {
+        line: cs.getPropertyValue('--text-secondary').trim() || '#555',
+        text: cs.getPropertyValue('--text').trim() || '#222',
+        plate: cs.getPropertyValue('--viewport').trim() || '#fff',
+        hot: cs.getPropertyValue('--select-window').trim() || '#2F7FD8',
+        font: cs.getPropertyValue('--font-sans').trim() || 'sans-serif',
+      },
+      this.annHot,
+      { width: r.width, height: r.height },
+    );
+  }
+
   /** Shows or hides the orbit centre marker at a world point. */
   private showPivot(p: Vector3 | null): void {
     if (!p) {
@@ -1279,6 +1340,7 @@ export class Viewer {
       } else this.gizmo.update(null, 1);
       this.lastFrameMs = performance.now() - t0;
       this.drawTempDims();
+      this.drawAnnotationLayer();
       this.events.onCamera?.(this.camera.quaternion);
     });
   }
@@ -1293,6 +1355,7 @@ export class Viewer {
     this.rectEl.remove();
     this.pivotEl.remove();
     this.dimEl.remove();
+    this.annEl.remove();
     clearTimeout(this.navTimer);
     this.animToken++;
   }

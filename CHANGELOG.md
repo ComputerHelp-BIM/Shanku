@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.22.0 — 2026-09-23
+
+### Added
+- Section and elevation marks in plans; level lines and heads in elevations and sections; section traces across elevations; double-click a head to open its view.
+
 ## 0.21.0 — 2026-09-23
 
 ### Changed

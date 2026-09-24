@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ViewCube, type Orientation } from './ViewCube';
 import { Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName } from '@shanku/engine';
-import type { CameraState, SectionBoxState } from '@shanku/engine';
+import type { Annotation, CameraState, SectionBoxState } from '@shanku/engine';
 
 export interface ViewportHandle {
   fit: (indices?: number[]) => void;
@@ -47,6 +47,10 @@ export interface ViewportProps {
   overrides?: Array<{ index: number; color: [number, number, number] | null; transparency: number; halftone: boolean }>;
   /** Temporary Hide/Isolate is active (cyan frame); `hidden` also includes elements hidden by the view. */
   temporary?: boolean;
+  /** View symbols: section and elevation marks, level lines. */
+  annotations?: Annotation[];
+  /** A symbol's head was double-clicked: open that view. */
+  onOpenView?: (id: string) => void;
   /** Revit's Show Hidden Lines for this view (dashed edges behind other elements). */
   hiddenLines?: boolean;
   /** Plan, elevation or section: no ViewCube (Revit shows none in 2D views). */
@@ -84,6 +88,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
         onBoxSelect: (ids, mode) => handlers.current.onBoxSelect(ids, mode),
         onZoomRegionEnd: () => handlers.current.onZoomRegionEnd?.(),
         onSectionBoxEdit: (a, b) => handlers.current.onSectionBoxEdit?.(a, b),
+        onOpenView: (id) => handlers.current.onOpenView?.(id),
         onNavigate: (active) => {
           setNavActive(active);
           if (active) setTip(null);
@@ -124,6 +129,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   useEffect(() => viewer.current?.setEdges(props.edges ?? true), [props.edges, model]);
   useEffect(() => viewer.current?.setReveal(!!props.reveal), [props.reveal, model]);
   useEffect(() => viewer.current?.setHiddenLines(!!props.hiddenLines), [props.hiddenLines, model]);
+  useEffect(() => viewer.current?.setAnnotations(props.annotations ?? []), [props.annotations, model]);
   useEffect(() => viewer.current?.setOverrides(props.overrides ?? []), [props.overrides, model]);
   useEffect(() => viewer.current?.refreshTheme(), [props.canvasTheme]);
 

@@ -1,4 +1,4 @@
-# @shanku/engine 0.19.0
+# @shanku/engine 0.20.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.20.0 — 2026-09-23
+- View symbols (`annotations.ts`, `Viewer.setAnnotations`): section marks (dash-dot line, numbered head with a look arrow, tail), elevation marks (circle and wedge), level lines with target heads, name and elevation. A live SVG layer that follows the camera; heads slide along their line to stay in view; hover highlights; double-click raises `onOpenView(id)`.
 
 ### 0.19.0 — 2026-09-23
 - Show Hidden Lines: a dashed edge pass drawn only behind other geometry (depth test greater, projection line colour, screen-space dashes); `setHiddenLines(on)`.

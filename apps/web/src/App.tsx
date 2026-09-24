@@ -38,6 +38,7 @@ import { PipelinePanel } from './components/PipelinePanel';
 import { qaFocus, usePipeline } from './lib/usePipeline';
 import { useHistory } from './lib/useHistory';
 import { loadDrawings, loadGraphics, loadModel, loadViews, saveViews } from './lib/session';
+import { marksFor } from './lib/viewMarks';
 import { DEFAULT_CUT, DEFAULT_DEPTH_OFFSET, KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, nextSectionName, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection, type ModelView } from './lib/views';
 import { enterFullscreen } from './lib/fullscreen';
 import { QuickAccess } from './components/QuickAccess';
@@ -53,7 +54,7 @@ import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.21.0';
+const APP_VERSION = '0.22.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -465,6 +466,8 @@ export function App({ start }: { start?: AppStart } = {}) {
     return { min, max };
   }, [m.model?.info]); // eslint-disable-line react-hooks/exhaustive-deps
   const activeModelView = views.find((v) => v.id === activeView) ?? null;
+  // View symbols for the active view (section / elevation marks in plans, levels in elevations).
+  const marks = useMemo(() => marksFor(activeModelView, views, heights, bounds), [activeModelView, views, heights, bounds]);
   const resolved = useMemo(() => (m.model ? resolveGraphics(m.model.elements, graphics) : { hidden: [], overrides: [] }), [m.model, graphics]);
   const viewHidden = useMemo(() => (resolved.hidden.length ? [...new Set([...hidden, ...resolved.hidden])] : hidden), [hidden, resolved.hidden]);
   const changeGraphics = (name: string, next: ViewGraphics) =>
@@ -940,6 +943,8 @@ export function App({ start }: { start?: AppStart } = {}) {
             canvasTheme={canvasTheme}
             twoD={isTwoD(activeModelView ?? undefined)}
             hiddenLines={!!activeModelView?.hiddenLines}
+            annotations={marks}
+            onOpenView={(id) => views.some((v) => v.id === id) && openView(id)}
             onContextMenu={(x, y) => m.model && setCtxMenu({ x, y })}
             reveal={reveal}
             onZoomRegionEnd={() => setZoomRegion(false)}

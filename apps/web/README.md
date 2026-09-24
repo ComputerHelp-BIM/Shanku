@@ -1,10 +1,10 @@
-# @shanku/web 0.21.0
+# @shanku/web 0.22.0
 
-The Shanku app. Requires `@shanku/engine >= 0.19.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.20.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.0.0`.
 
-The Shanku app. Requires `@shanku/engine >= 0.19.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.2.0`.
+The Shanku app. Requires `@shanku/engine >= 0.20.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.2.0`.
 
-The Shanku app. Requires `@shanku/engine >= 0.19.0`, `@shanku/ui >= 0.9.1`, `@shanku/tokens >= 2.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.20.0`, `@shanku/ui >= 0.9.1`, `@shanku/tokens >= 2.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.22.0 — 2026-09-23
+- **View symbols, as in Revit.** Structural plans show every section (dash-dot line, numbered head with its look arrow, tail) and the four elevation marks around the building; elevations and sections show every level as a level line with its head (name and elevation in mm, e.g. +3,200) and the sections that cut across them. **Double-click a head** to open its view: a section head opens the section, an elevation mark the elevation, a level head that level's plan. Heads stay in view as you pan and zoom. 3D views show none.
 
 ### 0.21.0 — 2026-09-23
 - **Structural plans show what is under the slab as dashed hidden lines** (Revit's Show Hidden Lines) instead of making slabs transparent; toggle per view (View → Graphics → Hidden Lines, shown in Properties). Plans saved by 0.20.x lose the old 70 % slab transparency automatically.
