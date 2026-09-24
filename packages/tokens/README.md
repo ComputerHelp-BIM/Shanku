@@ -1,4 +1,4 @@
-# @shanku/tokens 2.0.0
+# @shanku/tokens 2.1.0
 
 Design tokens for Shanku, generated from `tokens.json` (the approved design system).
 
@@ -26,6 +26,9 @@ Every colour token has a Paper and an Ink value. Spacing, radius, size, opacity,
 - Edit `tokens.json`, run `npm run build`, bump the version. The build runs `scripts/check-contrast.mjs` first and fails if a required colour pair drops below WCAG 2 (4.5:1 for text, 3:1 for focus rings and control borders) in either theme.
 
 ## Changelog
+
+### 2.1.0 — 2026-09-24
+- Added `grid-minor`, `grid-major` (2D drawing grid, translucent) and `axis-x`, `axis-y` (red X and green Y axes and the UCS icon, AutoCAD colours). The axes are checked at 3:1 on `viewport` in both themes (100 contrast pairs).
 
 ### 2.0.0 — 2026-09-23
 - **Breaking:** removed `on-select-window`. No colour reaches 4.5:1 as text on the Paper `select-window` blue (best 4.3:1), and its one text use was the ViewCube compass. Use `on-viewcube-hot`; for a white tint, mix with `on-viewcube-hot` as well.

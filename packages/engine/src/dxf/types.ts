@@ -52,6 +52,8 @@ export interface ParsedDrawing {
   polyEnt: Uint32Array;
   /** DXF handle per model-space entity. */
   handles: string[];
+  /** DXF type per model-space entity ("LINE", "LWPOLYLINE", "INSERT"…), parallel to `handles`. */
+  types: string[];
   /** Worker-side id: the worker keeps this drawing open to answer object properties. */
   drawingId: string;
   /** Wall-clock ms in the worker, including Python start-up. */

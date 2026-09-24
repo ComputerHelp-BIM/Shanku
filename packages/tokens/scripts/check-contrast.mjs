@@ -27,6 +27,8 @@ const RULES = [
   ['viewcube-text', ['viewcube-top', 'viewcube-side'], 4.5, 'ViewCube face labels'],
   ['viewcube-compass', ['viewcube-ring'], 4.5, 'ViewCube compass letters'],
   ['on-viewcube-hot', ['viewcube-hot'], 4.5, 'ViewCube compass letters on hover'],
+  ['axis-x', ['viewport'], 3, 'X axis and UCS icon (graphical object)'],
+  ['axis-y', ['viewport'], 3, 'Y axis and UCS icon (graphical object)'],
 ];
 
 function valueFor(name, theme) {

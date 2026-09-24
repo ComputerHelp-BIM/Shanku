@@ -80,7 +80,7 @@ self.onmessage = async (event: MessageEvent<DxfRequest>) => {
     const parts = proxy.toJs() as [string, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array, Uint8Array];
     proxy.destroy();
     py.FS.unlink('/shanku/in.dxf');
-    const head = JSON.parse(parts[0]) as Pick<ParsedDrawing, 'info' | 'palette' | 'layers' | 'texts' | 'handles'>;
+    const head = JSON.parse(parts[0]) as Pick<ParsedDrawing, 'info' | 'palette' | 'layers' | 'texts' | 'handles' | 'types'>;
     const drawing: ParsedDrawing = {
       ...head,
       fileName: msg.fileName,

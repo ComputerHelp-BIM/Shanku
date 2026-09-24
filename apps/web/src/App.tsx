@@ -55,8 +55,11 @@ import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/short
 import { sequenceKeys, type AppCommand } from './lib/commands';
 import { CommandPalette, type ElementHit } from './components/CommandPalette';
 import { GuidePanel } from './components/GuidePanel';
+import { useDrawingTools } from './lib/useDrawingTools';
+import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
+import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.24.0';
+const APP_VERSION = '0.25.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -379,6 +382,8 @@ export function App({ start }: { start?: AppStart } = {}) {
     (cmd: CommandId) => {
       if (activeDoc) {
         if (cmd === 'fit') drawingView.current?.fit();
+        else if (cmd === 'previous') dxtRef.current?.act('zoomPrevious');
+        else if (cmd === 'zoomRegion') dxtRef.current?.act('zoomWindow');
         else setNotice('That command works in 3D views.');
         return;
       }
@@ -765,6 +770,23 @@ export function App({ start }: { start?: AppStart } = {}) {
   useShortcut({ code: 'KeyY', ctrl: true }, redo);
   useShortcut({ code: 'KeyZ', ctrl: true, shift: true }, redo);
   useShortcut({ code: 'Home' }, () => (activeDoc ? drawingView.current?.fit() : viewport.current?.home()));
+  // The AutoCAD layer of the 2D view: grid, crosshair, isolation, right-click menus, Quick Select, Find.
+  const dxt = useDrawingTools({
+    doc: activeDoc,
+    view: drawingView,
+    select: dx.select,
+    update: dx.update,
+    history,
+    undo,
+    redo,
+    notify: setNotice,
+    log: (t) => m.log(t),
+    panelOpen: (id) => openPanels.includes(id),
+    togglePanel: (id) => dock.current?.toggle(id),
+  });
+  const dxtRef = useRef<typeof dxt | null>(null);
+  dxtRef.current = dxt;
+  useShortcut({ code: 'F7' }, () => dxt.act('grid'), { enabled: !!activeDoc });
   const commandRef = useRef(runCommand);
   commandRef.current = runCommand;
   useEffect(() => {
@@ -926,6 +948,8 @@ export function App({ start }: { start?: AppStart } = {}) {
       { id: 'help.guide', title: 'Guide & FAQ', group: 'Help', keys: 'F1', keywords: 'help manual documentation', run: () => openGuide() },
       { id: 'help.keys', title: 'Keyboard shortcuts', group: 'Help', keywords: 'keys hotkeys', run: () => openGuide('keys') },
       { id: 'help.whatsNew', title: "What's new", group: 'Help', keywords: 'release changelog version', run: () => openGuide('news') },
+      // 2D drawings (AutoCAD)
+      ...dxt.commands(),
     ];
     return list;
   };
@@ -1140,7 +1164,33 @@ export function App({ start }: { start?: AppStart } = {}) {
           }}
         >
           {dx.docs.map((d) =>
-            d.id === activeView ? <DrawingView key={d.id} ref={drawingView} doc={d} onCursor={(x, y) => setCursor({ x, y })} onSelect={(e) => dx.select(d.id, e)} canvasTheme={canvasTheme} describe={(ent) => dx.getClient().entity(d.drawing.drawingId, d.drawing.handles[ent])} /> : null,
+            d.id === activeView ? (
+              <DrawingView
+                key={d.id}
+                ref={drawingView}
+                doc={d}
+                onCursor={(x, y) => setCursor({ x, y })}
+                onSelect={(e) => dx.select(d.id, e)}
+                canvasTheme={canvasTheme}
+                describe={(ent) => dx.getClient().entity(d.drawing.drawingId, d.drawing.handles[ent])}
+                display={dxt.display}
+                tool={dxt.tool}
+                onToolEnd={() => dxt.setTool(null)}
+                onContextMenu={dxt.openMenu}
+              >
+                {d.objects ? (
+                  <div className="app-temp-frame" role="status">
+                    <span>
+                      {d.objects.mode === 'isolate' ? 'Isolate Objects' : 'Hide Objects'}
+                      <button type="button" className="app-temp-frame__end" onClick={() => dxt.act('endIsolation')}>
+                        End
+                      </button>
+                    </span>
+                  </div>
+                ) : null}
+                {dxt.quickProperties && d.selected ? <QuickProperties props={d.selected.props} count={d.selected.entities.length} onClose={() => dxt.setQuickProperties(false)} /> : null}
+              </DrawingView>
+            ) : null,
           )}
           <div className="app-view3d" hidden={activeDoc !== null}>
           <Viewport
@@ -1319,6 +1369,24 @@ export function App({ start }: { start?: AppStart } = {}) {
               ]}
             />
           ) : null}
+          {dxt.menu && activeDoc ? <ContextMenu x={dxt.menu.x} y={dxt.menu.y} onClose={dxt.closeMenu} items={dxt.menuItems()} /> : null}
+          <FloatingWindow id="dxf-qselect" title="Quick Select" subtitle={activeDoc?.name} open={dxt.quickSelectOpen && !!activeDoc} onClose={() => dxt.setQuickSelectOpen(false)} initial={{ x: Math.max(16, window.innerWidth - 420), y: 150, w: 380, h: 470 }} minWidth={320} minHeight={380} accent={activeDoc?.color}>
+            {activeDoc && dxt.index ? (
+              <QuickSelectPanel
+                drawing={activeDoc.drawing}
+                index={dxt.index}
+                visible={dxt.visible}
+                selection={activeDoc.selected?.entities ?? []}
+                onApply={(ents) => {
+                  dxt.selectObjects(ents);
+                  setNotice(`Quick Select: ${fmtCount(ents.length)} ${ents.length === 1 ? 'object' : 'objects'} selected.`);
+                }}
+              />
+            ) : null}
+          </FloatingWindow>
+          <FloatingWindow id="dxf-find" title="Find" subtitle={activeDoc?.name} open={dxt.findOpen && !!activeDoc} onClose={() => dxt.setFindOpen(false)} initial={{ x: Math.max(16, window.innerWidth - 500), y: 150, w: 460, h: 440 }} minWidth={340} minHeight={260} accent={activeDoc?.color}>
+            {activeDoc ? <FindTextPanel drawing={activeDoc.drawing} visibleSet={dxt.visibleSet} onPick={(e) => dxt.selectObjects([e], true)} onSelectAll={(ents) => dxt.selectObjects(ents, true)} /> : null}
+          </FloatingWindow>
           {ctxMenu && m.model ? (
             <ContextMenu x={ctxMenu.x} y={ctxMenu.y} onClose={() => setCtxMenu(null)} items={contextItems()} />
           ) : null}
@@ -1399,8 +1467,21 @@ export function App({ start }: { start?: AppStart } = {}) {
             <Button size="sm" variant="ghost" onClick={() => drawingView.current?.fit()} title="Zoom extents (ZF, Home, double middle-click)">
               Fit
             </Button>
+            <Button size="sm" variant="ghost" onClick={() => dxt.act('zoomWindow')} aria-pressed={dxt.tool === 'zoomWindow'} title="Zoom window: drag a rectangle (ZR)">
+              Zoom window
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => dxt.act('zoomPrevious')} title="Zoom previous (ZP)">
+              Previous
+            </Button>
+            <span className="app-divider" aria-hidden="true" />
+            <Button size="sm" variant="ghost" onClick={() => dxt.act('quickSelect')} title="Quick select by type, layer and colour">
+              Quick select
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => dxt.act('find')} title="Find text in the drawing">
+              Find
+            </Button>
             <span className="app-spacer" />
-            <span className="app-hint">2D · Middle-drag pan · Wheel zoom · Double middle-click fit · Alt + drag on a trackpad</span>
+            <span className="app-hint">2D · Right-click for the AutoCAD menu · Middle-drag pan · Wheel zoom · Double middle-click fit</span>
           </>
         ) : (
         <>
@@ -1592,10 +1673,33 @@ export function App({ start }: { start?: AppStart } = {}) {
         <StatusBar>
           {activeDoc ? (
             <>
-              <span className="app-coords" aria-label="Cursor position">
-                {cursor ? `X ${cursor.x.toFixed(1)}   Y ${cursor.y.toFixed(1)}` : 'X —   Y —'} {activeDoc.units}
+              <span className="app-coords" aria-label={`Cursor position, ${activeDoc.units}`} title={`Cursor X, Y, Z in ${activeDoc.units}`}>
+                {cursor ? formatPoint(cursor.x, cursor.y) : '—, —, 0.000'}
               </span>
               <span className="app-divider" aria-hidden="true" />
+              <span className="app-model-tab" title="Model space">MODEL</span>
+              <span className="app-drafting" role="group" aria-label="Drafting aids">
+                <button type="button" className="app-panel-toggle" aria-pressed={dxt.display.grid} title="Grid display (F7)" onClick={() => dxt.act('grid')}>
+                  Grid
+                </button>
+                <button type="button" className="app-panel-toggle" aria-pressed={dxt.display.ucsIcon} title="UCS icon at the origin" onClick={() => dxt.act('ucsIcon')}>
+                  UCS
+                </button>
+                <button
+                  type="button"
+                  className="app-panel-toggle"
+                  aria-pressed={dxt.display.crosshair !== 'off'}
+                  title={`Crosshair: ${{ small: 'small', full: 'full screen', off: 'off' }[dxt.display.crosshair]}. Click to change`}
+                  onClick={() => dxt.act(`crosshair:${({ small: 'full', full: 'off', off: 'small' } as const)[dxt.display.crosshair]}`)}
+                >
+                  Crosshair{dxt.display.crosshair === 'full' ? ' (full)' : ''}
+                </button>
+                <button type="button" className="app-panel-toggle" aria-pressed={dxt.quickProperties} title="Quick Properties panel for the selection" onClick={() => dxt.act('quickProperties')}>
+                  QP
+                </button>
+              </span>
+              <span className="app-divider" aria-hidden="true" />
+              {activeDoc.selected ? <StatusChip>{fmtCount(activeDoc.selected.entities.length)} selected</StatusChip> : null}
               <StatusChip>Layers {fmtCount(activeDoc.layerOn.filter(Boolean).length)} / {fmtCount(activeDoc.layerOn.length)} on</StatusChip>
             </>
           ) : (

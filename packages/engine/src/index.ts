@@ -5,7 +5,9 @@ export { Viewer, type ViewName, type ViewerEvents, type DisplayStyle, type Selec
 export { parseCssColor } from './render/cssColor';
 export { DxfClient } from './dxf/client';
 export type { ParsedDrawing, DrawingInfo, DrawingLayer, DrawingText } from './dxf/types';
-export { DrawingViewer, type DrawingViewerEvents } from './render/DrawingViewer';
+export { DrawingViewer, DEFAULT_DRAWING_DISPLAY, type DrawingViewerEvents, type DrawingDisplay, type DrawingTool, type CrosshairSize } from './render/DrawingViewer';
+export { gridLevels, gridValues, GRID_MIN_PX, type GridLevel } from './render/drawingGrid';
+export { indexEntities, objectTypeLabel, OBJECT_KIND, type EntityIndex } from './dxf/entityIndex';
 export { resolvePalette, contrast } from './render/drawingColors';
 export { DEFAULT_MARK_RULES, DEFAULT_GRADE_RULES, parseRules, rulePriority } from './ifc/marks';
 export { buildBoq, type Boq, type BoqKey, type BoqRow } from './model/boq';
@@ -21,4 +23,4 @@ export { PYODIDE_VERSION, PYODIDE_INDEX_URL } from './pyodide';
 export { History, Transaction, TransactionError, type Change, type CommittedTransaction } from './doc/transactions';
 export { tempDims, type Dim2 } from './render/tempDims';
 export { CURSOR, cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './render/cursors';
-export const ENGINE_VERSION = '0.22.0';
+export const ENGINE_VERSION = '0.23.0';

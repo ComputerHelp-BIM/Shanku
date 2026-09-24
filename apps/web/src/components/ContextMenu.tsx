@@ -1,17 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-export type MenuItem =
-  | { kind: 'sep' }
-  | { kind: 'item'; label: string; onClick?: () => void; disabled?: boolean; checked?: boolean; hint?: string; submenu?: MenuItem[] };
+import type { MenuItem } from '../lib/menu';
 
-export const sep: MenuItem = { kind: 'sep' };
-export const item = (label: string, onClick?: () => void, opts: { disabled?: boolean; checked?: boolean; hint?: string; submenu?: MenuItem[] } = {}): MenuItem => ({
-  kind: 'item',
-  label,
-  onClick,
-  ...opts,
-});
+export { item, sep, type MenuItem } from '../lib/menu';
 
 /** Revit-style right-click menu: separators, disabled entries, check marks, submenus (›). Esc or click away closes. */
 export function ContextMenu({ x, y, items, onClose }: { x: number; y: number; items: MenuItem[]; onClose: () => void }) {
@@ -54,7 +46,7 @@ function Items({ items, open, setOpen, onClose }: { items: MenuItem[]; open: num
         it.kind === 'sep' ? (
           <div key={i} className="ctx-sep" role="separator" />
         ) : (
-          <div key={i} className="ctx-row" onPointerEnter={() => setOpen(it.submenu ? i : null)}>
+          <div key={i} className="ctx-row" title={it.title} onPointerEnter={() => setOpen(it.submenu ? i : null)}>
             <button
               type="button"
               role={it.checked !== undefined ? 'menuitemcheckbox' : 'menuitem'}

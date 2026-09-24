@@ -20,7 +20,7 @@ from ezdxf.addons.drawing.frontend import Frontend
 from ezdxf.addons.drawing.properties import LayoutProperties, RenderContext
 from ezdxf.disassemble import recursive_decompose
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 UNITS = {0: "unitless", 1: "in", 2: "ft", 3: "mi", 4: "mm", 5: "cm", 6: "m", 7: "km", 8: "µin", 9: "mil",
          10: "yd", 11: "Å", 12: "nm", 13: "µm", 14: "dm", 15: "dam", 16: "hm", 17: "Gm", 18: "AU", 19: "ly", 20: "pc"}
@@ -172,6 +172,7 @@ def extract(path, flatten=0.01, hatch_policy=HatchPolicy.NORMAL):
     colors, layers = {}, {}
     ctx = RenderContext(doc)
     handles = [e.dxf.handle for e in msp]
+    types = [e.dxftype() for e in msp]  # per object, for Select Similar, Quick Select and Count
     entity_index = {h: i for i, h in enumerate(handles)}
     backend = _Collector(colors, layers, entity_index)
     # Solid lines (linetype dashes would multiply segment counts ~10x); hatch patterns as drawn.
@@ -235,6 +236,7 @@ def extract(path, flatten=0.01, hatch_policy=HatchPolicy.NORMAL):
         "seg_ent": backend.seg_ent.tobytes(),
         "poly_ent": backend.poly_ent.tobytes(),
         "handles": handles,
+        "types": types,
         "_doc": doc,
     }
 
@@ -249,7 +251,7 @@ def extract_for_js(path, drawing_id=""):
     r = extract(path)
     if drawing_id:
         _DOCS[drawing_id] = r["_doc"]
-    head = json.dumps({k: r[k] for k in ("info", "palette", "layers", "texts", "handles")})
+    head = json.dumps({k: r[k] for k in ("info", "palette", "layers", "texts", "handles", "types")})
     return (head, r["seg"], r["seg_color"], r["seg_layer"], r["poly"], r["poly_start"], r["poly_color"], r["poly_layer"], r["seg_ent"], r["poly_ent"])
 
 
@@ -286,7 +288,7 @@ def entity_props(doc, handle):
             pts = [(p[0], p[1]) for p in e.get_points("xy")]
             n = len(pts)
             length = sum(math.dist(pts[i], pts[(i + 1) % n]) for i in range(n if e.closed else n - 1))
-            g = {"Vertices": n, "Closed": "Yes" if e.closed else "No", "Length": round(length, 3)}
+            g = {"Vertices": n, "Closed": "Yes" if e.closed else "No", "Global width": round(e.dxf.get("const_width", 0), 3), "Length": round(length, 3)}
             if e.closed and n > 2:
                 g["Area"] = round(abs(sum(pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1] for i in range(n))) / 2, 3)
             xs = [p[0] for p in pts]; ys = [p[1] for p in pts]
