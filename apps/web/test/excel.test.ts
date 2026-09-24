@@ -45,6 +45,24 @@ describe('BOQ workbook (approved format)', () => {
     expect(wb.getWorksheet('Levels')!.getCell('B7').value).toBeCloseTo(3.2);
   });
 
+  it('adds the scope line and, with steel ratios, a Reinforcement sheet with live formulas', async () => {
+    const withSteel = { ...rates, rebar: { ratios: { Column: 200, Beam: 1500 }, rate: 70 } };
+    const buf = await buildBoqWorkbook({ info, elements: els, rates: withSteel, markRules: ['Mark'], gradeRules: ['Grade'], appVersion: 't', date: new Date(0), scope: 'L1 to L2 · 4 of 9 elements' });
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(['Summary', 'Levels', 'Elements', 'Rates', 'Reinforcement', 'About']);
+    expect(wb.getWorksheet('Summary')!.getCell('A4').value).toBe('Scope: L1 to L2 · 4 of 9 elements');
+    const r = wb.getWorksheet('Reinforcement')!;
+    expect(r.getCell('A6').value).toBe('Column');
+    expect((r.getCell('B6').value as { formula: string; result: number }).formula).toBe('SUMIFS(Elements!$M:$M,Elements!$E:$E,A6)');
+    expect((r.getCell('B6').value as { result: number }).result).toBeCloseTo(0.8);
+    expect((r.getCell('E6').value as { result: number }).result).toBeCloseTo(160);
+    expect((r.getCell('G7').value as { result: number }).result).toBeCloseTo(1500 * 70);
+    expect(r.getCell('D6').value).toBe('120–250');
+    const about = wb.getWorksheet('About')!;
+    expect(about.getCell('B2').value).toBe('L1 to L2 · 4 of 9 elements');
+  });
+
   // Proves the formulas themselves: LibreOffice recalculates a workbook written without cached results.
   it.skipIf(!existsSync('/usr/bin/soffice'))('calculates the same totals in a real spreadsheet engine', async () => {
     const buf = await buildBoqWorkbook({ info, elements: els, rates, markRules: ['Mark'], gradeRules: ['Grade'], appVersion: 't', date: new Date(0), omitResults: true });

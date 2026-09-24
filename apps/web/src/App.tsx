@@ -57,11 +57,15 @@ import { sequenceKeys, type AppCommand } from './lib/commands';
 import { CommandPalette, type ElementHit } from './components/CommandPalette';
 import { GuidePanel } from './components/GuidePanel';
 import { QaPanel } from './components/QaPanel';
+import { FileDiagnosisDialog, ViewLinkDialog } from './components/SmallDialogs';
+import { WhatNow, type Intent } from './components/WhatNow';
+import { diagnoseFile, type Diagnosis } from './lib/fileDiagnosis';
+import { decodeViewToken, hiddenForLink, viewLinkUrl, type ViewToken } from './lib/viewLink';
 import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.29.0';
+const APP_VERSION = '0.30.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -288,15 +292,43 @@ export function App({ start }: { start?: AppStart } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.model?.info]);
 
+  /** Why a file did not open (Structura item 13), shown in a dialog with export steps and a report. */
+  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
+  /** The first and last bytes of the last file opened: the worker takes the buffer, so keep these first. */
+  const lastFile = useRef<{ name: string; size: number; head: Uint8Array; tail: Uint8Array } | null>(null);
+  const snapshot = (file: { name: string; bytes: ArrayBuffer }) => {
+    const n = file.bytes.byteLength;
+    diagnosedFor.current = '';
+    lastFile.current = { name: file.name, size: n, head: new Uint8Array(file.bytes.slice(0, 65536)), tail: new Uint8Array(file.bytes.slice(Math.max(0, n - 256))) };
+    return lastFile.current;
+  };
+  const diagnose = (snap: NonNullable<typeof lastFile.current>, error?: string) =>
+    setDiagnosis(diagnoseFile({ ...snap, error }, [`Shanku ${APP_VERSION} · engine ${ENGINE_VERSION}`, `Browser: ${navigator.userAgent}`]));
+  /** Opens an IFC; a failure is diagnosed by the effect on m.load below. */
+  const openModelFile = (file: { name: string; bytes: ArrayBuffer }) => {
+    snapshot(file);
+    return m.open(file);
+  };
+  const diagnosedFor = useRef('');
+  useEffect(() => {
+    const snap = lastFile.current;
+    if (m.load.status !== 'error' || !snap || diagnosedFor.current === `${snap.name}:${snap.size}`) return;
+    diagnosedFor.current = `${snap.name}:${snap.size}`;
+    diagnose(snap, m.load.message);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.load]);
+
   const openDrawing = useCallback(
     async (file: { name: string; bytes: ArrayBuffer }) => {
+      const snap = snapshot(file);
       try {
         const id = await dx.open(file);
         if (id) setActiveView(id);
       } catch (e) {
-        setNotice(e instanceof Error ? e.message : String(e));
+        diagnose(snap, e instanceof Error ? e.message : String(e));
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [dx],
   );
 
@@ -356,7 +388,10 @@ export function App({ start }: { start?: AppStart } = {}) {
   const openFromDisk = useCallback(async () => {
     try {
       const file = await pickIfcFile();
-      if (file) await m.open(file);
+      if (file) {
+        diagnosedFor.current = '';
+        await openModelFile(file);
+      }
     } catch (e) {
       m.log(e instanceof Error ? e.message : String(e), 'error');
     }
@@ -369,7 +404,7 @@ export function App({ start }: { start?: AppStart } = {}) {
     started.current = true;
     const f = start.file;
     if (f && /\.dxf$/i.test(f.name)) void openDrawing(f);
-    else if (f) void m.open(f);
+    else if (f) void openModelFile(f);
     else if (start.sample) void openSampleRef.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [start]);
@@ -751,6 +786,133 @@ export function App({ start }: { start?: AppStart } = {}) {
       }),
   };
 
+  // ---- View links (Structura item 14) ----
+  const [linkDialog, setLinkDialog] = useState<{ mode: 'copy' | 'open'; link: string } | null>(null);
+  /** A link opened before its model: applied once that model loads. */
+  const pendingLink = useRef<ViewToken | null>(null);
+
+  /** The current view as a link token: view, camera, section box, style, selection, temporary hide/isolate, explode. */
+  const currentViewToken = (): ViewToken | null => {
+    const model = m.model;
+    const vp = viewport.current;
+    if (!model || !vp) return null;
+    const cam = vp.getCamera();
+    const box = isTwoD(activeModelView ?? undefined) ? null : vp.sectionBoxState();
+    const hid = new Set(hidden);
+    const r4 = (v: number) => Math.round(v * 1e4) / 1e4; // 0.1 mm and plenty for angles: keeps links short
+    return {
+      v: 1,
+      file: model.info.fileName,
+      view: activeModelView?.id,
+      camera: cam ? [cam.position.x, cam.position.y, cam.position.z, cam.target.x, cam.target.y, cam.target.z, cam.zoom, cam.frameHeight, cam.quaternion.x, cam.quaternion.y, cam.quaternion.z, cam.quaternion.w].map(r4) : undefined,
+      box: box ? [box.center.x, box.center.y, box.center.z, box.half.x, box.half.y, box.half.z, box.angle].map(r4) : undefined,
+      style: displayStyle,
+      select: m.selection.length ? m.selection.map((i) => model.elements[i].globalId) : undefined,
+      hide: hiddenForLink(
+        hidden.map((i) => model.elements[i].globalId),
+        model.elements.filter((e) => !hid.has(e.index)).map((e) => e.globalId),
+      ),
+      explode: explode ? { modes: explode.modes, amount: explode.amount } : undefined,
+    };
+  };
+
+  const copyViewLink = async () => {
+    const t = currentViewToken();
+    if (!t) return setNotice('Open a model first; a view link needs a view.');
+    const link = viewLinkUrl(window.location.href, t);
+    try {
+      await navigator.clipboard.writeText(link);
+      setNotice(`View link copied. Anyone who opens it with ${t.file} sees this view.`);
+    } catch {
+      setLinkDialog({ mode: 'copy', link }); // clipboard blocked: show it to copy by hand
+    }
+  };
+
+  /** Applies a link to the open model; elements are matched by GlobalId, so a re-export still works. */
+  const applyViewToken = (t: ViewToken) => {
+    const model = m.model;
+    if (!model) {
+      pendingLink.current = t;
+      return setNotice(`This link shows a view of ${t.file}. Open that file to see it.`);
+    }
+    pendingLink.current = null;
+    const byId = new Map(model.elements.map((e) => [e.globalId, e.index]));
+    const indices = (ids: readonly string[] = []) => ids.map((g) => byId.get(g)).filter((i): i is number => i !== undefined);
+    const wanted = [...(t.select ?? []), ...(t.hide?.ids ?? [])];
+    const found = indices(wanted).length;
+    if (t.view && t.view !== activeModelView?.id && views.some((v) => v.id === t.view)) openView(t.view);
+    else if (activeDoc) setActiveView('3d');
+    setTimeout(() => {
+      const vp = viewport.current;
+      if (!vp) return;
+      if (t.style && STYLES.some((st) => st.id === t.style)) setDisplayStyle(t.style as DisplayStyle);
+      if (t.hide) {
+        const ids = new Set(indices(t.hide.ids));
+        setHidden(t.hide.mode === 'isolate' ? model.elements.filter((e) => !ids.has(e.index)).map((e) => e.index) : [...ids]);
+      } else setHidden([]);
+      m.setSelection(indices(t.select));
+      if (t.box && !isTwoD(activeModelView ?? undefined)) {
+        const [cx, cy, cz, hx, hy, hz, angle] = t.box;
+        vp.setSectionBoxState(boxState([cx, cy, cz], [hx, hy, hz], angle));
+        setSectionBox(true);
+      }
+      if (t.camera) {
+        const c = t.camera;
+        vp.setCamera({ position: { x: c[0], y: c[1], z: c[2] }, target: { x: c[3], y: c[4], z: c[5] }, zoom: c[6], frameHeight: c[7], quaternion: { x: c[8], y: c[9], z: c[10], w: c[11] } } as unknown as CameraState);
+      }
+      const modes = (t.explode?.modes ?? []).filter((md): md is ExplodeMode => EXPLODE_MODES.some((x) => x.id === md));
+      setExplode(modes.length && t.explode ? { modes, amount: t.explode.amount } : null);
+      const other = t.file !== model.info.fileName ? ` It was made on ${t.file}.` : '';
+      setNotice(
+        wanted.length && !found
+          ? `None of the link's elements are in ${model.info.fileName}; only the camera was applied.${other}`
+          : `Showing the shared view.${other}${t.partial ? ' The link held only part of the selection or hidden elements.' : ''}`,
+      );
+    }, 120);
+  };
+
+  // A link opened in the address bar: read it once, then apply it when (or if) its model is open.
+  useEffect(() => {
+    const t = decodeViewToken(window.location.hash);
+    if (!t) return;
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#app`); // the link is used; keep the address clean
+    pendingLink.current = t;
+    setNotice(`This link shows a view of ${t.file}. Open that file to see it.`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (m.model && pendingLink.current) {
+      const t = pendingLink.current;
+      setTimeout(() => applyViewToken(t), 300); // after the default view is set up
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.model]);
+
+  // ---- "What now?" (Structura item 7) ----
+  /** A task picked before a model was open: run once the sample has loaded. */
+  const pendingIntent = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    if (!m.model || !pendingIntent.current) return;
+    const run = pendingIntent.current;
+    pendingIntent.current = null;
+    setTimeout(run, 400);
+  }, [m.model]);
+  const withModel = (run: () => void) => () => {
+    if (m.model) return run();
+    pendingIntent.current = run;
+    void openSample();
+  };
+  const intents: Intent[] = [
+    { id: 'open', title: 'Open a model', detail: 'Choose an IFC file; it opens on this device and is never uploaded.', run: () => void openFromDisk() },
+    { id: 'qa', title: 'Check it for problems', detail: 'Duplicates, floating columns, missing marks and more, each with Select and Isolate.', needsModel: true, run: withModel(() => dock.current?.open('qa')) },
+    { id: 'boq', title: 'Get quantities and cost', detail: 'Concrete by level, category and grade; rates; steel estimate; Excel export.', needsModel: true, run: withModel(() => toggleWin('boq', true)) },
+    { id: 'plan', title: 'Look at one floor', detail: 'Open a structural plan of a level.', needsModel: true, run: withModel(() => { const v = viewsRef.current.find((x) => x.kind === 'plan'); if (v) openView(v.id); }) },
+    { id: 'find', title: 'Find an element', detail: 'Type a mark, Element ID or GlobalId in the search (Ctrl + K).', needsModel: true, run: withModel(() => search.current?.focus({ preventScroll: true })) },
+    { id: 'share', title: 'Share this view', detail: 'Copy a link that opens this camera, selection and isolation for someone with the same file.', needsModel: true, run: withModel(() => void copyViewLink()) },
+    { id: 'dxf', title: 'Open a DXF drawing', detail: 'See it like AutoCAD, or build a 3D model from it (DXF → 3D).', run: () => void openDxfFromDisk() },
+    { id: 'learn', title: 'Learn the basics', detail: 'The Guide: moving around, selecting, views, quantities (F1).', run: () => openGuide() },
+  ];
+
   /** Right-click menu in the 3D view: Revit's layout, with element entries when something is selected. */
   const contextItems = (): MenuItem[] => {
     const model = m.model!;
@@ -798,6 +960,8 @@ export function App({ start }: { start?: AppStart } = {}) {
       sep,
       item('Previous Pan/Zoom', () => run('previous', 'Previous Pan/Zoom'), { disabled: !v?.canPrevious(), hint: 'ZP' }),
       item('Next Pan/Zoom', () => v?.nextView(), { disabled: !v?.canNext() }),
+      sep,
+      item('Copy View Link', () => void copyViewLink()),
       sep,
       item('Browsers', undefined, {
         submenu: [item('Project Browser', () => dock.current?.toggle('browser'), { checked: openPanels.includes('browser') })],
@@ -977,6 +1141,9 @@ export function App({ start }: { start?: AppStart } = {}) {
       ...views.filter((v) => v.id !== '3d').map((v) => ({ id: `views.open.${v.id}`, title: `Open ${KIND_LABEL[v.kind].toLowerCase()}: ${v.name}`, group: 'Views' as const, keywords: 'view plan elevation section', run: () => openView(v.id) })),
       { id: 'views.duplicate', title: 'Duplicate this view', group: 'Views', enabled: !!activeModelView, why: activeModelView ? undefined : 'open a model first', run: () => activeModelView && duplicateModelView(activeModelView.id) },
       { id: 'views.section', title: 'Create a section', group: 'Views', keywords: 'cut', enabled: hasModel && isTwoD(activeModelView ?? undefined), why: !hasModel ? 'open a model first' : isTwoD(activeModelView ?? undefined) ? undefined : 'draw it in a plan, elevation or section', run: () => startSection() },
+      { id: 'views.copyLink', title: 'Copy view link', group: 'Views', keywords: 'share url whatsapp email send link token', enabled: hasModel, why: needModel, run: () => void copyViewLink() },
+      { id: 'views.openLink', title: 'Open a view link…', group: 'Views', keywords: 'share url paste token', enabled: hasModel, why: needModel, run: () => setLinkDialog({ mode: 'open', link: '' }) },
+      { id: 'help.whatNow', title: 'What now? Common tasks', group: 'Help', keywords: 'start begin tasks help', run: () => document.querySelector<HTMLButtonElement>('.app-whatnow__button')?.click() },
       { id: 'views.templates', title: 'View templates…', group: 'Views', keywords: 'template apply', enabled: hasModel, why: needModel, run: () => setVtOpen(true) },
       // Windows
       ...(
@@ -1038,6 +1205,7 @@ export function App({ start }: { start?: AppStart } = {}) {
           search={<CommandPalette inputRef={search} getCommands={getCommands} findElement={findElement} appVersion={APP_VERSION} />}
           actions={
             <>
+              <WhatNow intents={intents} hasModel={!!m.model} />
               <IconButton label="Guide & FAQ (F1)" onClick={() => (wins.guide ? toggleWin('guide', false) : openGuide())} aria-pressed={wins.guide}>
                 <Icon name="guide" size={18} />
               </IconButton>
@@ -1210,8 +1378,10 @@ export function App({ start }: { start?: AppStart } = {}) {
             setDragging(false);
             try {
               const file = await fileFromDrop(e);
+              diagnosedFor.current = '';
               if (file?.kind === 'dxf') await openDrawing(file);
-              else if (file) await m.open(file);
+              else if (file?.kind === 'ifc') await openModelFile(file);
+              else if (file) diagnose(snapshot(file)); // not IFC or DXF: say what it is and how to export
             } catch (err) {
               setNotice(err instanceof Error ? err.message : String(err));
             }
@@ -1350,6 +1520,7 @@ export function App({ start }: { start?: AppStart } = {}) {
               <p className="app-overlay__title">That file didn’t open</p>
               <p className="app-overlay__text">{load.message}</p>
               <div className="app-overlay__actions">
+                {lastFile.current ? <Button onClick={() => lastFile.current && diagnose(lastFile.current, load.status === 'error' ? load.message : undefined)}>What is wrong?</Button> : null}
                 <Button variant="primary" onClick={openFromDisk}>
                   Choose another file
                 </Button>
@@ -1363,6 +1534,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                     rates={rates}
                     onRates={changeRates}
                     selection={sel}
+                    hidden={viewHidden}
                     onSelect={boqSelect}
                     markRules={m.markRules}
                     gradeRules={m.gradeRules}
@@ -1445,6 +1617,24 @@ export function App({ start }: { start?: AppStart } = {}) {
               ]}
             />
           ) : null}
+          <FileDiagnosisDialog
+            diagnosis={diagnosis}
+            onClose={() => setDiagnosis(null)}
+            onChooseAnother={() => {
+              const dxf = /\.dxf$/i.test(lastFile.current?.name ?? '');
+              setDiagnosis(null);
+              void (dxf ? openDxfFromDisk() : openFromDisk());
+            }}
+          />
+          <ViewLinkDialog
+            mode={linkDialog?.mode ?? null}
+            link={linkDialog?.link ?? ''}
+            onClose={() => setLinkDialog(null)}
+            onApply={(t) => {
+              setLinkDialog(null);
+              applyViewToken(t);
+            }}
+          />
           {dxt.menu && activeDoc ? <ContextMenu x={dxt.menu.x} y={dxt.menu.y} onClose={dxt.closeMenu} items={dxt.menuItems()} /> : null}
           <FloatingWindow id="dxf-qselect" title="Quick Select" subtitle={activeDoc?.name} open={dxt.quickSelectOpen && !!activeDoc} onClose={() => dxt.setQuickSelectOpen(false)} initial={{ x: Math.max(16, window.innerWidth - 420), y: 150, w: 380, h: 470 }} minWidth={320} minHeight={380} accent={activeDoc?.color}>
             {activeDoc && dxt.index ? (

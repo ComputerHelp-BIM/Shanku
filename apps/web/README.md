@@ -1,4 +1,4 @@
-# @shanku/web 0.29.0
+# @shanku/web 0.30.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,14 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.30.0 — 2026-09-24
+Five features from the Structura viewer (items 7, 8, 9, 13 and 14 in docs/design/structura-lessons.md):
+- **What now?** (title bar): eight common tasks, each with one line on what happens: open a model, check it for problems, quantities and cost, look at one floor, find an element, share this view, open a DXF, learn the basics. Tasks that need a model open the sample first. Arrow keys move, Esc closes.
+- **BOQ scope**: count the whole model, what is visible in this view, the selection, or a range of levels. Every view of the BOQ shows the scope sentence ("Level 1 only · 30 of 72 elements"), and the Excel export carries it on every sheet and in About.
+- **Reinforcement estimate** (BOQ → Rates): steel ratio per category (kg/m³) and a steel rate (₹/kg) give steel in kg and t and its cost. A ratio outside the usual band (column 120–250, beam 90–200, slab 60–120, wall 70–160) is flagged beside the entry. Excel gets a Reinforcement sheet with live formulas over the Elements sheet.
+- **Files that do not open**: Shanku reads the first and last bytes on this device and says what the file is (Revit, DWG, renamed DWG, cut-off IFC, ifcZIP, ifcXML, binary DXF, ETABS, SAP2000, PDF, SketchUp, Navisworks, STAAD, empty), gives the export steps, and offers a "What is in this file?" report to copy (header, schema, authoring tool, DXF version, error; never model data). Dropping any file now gets this instead of a one-line error.
+- **View links**: Copy view link (Ctrl + K, the 3D right-click menu, or What now?) puts camera, view, section box, visual style, selection, temporary hide/isolate and explode in a `#app&view=` link. Opening it goes straight to the app and applies the view when the same model is open, matched by GlobalId. Open a view link… takes a pasted link or `SHANKU/1|` text. Links stay short: the smaller of hidden and shown is stored, and at most 500 ids.
 
 ### 0.29.0 — 2026-09-24
 - **Command search (Ctrl + K) opens on three sections** before you type: **Recently used** (last 3, newest first), **Most used** (run at least twice, not already listed) and **New in Shanku x.y** (commands from the last five releases you have not tried yet, e.g. QA checks, exploded views, Guide & FAQ). ↑ ↓ move through all of them as one list. New commands carry a **New** badge in search results too; it goes once you use the command.

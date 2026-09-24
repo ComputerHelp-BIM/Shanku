@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.30.0 — 2026-09-24
+
+### Added
+- From the Structura viewer: "What now?" tasks in the title bar; BOQ scope switch with a scope sentence on every total and in Excel; reinforcement estimate from steel ratios with out-of-range warnings and a Reinforcement sheet; a diagnosis for files that do not open (what the file is, export steps, a copyable report); shareable view links (`#app&view=`).
+
 ## 0.29.0 — 2026-09-24
 
 ### Added

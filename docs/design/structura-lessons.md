@@ -4,7 +4,7 @@ Status: **analysis**, written 2026-09-24 against Structura 1.6.0 (`ComputerHelp-
 
 Structura is Computer Help's browser viewer for ETABS and SAP2000 models (https://structura-viewer.vercel.app/). Both products come from the same owner and are unlicensed private code, so code and text can be reused directly; each port below still needs rewriting from Structura's plain ES5 modules into Shanku's TypeScript packages.
 
-## Status in Shanku 0.27.0
+## Status in Shanku 0.30.0
 
 | # | Structura feature | Status |
 |---|---|---|
@@ -14,14 +14,14 @@ Structura is Computer Help's browser viewer for ETABS and SAP2000 models (https:
 | 4 | Geometry-keyed revision matching | Not started (revision timeline) |
 | 5 | Command palette | **Built** (Ctrl + K, 0.24.0) |
 | 6 | ETABS / SAP2000 import | Not started (largest item) |
-| 7 | "What now?" intents | Not started |
-| 8 | Scope sentence on quantities | Not started |
-| 9 | Rebar kg/m³ bands | Not started |
+| 7 | "What now?" intents | **Built** (title bar, 0.30.0) |
+| 8 | Scope sentence on quantities | **Built** (BOQ scope switch and Excel, 0.30.0) |
+| 9 | Rebar kg/m³ bands | **Built** (reinforcement estimate, 0.30.0) |
 | 10 | Rate Card sheet with live formulas | Not started |
 | 11 | Filter builder | Not started (Shanku has category filters) |
 | 12 | Guide and FAQ | **Built** (F1, 0.24.0) |
-| 13 | Guided export and file diagnostic | Not started |
-| 14 | Shareable view-state token | Not started (also quick-wins B3) |
+| 13 | Guided export and file diagnostic | **Built** (0.30.0) |
+| 14 | Shareable view-state token | **Built** (`#app&view=` links, 0.30.0; also quick-wins B3) |
 | 15 | Performance readout and plan minimap | Not started |
 | 16 | IS 1893 seismic weight | Later (needs loads) |
 | 17 | Large-model rendering thresholds | Not started |
