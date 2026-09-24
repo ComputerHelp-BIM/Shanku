@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.23.0 — 2026-09-24
+
+### Added
+- Selectable view symbols (hover, select, properties, temporary dimensions for levels, delete sections); live window / crossing preview; section rubber band with 15° snapping, angle and length.
+
 ## 0.22.0 — 2026-09-23
 
 ### Added

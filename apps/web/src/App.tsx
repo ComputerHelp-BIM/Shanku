@@ -54,7 +54,7 @@ import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.22.0';
+const APP_VERSION = '0.23.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -131,6 +131,10 @@ export function App({ start }: { start?: AppStart } = {}) {
   const [renameView, setRenameView] = useState<{ id: string; name: string } | null>(null);
   const [sectionTool, setSectionTool] = useState(false);
   const sectionA = useRef<[number, number] | null>(null);
+  // Selected view symbols (levels, sections, elevation marks), Revit-style alongside element selection.
+  const [annSel, setAnnSel] = useState<string[]>([]);
+  const applyMode = (cur: string[], ids: string[], mode: 'replace' | 'add' | 'remove' | string) =>
+    mode === 'add' ? [...new Set([...cur, ...ids])] : mode === 'remove' ? cur.filter((x) => !ids.includes(x)) : ids;
   // View Templates (kept on this device, shared by export / import)
   const [templates, setTemplatesState] = useState<ViewTemplate[]>(loadTemplates);
   const setTemplates = (t: ViewTemplate[]) => {
@@ -446,6 +450,7 @@ export function App({ start }: { start?: AppStart } = {}) {
 
   useShortcut({ code: 'Escape' }, () => {
     if (sectionTool) return cancelSection();
+    if (annSel.length) setAnnSel([]);
     if (activeDoc) dx.select(activeDoc.id, null);
     else if (zoomRegion) viewport.current?.cancelZoomRegion();
     else m.setSelection([]);
@@ -454,6 +459,16 @@ export function App({ start }: { start?: AppStart } = {}) {
     if (curSelection.current.length && curSelection.current.join() !== m.selection.join()) prevSelection.current = curSelection.current;
     curSelection.current = m.selection;
   }, [m.selection]);
+
+  // Delete: selected sections go with their views (Revit), as one undoable step.
+  useShortcut({ code: 'Delete' }, () => {
+    const ids = annSel.filter((id) => id.startsWith('section:'));
+    if (!ids.length) return;
+    const before = viewsRef.current, after = before.filter((v) => !ids.includes(v.id));
+    history.run(ids.length > 1 ? `Delete ${ids.length} sections` : `Delete ${before.find((v) => v.id === ids[0])?.name ?? 'section'}`, (tx) => tx.change('views', before, after, setViews));
+    setOpenViews((o) => o.filter((x) => !ids.includes(x)));
+    setAnnSel([]);
+  });
 
   // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
   const heights = useMemo(() => (m.model ? levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length) : new Map<string, number>()), [m.model?.info]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -536,6 +551,7 @@ export function App({ start }: { start?: AppStart } = {}) {
     const keep = { graphics: graphicsRef.current, displayStyle, edges };
     setViews((vs) => vs.map((x) => (x.id === out ? { ...x, ...keep } : x)));
     loadedView.current = v.id;
+    setAnnSel([]);
     setGraphics(v.graphics);
     setDisplayStyle(v.displayStyle);
     setEdges(v.edges);
@@ -596,29 +612,18 @@ export function App({ start }: { start?: AppStart } = {}) {
     sectionA.current = null;
     setSectionTool(true);
     if (v.kind === 'plan') {
-      setNotice('Section: click the start of the line. Drawn left to right, it looks up the screen. Esc cancels.');
+      setNotice('Section: click the start, then the end. It snaps to 15°; drawn left to right it looks up the screen. Esc cancels.');
       const y = v.level ? heights.get(v.level) ?? 0 : 0;
-      viewport.current?.startPointPick(y, (x, z) => {
-        if (!sectionA.current) {
-          sectionA.current = [x, z];
-          return setNotice('Section: click the end of the line.');
-        }
-        create(sectionA.current, [x, z]);
-      });
+      viewport.current?.startLinePick([0, 1, 0], [0, y, 0], (p, q) => create([p[0], p[2]], [q[0], q[2]]));
       return;
     }
     // Elevation or section: a vertical cut across the view, picked on the view plane.
-    setNotice('Section: click two points up or down the view where it should cut. Drawn upward it looks to the right. Esc cancels.');
+    setNotice('Section: click two points up or down the view where it should cut (snaps to 15°). Drawn upward it looks to the right. Esc cancels.');
     const dir = viewDirection(v)!;
     const through: [number, number, number] = v.kind === 'section' && v.section ? [(v.section.a[0] + v.section.b[0]) / 2, 0, (v.section.a[1] + v.section.b[1]) / 2] : [(bounds.min[0] + bounds.max[0]) / 2, 0, (bounds.min[2] + bounds.max[2]) / 2];
     const span = Math.hypot(bounds.max[0] - bounds.min[0], bounds.max[2] - bounds.min[2]) + 2;
-    let first: [number, number, number] | null = null;
-    viewport.current?.startPlanePick(dir, through, (x, y, z) => {
-      if (!first) {
-        first = [x, y, z];
-        return setNotice('Section: click the second point.');
-      }
-      const { a, b } = sectionFromVerticalView(first, [x, y, z], dir, span);
+    viewport.current?.startLinePick(dir, through, (p, q) => {
+      const { a, b } = sectionFromVerticalView(p, q, dir, span);
       create(a, b);
     });
   };
@@ -626,6 +631,53 @@ export function App({ start }: { start?: AppStart } = {}) {
     viewport.current?.stopPointPick();
     setSectionTool(false);
     sectionA.current = null;
+  };
+
+  /** Properties of a selected view symbol (Revit shows a level's or section's properties when picked). */
+  const symbolPropsFor = (sel: number[]) => {
+    if (!annSel.length || sel.length) return undefined;
+    if (annSel.length > 1) return { kind: 'View symbols', name: `${annSel.length} selected`, rows: [] };
+    const id = annSel[0];
+    const mm = (m: number) => Math.round(m * 1000);
+    if (id.startsWith('plan:')) {
+      const name = id.slice(5);
+      const h = heights.get(name);
+      const above = [...heights.values()].filter((x) => h !== undefined && x > h + 1e-6).sort((a, b) => a - b)[0];
+      return {
+        kind: 'Level',
+        icon: 'level' as const,
+        name,
+        rows: [
+          { section: 'Constraints', label: 'Elevation', unit: 'mm', value: h !== undefined ? mm(h) : '—' },
+          { section: 'Constraints', label: 'Height to level above', unit: 'mm', value: h !== undefined && above !== undefined ? mm(above - h) : '—' },
+          { section: 'Identity Data', label: 'Name', value: name },
+          { section: 'Identity Data', label: 'Plan view', value: views.some((v) => v.id === id) ? name : '—' },
+        ],
+      };
+    }
+    const v = views.find((x) => x.id === id);
+    if (!v) return undefined;
+    if (v.kind === 'section' && v.section) {
+      const { a, b } = v.section;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const look = [(b[1] - a[1]) / (len || 1), -(b[0] - a[0]) / (len || 1)];
+      const bearing = ((Math.atan2(look[0], -look[1]) * 180) / Math.PI + 360) % 360; // 0 = north, clockwise
+      return {
+        kind: 'Section',
+        icon: 'section' as const,
+        name: v.name,
+        rows: [
+          { section: 'Identity Data', label: 'View Name', value: v.name, onCommit: (t: string) => t.trim() && setViews((vs) => vs.map((x) => (x.id === v.id ? { ...x, name: t.trim() } : x))) },
+          { section: 'Extents', label: 'Far Clip Offset', unit: 'mm', value: mm(v.section.depth), onCommit: (t: string) => Number(t) > 0 && setViewRange(v.id, { section: { ...v.section!, depth: Number(t) / 1000 } }) },
+          { section: 'Extents', label: 'Length', unit: 'mm', value: mm(len) },
+          { section: 'Extents', label: 'Looks toward', value: `${bearing.toFixed(1)}° (0° = north)` },
+        ],
+      };
+    }
+    if (v.kind === 'elevation') {
+      return { kind: 'Elevation', icon: 'elevation' as const, name: v.name, rows: [{ section: 'Identity Data', label: 'View Name', value: v.name }] };
+    }
+    return undefined;
   };
 
   /** Commands the right-click menu can repeat (Revit's Repeat Last Command). */
@@ -937,8 +989,20 @@ export function App({ start }: { start?: AppStart } = {}) {
             temporary={hidden.length > 0}
             overrides={resolved.overrides}
             displayStyle={displayStyle}
-            onPick={m.pick}
-            onBoxSelect={m.boxSelect}
+            onPick={(i, mode) => {
+              if (mode === 'replace') setAnnSel([]);
+              m.pick(i, mode);
+            }}
+            onAnnotationClick={(id, mode) => {
+              setAnnSel((cur) => applyMode(cur, [id], mode));
+              if (mode === 'replace') m.setSelection([]);
+            }}
+            annotationSelection={annSel}
+            toolActive={sectionTool}
+            onBoxSelect={(ids, mode, anns) => {
+              setAnnSel((cur) => applyMode(mode === 'replace' ? [] : cur, anns ?? [], mode === 'replace' ? 'add' : mode));
+              m.boxSelect(ids, mode);
+            }}
             edges={edges}
             canvasTheme={canvasTheme}
             twoD={isTwoD(activeModelView ?? undefined)}
@@ -1242,7 +1306,8 @@ export function App({ start }: { start?: AppStart } = {}) {
                     properties={m.properties}
                     onEditMarkRules={() => setMarkDialog(true)}
                     view={
-                      activeModelView
+                      symbolPropsFor(sel) ??
+                      (activeModelView
                         ? {
                             kind: KIND_LABEL[activeModelView.kind],
                             name: activeModelView.name,
@@ -1283,7 +1348,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                               { section: 'Graphics', label: 'Show Hidden Lines', value: activeModelView.hiddenLines ? 'On' : 'Off' },
                             ],
                           }
-                        : undefined
+                        : undefined)
                     }
                   />
                 );

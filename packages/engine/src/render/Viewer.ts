@@ -25,7 +25,7 @@ import {
 import type { ElementRecord, ParsedModel } from '../model/types';
 import { orbitAround, wheelZoomFactor, worldPerPixel, zoomShift } from './cameraMath';
 import { cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './cursors';
-import { drawAnnotations, type Annotation } from './annotations';
+import { annotationSegments, drawAnnotations, segmentTouchesRect, type Annotation, type LinePreview } from './annotations';
 import { readViewerTokens, type Rgba } from './cssColor';
 import {
   DISPLAY_CONSISTENT,
@@ -33,6 +33,7 @@ import {
   DISPLAY_SHADED,
   DISPLAY_WIREFRAME,
   STATE_GLASS,
+  STATE_PRESELECT,
   OVERRIDE_COLOR,
   OVERRIDE_HALFTONE,
   createOverrideTexture,
@@ -56,13 +57,16 @@ export type SelectMode = 'replace' | 'add' | 'remove';
 export interface ViewerEvents {
   onPick?: (index: number | null, mode: SelectMode) => void;
   /** Drag-box result. `crossing` is true for right-to-left drags. */
-  onBoxSelect?: (indices: number[], mode: SelectMode, crossing: boolean) => void;
+  /** Box selection: elements, and the view symbols it picks (ids). */
+  onBoxSelect?: (indices: number[], mode: SelectMode, crossing: boolean, annotations?: string[]) => void;
   /** Element under the pointer (for tooltips), with the pointer position in client pixels. */
   onHover?: (index: number | null, clientX?: number, clientY?: number) => void;
   /** Fired when zoom-region mode ends (done or cancelled). */
   onZoomRegionEnd?: () => void;
   /** Section box turned on/off or edited. */
   onSectionBoxChange?: (active: boolean) => void;
+  /** A view symbol was clicked (select it; Ctrl adds, Shift removes). */
+  onAnnotationClick?: (id: string, mode: SelectMode) => void;
   /** A view symbol was double-clicked (section head, elevation mark, level head). */
   onOpenView?: (id: string) => void;
   /** The user started or stopped navigating (orbit, pan, zoom, transitions): the ViewCube wakes up. */
@@ -144,6 +148,11 @@ export class Viewer {
   private annEl: SVGSVGElement;
   private annotations: Annotation[] = [];
   private annHot: string | null = null;
+  private annSelected = new Set<string>();
+  private annPreselect = new Set<string>();
+  private preselected: number[] = [];
+  /** Section tool: two clicks on a plane draw a line; the rubber band snaps to 15° on screen. */
+  private linePick: { plane: Plane; first: Vector3 | null; cursor: Vector3 | null; preview: LinePreview | null; snap: number; onLine: (a: Vector3, b: Vector3) => void } | null = null;
   private edgesOn = true;
   private future: CameraState[] = [];
   /** Plans, elevations and sections: pan and zoom only (orbit becomes pan), as in Revit. */
@@ -215,6 +224,10 @@ export class Viewer {
     this.annEl.addEventListener('pointerout', () => {
       this.annHot = null;
       this.requestRender();
+    });
+    this.annEl.addEventListener('click', (e) => {
+      const id = headOf(e.target);
+      if (id) this.events.onAnnotationClick?.(id, e.ctrlKey || e.metaKey ? 'add' : e.shiftKey ? 'remove' : 'replace');
     });
     this.annEl.addEventListener('dblclick', (e) => {
       const id = headOf(e.target);
@@ -530,6 +543,7 @@ export class Viewer {
 
   stopPointPick(): void {
     this.pointPick = null;
+    this.linePick = null;
     this.canvas.style.cursor = '';
   }
 
@@ -936,6 +950,90 @@ export class Viewer {
     return this.zoomRegionArmed ? this.cur.zoom : modifierCursor(e, this.cur);
   }
 
+  /** Which view symbols are selected (drawn blue; a selected level shows temporary dimensions). */
+  setAnnotationSelection(ids: Iterable<string>): void {
+    this.annSelected = new Set(ids);
+    this.requestRender();
+  }
+
+  /** View symbols in a client-space rectangle: window takes whole symbols, crossing anything touched. */
+  annotationsInRect(x0: number, y0: number, x1: number, y1: number, crossing: boolean): string[] {
+    if (!this.annotations.length) return [];
+    const r = this.canvas.getBoundingClientRect();
+    const [ax, bx] = [Math.min(x0, x1) - r.left, Math.max(x0, x1) - r.left];
+    const [ay, by] = [Math.min(y0, y1) - r.top, Math.max(y0, y1) - r.top];
+    const v = new Vector3();
+    const project = (p: readonly [number, number, number]): [number, number] | null => {
+      v.set(p[0], p[1], p[2]).project(this.camera);
+      return [((v.x + 1) / 2) * r.width, ((1 - v.y) / 2) * r.height];
+    };
+    const inside = (p: [number, number]) => p[0] >= ax && p[0] <= bx && p[1] >= ay && p[1] <= by;
+    return annotationSegments(this.annotations, project)
+      .filter((sgm) => (crossing ? segmentTouchesRect(sgm.a, sgm.b, ax, ay, bx, by) : inside(sgm.a) && inside(sgm.b)))
+      .map((sgm) => sgm.id);
+  }
+
+  /** Live preview while a selection box is dragged (Revit): what would be picked glows blue. */
+  private previewBox(x0: number, y0: number, x1: number, y1: number, crossing: boolean): void {
+    if (!this.stateData || !this.state) return;
+    for (const i of this.preselected) this.stateData[i * 4] &= ~STATE_PRESELECT;
+    this.preselected = this.elementsInRect(x0, y0, x1, y1, crossing);
+    for (const i of this.preselected) this.stateData[i * 4] |= STATE_PRESELECT;
+    this.state.needsUpdate = true;
+    this.annPreselect = new Set(this.annotationsInRect(x0, y0, x1, y1, crossing));
+    this.requestRender();
+  }
+
+  private clearPreselect(): void {
+    if (this.stateData && this.preselected.length) {
+      for (const i of this.preselected) this.stateData[i * 4] &= ~STATE_PRESELECT;
+      if (this.state) this.state.needsUpdate = true;
+    }
+    this.preselected = [];
+    this.annPreselect = new Set();
+    this.requestRender();
+  }
+
+  /**
+   * Section tool: two clicks on a plane (plans: the level; elevations and sections: the view plane).
+   * After the first click a rubber band follows the pointer, snapping to 15° steps on screen within 3°,
+   * with the angle and length shown, as in Revit.
+   */
+  startLinePick(normal: readonly [number, number, number], through: readonly [number, number, number], onLine: (a: Vector3, b: Vector3) => void, snapDegrees = 15): void {
+    const n = new Vector3(normal[0], normal[1], normal[2]).normalize();
+    this.linePick = { plane: new Plane().setFromNormalAndCoplanarPoint(n, new Vector3(through[0], through[1], through[2])), first: null, cursor: null, preview: null, snap: snapDegrees, onLine };
+    this.canvas.style.cursor = 'crosshair';
+  }
+
+  /** Where the pointer meets the line-pick plane, with the rubber band snapped on screen. */
+  private linePoint(clientX: number, clientY: number): Vector3 | null {
+    const lp = this.linePick;
+    if (!lp) return null;
+    const r = this.canvas.getBoundingClientRect();
+    let sx = clientX - r.left, sy = clientY - r.top;
+    let preview: LinePreview | null = null;
+    if (lp.first) {
+      const f = lp.first.clone().project(this.camera);
+      const ax = ((f.x + 1) / 2) * r.width, ay = ((1 - f.y) / 2) * r.height;
+      const dx = sx - ax, dy = sy - ay, len = Math.hypot(dx, dy);
+      let angle = ((Math.atan2(-dy, dx) * 180) / Math.PI + 360) % 360;
+      const near = Math.round(angle / lp.snap) * lp.snap;
+      const snapped = len > 12 && Math.abs(near - angle) <= 3;
+      if (snapped) {
+        angle = near % 360;
+        const t = (angle * Math.PI) / 180;
+        sx = ax + Math.cos(t) * len;
+        sy = ay - Math.sin(t) * len;
+      }
+      preview = { a: [ax, ay], b: [sx, sy], angle, snapped, length: 0 };
+    }
+    this.raycaster.setFromCamera(new Vector2((sx / r.width) * 2 - 1, -(sy / r.height) * 2 + 1), this.camera);
+    const p = this.raycaster.ray.intersectPlane(lp.plane, new Vector3());
+    if (preview && p && lp.first) preview.length = p.distanceTo(lp.first);
+    lp.preview = preview;
+    return p;
+  }
+
   /** Replaces the view symbols drawn over the model (see annotations.ts). */
   setAnnotations(list: Annotation[]): void {
     this.annotations = list;
@@ -943,7 +1041,7 @@ export class Viewer {
   }
 
   private drawAnnotationLayer(): void {
-    if (!this.annotations.length) {
+    if (!this.annotations.length && !this.linePick?.preview) {
       while (this.annEl.firstChild) this.annEl.firstChild.remove();
       return;
     }
@@ -965,8 +1063,9 @@ export class Viewer {
         hot: cs.getPropertyValue('--select-window').trim() || '#2F7FD8',
         font: cs.getPropertyValue('--font-sans').trim() || 'sans-serif',
       },
-      this.annHot,
+      { hot: this.annHot, selected: this.annSelected, preselect: this.annPreselect },
       { width: r.width, height: r.height },
+      this.linePick?.preview ?? null,
     );
   }
 
@@ -1064,6 +1163,8 @@ export class Viewer {
     let lastMiddleDown = 0;
     let hoverQueued = false;
     let lastHover: PointerEvent | null = null;
+    let previewQueued = false;
+    let lastMove: { clientX: number; clientY: number } = { clientX: 0, clientY: 0 };
     let wheelTimer: ReturnType<typeof setTimeout> | null = null;
 
     const onDown = (e: PointerEvent) => {
@@ -1157,8 +1258,22 @@ export class Viewer {
         } else {
           // Revit: left→right is a window (solid), right→left a crossing (dashed).
           this.showRect(drag.sx, drag.sy, e.clientX, e.clientY, drag.mode === 'select' && e.clientX < drag.sx);
+          // Revit previews what the box will pick while you drag (once per frame).
+          if (drag.mode === 'select' && !previewQueued) {
+            previewQueued = true;
+            const box = { x0: drag.sx, y0: drag.sy, e };
+            requestAnimationFrame(() => {
+              previewQueued = false;
+              if (drag && drag.mode === 'select') this.previewBox(box.x0, box.y0, lastMove.clientX, lastMove.clientY, lastMove.clientX < box.x0);
+            });
+          }
+          lastMove = e;
         }
         return;
+      }
+      if (this.linePick) {
+        this.linePoint(e.clientX, e.clientY); // rubber band (after the first click)
+        this.requestRender();
       }
       lastHover = e;
       this.lastPointer = [e.clientX, e.clientY];
@@ -1194,7 +1309,19 @@ export class Viewer {
         this.cancelZoomRegion();
       } else if (d.mode === 'select') {
         const mode = modeOf(e);
-        if (!d.moved && this.pointPick) {
+        if (!d.moved && this.linePick) {
+          const p = this.linePoint(e.clientX, e.clientY);
+          const lp = this.linePick;
+          if (p && !lp.first) {
+            lp.first = p;
+          } else if (p && lp.first) {
+            const a = lp.first;
+            this.linePick = null;
+            this.canvas.style.cursor = '';
+            lp.onLine(a, p);
+          }
+          this.requestRender();
+        } else if (!d.moved && this.pointPick) {
           const r = this.canvas.getBoundingClientRect();
           this.raycaster.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
           const p = this.raycaster.ray.intersectPlane(this.pointPick.plane, new Vector3());
@@ -1202,7 +1329,8 @@ export class Viewer {
         } else if (!d.moved) this.events.onPick?.(this.pick(e.clientX, e.clientY), mode);
         else {
           const crossing = e.clientX < d.sx;
-          this.events.onBoxSelect?.(this.elementsInRect(d.sx, d.sy, e.clientX, e.clientY, crossing), mode, crossing);
+          this.clearPreselect();
+          this.events.onBoxSelect?.(this.elementsInRect(d.sx, d.sy, e.clientX, e.clientY, crossing), mode, crossing, this.annotationsInRect(d.sx, d.sy, e.clientX, e.clientY, crossing));
         }
       }
     };

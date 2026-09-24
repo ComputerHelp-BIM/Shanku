@@ -27,6 +27,8 @@ export interface PropertiesPanelProps {
   view?: {
     kind: string;
     name: string;
+    /** Icon for the type selector (defaults from the kind). */
+    icon?: 'level' | 'section' | 'elevation' | 'plan' | 'view3d';
     rows: Array<{ section: string; label: string; value: string | number; unit?: string; onCommit?: (v: string) => void }>;
   };
 }
@@ -48,7 +50,7 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
       <DockPanel title="Properties">
         {view ? (
           <>
-            <TypeSelector icon={view.kind === 'Structural Plan' ? 'plan' : view.kind === '3D View' ? 'view3d' : 'section'} category={view.kind} typeName={view.name} />
+            <TypeSelector icon={view.icon ?? (view.kind === 'Structural Plan' ? 'plan' : view.kind === '3D View' ? 'view3d' : 'section')} category={view.kind} typeName={view.name} />
             {[...new Set(view.rows.map((r) => r.section))].map((sec) => (
               <PropertySection key={sec} title={sec}>
                 {view.rows

@@ -22,6 +22,8 @@ export interface ViewportHandle {
   startPointPick: (y: number, onPoint: (x: number, z: number) => void) => void;
   /** Clicks report points on a plane (elevation / section view plane). */
   startPlanePick: (normal: [number, number, number], through: [number, number, number], onPoint: (x: number, y: number, z: number) => void) => void;
+  /** Section tool: two clicks draw a line on a plane, rubber band snapping to 15°. */
+  startLinePick: (normal: [number, number, number], through: [number, number, number], onLine: (a: [number, number, number], b: [number, number, number]) => void) => void;
   stopPointPick: () => void;
   /** Revit Zoom Out (2x) and Next Pan/Zoom; can* tell the context menu what is available. */
   zoomOut2x: () => void;
@@ -40,7 +42,7 @@ export interface ViewportProps {
   hidden: number[];
   displayStyle: DisplayStyle;
   onPick: (index: number | null, mode: SelectMode) => void;
-  onBoxSelect: (indices: number[], mode: SelectMode) => void;
+  onBoxSelect: (indices: number[], mode: SelectMode, annotations?: string[]) => void;
   onZoomRegionEnd?: () => void;
   onSectionBoxEdit?: (before: SectionBoxState, after: SectionBoxState) => void;
   /** Visibility/Graphics overrides for the viewer. */
@@ -49,6 +51,12 @@ export interface ViewportProps {
   temporary?: boolean;
   /** View symbols: section and elevation marks, level lines. */
   annotations?: Annotation[];
+  /** A tool is running (e.g. drawing a section): no hover tooltips, as in Revit. */
+  toolActive?: boolean;
+  /** A symbol was clicked (select; Ctrl adds, Shift removes). */
+  onAnnotationClick?: (id: string, mode: SelectMode) => void;
+  /** Selected symbols (blue; a selected level shows temporary dimensions). */
+  annotationSelection?: string[];
   /** A symbol's head was double-clicked: open that view. */
   onOpenView?: (id: string) => void;
   /** Revit's Show Hidden Lines for this view (dashed edges behind other elements). */
@@ -75,6 +83,9 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   // Revit-like tooltip after resting on an element for a moment.
   const [tip, setTip] = useState<{ index: number; x: number; y: number } | null>(null);
   const tipTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const toolRef = useRef(false);
+  toolRef.current = !!props.toolActive;
+  const dragging = useRef(false);
   const orientRef = useRef<Orientation>(orientation);
   const handlers = useRef(props);
   handlers.current = props;
@@ -85,10 +96,11 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     try {
       viewer.current = new Viewer(host.current, {
         onPick: (i, mode) => handlers.current.onPick(i, mode),
-        onBoxSelect: (ids, mode) => handlers.current.onBoxSelect(ids, mode),
+        onBoxSelect: (ids, mode, _crossing, anns) => handlers.current.onBoxSelect(ids, mode, anns),
         onZoomRegionEnd: () => handlers.current.onZoomRegionEnd?.(),
         onSectionBoxEdit: (a, b) => handlers.current.onSectionBoxEdit?.(a, b),
         onOpenView: (id) => handlers.current.onOpenView?.(id),
+        onAnnotationClick: (id, mode) => handlers.current.onAnnotationClick?.(id, mode),
         onNavigate: (active) => {
           setNavActive(active);
           if (active) setTip(null);
@@ -97,6 +109,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
           clearTimeout(tipTimer.current);
           setTip(null);
           if (index === null || x === undefined || y === undefined) return;
+          if (toolRef.current || dragging.current) return; // no tooltips while a tool or a drag is active
           tipTimer.current = setTimeout(() => setTip({ index, x, y }), 500);
         },
         onCamera: (q) => {
@@ -130,6 +143,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   useEffect(() => viewer.current?.setReveal(!!props.reveal), [props.reveal, model]);
   useEffect(() => viewer.current?.setHiddenLines(!!props.hiddenLines), [props.hiddenLines, model]);
   useEffect(() => viewer.current?.setAnnotations(props.annotations ?? []), [props.annotations, model]);
+  useEffect(() => viewer.current?.setAnnotationSelection(props.annotationSelection ?? []), [props.annotationSelection, model]);
   useEffect(() => viewer.current?.setOverrides(props.overrides ?? []), [props.overrides, model]);
   useEffect(() => viewer.current?.refreshTheme(), [props.canvasTheme]);
 
@@ -142,6 +156,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     aimInstant: (d) => viewer.current?.aimInstant(d),
     startPointPick: (y, cb) => viewer.current?.startPointPick(y, (p) => cb(p.x, p.z)),
     startPlanePick: (n, t, cb) => viewer.current?.startPlanePick(n, t, (p) => cb(p.x, p.y, p.z)),
+    startLinePick: (n, t, cb) => viewer.current?.startLinePick(n, t, (a, b) => cb([a.x, a.y, a.z], [b.x, b.y, b.z])),
     stopPointPick: () => viewer.current?.stopPointPick(),
     nextView: () => viewer.current?.nextView() ?? false,
     canPrevious: () => viewer.current?.canGoPrevious ?? false,
@@ -165,7 +180,13 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     );
   }
   return (
-    <div ref={host} className="app-viewport" onContextMenu={(e) => { e.preventDefault(); if (!e.shiftKey) props.onContextMenu?.(e.clientX, e.clientY); /* Shift + right-drag orbits instead */ }} data-theme={props.canvasTheme && props.canvasTheme !== 'follow' ? props.canvasTheme : undefined}>
+    <div ref={host} className="app-viewport" onContextMenu={(e) => { e.preventDefault(); if (!e.shiftKey) props.onContextMenu?.(e.clientX, e.clientY); /* Shift + right-drag orbits instead */ }}
+      onPointerDownCapture={() => {
+        dragging.current = true;
+        clearTimeout(tipTimer.current);
+        setTip(null);
+      }}
+      onPointerUpCapture={() => (dragging.current = false)} data-theme={props.canvasTheme && props.canvasTheme !== 'follow' ? props.canvasTheme : undefined}>
       {model && !props.twoD ? (
         <ViewCube
           orientation={orientation}

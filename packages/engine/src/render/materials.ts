@@ -6,6 +6,8 @@ export const STATE_HOVER = 2;
 export const STATE_HIDDEN = 4;
 /** Windows and doors: drawn in the transparent (glass) pass. */
 export const STATE_GLASS = 8;
+/** Would be picked by the selection box being dragged (Revit's live window / crossing preview). */
+export const STATE_PRESELECT = 16;
 
 export const STATE_TEXTURE_WIDTH = 2048;
 
@@ -84,6 +86,7 @@ export function createModelMaterial(state: DataTexture, overrideTex: DataTexture
       uSelSide: { value: new Color() },
       uSelShade: { value: new Color() },
       uHover: { value: new Color() },
+      uPreselect: { value: new Color(0.18, 0.5, 0.85) },
       uPaper: { value: new Color() },
       // Section-box caps: back faces seen through a cut are painted flat, so cut members read solid.
       uCap: { value: new Color() },
@@ -113,7 +116,7 @@ flat in vec4 vOverride;
 flat in int vId;
 in vec3 vNormalW;
 ${CLIP_F_PARS}
-uniform vec3 uTop, uSide, uShade, uSelTop, uSelSide, uSelShade, uHover, uPaper, uCap, uGlass, uRevealColor;
+uniform vec3 uTop, uSide, uShade, uSelTop, uSelSide, uSelShade, uHover, uPaper, uCap, uGlass, uRevealColor, uPreselect;
 uniform vec2 uLight;
 uniform int uMode;
 uniform int uPass;
@@ -156,6 +159,7 @@ void main() {
   if ((ovFlags & ${OVERRIDE_HALFTONE}) != 0 && !sel) col = mix(col, uPaper, 0.55);
   // Hover is carried by the edges (outline); faces only warm very slightly.
   if (hov && !sel) col = mix(col, uHover, 0.08);
+  if ((vState & ${STATE_PRESELECT}) != 0 && !sel) col = mix(col, uPreselect, 0.35); // box preview: blue
   if ((vState & ${STATE_HIDDEN}) != 0) {
     // Reveal Hidden Elements (only reached when revealing): hidden elements in the reveal colour.
     outColor = vec4(sel ? uSelTop : mix(col, uRevealColor, 0.72), uPass == 1 ? 0.5 : 1.0);
@@ -190,6 +194,7 @@ export function createEdgeMaterial(state: DataTexture, overrideTex: DataTexture 
       uEdgeSel: { value: new Color() },
       uEdgeSelAlpha: { value: 1 },
       uHover: { value: new Color() },
+      uPreselect: { value: new Color(0.18, 0.5, 0.85) },
     },
     vertexShader: /* glsl */ `
 ${STATE_VERTEX}
@@ -207,7 +212,7 @@ flat in int vState;
 flat in vec4 vOverride;
 flat in int vId;
 ${CLIP_F_PARS}
-uniform vec3 uEdge, uEdgeSel, uHover, uRevealColor;
+uniform vec3 uEdge, uEdgeSel, uHover, uRevealColor, uPreselect;
 uniform float uEdgeAlpha, uEdgeSelAlpha;
 // Hidden lines (Revit "Show Hidden Lines"): this pass only draws behind other geometry, dashed.
 uniform int uDashed;
@@ -220,7 +225,8 @@ void main() {
   bool hid = (vState & ${STATE_HIDDEN}) != 0;
   int ovFlags = int(vOverride.a * 255.0 + 0.5);
   float fade = (1.0 - float(ovFlags & 63) / 63.0) * ((ovFlags & ${OVERRIDE_HALFTONE}) != 0 ? 0.4 : 1.0);
-  outColor = sel ? vec4(uEdgeSel, uEdgeSelAlpha) : hov ? vec4(uHover, 1.0) : hid ? vec4(uRevealColor, 1.0) : vec4(uEdge, uEdgeAlpha * fade);
+  bool pre = (vState & ${STATE_PRESELECT}) != 0;
+  outColor = sel ? vec4(uEdgeSel, uEdgeSelAlpha) : pre ? vec4(uPreselect, 1.0) : hov ? vec4(uHover, 1.0) : hid ? vec4(uRevealColor, 1.0) : vec4(uEdge, uEdgeAlpha * fade);
 }`,
   });
 }
