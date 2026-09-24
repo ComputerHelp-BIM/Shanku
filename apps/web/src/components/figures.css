@@ -1,0 +1,93 @@
+/* Guide figures: every colour is a token, so figures follow the Paper and Ink themes. */
+.app-fig { margin: 12px 0 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--panel); }
+.app-fig svg { display: block; width: 100%; height: auto; max-width: 720px; overflow: visible; }
+.app-fig text { font-family: var(--font-sans); }
+.fig-t { font-size: 12.5px; font-weight: 600; fill: var(--text); }
+.fig-t--regular { font-weight: 400; }
+.fig-d { font-size: 11.5px; fill: var(--text-secondary); }
+.fig-h { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; fill: var(--text-faint); }
+
+/* mouse */
+.fig-body { fill: var(--field); stroke: var(--border-strong); stroke-width: 1.5; }
+.fig-seam { fill: none; stroke: var(--border-strong); stroke-width: 1.2; }
+.fig-zone-left { fill: var(--select-window); opacity: 0.28; }
+.fig-zone-right { fill: var(--status-ok); opacity: 0.28; }
+.fig-zone-wheel { fill: var(--accent); opacity: 0.75; }
+.fig-dot--left { fill: var(--select-window); }
+.fig-dot--wheel { fill: var(--accent); }
+.fig-dot--right { fill: var(--status-ok); }
+.fig-dot--pad { fill: var(--text-faint); }
+
+/* arrows and shared shapes */
+.fig-arrow line { stroke: var(--text-secondary); stroke-width: 1.5; }
+.fig-arrowhead { fill: var(--text-secondary); }
+.fig-arrow--window line { stroke: var(--select-window); }
+.fig-arrow--window .fig-arrowhead { fill: var(--select-window); }
+.fig-arrow--crossing line { stroke: var(--select-crossing); }
+.fig-arrow--crossing .fig-arrowhead { fill: var(--select-crossing); }
+.fig-frame { fill: var(--bg); stroke: var(--border-strong); }
+.fig-strip { fill: var(--panel); }
+.fig-strip2 { fill: var(--ribbon); }
+.fig-field { fill: var(--field); stroke: var(--control-border); }
+.fig-chip { fill: var(--chip); stroke: var(--border); }
+.fig-tab { fill: var(--viewport); stroke: var(--accent); }
+.fig-panel { fill: var(--panel); stroke: var(--border); }
+.fig-line { fill: var(--border-strong); }
+.fig-line--soft { fill: var(--border); }
+.fig-badge { fill: var(--accent); }
+.fig-badge-t { font-size: 11px; font-weight: 700; fill: var(--brand-ink); }
+.fig-slab { fill: var(--concrete-top); stroke: var(--edge-model); stroke-width: 1; }
+.fig-column { fill: var(--concrete-side); stroke: var(--edge-model); stroke-width: 0.8; }
+.fig-cube { fill: var(--viewcube-top); stroke: var(--viewcube-edge); }
+.fig-ring { fill: none; stroke: var(--viewcube-ring); stroke-width: 3; }
+
+/* selection */
+.fig-el { fill: var(--concrete-side); stroke: var(--edge-model); }
+.fig-el--sel { fill: var(--selected-top); stroke: var(--edge-selected); stroke-width: 1.5; }
+.fig-window { fill: var(--select-window); fill-opacity: 0.12; stroke: var(--select-window); stroke-width: 1.5; }
+.fig-crossing { fill: var(--select-crossing); fill-opacity: 0.12; stroke: var(--select-crossing); stroke-width: 1.5; stroke-dasharray: 6 4; }
+
+/* view range */
+.fig-band { fill: var(--select-window); opacity: 0.08; }
+.fig-slab-cut { fill: var(--concrete-top); stroke: var(--line-cut); stroke-width: 1.5; }
+.fig-hidden-el { fill: none; stroke: var(--line-hidden); stroke-width: 1.4; stroke-dasharray: 6 4; }
+.fig-column-side { fill: var(--concrete-side); opacity: 0.55; }
+.fig-cutmark { fill: var(--line-cut); }
+.fig-plane { stroke: var(--text-secondary); stroke-width: 1.2; stroke-dasharray: 8 4; }
+.fig-plane--cut { stroke: var(--line-cut); stroke-width: 1.8; }
+.fig-level { stroke: var(--text-faint); stroke-width: 1.2; stroke-dasharray: 14 4 2 4; }
+.fig-eye { fill: var(--field); stroke: var(--text-secondary); }
+.fig-eye-pupil { fill: var(--text-secondary); }
+
+/* section grips and box */
+.fig-extent { fill: var(--select-window); fill-opacity: 0.06; stroke: var(--select-window); stroke-dasharray: 6 4; }
+.fig-section-line { stroke: var(--select-window); stroke-width: 2; stroke-dasharray: 14 4 2 4; }
+.fig-head { fill: var(--viewport); stroke: var(--select-window); stroke-width: 1.6; }
+.fig-grip { fill: var(--select-window); }
+.fig-box { fill: none; stroke: var(--accent); stroke-width: 1.4; }
+.fig-cap { fill: var(--concrete-shade); stroke: var(--line-cut); stroke-width: 1.4; }
+.fig-column-iso { fill: none; stroke: var(--edge-model); stroke-width: 1; }
+.fig-ring-rot { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 5; opacity: 0.8; }
+
+/* precedence, flows */
+.fig-card { fill: var(--field); stroke: var(--border-strong); }
+.fig-card--top { stroke: var(--accent); stroke-width: 1.5; }
+.fig-card--mid { stroke: var(--select-window); }
+.fig-card--base { stroke: var(--border-strong); }
+
+/* explode categories */
+.fig-cat--footing { fill: var(--cat-footing); }
+.fig-cat--column { fill: var(--cat-column); }
+.fig-cat--beam { fill: var(--cat-beam); }
+.fig-cat--slab { fill: var(--cat-slab); }
+
+/* command search */
+.fig-row-active { fill: var(--row-selected); }
+.fig-new { fill: var(--chip); stroke: var(--accent); }
+.fig-new-t { font-size: 10.5px; font-weight: 700; fill: var(--accent-text); }
+
+/* Narrow screens: keep the text readable and scroll the figure inside its frame, not the page. */
+@media (max-width: 640px) {
+  .app-fig { overflow-x: auto; }
+  .app-fig svg { min-width: 560px; }
+}

@@ -1,3 +1,4 @@
+import { FIGURES } from './figures';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Kbd } from '@shanku/ui';
 import { GUIDE, searchGuide, type GuideBlock, type GuideSection } from '../lib/guide';
@@ -10,6 +11,10 @@ function inline(text: string): ReactNode {
 }
 
 function Block({ b }: { b: GuideBlock }) {
+  if ('figure' in b) {
+    const Figure = FIGURES[b.figure];
+    return <Figure />;
+  }
   if ('p' in b) return <p>{inline(b.p)}</p>;
   if ('note' in b) return <p className="app-guide__note">{inline(b.note)}</p>;
   if ('list' in b)

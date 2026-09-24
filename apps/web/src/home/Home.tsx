@@ -1,3 +1,4 @@
+import { ExplodeFigure, MouseFigure, SectionBoxFigure, SelectionFigure } from '../components/figures';
 import { useState, type DragEvent } from 'react';
 import { ThemeIcon, useTheme } from '@shanku/ui';
 import { ShankuMark } from '@shanku/ui';
@@ -139,6 +140,24 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
             <li>Revit users feel at home: same shortcuts, same ViewCube, same section box.</li>
             <li>Each IFC file is rated for Shanku, with the Revit export settings that make it better.</li>
           </ul>
+        </section>
+
+        <section id="navigate" className="home-section">
+          <p className="home-kicker">Navigation</p>
+          <h2>If you know Revit, you already know Shanku.</h2>
+          <p className="home-sub">The same mouse, the same window and crossing selection, the same two-letter shortcuts.</p>
+          <MouseFigure />
+          <SelectionFigure />
+        </section>
+
+        <section id="inside" className="home-section">
+          <p className="home-kicker">See inside</p>
+          <h2>Cut it open, pull it apart.</h2>
+          <p className="home-sub">A section box with solid cut faces, plans with a real view range, and exploded views by storey, radially or by category.</p>
+          <div className="home-figs">
+            <SectionBoxFigure />
+            <ExplodeFigure />
+          </div>
         </section>
 
         <section id="features" className="home-section">

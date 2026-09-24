@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.30.0 — 2026-09-24
+
+### Added
+- Guide figures (mouse map and ten more diagrams) and figure sections on the homepage; themed, searchable, accessible.
+
 ## 0.29.0 — 2026-09-24
 
 ### Added

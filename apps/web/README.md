@@ -1,4 +1,4 @@
-# @shanku/web 0.29.0
+# @shanku/web 0.30.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.30.0 — 2026-09-24
+- **Guide figures** (as in Structura, for Shanku's own controls): a mouse map colour-keyed to each button (click and box selection, wheel zoom, middle-drag pan, Shift + middle orbit, double middle-click fit, right-click menu, trackpad), the interface regions, window vs crossing selection, a plan's View Range from the side, section grips, which graphics win, the section box, exploded views, the command search, where quantities come from and the DXF → 3D pipeline.
+- Drawn as inline SVG with design tokens only, so they follow Paper and Ink; each has a text description that the guide search matches and screen readers read. On phones they keep a readable size and scroll inside their frame.
+- **Homepage**: "If you know Revit, you already know Shanku" (mouse map, window and crossing) and "Cut it open, pull it apart" (section box, exploded views).
 
 ### 0.29.0 — 2026-09-24
 - **Command search (Ctrl + K) opens on three sections** before you type: **Recently used** (last 3, newest first), **Most used** (run at least twice, not already listed) and **New in Shanku x.y** (commands from the last five releases you have not tried yet, e.g. QA checks, exploded views, Guide & FAQ). ↑ ↓ move through all of them as one list. New commands carry a **New** badge in search results too; it goes once you use the command.

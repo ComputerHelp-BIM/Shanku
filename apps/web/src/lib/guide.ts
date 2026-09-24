@@ -1,3 +1,4 @@
+import type { FigureId } from '../components/figures';
 import { SHORTCUT_HELP } from './shortcuts';
 
 /**
@@ -11,7 +12,9 @@ export type GuideBlock =
   | { note: string }
   | { faq: Array<{ q: string; a: string }> }
   | { keys: Array<{ keys: string; action: string }> }
-  | { releases: Array<{ version: string; date: string; items: string[] }> };
+  | { releases: Array<{ version: string; date: string; items: string[] }> }
+  /** A diagram (components/figures.tsx); `alt` is searchable and read by screen readers. */
+  | { figure: FigureId; alt: string };
 
 export interface GuideSection {
   id: string;
@@ -48,6 +51,7 @@ export const GUIDE: GuideSection[] = [
     group: 'Guide',
     title: 'The interface',
     blocks: [
+      { figure: 'interface', alt: 'Diagram of the interface regions: title bar, ribbon, Project Browser, views, Properties, view bar and status bar.' },
       {
         list: [
           '**Title bar**: Quick Access (open, undo, redo, home), the file name, the search (commands and elements, `Ctrl + K`), Guide, full screen and the interface theme.',
@@ -64,6 +68,7 @@ export const GUIDE: GuideSection[] = [
     group: 'Guide',
     title: 'Moving around',
     blocks: [
+      { figure: 'mouse', alt: 'Mouse map: click select, window and crossing drags, wheel zoom, middle-drag pan, Shift and middle-drag orbit, double middle-click fit, right-click menu, trackpad Alt drag.' },
       { p: 'Navigation follows Revit. On a trackpad, hold Alt to orbit and Alt + Shift to pan.' },
       { keys: SHORTCUT_HELP.filter((k) => /drag|Wheel|middle|Home|ZF|ZP|ZR/.test(k.keys)) },
       { p: 'The ViewCube turns the model to any of 26 directions; drag its compass ring to turn in plan, and use Home for the default 3D view.' },
@@ -83,6 +88,7 @@ export const GUIDE: GuideSection[] = [
           'Right-click for Select Previous, Select All Instances, Hide in View and Override Graphics.',
         ],
       },
+      { figure: 'selection', alt: 'Window selection left to right versus crossing selection right to left.' },
     ],
   },
   {
@@ -99,6 +105,8 @@ export const GUIDE: GuideSection[] = [
           'Right-click a view to open, duplicate, rename, delete or apply a view template.',
         ],
       },
+      { figure: 'viewRange', alt: 'View Range diagram: cut plane offset, level, view depth offset, cut and hidden lines.' },
+      { figure: 'sectionGrips', alt: 'Section grips: ends, far clip, flip, move.' },
     ],
   },
   {
@@ -109,6 +117,7 @@ export const GUIDE: GuideSection[] = [
       { p: '**Visibility/Graphics** (VG) sets visibility, surface colour, transparency and halftone per category for the current view. Each Apply is one undoable step.' },
       { p: '**Filters** show, colour or hide elements by rules on mark, level, type, name, grade, IFC class, volume or length. When rules disagree, an element override wins over the first matching filter, which wins over the category.' },
       { p: '**View Templates** copy these settings between views; applying one is a single undo step.' },
+      { figure: 'precedence', alt: 'Which graphics win: element override, then view filter, then category.' },
     ],
   },
   {
@@ -116,6 +125,7 @@ export const GUIDE: GuideSection[] = [
     group: 'Guide',
     title: 'Cutting into the model',
     blocks: [
+      { figure: 'sectionBox', alt: 'Section box grips, rotation ring and solid cut faces.' },
       { p: '**BX** puts a section box around the selection (again to remove it). Drag an arrow to move a face (Shift: 100 mm steps) and the ring to rotate it in plan (Shift: 15° steps). Cut members show as solid. Section box changes undo with Ctrl + Z.' },
       { note: 'Plans and sections use their View Range instead of a section box.' },
     ],
@@ -125,6 +135,7 @@ export const GUIDE: GuideSection[] = [
     group: 'Guide',
     title: 'Exploded views',
     blocks: [
+      { figure: 'explode', alt: 'Exploded views: storeys, radial, categories.' },
       { p: 'View → Explode pulls the model apart so you can see inside it. It changes only what you see: quantities, selections and saved views are not affected, and opening another file puts the model back together.' },
       {
         table: {
@@ -144,8 +155,9 @@ export const GUIDE: GuideSection[] = [
     group: 'Guide',
     title: 'Commands and the search',
     blocks: [
+      { figure: 'commandSearch', alt: 'Command search sections: recently used, most used, new.' },
       { p: 'Press **Ctrl + K** (Cmd + K on a Mac) and type what you want to do: "isolate", "hidden line", "section box", "explode storeys". The same box finds an element by mark, Element ID, GlobalId or name. Start with **>** to search commands only.' },
-      { p: 'Commands you ran recently show first. Greyed commands say what they need, for example a selection.' },
+      { p: 'Before you type, the search lists **Recently used**, **Most used** and **New** commands; new ones carry a badge until you try them. Greyed commands say what they need, for example a selection.' },
       { p: 'Revit two-letter shortcuts work anywhere outside a text field: type the two letters in a row (for example **ZF**). Shortcuts follow the physical keys, so they work on every keyboard layout.' },
     ],
   },
@@ -154,6 +166,7 @@ export const GUIDE: GuideSection[] = [
     group: 'Guide',
     title: 'Where the numbers come from',
     blocks: [
+      { figure: 'quantities', alt: 'Where quantities come from: IFC quantities or geometry, marks and grades, BOQ, Excel.' },
       { p: 'Volumes, areas and lengths come from the IFC base quantities when the file has them, and are measured from the geometry otherwise. Properties shows which one for each element.' },
       { p: 'Marks and concrete grades are read from properties by rules you can change (Manage → Marks); the first property that has a value wins.' },
       { p: 'The **BOQ** window groups quantities by level, category and grade, takes a rate per item or per element, and exports an Excel workbook. Rates are kept per file in this browser.' },
@@ -164,6 +177,7 @@ export const GUIDE: GuideSection[] = [
     group: 'Guide',
     title: 'DXF drawings and DXF → 3D',
     blocks: [
+      { figure: 'dxfPipeline', alt: 'DXF to 3D pipeline: read, check, write IFC4, open.' },
       { p: 'Open a DXF to see it as a 2D drawing: select objects to see their layer, size and handle, and turn layers on or off.' },
       { p: 'The drawing view works like AutoCAD model space: a grid in round drawing units with the red X and green Y axes through the origin (**F7** turns it off), the UCS icon, a crosshair with a pick box, and the cursor position as `X, Y, 0.000` in the status bar. The status bar toggles Grid, UCS, Crosshair (small, full screen, off) and QP (Quick Properties).' },
       {
@@ -250,6 +264,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.30.0', date: '2026-09-24', items: ['Diagrams in the Guide: the mouse map, interface, selection, View Range, section grips, graphics precedence, section box, exploded views, command search, quantities and DXF → 3D.'] },
           { version: '0.29.0', date: '2026-09-24', items: ['Command search (Ctrl + K) opens on Recently used, Most used and New in this release; new commands carry a New badge until you try them.'] },
           { version: '0.28.2', date: '2026-09-24', items: ['Fixed: Guide & FAQ could crash the app in Chrome 154 when changing section or closing it.', 'A failing window or panel now shows its own error with Try again and Copy details instead of blanking the app.'] },
           { version: '0.28.0', date: '2026-09-24', items: ['Exploded views combine: storeys, radial and categories together.', 'Cut faces are solid, a shade darker, answer hover and selection, and have their own cut outline.', 'Section grips in plans: lengthen, far clip, flip and move.'] },
@@ -284,6 +299,7 @@ function textOf(s: GuideSection): string {
     else if ('faq' in b) for (const f of b.faq) parts.push(f.q, f.a);
     else if ('keys' in b) for (const k of b.keys) parts.push(k.keys, k.action);
     else if ('releases' in b) for (const r of b.releases) parts.push(r.version, ...r.items);
+    else if ('figure' in b) parts.push(b.alt);
   }
   return parts.join(' ').toLowerCase();
 }

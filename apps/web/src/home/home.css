@@ -78,3 +78,8 @@
 }
 @media (prefers-reduced-motion: reduce) { .home { scroll-behavior: auto; } }
 .home-btn--icon { width: 36px; padding: 0; }
+
+/* Figures on the homepage (styled by components/figures.css) */
+.home-section .app-fig { max-width: 880px; margin-left: auto; margin-right: auto; }
+.home-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.home-figs .app-fig { margin: 0; }
