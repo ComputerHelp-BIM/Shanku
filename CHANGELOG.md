@@ -2,11 +2,32 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.28.0 — 2026-09-24
+
+### Changed
+- Combined release: main's 0.26.0 (combined exploded views, selectable cut faces, cut outlines) and the design-system branch's 0.26.0 (DXF work) and 0.27.0 (QA checks and panel). Both lines had numbered a release 0.26.0.
+
 ## 0.26.0 — 2026-09-24
 
 ### Added
 - Combined exploded views; cut faces respond to hover, selection and box preview; cut outlines.
 - Includes the design-system branch release also numbered 0.25.0 (AutoCAD interface for DXF, 2D right-click menus, Revit gap analysis).
+## 0.27.0 — 2026-09-24
+
+### Added
+- QA checks (actionable QA, phase 1, from the Structura viewer): 10 model-health and mark checks run on this device after every load (duplicates, overlapping columns, discontinuous columns, zero size, unusual length, no level, no grade, lateral-system gaps, missing marks, one mark for different sizes). A QA panel with severity tiles and finding cards (Select all, Isolate, Zoom, Step, what was measured and what the check does not prove) and a QA summary in the status bar (engine 0.25.0).
+- docs/design/quick-wins.md: easy features from Revit add-ons (A1–A9) and ones Revit lacks (B1–B10).
+
+### Changed
+- Sample model (fixtures 1.2.0): ground-floor columns now stand on the footings; they stopped 900 mm above them, which the new QA check reported.
+
+## 0.26.0 — 2026-09-24
+
+### Added
+- DXF viewer with an AutoCAD interface: adaptive grid with red X and green Y axes (F7), UCS icon, crosshair with pick box, `X, Y, 0.000` coordinates and status-bar toggles (engine 0.24.0, tokens 2.1.0).
+- AutoCAD right-click menus in the 2D view, with and without a selection; Isolate / Hide / End Object Isolation (undoable); Quick Select, Find, Count, Select Similar, Zoom Window, Zoom Previous and Quick Properties.
+- DXF extractor 1.2.0: object types and polyline global width.
+- docs/design/revit-gap.md: Revit features BIM modellers use daily that Shanku lacks, easy to advanced.
 
 ## 0.25.0 — 2026-09-24
 

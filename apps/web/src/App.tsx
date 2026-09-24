@@ -20,7 +20,7 @@ import {
   useShortcut,
   useTheme,
 } from '@shanku/ui';
-import { CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, EXPLODE_MODES, boxState, type ExplodeMode, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
+import { runChecks, CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, EXPLODE_MODES, boxState, type ExplodeMode, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
 import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
@@ -56,11 +56,12 @@ import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/short
 import { sequenceKeys, type AppCommand } from './lib/commands';
 import { CommandPalette, type ElementHit } from './components/CommandPalette';
 import { GuidePanel } from './components/GuidePanel';
+import { QaPanel } from './components/QaPanel';
 import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.26.0';
+const APP_VERSION = '0.28.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -707,6 +708,35 @@ export function App({ start }: { start?: AppStart } = {}) {
     runCommand(id);
   };
 
+  /**
+   * QA (actionable QA, phase 1): model-health and mark checks run on this device whenever the model
+   * or its mark and grade rules change. Pure functions, a few milliseconds for typical models.
+   */
+  const qaReport = useMemo(() => (m.model ? runChecks({ elements: m.model.elements, levels: m.model.info.levels }) : null), [m.model]);
+  /** QA actions work in 3D: leave a drawing tab first, then act once the view is showing. */
+  const inModel = (fn: () => void) => {
+    if (!activeDoc) return fn();
+    setActiveView('3d');
+    setTimeout(fn, 80);
+  };
+  const qaActions = {
+    onSelect: (els: number[]) => inModel(() => m.setSelection(els)),
+    onZoom: (els: number[]) => inModel(() => viewport.current?.fit(els)),
+    onIsolate: (els: number[]) =>
+      inModel(() => {
+        if (!m.model) return;
+        const keep = new Set(els);
+        m.setSelection(els);
+        setHidden(m.model.elements.filter((e) => !keep.has(e.index)).map((e) => e.index));
+        viewport.current?.fit(els);
+      }),
+    onStep: (el: number) =>
+      inModel(() => {
+        m.setSelection([el]);
+        viewport.current?.fit([el]);
+      }),
+  };
+
   /** Right-click menu in the 3D view: Revit's layout, with element entries when something is selected. */
   const contextItems = (): MenuItem[] => {
     const model = m.model!;
@@ -941,8 +971,9 @@ export function App({ start }: { start?: AppStart } = {}) {
           ['browser', 'Project Browser'],
           ['activity', 'Activity'],
           ['console', 'Python console'],
+          ['qa', 'QA checks'],
         ] as const
-      ).map(([id, title]) => ({ id: `window.${id}`, title: `Show ${title}`, group: 'Windows' as const, checked: openPanels.includes(id), keys: id === 'console' ? 'Ctrl + `' : undefined, run: () => dock.current?.toggle(id) })),
+      ).map(([id, title]) => ({ id: `window.${id}`, title: `Show ${title}`, keywords: id === 'qa' ? 'check warnings errors health duplicate floating column mark' : undefined, group: 'Windows' as const, checked: openPanels.includes(id), keys: id === 'console' ? 'Ctrl + `' : undefined, run: () => dock.current?.toggle(id) })),
       { id: 'window.boq', title: 'Bill of quantities (BOQ)', group: 'Windows', keywords: 'quantities rates excel export', checked: wins.boq, enabled: hasModel, why: needModel, run: () => toggleWin('boq') },
       { id: 'window.reset', title: 'Reset window layout', group: 'Windows', keywords: 'panels dock', run: () => dock.current?.reset() },
       // Manage
@@ -1099,6 +1130,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                 ['browser', 'browser', 'Browser'],
                 ['activity', 'activity', 'Activity'],
                 ['console', 'console', 'Console'],
+                ['qa', 'qa', 'QA'],
               ] as const
             ).map(([id, icon, label]) => (
               <RibbonButton key={id} icon={icon} label={label} active={openPanels.includes(id)} onClick={() => dock.current?.toggle(id)} shortcutHint="show or hide" />
@@ -1676,6 +1708,8 @@ export function App({ start }: { start?: AppStart } = {}) {
                 ) : (
                   <p className="app-empty-note">Nothing yet. Open a model and its load times appear here.</p>
                 );
+              case 'qa':
+                return <QaPanel report={qaReport} {...qaActions} />;
               case 'console':
                 return (
                   <ConsolePanel
@@ -1749,6 +1783,18 @@ export function App({ start }: { start?: AppStart } = {}) {
           </>
           )}
           <span className="app-spacer" />
+          {qaReport ? (
+            <>
+              <button type="button" className="app-panel-toggle app-qa-status" aria-pressed={openPanels.includes('qa')} title="QA checks: open the QA panel" onClick={() => dock.current?.open('qa')}>
+                {(() => {
+                  const n = (s: string) => qaReport.findings.filter((f) => f.severity === s).length;
+                  const e = n('error'), w = n('warning');
+                  return e || w ? `QA: ${[e && `${fmtCount(e)} ${e === 1 ? 'error' : 'errors'}`, w && `${fmtCount(w)} ${w === 1 ? 'warning' : 'warnings'}`].filter(Boolean).join(' · ')}` : 'QA: no errors';
+                })()}
+              </button>
+              <span className="app-divider" aria-hidden="true" />
+            </>
+          ) : null}
           <LocalIndicator />
           <span className="app-divider" aria-hidden="true" />
           <button

@@ -10,7 +10,7 @@ import {
 import 'dockview-react/dist/styles/dockview.css';
 
 /** Every dockable panel in Shanku. "views" is the 3D view and drawing tabs; it always stays in the grid. */
-export type PanelId = 'views' | 'properties' | 'browser' | 'activity' | 'console';
+export type PanelId = 'views' | 'properties' | 'browser' | 'activity' | 'console' | 'qa';
 
 export const PANEL_TITLES: Record<PanelId, string> = {
   views: 'Views',
@@ -18,8 +18,9 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   browser: 'Project browser',
   activity: 'Activity',
   console: 'Python console',
+  qa: 'QA',
 };
-const BOTTOM: PanelId[] = ['activity', 'console'];
+const BOTTOM: PanelId[] = ['activity', 'console', 'qa'];
 /** v2: BOQ, DXF → 3D and Keys became windows; older saved layouts are dropped. */
 const LAYOUT_KEY = 'shanku.layout.v2';
 
