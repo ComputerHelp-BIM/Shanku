@@ -1,6 +1,6 @@
-# @shanku/ui 0.10.1
+# @shanku/ui 0.11.0
 
-React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 2.0.0` and `@shanku/brand >= 1.0.0`.
+React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 2.0.0` and `@shanku/brand >= 1.5.0`.
 
 ```tsx
 import '@shanku/tokens/tokens.css';
@@ -33,6 +33,9 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.11.0 — 2026-09-24
+- Requires @shanku/brand 1.5.0: `IconName` gains `explodeStoreys`, `explodeRadial`, `explodeCategories` and `guide`.
 
 ### 0.10.1 — 2026-09-23
 - Requires @shanku/tokens 2.0.0 (merged from the design-system branch, released there as ui 0.9.1). No API change.

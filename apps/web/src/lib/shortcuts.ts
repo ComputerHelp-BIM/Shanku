@@ -87,6 +87,7 @@ export const SHORTCUT_HELP: Array<{ keys: string; action: string }> = [
   { keys: 'Ctrl + Z', action: 'Undo the last section-box change' },
   { keys: 'Ctrl + `', action: 'Show or hide the Python console' },
   { keys: 'WF · HL · SD · CO', action: 'Wireframe · hidden line · shaded · consistent colours' },
-  { keys: 'Ctrl + K', action: 'Find by Element ID, GlobalId or name' },
+  { keys: 'Ctrl + K', action: 'Search commands, or find an element by mark, Element ID, GlobalId or name' },
+  { keys: 'F1', action: 'Guide & FAQ' },
   { keys: 'Ctrl + ` (or Ctrl + Shift + `)', action: 'Toggle this panel' },
 ];

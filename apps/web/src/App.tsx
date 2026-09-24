@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AppShell,
   Button,
-  CommandSearch,
   FloatingWindow,
   ThemeIcon,
   Icon,
@@ -21,7 +20,7 @@ import {
   useShortcut,
   useTheme,
 } from '@shanku/ui';
-import { CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, boxState, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
+import { CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, EXPLODE_MODES, boxState, type ExplodeMode, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
 import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
@@ -53,8 +52,11 @@ import { DockWorkspace, type DockWorkspaceHandle, type PanelId } from './compone
 import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
+import { sequenceKeys, type AppCommand } from './lib/commands';
+import { CommandPalette, type ElementHit } from './components/CommandPalette';
+import { GuidePanel } from './components/GuidePanel';
 
-const APP_VERSION = '0.22.0';
+const APP_VERSION = '0.23.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -176,9 +178,18 @@ export function App({ start }: { start?: AppStart } = {}) {
   const dock = useRef<DockWorkspaceHandle>(null);
   const [openPanels, setOpenPanels] = useState<PanelId[]>([]);
   // Revit-style windows (float above everything, ribbon included)
-  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false });
+  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false });
+  // Guide & FAQ (F1): which section to open on
+  const [guideSection, setGuideSection] = useState<string | undefined>(undefined);
+  const openGuide = (section?: string) => {
+    setGuideSection(section);
+    setWins((w) => ({ ...w, guide: true }));
+  };
+  // Exploded view (3D views only): mode and spread 0-1; display only, reset for every new file.
+  const [explode, setExplode] = useState<{ mode: ExplodeMode; amount: number } | null>(null);
   const toggleWin = (k: keyof typeof wins, v?: boolean) => setWins((w) => ({ ...w, [k]: v ?? !w[k] }));
   useShortcut(TOGGLE_BOTTOM_PANEL, () => dock.current?.toggleBottom(), { allowInEditable: true });
+  useShortcut({ code: 'F1' }, () => (wins.guide ? toggleWin('guide', false) : openGuide()), { allowInEditable: true });
   const [rates, setRates] = useState<RateBook>(emptyRates);
   useEffect(() => {
     if (m.model) setRates(loadRates(m.model.info.fileName));
@@ -225,6 +236,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   useEffect(() => {
     setHidden([]);
     setSectionBox(false);
+    setExplode(null);
     setGraphics(EMPTY_GRAPHICS);
     graphicsFor.current = null;
     history.clear();
@@ -724,21 +736,154 @@ export function App({ start }: { start?: AppStart } = {}) {
     return () => clearTimeout(t);
   }, [notice]);
 
-  const onSearchKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== 'Enter') return;
-    const q = e.currentTarget.value;
-    const hit = m.find(q);
-    if (hit === null) {
-      setNotice(m.model ? `No element matches "${q}".` : 'Open a model first.');
-      return;
-    }
-    m.setSelection([hit]);
-    viewport.current?.fit([hit]);
-    e.currentTarget.select();
+  /** The search finds elements by mark, Element ID, GlobalId or name (then selects and zooms). */
+  const findElement = (q: string): ElementHit | null => {
+    const model = m.model;
+    const hit = model ? m.find(q) : null;
+    if (hit === null || !model) return null;
+    const e = model.elements[hit];
+    return {
+      label: `${e.category === 'Other' ? e.ifcClass : e.category} ${e.mark || e.name || e.expressId}`,
+      detail: e.level || 'Element',
+      run: () => {
+        m.setSelection([hit]);
+        viewport.current?.fit([hit]);
+      },
+    };
   };
 
   const selectCategory = (c: Category) => m.selectWhere((cat) => cat === c);
   const selectLevel = (l: string) => m.selectWhere((_, level) => level === l);
+
+  /**
+   * Every action as a command (lib/commands.ts): the palette lists these, each with its current state.
+   * Built on demand so enabled/checked always match the model, selection and active view.
+   */
+  const getCommands = (): AppCommand[] => {
+    const model = m.model;
+    const hasModel = !!model;
+    const hasSel = m.selection.length > 0;
+    const in3d = hasModel && !activeDoc && !isTwoD(activeModelView ?? undefined);
+    const needModel = hasModel ? undefined : 'open a model first';
+    const needSel = !hasModel ? 'open a model first' : hasSel ? undefined : 'select elements first';
+    const need3d = !hasModel ? 'open a model first' : in3d ? undefined : 'works in 3D views';
+    const legacy = (id: CommandId, title: string, group: AppCommand['group'], why: string | undefined, extra: Partial<AppCommand> = {}): AppCommand => ({
+      id: `${group.toLowerCase()}.${id}`,
+      title,
+      group,
+      keys: sequenceKeys(id),
+      enabled: why === undefined,
+      why,
+      run: () => run(id, title),
+      ...extra,
+    });
+    const list: AppCommand[] = [
+      // File
+      { id: 'file.openIfc', title: 'Open IFC model', group: 'File', keywords: 'load import revit', run: () => void openFromDisk() },
+      { id: 'file.openDxf', title: 'Open DXF drawing', group: 'File', keywords: 'cad 2d autocad', run: () => void openDxfFromDisk() },
+      { id: 'file.dxfTo3d', title: 'DXF → 3D: build an IFC model from a drawing', group: 'File', keywords: 'pipeline convert computer help', run: () => (pipe ? toggleWin('pipeline', true) : void pipeline.start()) },
+      { id: 'file.sample', title: 'Open the sample model', group: 'File', keywords: 'demo example frame', run: () => void openSample() },
+      // Edit
+      { id: 'edit.undo', title: history.canUndo ? `Undo ${history.undoList[0] ?? ''}`.trim() : 'Undo', group: 'Edit', keys: 'Ctrl + Z', enabled: history.canUndo, why: history.canUndo ? undefined : 'nothing to undo', run: undo },
+      { id: 'edit.redo', title: history.canRedo ? `Redo ${history.redoList[0] ?? ''}`.trim() : 'Redo', group: 'Edit', keys: 'Ctrl + Y', enabled: history.canRedo, why: history.canRedo ? undefined : 'nothing to redo', run: redo },
+      // Select
+      { id: 'select.clear', title: 'Clear selection', group: 'Select', keys: 'Esc', enabled: hasSel, why: hasSel ? undefined : 'nothing selected', run: () => m.setSelection([]) },
+      { id: 'select.previous', title: 'Select previous', group: 'Select', enabled: prevSelection.current.length > 0, why: prevSelection.current.length ? undefined : 'no earlier selection', run: () => m.setSelection(prevSelection.current) },
+      {
+        id: 'select.visible',
+        title: 'Select everything visible',
+        group: 'Select',
+        keywords: 'all',
+        enabled: hasModel,
+        why: needModel,
+        run: () => {
+          const off = new Set(viewHidden);
+          m.setSelection((model?.elements ?? []).filter((e) => !off.has(e.index)).map((e) => e.index));
+        },
+      },
+      ...(model ? [...new Set(model.elements.map((e) => e.category))].map((c) => ({ id: `select.category.${c}`, title: `Select all ${CATEGORY_PLURAL[c].toLowerCase()}`, group: 'Select' as const, keywords: `category ${c}`, run: () => selectCategory(c) })) : []),
+      ...(model ? model.info.levels.map((l) => ({ id: `select.level.${l.name}`, title: `Select everything on ${l.name}`, group: 'Select' as const, keywords: 'level storey floor', run: () => selectLevel(l.name) })) : []),
+      { id: 'select.byId', title: 'Find element by mark, Element ID or GlobalId', group: 'Select', keys: 'Ctrl + K', keywords: 'search find id', run: () => search.current?.focus({ preventScroll: true }) },
+      // Visibility
+      legacy('isolateElement', 'Isolate elements', 'Visibility', needSel, { keywords: 'temporary hide isolate' }),
+      legacy('isolateCategory', 'Isolate category', 'Visibility', needSel),
+      legacy('hideElement', 'Hide elements', 'Visibility', needSel, { keywords: 'temporary' }),
+      legacy('hideCategory', 'Hide category', 'Visibility', needSel),
+      legacy('resetHidden', 'Reset temporary hide/isolate', 'Visibility', hasModel ? (hidden.length ? undefined : 'nothing is temporarily hidden') : 'open a model first', { keywords: 'show all unhide' }),
+      legacy('revealHidden', 'Reveal hidden elements', 'Visibility', needModel, { checked: reveal }),
+      legacy('unhideElement', 'Unhide elements', 'Visibility', !reveal ? 'turn on Reveal hidden elements first' : needSel),
+      legacy('visibilityGraphics', 'Visibility/Graphics…', 'Visibility', needModel, { keywords: 'vg vv category colour color transparency halftone overrides' }),
+      { id: 'visibility.filters', title: 'Filters…', group: 'Visibility', keywords: 'rules view filter', enabled: hasModel, why: needModel, run: () => setFiltersOpen(true) },
+      { id: 'visibility.elementGraphics', title: 'Override graphics of the selection…', group: 'Visibility', keywords: 'element colour color halftone transparency', enabled: hasSel, why: needSel, run: () => setElemVgOpen(true) },
+      // View
+      legacy('fit', 'Zoom to fit', 'View', hasModel || activeDoc ? undefined : 'open a model first'),
+      legacy('previous', 'Previous pan/zoom', 'View', needModel),
+      legacy('zoomRegion', 'Zoom in region', 'View', needModel),
+      { id: 'view.zoomOut', title: 'Zoom out (2x)', group: 'View', enabled: hasModel, why: needModel, run: () => viewport.current?.zoomOut2x() },
+      { id: 'view.home', title: 'Default 3D view', group: 'View', keys: 'Home', enabled: hasModel, why: needModel, run: () => viewport.current?.home() },
+      legacy('sectionBox', sectionBox ? 'Remove section box' : 'Section box around the selection', 'View', !hasModel ? 'open a model first' : sectionBox ? undefined : in3d ? needSel : 'works in 3D views', { checked: sectionBox }),
+      ...STYLES.map((st) =>
+        legacy(({ shaded: 'shaded', consistent: 'consistent', hiddenLine: 'hiddenLine', wireframe: 'wireframe' } as const)[st.id], `Visual style: ${st.label}`, 'View', needModel, { checked: displayStyle === st.id }),
+      ),
+      { id: 'view.edges', title: 'Show edges', group: 'View', checked: edges, enabled: hasModel, why: needModel, run: () => setEdges((v) => !v) },
+      {
+        id: 'view.hiddenLines',
+        title: 'Show hidden lines (this view)',
+        group: 'View',
+        checked: !!activeModelView?.hiddenLines,
+        enabled: !!activeModelView,
+        why: activeModelView ? undefined : 'open a model first',
+        run: () => activeModelView && setViews((vs) => vs.map((x) => (x.id === activeModelView.id ? { ...x, hiddenLines: !x.hiddenLines } : x))),
+      },
+      { id: 'view.canvasTheme', title: `Canvas theme: ${{ follow: 'Auto', paper: 'Light', ink: 'Dark' }[canvasTheme]} (change)`, group: 'View', keywords: 'background dark light', run: cycleCanvasTheme },
+      { id: 'view.interfaceTheme', title: `Interface theme: ${{ system: 'Auto', paper: 'Light', ink: 'Dark' }[preference]} (change)`, group: 'View', keywords: 'dark light paper ink mode', run: cycle },
+      { id: 'view.fullscreen', title: fullscreen ? 'Exit full screen' : 'Full screen', group: 'View', keys: 'F11', run: toggleFullscreen },
+      // Explode
+      ...EXPLODE_MODES.map((md) => ({
+        id: `explode.${md.id}`,
+        title: `Explode: ${md.label.toLowerCase()}`,
+        group: 'Explode' as const,
+        keywords: `${md.hint} exploded apart spread`,
+        checked: explode?.mode === md.id,
+        enabled: in3d,
+        why: need3d,
+        run: () => toggleExplode(md.id),
+      })),
+      { id: 'explode.collapse', title: 'Collapse exploded view', group: 'Explode', keywords: 'assemble reset', enabled: !!explode, why: explode ? undefined : 'nothing is exploded', run: () => setExplode(null) },
+      // Views
+      { id: 'views.open3d', title: 'Open {3D}', group: 'Views', keywords: '3d view', enabled: hasModel, why: needModel, run: () => openView('3d') },
+      ...views.filter((v) => v.id !== '3d').map((v) => ({ id: `views.open.${v.id}`, title: `Open ${KIND_LABEL[v.kind].toLowerCase()}: ${v.name}`, group: 'Views' as const, keywords: 'view plan elevation section', run: () => openView(v.id) })),
+      { id: 'views.duplicate', title: 'Duplicate this view', group: 'Views', enabled: !!activeModelView, why: activeModelView ? undefined : 'open a model first', run: () => activeModelView && duplicateModelView(activeModelView.id) },
+      { id: 'views.section', title: 'Create a section', group: 'Views', keywords: 'cut', enabled: hasModel && isTwoD(activeModelView ?? undefined), why: !hasModel ? 'open a model first' : isTwoD(activeModelView ?? undefined) ? undefined : 'draw it in a plan, elevation or section', run: () => startSection() },
+      { id: 'views.templates', title: 'View templates…', group: 'Views', keywords: 'template apply', enabled: hasModel, why: needModel, run: () => setVtOpen(true) },
+      // Windows
+      ...(
+        [
+          ['properties', 'Properties'],
+          ['browser', 'Project Browser'],
+          ['activity', 'Activity'],
+          ['console', 'Python console'],
+        ] as const
+      ).map(([id, title]) => ({ id: `window.${id}`, title: `Show ${title}`, group: 'Windows' as const, checked: openPanels.includes(id), keys: id === 'console' ? 'Ctrl + `' : undefined, run: () => dock.current?.toggle(id) })),
+      { id: 'window.boq', title: 'Bill of quantities (BOQ)', group: 'Windows', keywords: 'quantities rates excel export', checked: wins.boq, enabled: hasModel, why: needModel, run: () => toggleWin('boq') },
+      { id: 'window.reset', title: 'Reset window layout', group: 'Windows', keywords: 'panels dock', run: () => dock.current?.reset() },
+      // Manage
+      { id: 'manage.marks', title: 'Mark rules…', group: 'Manage', keywords: 'property mark', enabled: hasModel, why: needModel, run: () => setMarkDialog(true) },
+      { id: 'manage.grades', title: 'Grade rules…', group: 'Manage', keywords: 'concrete grade property', enabled: hasModel, why: needModel, run: () => setGradeDialog(true) },
+      // Help
+      { id: 'help.guide', title: 'Guide & FAQ', group: 'Help', keys: 'F1', keywords: 'help manual documentation', run: () => openGuide() },
+      { id: 'help.keys', title: 'Keyboard shortcuts', group: 'Help', keywords: 'keys hotkeys', run: () => openGuide('keys') },
+      { id: 'help.whatsNew', title: "What's new", group: 'Help', keywords: 'release changelog version', run: () => openGuide('news') },
+    ];
+    return list;
+  };
+
+  /** Exploding again in the same mode collapses it; another mode switches (from assembled). */
+  const toggleExplode = (mode: ExplodeMode) => {
+    if (!m.model) return;
+    if (isTwoD(activeModelView ?? undefined) || activeDoc) return setNotice('Exploded views are for 3D views.');
+    setExplode((cur) => (cur?.mode === mode ? null : { mode, amount: cur?.amount && cur.amount > 0 ? cur.amount : 0.6 }));
+  };
 
   const info = m.model?.info;
   const sel = m.selection;
@@ -761,9 +906,12 @@ export function App({ start }: { start?: AppStart } = {}) {
           brandHref={import.meta.env.BASE_URL}
           quickAccess={<QuickAccess history={history} onOpen={openFromDisk} onHome={() => viewport.current?.home()} canHome={!!m.model} />}
           saveState={info ? 'Opened from this device' : undefined}
-          search={<CommandSearch ref={search} onKeyDown={onSearchKey} placeholder="Find by mark, Element ID, GlobalId or name…   Ctrl + K" />}
+          search={<CommandPalette inputRef={search} getCommands={getCommands} findElement={findElement} />}
           actions={
             <>
+              <IconButton label="Guide & FAQ (F1)" onClick={() => (wins.guide ? toggleWin('guide', false) : openGuide())} aria-pressed={wins.guide}>
+                <Icon name="guide" size={18} />
+              </IconButton>
               <IconButton label={fullscreen ? 'Exit full screen' : 'Full screen'} onClick={toggleFullscreen}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   {fullscreen ? <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /> : <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />}
@@ -818,6 +966,19 @@ export function App({ start }: { start?: AppStart } = {}) {
           <RibbonGroup label="Section">
             <RibbonButton icon="section" label="Box" active={sectionBox} disabled={!m.model} onClick={() => runCommand('sectionBox')} shortcutHint="BX" />
           </RibbonGroup>
+          <RibbonGroup label="Explode">
+            {EXPLODE_MODES.map((md) => (
+              <RibbonButton
+                key={md.id}
+                icon={md.id === 'storeys' ? 'explodeStoreys' : md.id === 'radial' ? 'explodeRadial' : 'explodeCategories'}
+                label={md.label}
+                active={explode?.mode === md.id}
+                disabled={!m.model || !!activeDoc || isTwoD(activeModelView ?? undefined)}
+                onClick={() => toggleExplode(md.id)}
+                shortcutHint={`${md.hint.toLowerCase()} (3D views; click again to collapse)`}
+              />
+            ))}
+          </RibbonGroup>
           <RibbonGroup label="Graphics">
             <RibbonButton
               icon="view3d"
@@ -859,6 +1020,7 @@ export function App({ start }: { start?: AppStart } = {}) {
               <RibbonButton key={id} icon={icon} label={label} active={openPanels.includes(id)} onClick={() => dock.current?.toggle(id)} shortcutHint="show or hide" />
             ))}
             <RibbonButton icon="keyboard" label="Keys" active={wins.keys} onClick={() => toggleWin('keys')} shortcutHint="keyboard shortcuts" />
+            <RibbonButton icon="guide" label="Guide" active={wins.guide} onClick={() => (wins.guide ? toggleWin('guide', false) : openGuide())} shortcutHint="Guide & FAQ (F1)" />
             <RibbonButton icon="layout" label="Reset" onClick={() => dock.current?.reset()} shortcutHint="default layout: browser left, properties right" />
           </RibbonGroup>
             </>
@@ -944,6 +1106,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             twoD={isTwoD(activeModelView ?? undefined)}
             hiddenLines={!!activeModelView?.hiddenLines}
             annotations={marks}
+            explode={isTwoD(activeModelView ?? undefined) ? null : explode}
             onOpenView={(id) => views.some((v) => v.id === id) && openView(id)}
             onContextMenu={(x, y) => m.model && setCtxMenu({ x, y })}
             reveal={reveal}
@@ -1033,6 +1196,9 @@ export function App({ start }: { start?: AppStart } = {}) {
                     onShow={showQa}
                   />
                 )}
+          </FloatingWindow>
+          <FloatingWindow id="guide" title="Guide & FAQ" subtitle={`Shanku ${APP_VERSION}`} open={wins.guide} onClose={() => toggleWin('guide', false)} initial={{ w: 900, h: 620 }} minWidth={560} minHeight={320}>
+            <GuidePanel initial={guideSection} />
           </FloatingWindow>
           <FloatingWindow id="keys" title="Keyboard shortcuts" open={wins.keys} onClose={() => toggleWin('keys', false)} initial={{ w: 520, h: 560 }} minWidth={360}>
             {(
@@ -1197,6 +1363,24 @@ export function App({ start }: { start?: AppStart } = {}) {
           <Button size="sm" variant="ghost" onClick={() => runCommand('sectionBox')} disabled={!m.model || (!sectionBox && !sel.length)} title="Section box around the selection (BX)">
             Section box: {sectionBox ? 'On' : 'Off'}
           </Button>
+          {explode && !isTwoD(activeModelView ?? undefined) ? (
+            <span className="app-explode" role="group" aria-label="Exploded view">
+              <label htmlFor="explode-spread" title={`Exploded view: ${EXPLODE_MODES.find((md) => md.id === explode.mode)?.label.toLowerCase()}`}>Spread</label>
+              <input
+                id="explode-spread"
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={Math.round(explode.amount * 100)}
+                onChange={(e) => setExplode({ mode: explode.mode, amount: Number(e.target.value) / 100 })}
+              />
+              <output htmlFor="explode-spread">{Math.round(explode.amount * 100)} %</output>
+              <Button size="sm" variant="ghost" onClick={() => setExplode(null)} title="Put the model back together">
+                Collapse
+              </Button>
+            </span>
+          ) : null}
           <span className="app-hidemenu">
             <Button size="sm" variant="ghost" aria-expanded={hideMenu} disabled={!m.model} onClick={() => setHideMenu((o) => !o)} title="Temporary Hide/Isolate">
               <Icon name="isolate" size={16} /> Hide/Isolate

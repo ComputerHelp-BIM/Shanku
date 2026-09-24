@@ -1,4 +1,4 @@
-import { Color, DataTexture, GLSL3, RGBAFormat, ShaderMaterial, UnsignedByteType, Vector2 } from 'three';
+import { Color, DataTexture, FloatType, GLSL3, RGBAFormat, ShaderMaterial, UnsignedByteType, Vector2 } from 'three';
 
 /** Per-element state flags stored in the red channel of the state texture. */
 export const STATE_SELECTED = 1;
@@ -21,6 +21,30 @@ export function createOverrideTexture(elementCount: number): DataTexture {
 export const OVERRIDE_COLOR = 128;
 export const OVERRIDE_HALFTONE = 64;
 
+/** A 1-element offset texture for materials with no exploded view (all offsets zero). */
+export const EMPTY_OFFSET = new DataTexture(new Float32Array(4), 1, 1, RGBAFormat, FloatType);
+EMPTY_OFFSET.needsUpdate = true;
+
+/**
+ * Exploded-view offsets per element (xyz in metres, same texel layout as the state texture),
+ * scaled in the vertex shaders by uExplode (0 assembled, 1 fully exploded).
+ */
+export function createOffsetTexture(offsets: Float32Array, elementCount: number): DataTexture {
+  const height = Math.max(1, Math.ceil(elementCount / STATE_TEXTURE_WIDTH));
+  const data = new Float32Array(STATE_TEXTURE_WIDTH * height * 4);
+  for (let i = 0; i < elementCount; i++) {
+    data[i * 4] = offsets[i * 3];
+    data[i * 4 + 1] = offsets[i * 3 + 1];
+    data[i * 4 + 2] = offsets[i * 3 + 2];
+  }
+  const tex = new DataTexture(data, STATE_TEXTURE_WIDTH, height, RGBAFormat, FloatType);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/** Uniforms every model material carries for the exploded view. */
+const explodeUniforms = () => ({ uOffset: { value: EMPTY_OFFSET }, uExplode: { value: 0 } });
+
 export function createStateTexture(elementCount: number): DataTexture {
   const height = Math.max(1, Math.ceil(elementCount / STATE_TEXTURE_WIDTH));
   const data = new Uint8Array(STATE_TEXTURE_WIDTH * height * 4);
@@ -36,6 +60,10 @@ uniform sampler2D uState;
 uniform int uStateWidth;
 uniform int uReveal;
 uniform sampler2D uOverride;
+// Exploded view: this element's offset (world metres) times the amount.
+uniform sampler2D uOffset;
+uniform float uExplode;
+vec3 gOffset = vec3(0.0);
 flat out int vState;
 flat out int vId;
 // Visibility/Graphics override: rgb = colour, a = packed (bit 7 colour set, bit 6 halftone, bits 0-5 transparency 0-63).
@@ -45,6 +73,7 @@ int readState() {
   vId = id;
   ivec2 c = ivec2(id % uStateWidth, id / uStateWidth);
   vOverride = texelFetch(uOverride, c, 0);
+  if (uExplode > 0.0) gOffset = texelFetch(uOffset, c, 0).xyz * uExplode;
   return int(texelFetch(uState, c, 0).r * 255.0 + 0.5);
 }
 `;
@@ -60,7 +89,7 @@ export const DISPLAY_WIREFRAME = 3;
 
 // three.js clipping chunks, used by the section box.
 const CLIP_V_PARS = '#include <clipping_planes_pars_vertex>';
-const CLIP_V = 'vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);\n#include <clipping_planes_vertex>';
+const CLIP_V = 'vec4 mvPosition = modelViewMatrix * vec4(position + gOffset, 1.0);\n#include <clipping_planes_vertex>';
 const CLIP_F_PARS = '#include <clipping_planes_pars_fragment>';
 const CLIP_F = '#include <clipping_planes_fragment>';
 
@@ -72,6 +101,7 @@ export function createModelMaterial(state: DataTexture, overrideTex: DataTexture
     polygonOffsetFactor: 1,
     polygonOffsetUnits: 1,
     uniforms: {
+      ...explodeUniforms(),
       uState: { value: state },
       uStateWidth: { value: STATE_TEXTURE_WIDTH },
       uReveal: { value: 0 },
@@ -178,6 +208,7 @@ export function createEdgeMaterial(state: DataTexture, overrideTex: DataTexture 
     transparent: true,
     depthWrite: false,
     uniforms: {
+      ...explodeUniforms(),
       uState: { value: state },
       uStateWidth: { value: STATE_TEXTURE_WIDTH },
       uReveal: { value: 0 },
@@ -230,7 +261,7 @@ export function createPickMaterial(state: DataTexture, overrideTex: DataTexture 
   return new ShaderMaterial({
     glslVersion: GLSL3,
     clipping: true,
-    uniforms: { uState: { value: state }, uStateWidth: { value: STATE_TEXTURE_WIDTH }, uReveal: { value: 0 }, uOverride: { value: overrideTex } },
+    uniforms: { ...explodeUniforms(), uState: { value: state }, uStateWidth: { value: STATE_TEXTURE_WIDTH }, uReveal: { value: 0 }, uOverride: { value: overrideTex } },
     vertexShader: /* glsl */ `
 ${STATE_VERTEX}
 ${CLIP_V_PARS}

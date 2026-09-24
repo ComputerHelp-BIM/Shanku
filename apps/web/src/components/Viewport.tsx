@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ViewCube, type Orientation } from './ViewCube';
 import { Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName } from '@shanku/engine';
-import type { Annotation, CameraState, SectionBoxState } from '@shanku/engine';
+import type { Annotation, CameraState, ExplodeMode, SectionBoxState } from '@shanku/engine';
 
 export interface ViewportHandle {
   fit: (indices?: number[]) => void;
@@ -61,6 +61,8 @@ export interface ViewportProps {
   edges?: boolean;
   /** Reveal Hidden Elements */
   reveal?: boolean;
+  /** Exploded view: mode and amount 0-1 (0 or null is assembled). Changes animate. */
+  explode?: { mode: ExplodeMode; amount: number } | null;
   /** Canvas (3D background) theme, independent of the interface theme. */
   canvasTheme?: 'follow' | 'paper' | 'ink';
 }
@@ -130,6 +132,19 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   useEffect(() => viewer.current?.setReveal(!!props.reveal), [props.reveal, model]);
   useEffect(() => viewer.current?.setHiddenLines(!!props.hiddenLines), [props.hiddenLines, model]);
   useEffect(() => viewer.current?.setAnnotations(props.annotations ?? []), [props.annotations, model]);
+  // Exploded view: animate to the requested amount; null collapses the current mode.
+  const explodeMode = props.explode?.mode ?? null;
+  const explodeAmount = props.explode?.amount ?? 0;
+  // Turning explode on, off or to another mode re-frames the model when it settles; the spread slider does not.
+  const lastExplodeMode = useRef<string | null>(null);
+  useEffect(() => {
+    const v = viewer.current;
+    if (!v || !model) return;
+    const mode = explodeMode ?? v.explode.mode;
+    const refit = lastExplodeMode.current !== explodeMode;
+    lastExplodeMode.current = explodeMode;
+    if (mode) v.setExplode(mode, explodeMode ? explodeAmount : 0, true, refit);
+  }, [explodeMode, explodeAmount, model]);
   useEffect(() => viewer.current?.setOverrides(props.overrides ?? []), [props.overrides, model]);
   useEffect(() => viewer.current?.refreshTheme(), [props.canvasTheme]);
 

@@ -2,6 +2,17 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.23.0 — 2026-09-24
+
+### Added
+- Command search: Ctrl + K finds every command (about 70, plus one per category, level and view) as well as elements, from one command registry.
+- Guide & FAQ (F1): searchable guide, common questions, what's new and every shortcut.
+- Exploded views by storey, radially or by category (engine 0.21.0), with a spread slider.
+- Brand 1.5.0: explode and guide icons (ui 0.11.0).
+
+### Fixed
+- Repeated "Requires" lines in the web README.
+
 ## 0.22.0 — 2026-09-23
 
 ### Added

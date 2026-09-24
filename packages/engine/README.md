@@ -1,4 +1,4 @@
-# @shanku/engine 0.20.0
+# @shanku/engine 0.21.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.21.0 — 2026-09-24
+- **Exploded views**: `Viewer.setExplode(mode, amount, animate?)` with modes `storeys` (each storey lifted by one typical storey height per storey below), `radial` (out from the plan centre by each element's own distance) and `categories` (side by side along X in `CATEGORY_ORDER`). Offsets live in a float texture read by the shared vertex prelude, so shading, edges, hidden lines, glass and picking all move together with no geometry rebuild; 0.6 s ease, instant under reduced motion. Fit, box selection and temporary dimensions use the exploded positions. `explodeOffsets` and `explodedBounds` are exported and tested.
 
 ### 0.20.0 — 2026-09-23
 - View symbols (`annotations.ts`, `Viewer.setAnnotations`): section marks (dash-dot line, numbered head with a look arrow, tail), elevation marks (circle and wedge), level lines with target heads, name and elevation. A live SVG layer that follows the camera; heads slide along their line to stay in view; hover highlights; double-click raises `onOpenView(id)`.

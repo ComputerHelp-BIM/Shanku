@@ -1,10 +1,6 @@
-# @shanku/web 0.22.0
+# @shanku/web 0.23.0
 
-The Shanku app. Requires `@shanku/engine >= 0.20.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.0.0`.
-
-The Shanku app. Requires `@shanku/engine >= 0.20.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.2.0`.
-
-The Shanku app. Requires `@shanku/engine >= 0.20.0`, `@shanku/ui >= 0.9.1`, `@shanku/tokens >= 2.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.21.0`, `@shanku/ui >= 0.11.0`, `@shanku/tokens >= 2.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -25,6 +21,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.23.0 — 2026-09-24
+- **Command search** (Ctrl + K): the title-bar search is now a command palette over one command registry (`lib/commands.ts`). Type what you want to do ("isolate", "hidden line", "explode storeys", a Revit key such as "ZF") or a mark, Element ID, GlobalId or name. About 70 commands plus one per category, level and view; each shows its group, shortcut and state (✓ for toggles), and greyed commands say what they need. `>` searches commands only; recent commands show first. WAI-ARIA combobox: ↑ ↓, Enter, Esc.
+- **Guide & FAQ** (F1, the book icon in the title bar, or View → Windows → Guide): searchable guide in the Structura style with Guide, Answers and About sections (what Shanku opens, navigation, selection, views, graphics, sections, exploded views, commands, quantities, DXF → 3D, the console, undo; common questions; what's new; every shortcut). Content is data in `lib/guide.ts`.
+- **Exploded views** (View → Explode: Storeys, Radial, Categories; click again to collapse): animated, display only, 3D views only, reset for each new file. The view bar shows a Spread slider (0–100 %) and Collapse while exploded. Selecting, box selection, isolate and the section box keep working. Requires @shanku/engine 0.21.0.
+- Tests: command ranking, recent commands, guide search and structure.
 
 ### 0.22.0 — 2026-09-23
 - **View symbols, as in Revit.** Structural plans show every section (dash-dot line, numbered head with its look arrow, tail) and the four elevation marks around the building; elevations and sections show every level as a level line with its head (name and elevation in mm, e.g. +3,200) and the sections that cut across them. **Double-click a head** to open its view: a section head opens the section, an elevation mark the elevation, a level head that level's plan. Heads stay in view as you pan and zoom. 3D views show none.

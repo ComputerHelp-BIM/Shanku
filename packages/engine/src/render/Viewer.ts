@@ -43,7 +43,9 @@ import {
   createModelMaterial,
   createPickMaterial,
   createStateTexture,
+  createOffsetTexture,
 } from './materials';
+import { explodeOffsets, explodedBounds, type ExplodeMode } from './explode';
 import { decodePickId } from './pickId';
 import { SectionGizmo, aabbOf, axesOf, cloneState, metresPerPixel, moveFace, planesOf, snapDelta, type GripData, type SectionBoxState } from './sectionBox';
 
@@ -166,6 +168,12 @@ export class Viewer {
   private frameRequested = false;
   private disposers: Array<() => void> = [];
   private modelSphere = new Sphere(new Vector3(), 10);
+  /** Exploded view: mode, current amount (0-1) and the per-element offsets at full explosion. */
+  private explodeMode: ExplodeMode | null = null;
+  private explodeAmount = 0;
+  private explodeData: Float32Array | null = null;
+  private explodeTex: DataTexture | null = null;
+  private explodeToken = 0;
   private rectEl: HTMLDivElement;
   lastFrameMs = 0;
 
@@ -318,6 +326,12 @@ export class Viewer {
     this.state?.dispose();
     this.overrideTex?.dispose();
     this.overrideTex = null;
+    this.explodeTex?.dispose();
+    this.explodeTex = null;
+    this.explodeData = null;
+    this.explodeMode = null;
+    this.explodeAmount = 0;
+    this.explodeToken++;
     this.meshMat = this.edgeMat = this.pickMat = null;
     this.state = this.stateData = null;
     this.selection.clear();
@@ -399,7 +413,7 @@ export class Viewer {
     const out: number[] = [];
     for (const el of this.model.elements) {
       if (this.hidden.has(el.index)) continue;
-      const b = el.bounds;
+      const b = this.boundsOf(el.index);
       if (this.section && !this.section.intersectsBox(new Box3(new Vector3(b[0], b[1], b[2]), new Vector3(b[3], b[4], b[5])))) continue;
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       for (let c = 0; c < 8; c++) {
@@ -698,6 +712,59 @@ export class Viewer {
     return this.camera.quaternion.clone();
   }
 
+  /** An element's bounds where it is drawn (moved by the exploded view, if any). */
+  private boundsOf(index: number): ElementRecord['bounds'] {
+    const b = this.model!.elements[index].bounds;
+    return explodedBounds(b, this.explodeData, index, this.explodeAmount);
+  }
+
+  /** Current exploded view: its mode (null when never exploded) and amount 0-1. */
+  get explode(): { mode: ExplodeMode | null; amount: number } {
+    return { mode: this.explodeMode, amount: this.explodeAmount };
+  }
+
+  /**
+   * Exploded view: moves elements apart by storey, outwards from the plan centre, or by category.
+   * `amount` 0 is assembled and 1 fully exploded. Animated (0.6 s) unless `animate` is false or the
+   * user prefers reduced motion. Works on the GPU: nothing is rebuilt, picking follows.
+   * `refit` frames the whole (exploded or collapsed) model when the movement ends.
+   */
+  setExplode(mode: ExplodeMode, amount: number, animate = true, refit = false): void {
+    if (!this.model) return;
+    const target = Math.min(1, Math.max(0, amount));
+    if (mode !== this.explodeMode || !this.explodeData) {
+      this.explodeData = explodeOffsets(this.model.elements, mode);
+      this.explodeTex?.dispose();
+      this.explodeTex = createOffsetTexture(this.explodeData, this.model.elements.length);
+      for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat]) if (mat) mat.uniforms.uOffset.value = this.explodeTex;
+      // Switching mode starts from the assembled model, so the change reads as one movement.
+      if (mode !== this.explodeMode) this.explodeAmount = 0;
+      this.explodeMode = mode;
+    }
+    const from = this.explodeAmount;
+    const token = ++this.explodeToken;
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const ms = 600;
+    const t0 = performance.now();
+    const step = () => {
+      if (token !== this.explodeToken) return;
+      const k = !animate || reduce ? 1 : Math.min(1, (performance.now() - t0) / ms);
+      const e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2; // ease in-out cubic, as camera moves
+      this.applyExplodeAmount(from + (target - from) * e);
+      if (k < 1) requestAnimationFrame(step);
+      else if (refit) this.animated(() => this.fit(undefined, false));
+    };
+    if (!animate || reduce) step();
+    else requestAnimationFrame(step);
+  }
+
+  private applyExplodeAmount(amount: number): void {
+    this.explodeAmount = amount;
+    for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat]) if (mat) mat.uniforms.uExplode.value = amount;
+    this.modelBox()?.getBoundingSphere(this.modelSphere);
+    this.requestRender();
+  }
+
   /**
    * Visibility/Graphics overrides per element (replaces all previous ones): surface colour (0-255 RGB),
    * transparency 0-100 % and halftone. Elements not listed have none.
@@ -804,6 +871,7 @@ export class Viewer {
 
   private modelBox(): Box3 | null {
     if (!this.model) return null;
+    if (this.explodeAmount > 0) return this.boxOf(this.model.elements.map((e) => e.index));
     const b = this.model.info.bounds;
     return new Box3(new Vector3(b[0], b[1], b[2]), new Vector3(b[3], b[4], b[5]));
   }
@@ -813,8 +881,8 @@ export class Viewer {
     const box = new Box3();
     let any = false;
     for (const i of indices) {
-      const b = this.model.elements[i]?.bounds;
-      if (!b) continue;
+      if (!this.model.elements[i]) continue;
+      const b = this.boundsOf(i);
       box.expandByPoint(new Vector3(b[0], b[1], b[2]));
       box.expandByPoint(new Vector3(b[3], b[4], b[5]));
       any = true;
@@ -875,7 +943,7 @@ export class Viewer {
     if (this.selection.size !== 1 || !this.model) return;
     const e = this.model.elements[[...this.selection][0]];
     if (!e || this.hidden.has(e.index)) return;
-    const [x0, y0, z0, x1, y1, z1] = e.bounds;
+    const [x0, y0, z0, x1, y1, z1] = this.boundsOf(e.index);
     const r = this.container.getBoundingClientRect();
     const view = this.camera.position.clone().sub(this.target);
     const zs = view.z > 0 ? z1 : z0; // the side facing the camera

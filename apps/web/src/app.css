@@ -366,3 +366,58 @@
 .vt-name { margin: 0; font-size: 16px; }
 .vt-value { color: var(--text-secondary); max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
 .vg-table tr.is-off td:not(.c) { color: var(--text-faint); text-decoration: line-through; }
+
+/* ---- Command palette (Ctrl + K): the title-bar search lists commands and elements ---- */
+.app-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.app-palette { position: relative; display: flex; justify-content: center; width: min(380px, 100%); }
+.app-palette .sk-command-search { width: 100%; }
+.app-palette__list { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: var(--z-menu); width: min(520px, calc(100vw - 32px)); max-height: min(440px, 70vh); overflow: auto; display: flex; flex-direction: column; padding: 4px; background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-menu); }
+.app-palette__heading { padding: 6px 10px 4px; font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+.app-palette__row { display: flex; align-items: center; gap: 12px; min-height: 30px; padding: 0 10px; border-radius: var(--radius-sm); color: var(--text); cursor: pointer; }
+.app-palette__row.is-active { background: var(--row-selected); }
+.app-palette__row.is-disabled { color: var(--text-faint); cursor: default; }
+.app-palette__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-palette__check { display: inline-block; width: 16px; color: var(--accent-text); }
+.app-palette__why { color: var(--text-faint); }
+.app-palette__group { font-size: 12px; color: var(--text-secondary); }
+.app-palette__row kbd, .app-palette__foot kbd { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); }
+.app-palette__empty { padding: 10px; color: var(--text-secondary); }
+.app-palette__foot { margin-top: 4px; padding: 6px 10px 2px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-faint); }
+
+/* ---- Guide & FAQ (F1) ---- */
+.app-guide { display: grid; grid-template-columns: 220px minmax(0, 1fr); height: 100%; min-height: 0; }
+.app-guide__nav { display: flex; flex-direction: column; gap: 2px; padding: var(--space-md) var(--space-sm); overflow: auto; background: var(--ribbon); border-right: 1px solid var(--border); }
+.app-guide__search { height: 28px; margin: 0 0 var(--space-sm); padding: 0 var(--space-sm); border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; }
+.app-guide__search::placeholder { color: var(--text-faint); }
+.app-guide__group { padding: var(--space-sm) var(--space-sm) var(--space-xs); font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+.app-guide__link { display: block; width: 100%; padding: 5px var(--space-sm); border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font: inherit; text-align: left; cursor: pointer; }
+.app-guide__link:hover { background: var(--chip); color: var(--text); }
+.app-guide__link.is-active { background: var(--row-selected); color: var(--text); font-weight: 600; }
+.app-guide__link.is-dim { color: var(--text-faint); }
+.app-guide__body { overflow: auto; padding: var(--space-lg) var(--space-xl); line-height: 20px; color: var(--text); }
+.app-guide__body article + article { margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--border); }
+.app-guide__body h2 { margin: 0 0 var(--space-md); font-size: 16px; line-height: 24px; font-weight: 600; }
+.app-guide__body p, .app-guide__body ul { max-width: 68ch; margin: 0 0 var(--space-md); }
+.app-guide__body ul { padding-left: 18px; }
+.app-guide__body li + li { margin-top: var(--space-xs); }
+.app-guide__body code { font-family: var(--font-mono); font-size: 12px; padding: 0 4px; border-radius: var(--radius-sm); background: var(--chip); }
+.app-guide__note { color: var(--text-secondary); }
+.app-guide__table { border-collapse: collapse; margin: 0 0 var(--space-md); max-width: 68ch; width: 100%; }
+.app-guide__table th, .app-guide__table td { padding: 6px var(--space-sm); border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.app-guide__table th { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.app-guide__keys { white-space: nowrap; width: 1%; }
+.app-guide__faq details { max-width: 68ch; border-bottom: 1px solid var(--border); }
+.app-guide__faq summary { padding: var(--space-sm) 0; font-weight: 600; cursor: pointer; }
+.app-guide__faq details p { margin: 0 0 var(--space-md); color: var(--text-secondary); }
+.app-guide__release h3 { margin: 0 0 var(--space-xs); font-size: 13px; font-weight: 600; }
+.app-guide__release h3 span { margin-left: var(--space-xs); font-weight: 400; color: var(--text-faint); }
+.app-guide__release + .app-guide__release { margin-top: var(--space-md); }
+
+/* ---- Exploded view controls in the view bar ---- */
+.app-explode { display: inline-flex; align-items: center; gap: var(--space-sm); padding: 0 var(--space-sm); border-left: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); }
+.app-explode input[type='range'] { width: 96px; accent-color: var(--accent); }
+.app-explode label, .app-explode output { white-space: nowrap; }
+.app-explode output { min-width: 3ch; font-variant-numeric: tabular-nums; color: var(--text); }
+/* The view bar keeps every control at full size and scrolls sideways only when the view is too narrow. */
+.app-views .sk-shell__viewbar { overflow-x: auto; scrollbar-width: thin; }
+.app-views .sk-shell__viewbar > * { flex-shrink: 0; }

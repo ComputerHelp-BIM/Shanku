@@ -1,6 +1,6 @@
 {
   "name": "@shanku/ui",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Shanku React UI components built on @shanku/tokens.",
   "license": "UNLICENSED",
   "type": "module",
@@ -25,7 +25,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@shanku/brand": "1.4.0",
+    "@shanku/brand": "1.5.0",
     "@shanku/tokens": "2.0.0"
   },
   "peerDependencies": {

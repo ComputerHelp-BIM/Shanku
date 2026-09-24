@@ -14,10 +14,11 @@ export { assessCompatibility, readViewDefinition, RECOMMENDED_EXPORT, type Compa
 export { boxState, type SectionBoxState } from './render/sectionBox';
 export type { CameraState } from './render/Viewer';
 export type { Annotation } from './render/annotations';
+export { EXPLODE_MODES, explodeOffsets, explodedBounds, type ExplodeMode } from './render/explode';
 export type { PipelineSummary, PipelineLevel, PipelineQa } from './pipeline/types';
 export type { PipelineOptions } from './dxf/protocol';
 export { PYODIDE_VERSION, PYODIDE_INDEX_URL } from './pyodide';
 export { History, Transaction, TransactionError, type Change, type CommittedTransaction } from './doc/transactions';
 export { tempDims, type Dim2 } from './render/tempDims';
 export { CURSOR, cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './render/cursors';
-export const ENGINE_VERSION = '0.20.0';
+export const ENGINE_VERSION = '0.21.0';
