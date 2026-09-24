@@ -56,6 +56,8 @@ The consumer provides the fonts (IBM Plex Sans 400/600, IBM Plex Mono 400, Sora 
 
 **Preferred IFC export: IFC4 Reference View [Structural].** See `docs/ifc-compatibility.md` for the Revit setup and how other formats rate.
 
+**Design documents:** proposed features (revision timeline, actionable QA, Python macros) and lessons from the Structura viewer are in `docs/design/`.
+
 The 3D view follows Revit: see `apps/web/README.md` for the full list, or the Keyboard tab in the app.
 
 Shortcuts match the physical key (`KeyboardEvent.code`), so they work on every keyboard layout.
