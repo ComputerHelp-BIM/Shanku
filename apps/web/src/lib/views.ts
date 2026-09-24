@@ -224,3 +224,43 @@ export function sectionFromVerticalView(
   const mx = (p1[0] + p2[0]) / 2, mz = (p1[2] + p2[2]) / 2;
   return { a: [mx - (d[0] * span) / 2, mz - (d[1] * span) / 2], b: [mx + (d[0] * span) / 2, mz + (d[1] * span) / 2] };
 }
+
+export type SectionGrip = 'a' | 'b' | 'far' | 'move' | 'flip';
+
+/**
+ * Revit's section grips, applied to a section's line (plan x, z) and far clip. Ends slide along the
+ * line (the angle never drifts), with at least 0.2 m of line left; the far clip follows the pointer's
+ * distance from the line (at least 0.1 m); move translates both ends; flip swaps them, which reverses
+ * the viewing direction.
+ */
+export function editSection(
+  s: { a: [number, number]; b: [number, number]; depth: number },
+  grip: SectionGrip,
+  start: readonly [number, number, number],
+  point: readonly [number, number, number],
+): { a: [number, number]; b: [number, number]; depth: number } {
+  const dx = s.b[0] - s.a[0], dz = s.b[1] - s.a[1];
+  const len = Math.hypot(dx, dz) || 1;
+  const d = [dx / len, dz / len];
+  const n = [d[1], -d[0]]; // viewing direction (our convention)
+  const p = [point[0], point[2]];
+  const MIN = 0.2;
+  switch (grip) {
+    case 'a': {
+      const t = Math.min((p[0] - s.b[0]) * d[0] + (p[1] - s.b[1]) * d[1], -MIN);
+      return { ...s, a: [s.b[0] + d[0] * t, s.b[1] + d[1] * t] };
+    }
+    case 'b': {
+      const t = Math.max((p[0] - s.a[0]) * d[0] + (p[1] - s.a[1]) * d[1], MIN);
+      return { ...s, b: [s.a[0] + d[0] * t, s.a[1] + d[1] * t] };
+    }
+    case 'far':
+      return { ...s, depth: Math.max(0.1, (p[0] - s.a[0]) * n[0] + (p[1] - s.a[1]) * n[1]) };
+    case 'move': {
+      const mx = point[0] - start[0], mz = point[2] - start[2];
+      return { ...s, a: [s.a[0] + mx, s.a[1] + mz], b: [s.b[0] + mx, s.b[1] + mz] };
+    }
+    case 'flip':
+      return { ...s, a: s.b, b: s.a };
+  }
+}

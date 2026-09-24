@@ -30,7 +30,7 @@ export function marksFor(active: ModelView | null, views: readonly ModelView[], 
     const y = active.level !== undefined ? heights.get(active.level) ?? 0 : 0;
     for (const v of views) {
       if (v.kind === 'section' && v.section) {
-        out.push({ kind: 'section', id: v.id, name: v.name, a: [v.section.a[0], y, v.section.a[1]], b: [v.section.b[0], y, v.section.b[1]], look: sectionLook(v.section) });
+        out.push({ kind: 'section', id: v.id, name: v.name, a: [v.section.a[0], y, v.section.a[1]], b: [v.section.b[0], y, v.section.b[1]], look: sectionLook(v.section), depth: v.section.depth });
       } else if (v.kind === 'elevation' && v.direction) {
         const d = v.direction; // model → camera, horizontal
         const reach = Math.abs(d[0]) > Math.abs(d[2]) ? hx : hz;

@@ -38,6 +38,7 @@ import { qaFocus, usePipeline } from './lib/usePipeline';
 import { useHistory } from './lib/useHistory';
 import { loadDrawings, loadGraphics, loadModel, loadViews, saveViews } from './lib/session';
 import { marksFor } from './lib/viewMarks';
+import { editSection } from './lib/views';
 import { DEFAULT_CUT, DEFAULT_DEPTH_OFFSET, KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, nextSectionName, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection, type ModelView } from './lib/views';
 import { enterFullscreen } from './lib/fullscreen';
 import { QuickAccess } from './components/QuickAccess';
@@ -59,7 +60,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.25.0';
+const APP_VERSION = '0.26.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -138,6 +139,8 @@ export function App({ start }: { start?: AppStart } = {}) {
   const sectionA = useRef<[number, number] | null>(null);
   // Selected view symbols (levels, sections, elevation marks), Revit-style alongside element selection.
   const [annSel, setAnnSel] = useState<string[]>([]);
+  // Section grips: views and the section as they were when a drag started (one undo step per drag).
+  const gripStart = useRef<{ views: ModelView[]; section: NonNullable<ModelView['section']> } | null>(null);
   const applyMode = (cur: string[], ids: string[], mode: 'replace' | 'add' | 'remove' | string) =>
     mode === 'add' ? [...new Set([...cur, ...ids])] : mode === 'remove' ? cur.filter((x) => !ids.includes(x)) : ids;
   // View Templates (kept on this device, shared by export / import)
@@ -1210,6 +1213,28 @@ export function App({ start }: { start?: AppStart } = {}) {
               if (mode === 'replace') m.setSelection([]);
             }}
             annotationSelection={annSel}
+            onSymbolGrip={(e) => {
+              const v = viewsRef.current.find((x) => x.id === e.id);
+              if (!v?.section) return;
+              const label = { a: 'Resize section', b: 'Resize section', far: 'Section far clip', move: 'Move section', flip: 'Flip section' }[e.grip];
+              const withSection = (vs: ModelView[], sec: NonNullable<ModelView['section']>) => vs.map((x) => (x.id === e.id ? { ...x, section: sec } : x));
+              if (e.phase === 'click') {
+                const before = viewsRef.current;
+                history.run(`${label}: ${v.name}`, (tx) => tx.change('views', before, withSection(before, editSection(v.section!, 'flip', e.start, e.point)), setViews));
+                return;
+              }
+              if (e.phase === 'start') {
+                gripStart.current = { views: viewsRef.current, section: v.section };
+                return;
+              }
+              const base = gripStart.current;
+              if (!base) return;
+              const next = editSection(base.section, e.grip, e.start, e.point);
+              if (e.phase === 'move') return setViews((vs) => withSection(vs, next));
+              gripStart.current = null;
+              if (JSON.stringify(next) === JSON.stringify(base.section)) return setViews(base.views); // a click, not a drag
+              history.run(`${label}: ${v.name}`, (tx) => tx.change('views', base.views, withSection(base.views, next), setViews));
+            }}
             toolActive={sectionTool}
             onBoxSelect={(ids, mode, anns) => {
               setAnnSel((cur) => applyMode(mode === 'replace' ? [] : cur, anns ?? [], mode === 'replace' ? 'add' : mode));

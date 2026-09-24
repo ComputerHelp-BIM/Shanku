@@ -8,6 +8,13 @@ import {
   Vector2,
   BufferGeometry,
   GreaterDepth,
+  MeshBasicMaterial,
+  NotEqualStencilFunc,
+  ReplaceStencilOp,
+  AlwaysStencilFunc,
+  InvertStencilOp,
+  PlaneGeometry,
+  SRGBColorSpace,
   LineSegments,
   Matrix4,
   Mesh,
@@ -69,6 +76,11 @@ export interface ViewerEvents {
   onSectionBoxChange?: (active: boolean) => void;
   /** A view symbol was clicked (select it; Ctrl adds, Shift removes). */
   onAnnotationClick?: (id: string, mode: SelectMode) => void;
+  /**
+   * A view symbol's grip is used (sections in plans): drag phases report the pointer on the symbol's
+   * plane; 'flip' is a click.
+   */
+  onSymbolGrip?: (e: { id: string; grip: 'a' | 'b' | 'far' | 'move' | 'flip'; phase: 'start' | 'move' | 'end' | 'click'; point: [number, number, number]; start: [number, number, number] }) => void;
   /** A view symbol was double-clicked (section head, elevation mark, level head). */
   onOpenView?: (id: string) => void;
   /** The user started or stopped navigating (orbit, pan, zoom, transitions): the ViewCube wakes up. */
@@ -137,6 +149,29 @@ export class Viewer {
   private style: DisplayStyle = 'shaded';
   private section: Box3 | null = null;
   private clipPlanes: Plane[] = [];
+  /**
+   * Solid cut faces (Revit-style caps) by stencil parity: for each cut plane facing the camera, every
+   * surface on the kept side inverts the stencil; odd means the point on the plane is inside a solid,
+   * and a cap quad is drawn there. Works whatever the mesh winding; the model itself stays hollow.
+   */
+  private capStencilScene = new Scene();
+  private capScene = new Scene();
+  private capStencilMat: ShaderMaterial | null = null;
+  private capClip = new Plane();
+  private capOthers: Plane[] = [0, 1, 2, 3, 4].map(() => new Plane());
+  private capMat = new MeshBasicMaterial({
+    side: DoubleSide,
+    stencilWrite: true,
+    stencilRef: 0,
+    stencilFunc: NotEqualStencilFunc,
+    stencilFail: ReplaceStencilOp,
+    stencilZFail: ReplaceStencilOp,
+    stencilZPass: ReplaceStencilOp,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  });
+  private capQuad = new Mesh(new PlaneGeometry(1, 1), this.capMat);
   private sbox: SectionBoxState | null = null;
   private gizmo = new SectionGizmo();
   private gizmoScene = new Scene();
@@ -187,10 +222,14 @@ export class Viewer {
   lastFrameMs = 0;
 
   constructor(private container: HTMLElement, private events: ViewerEvents = {}) {
-    this.renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    // stencil: true — solid section caps need a stencil buffer (three.js no longer allocates one by default).
+    this.renderer = new WebGLRenderer({ antialias: true, alpha: true, stencil: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.setClearColor(0x000000, 0); // the container's --viewport background shows through
     this.renderer.localClippingEnabled = true;
+    this.capMat.clippingPlanes = this.capOthers;
+    this.capQuad.frustumCulled = false;
+    this.capScene.add(this.capQuad);
     this.canvas = this.renderer.domElement;
     Object.assign(this.canvas.style, { display: 'block', width: '100%', height: '100%', touchAction: 'none' });
     this.canvas.tabIndex = 0;
@@ -233,7 +272,48 @@ export class Viewer {
       this.annHot = null;
       this.requestRender();
     });
+    // Grips: drag on the symbol's horizontal plane; the flip grip is a click.
+    this.annEl.addEventListener('pointerdown', (e) => {
+      const g = (e.target as Element | null)?.closest?.('[data-grip]');
+      if (!g || e.button !== 0) return;
+      const id = g.getAttribute('data-view')!, grip = g.getAttribute('data-grip') as 'a' | 'b' | 'far' | 'move' | 'flip';
+      if (!this.annSelected.has(id)) return; // grips act only on the selected symbol
+      const ann = this.annotations.find((x) => x.id === id);
+      if (!ann || ann.kind !== 'section') return;
+      e.stopPropagation();
+      e.preventDefault();
+      const plane = new Plane(new Vector3(0, 1, 0), -ann.a[1]);
+      const at = (cx: number, cy: number): [number, number, number] | null => {
+        const r = this.canvas.getBoundingClientRect();
+        this.raycaster.setFromCamera(new Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), this.camera);
+        const p = this.raycaster.ray.intersectPlane(plane, new Vector3());
+        return p ? [p.x, p.y, p.z] : null;
+      };
+      const start = at(e.clientX, e.clientY);
+      if (!start) return;
+      if (grip === 'flip') {
+        this.events.onSymbolGrip?.({ id, grip, phase: 'click', point: start, start });
+        return;
+      }
+      this.events.onSymbolGrip?.({ id, grip, phase: 'start', point: start, start });
+      let moved = false;
+      const move = (ev: PointerEvent) => {
+        const p = at(ev.clientX, ev.clientY);
+        if (!p) return;
+        moved = true;
+        this.events.onSymbolGrip?.({ id, grip, phase: 'move', point: p, start });
+      };
+      const up = (ev: PointerEvent) => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        const p = at(ev.clientX, ev.clientY) ?? start;
+        this.events.onSymbolGrip?.({ id, grip, phase: 'end', point: moved ? p : start, start });
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    });
     this.annEl.addEventListener('click', (e) => {
+      if ((e.target as Element | null)?.closest?.('[data-grip]:not([data-grip="move"])')) return; // grips are not selection clicks
       const id = headOf(e.target);
       if (id) this.events.onAnnotationClick?.(id, e.ctrlKey || e.metaKey ? 'add' : e.shiftKey ? 'remove' : 'replace');
     });
@@ -306,6 +386,24 @@ export class Viewer {
     this.hiddenEdges.frustumCulled = false;
     this.hiddenEdges.renderOrder = 1;
     this.hiddenEdges.visible = this.hiddenLinesOn;
+    // Cap stencil pass: the pick shader (follows hidden elements and exploded offsets), no colour.
+    this.capStencilMat = createPickMaterial(this.state, this.overrideTex);
+    Object.assign(this.capStencilMat, {
+      colorWrite: false,
+      depthWrite: false,
+      depthTest: false,
+      side: DoubleSide,
+      stencilWrite: true,
+      stencilFunc: AlwaysStencilFunc,
+      stencilFail: InvertStencilOp,
+      stencilZFail: InvertStencilOp,
+      stencilZPass: InvertStencilOp,
+    });
+    this.capStencilMat.clippingPlanes = [this.capClip];
+    const capMesh = new Mesh(geo, this.capStencilMat);
+    capMesh.frustumCulled = false;
+    this.capStencilScene.clear();
+    this.capStencilScene.add(capMesh);
 
     const glassMesh = new Mesh(geo, this.glassMat);
     glassMesh.frustumCulled = false;
@@ -333,6 +431,9 @@ export class Viewer {
     this.glassMat = null;
     this.hiddenEdgeMat?.dispose();
     this.hiddenEdgeMat = null;
+    this.capStencilMat?.dispose();
+    this.capStencilMat = null;
+    this.capStencilScene.clear();
     this.hiddenEdges = null;
     this.edgeMat?.dispose();
     this.pickMat?.dispose();
@@ -503,6 +604,36 @@ export class Viewer {
 
   get hasSectionBox(): boolean {
     return this.section !== null;
+  }
+
+  /** Draws solid caps on the cut planes that face the camera (see capStencilScene). */
+  private renderCaps(): void {
+    const st = this.sbox!;
+    const sm = this.capStencilMat!;
+    // keep the stencil pass in step with the model pass (exploded views, reveal)
+    if (this.pickMat) {
+      for (const k of ['uExplode', 'uOffset', 'uReveal']) if (sm.uniforms[k] && this.pickMat.uniforms[k]) sm.uniforms[k].value = this.pickMat.uniforms[k].value;
+    }
+    const forward = new Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    const size = Math.max(10, this.modelSphere.radius * 4, st.half.length() * 4);
+    const auto = this.renderer.autoClear;
+    this.renderer.autoClear = false;
+    const n0 = new Vector3(0, 0, 1);
+    this.clipPlanes.forEach((plane, i) => {
+      // Visible only when looking from the removed side into the kept one.
+      if (plane.normal.dot(forward) <= 1e-3) return;
+      this.capClip.copy(plane);
+      let k = 0;
+      this.clipPlanes.forEach((q, j) => j !== i && this.capOthers[k++].copy(q));
+      this.renderer.clearStencil();
+      this.renderer.render(this.capStencilScene, this.camera);
+      plane.projectPoint(st.center, this.capQuad.position);
+      this.capQuad.quaternion.setFromUnitVectors(n0, plane.normal);
+      this.capQuad.scale.set(size, size, 1);
+      this.capQuad.updateMatrixWorld();
+      this.renderer.render(this.capScene, this.camera);
+    });
+    this.renderer.autoClear = auto;
   }
 
   // ----------------------------------------------------------------- camera
@@ -1488,9 +1619,13 @@ export class Viewer {
     setMesh( 'uSelShade', t['selected-shade']);
     setMesh( 'uHover', t['hover-outline']);
     setMesh( 'uPaper', t.viewport);
-    // Cut faces: the shade colour taken a step darker, so caps read as solid section.
-    const cap = t['concrete-shade'];
-    setMesh( 'uCap', { r: cap.r * 0.78, g: cap.g * 0.78, b: cap.b * 0.78, a: 1 });
+    // Cut faces read as solid concrete, a step darker than the top faces so a cut reads as a cut.
+    // (0.14.0 meant to replace the old dark cap that looked like a hole, but that edit never applied;
+    // fixed here, 0.25.0.)
+    const top = t['concrete-top'], side = t['concrete-side'];
+    setMesh('uCap', { r: (top.r + side.r) / 2, g: (top.g + side.g) / 2, b: (top.b + side.b) / 2, a: 1 });
+    // Token values are sRGB; three's built-in materials convert from linear, so say which it is.
+    this.capMat.color.setRGB(top.r * 0.8, top.g * 0.8, top.b * 0.8, SRGBColorSpace);
     const accent = getComputedStyle(this.container).getPropertyValue('--accent').trim() || '#D9761E';
     this.gizmo.setColors(new Color(accent), new Color(t['selected-top'].r, t['selected-top'].g, t['selected-top'].b));
     // Glass tint: a cool grey-blue, lighter on Paper, deeper on Ink.
@@ -1527,6 +1662,7 @@ export class Viewer {
       this.renderer.setRenderTarget(null);
       this.renderer.setClearColor(0x000000, 0);
       this.renderer.render(this.scene, this.camera);
+      if (this.sbox && this.clipPlanes.length === 6 && this.capStencilMat) this.renderCaps();
       if (this.sbox && this.gripsOn) {
         const h = this.canvas.getBoundingClientRect().height;
         this.gizmo.update(this.sbox, metresPerPixel(this.camera, h), this.hotGrip);

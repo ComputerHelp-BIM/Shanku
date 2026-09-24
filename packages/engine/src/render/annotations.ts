@@ -6,7 +6,16 @@
  * Also draws the Section tool's rubber band (line, angle arc, angle and length).
  */
 export type Annotation =
-  | { kind: 'section'; id: string; name: string; a: [number, number, number]; b: [number, number, number]; look: [number, number, number] }
+  | {
+      kind: 'section';
+      id: string;
+      name: string;
+      a: [number, number, number];
+      b: [number, number, number];
+      look: [number, number, number];
+      /** Far clip depth (m): with it, a selected section shows its extent and grips (plans). */
+      depth?: number;
+    }
   | { kind: 'elevation'; id: string; name: string; at: [number, number, number]; look: [number, number, number] }
   | { kind: 'level'; id: string; name: string; value: string; a: [number, number, number]; b: [number, number, number] };
 
@@ -146,6 +155,36 @@ export function drawAnnotations(
       el('circle', { cx: pa[0], cy: pa[1], r: 11, fill: style.plate, stroke, 'stroke-width': w }, g);
       text(g, pa[0], pa[1], a.name.replace(/^Section\s*/i, '') || a.name, 10, ink);
       el('title', {}, g).textContent = `Section: ${a.name} (click to select, double-click to open)`;
+      // Selected in a plan: far clip extent (dashed) and Revit's grips.
+      if (state.selected.has(a.id) && a.depth !== undefined && d) {
+        const far = (p: readonly [number, number, number]) => project([p[0] + a.look[0] * a.depth!, p[1], p[2] + a.look[2] * a.depth!]);
+        const fa = far(a.a), fb = far(a.b);
+        if (fa && fb) {
+          el('path', { d: `M ${ra[0]} ${ra[1]} L ${fa[0]} ${fa[1]} L ${fb[0]} ${fb[1]} L ${pb[0]} ${pb[1]}`, fill: 'none', stroke: style.hot, 'stroke-width': 1, 'stroke-dasharray': '6 4', 'pointer-events': 'none' });
+          const grip = (kind: string, at: Screen, dir: Screen, title: string) => {
+            const gg = el('g', { 'data-grip': kind, 'data-view': a.id, style: 'pointer-events: auto; cursor: move' });
+            const tip = [at[0] + dir[0] * 9, at[1] + dir[1] * 9], side = [-dir[1] * 7, dir[0] * 7];
+            el('path', { d: `M ${at[0] + side[0]} ${at[1] + side[1]} L ${tip[0]} ${tip[1]} L ${at[0] - side[0]} ${at[1] - side[1]} Z`, fill: style.hot, stroke: style.plate, 'stroke-width': 1.2 }, gg);
+            el('circle', { cx: at[0], cy: at[1], r: 11, fill: 'transparent', 'pointer-events': 'all' }, gg);
+            el('title', {}, gg).textContent = title;
+          };
+          const along = [pb[0] - ra[0], pb[1] - ra[1]], al = Math.hypot(along[0], along[1]) || 1;
+          const u: Screen = [along[0] / al, along[1] / al];
+          grip('a', [ra[0] - u[0] * 26, ra[1] - u[1] * 26], [-u[0], -u[1]], 'Drag to lengthen or shorten');
+          grip('b', [pb[0] + u[0] * 14, pb[1] + u[1] * 14], u, 'Drag to lengthen or shorten');
+          grip('far', [(fa[0] + fb[0]) / 2, (fa[1] + fb[1]) / 2], d, 'Drag the far clip');
+          // flip: two opposed arrows beside the head
+          const fx = ra[0] - d[0] * 30, fy = ra[1] - d[1] * 30;
+          const fg = el('g', { 'data-grip': 'flip', 'data-view': a.id, style: 'pointer-events: auto; cursor: pointer' });
+          el('circle', { cx: fx, cy: fy, r: 10, fill: style.plate, stroke: style.hot, 'stroke-width': 1.2 }, fg);
+          for (const sgn of [1, -1]) {
+            const tip = [fx + d[0] * 7 * sgn, fy + d[1] * 7 * sgn], base = [fx + d[0] * 1 * sgn, fy + d[1] * 1 * sgn], side = [-d[1] * 4, d[0] * 4];
+            el('path', { d: `M ${base[0] + side[0]} ${base[1] + side[1]} L ${tip[0]} ${tip[1]} L ${base[0] - side[0]} ${base[1] - side[1]} Z`, fill: style.hot }, fg);
+          }
+          el('title', {}, fg).textContent = 'Flip the section';
+          g.setAttribute('data-grip', 'move'); // dragging the line moves the section
+        }
+      }
     } else if (a.kind === 'elevation') {
       const p = project(a.at);
       if (!p) continue;

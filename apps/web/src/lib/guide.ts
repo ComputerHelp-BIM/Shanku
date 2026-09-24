@@ -225,7 +225,8 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
-          { version: '0.25.0', date: '2026-09-24', items: ['DXF drawings look and work like AutoCAD: grid with red and green axes (F7), UCS icon, crosshair, X, Y, 0.000 coordinates.', 'AutoCAD right-click menus with Isolate, Select Similar, Quick Select, Find, Count and Quick Properties.'] },
+          { version: '0.26.0', date: '2026-09-24', items: ['DXF drawings look and work like AutoCAD: grid with red and green axes (F7), UCS icon, crosshair, X, Y, 0.000 coordinates.', 'AutoCAD right-click menus with Isolate, Select Similar, Quick Select, Find, Count and Quick Properties.'] },
+          { version: '0.25.0', date: '2026-09-24', items: ['Solid cut faces in section boxes, plans and sections.', 'Section grips in plans: lengthen, far clip, flip and move, each undoable.'] },
           { version: '0.24.0', date: '2026-09-24', items: ['Command search: Ctrl + K finds every command as well as elements.', 'Guide & FAQ (F1).', 'Exploded views by storey, radially or by category.'] },
           { version: '0.23.0', date: '2026-09-24', items: ['View symbols behave like elements: hover, select, Properties, and Delete for sections.', 'Live preview of what a window or crossing box will select.', 'Section tool rubber band with 15° snapping, angle and length.'] },
           { version: '0.22.0', date: '2026-09-23', items: ['View symbols: section and elevation marks in plans, levels in elevations and sections; double-click a head to open its view.'] },
