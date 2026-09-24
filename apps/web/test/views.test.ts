@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultViews, duplicateView, levelHeights, viewClip, viewDirection } from '../src/lib/views';
+import { defaultViews, duplicateView, levelHeights, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection } from '../src/lib/views';
 
 const el = (category: string, level: string, y0: number, y1: number) => ({ category, level, bounds: [0, y0, 0, 1, y1, 1] });
 const elements = [
@@ -40,7 +40,8 @@ describe('views (Revit project browser)', () => {
     expect(clip.center[1] - clip.half[1]).toBeCloseTo(1.8);
     expect(clip.center[1] + clip.half[1]).toBeCloseTo(4.2);
     expect(viewDirection(plan)).toEqual([0, 1, 0]);
-    expect(plan.graphics.categories.Slab?.transparency).toBe(70); // floors see-through in structural plans
+    expect(plan.graphics.categories.Slab).toBeUndefined(); // no see-through slabs: hidden lines instead
+    expect(plan.hiddenLines).toBe(true);
   });
 
   it('section: slice from the line to the far clip, camera behind the cut', () => {
@@ -57,5 +58,36 @@ describe('views (Revit project browser)', () => {
     const d = duplicateView(v[0], v);
     expect(d.name).toBe('{3D} Copy 1');
     expect(d.id).not.toBe(v[0].id);
+  });
+});
+
+describe('view range and sections from 2D views', () => {
+  it('offsets are relative to the level and may be negative (Revit View Range)', () => {
+    const h = new Map([['L', 3]]);
+    const v = { ...defaultViews([{ name: 'L' }], h)[1], cutOffset: -0.2, depthOffset: -1.5 };
+    const c = viewClip(v, h, { min: [0, 0, 0], max: [10, 10, 10] })!;
+    expect(c.center[1] - c.half[1]).toBeCloseTo(1.5);
+    expect(c.center[1] + c.half[1]).toBeCloseTo(2.8);
+    expect(validRange(-0.2, -1.5)).toBe(true);
+    expect(validRange(1.2, 1.5)).toBe(false); // depth above the cut
+    expect(viewClip({ ...v, cutOffset: 0, depthOffset: 0 }, h, { min: [0, 0, 0], max: [10, 10, 10] })).toBeNull();
+  });
+
+  it('upgrades plans saved by 0.20.0 (positive depth, see-through slabs)', () => {
+    const old = { id: 'plan:L', kind: 'plan' as const, name: 'L', level: 'L', cutOffset: 1.2, viewDepth: 1.2, graphics: { categories: { Slab: { transparency: 70 }, Beam: { halftone: true } }, elements: {}, filters: [], applied: [] }, displayStyle: 'shaded' as const, edges: true };
+    const n = normalizeView(old);
+    expect(n.depthOffset).toBe(-1.2);
+    expect(n.viewDepth).toBeUndefined();
+    expect(n.graphics.categories).toEqual({ Beam: { halftone: true } });
+    expect(n.hiddenLines).toBe(true);
+  });
+
+  it('a section drawn upward in the North elevation looks to the screen right (east… west swap checked)', () => {
+    // North elevation: camera on the north (−z) side looking south (+z); screen right is −x (west).
+    const s = sectionFromVerticalView([5, 0, 0], [5, 3, 0], [0, 0, -1], 10);
+    const dx = s.b[0] - s.a[0], dz = s.b[1] - s.a[1];
+    expect(Math.abs(dx)).toBeLessThan(1e-9); // the line runs north-south (the view depth)
+    const n = [dz / 10, -dx / 10]; // our section viewing direction
+    expect(n[0]).toBeCloseTo(-1); // looks west = screen right from the north
   });
 });

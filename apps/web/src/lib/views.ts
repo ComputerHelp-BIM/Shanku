@@ -14,9 +14,16 @@ export interface ModelView {
   name: string;
   /** Plan: its level. */
   level?: string;
-  /** Plan: cut plane above the level and view depth below it, in metres (Revit's View Range). */
+  /**
+   * Plan: Revit's View Range as offsets from the level, in metres, either sign: the cut plane (default
+   * +1.2) and the view depth (default −1.2). The depth must be below the cut.
+   */
   cutOffset?: number;
+  depthOffset?: number;
+  /** @deprecated saved before 0.20.2 as a positive distance below the level; read by normalizeView. */
   viewDepth?: number;
+  /** Revit's Show Hidden Lines: edges behind other elements drawn dashed (on in structural plans). */
+  hiddenLines?: boolean;
   /** Elevation: direction from the model toward the viewer (world, Y up). */
   direction?: [number, number, number];
   /** Section: line in plan (world x, z) and far-clip depth in metres. */
@@ -27,9 +34,9 @@ export interface ModelView {
 }
 
 export const DEFAULT_CUT = 1.2;
-export const DEFAULT_DEPTH = 1.2;
-/** Slab transparency in new structural plans, %. */
-export const PLAN_SLAB_TRANSPARENCY = 70;
+export const DEFAULT_DEPTH_OFFSET = -1.2;
+/** The slab transparency 0.20.0 put in new plans; removed from saved plans by normalizeView. */
+const OLD_PLAN_SLAB_TRANSPARENCY = 70;
 
 export const KIND_LABEL: Record<ViewKind, string> = {
   '3d': '3D View',
@@ -95,11 +102,8 @@ export function defaultViews(levels: ReadonlyArray<{ name: string }>, heights: M
   const views: ModelView[] = [{ id: '3d', kind: '3d', name: '{3D}', ...fresh() }];
   for (const l of levels) {
     if (!heights.has(l.name)) continue;
-    // Structural plans see through the floor slab (like Revit's structural plan template), so the
-    // beams and columns under it still read; change it in Visibility/Graphics like any override.
-    const plan = { id: `plan:${l.name}`, kind: 'plan' as const, name: l.name, level: l.name, cutOffset: DEFAULT_CUT, viewDepth: DEFAULT_DEPTH, ...fresh() };
-    plan.graphics.categories = { Slab: { transparency: PLAN_SLAB_TRANSPARENCY } };
-    views.push(plan);
+    // Structural plans show what is under the slab as dashed hidden lines, as Revit does.
+    views.push({ id: `plan:${l.name}`, kind: 'plan', name: l.name, level: l.name, cutOffset: DEFAULT_CUT, depthOffset: DEFAULT_DEPTH_OFFSET, hiddenLines: true, ...fresh() });
   }
   const elevations: Array<[string, [number, number, number]]> = [
     ['North', [0, 0, -1]],
@@ -126,7 +130,8 @@ export function viewClip(v: ModelView, heights: Map<string, number>, model: { mi
   const pad = 1;
   if (v.kind === 'plan' && v.level !== undefined && heights.has(v.level)) {
     const h = heights.get(v.level)!;
-    const lo = h - (v.viewDepth ?? DEFAULT_DEPTH), hi = h + (v.cutOffset ?? DEFAULT_CUT);
+    const lo = h + (v.depthOffset ?? DEFAULT_DEPTH_OFFSET), hi = h + (v.cutOffset ?? DEFAULT_CUT);
+    if (hi - lo < 0.01) return null; // invalid range; Properties refuses it, but never clip everything away
     return {
       center: [(model.min[0] + model.max[0]) / 2, (lo + hi) / 2, (model.min[2] + model.max[2]) / 2],
       half: [(model.max[0] - model.min[0]) / 2 + pad, (hi - lo) / 2, (model.max[2] - model.min[2]) / 2 + pad],
@@ -175,4 +180,47 @@ export function nextSectionName(all: ReadonlyArray<ModelView>): string {
   let n = 1;
   while (all.some((x) => x.kind === 'section' && x.name === `Section ${n}`)) n++;
   return `Section ${n}`;
+}
+
+/** Brings a saved view up to date (View Range offsets, no default slab transparency, hidden lines). */
+export function normalizeView(v: ModelView): ModelView {
+  if (v.kind !== 'plan') return v;
+  const out: ModelView = { ...v };
+  if (out.depthOffset === undefined) out.depthOffset = out.viewDepth !== undefined ? -out.viewDepth : DEFAULT_DEPTH_OFFSET;
+  delete out.viewDepth;
+  if (out.cutOffset === undefined) out.cutOffset = DEFAULT_CUT;
+  if (out.hiddenLines === undefined) out.hiddenLines = true;
+  const slab = out.graphics.categories.Slab;
+  if (slab && slab.transparency === OLD_PLAN_SLAB_TRANSPARENCY && Object.keys(slab).length === 1) {
+    const { Slab: _drop, ...rest } = out.graphics.categories;
+    void _drop;
+    out.graphics = { ...out.graphics, categories: rest };
+  }
+  return out;
+}
+
+/** A View Range change is valid when the view depth stays below the cut plane. */
+export function validRange(cut: number, depth: number): boolean {
+  return Number.isFinite(cut) && Number.isFinite(depth) && cut - depth >= 0.01;
+}
+
+/**
+ * Revit: a section drawn in an elevation or section view is a vertical cut across that view. Its line
+ * in plan runs along the view's depth through the picked position; drawn upward it looks to the
+ * screen's right, downward to its left.
+ */
+export function sectionFromVerticalView(
+  p1: [number, number, number],
+  p2: [number, number, number],
+  towardCamera: [number, number, number],
+  span: number,
+): { a: [number, number]; b: [number, number] } {
+  const f = [-towardCamera[0], -towardCamera[2]]; // view direction, horizontal
+  const fl = Math.hypot(f[0], f[1]) || 1;
+  const right = [-f[1] / fl, f[0] / fl]; // screen right (x, z) for a level camera: forward × up
+  const sign = p2[1] >= p1[1] ? 1 : -1;
+  const n = [right[0] * sign, right[1] * sign]; // the new section looks this way
+  const d = [-n[1], n[0]]; // line direction with n = (d.z, −d.x), our section convention
+  const mx = (p1[0] + p2[0]) / 2, mz = (p1[2] + p2[2]) / 2;
+  return { a: [mx - (d[0] * span) / 2, mz - (d[1] * span) / 2], b: [mx + (d[0] * span) / 2, mz + (d[1] * span) / 2] };
 }

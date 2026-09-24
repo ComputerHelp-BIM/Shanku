@@ -1,4 +1,4 @@
-# @shanku/engine 0.18.0
+# @shanku/engine 0.19.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -46,6 +46,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.19.0 — 2026-09-23
+- Show Hidden Lines: a dashed edge pass drawn only behind other geometry (depth test greater, projection line colour, screen-space dashes); `setHiddenLines(on)`.
+- `startPlanePick(normal, through, cb)`: point picking on any plane (sections drawn in elevations and sections).
 
 ### 0.18.0 — 2026-09-23
 - Views: `getCameraState` / `setCameraState` (per-view cameras), `setViewMode({ nav2d, grips })` (plans, elevations and sections pan and zoom only; view ranges show no grips), `aimInstant`, `startPointPick` / `stopPointPick` (two clicks draw a section), `boxState` helper.

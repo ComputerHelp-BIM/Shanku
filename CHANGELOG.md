@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.21.0 — 2026-09-23
+
+### Changed
+- Structural plans: dashed hidden lines instead of transparent slabs; View Range offsets relative to the level (negative allowed); Section tool only in plans, sections and elevations (sections can now be drawn in elevations and sections).
+
 ## 0.20.1 — 2026-09-23
 
 ### Changed

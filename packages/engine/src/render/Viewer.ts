@@ -7,6 +7,7 @@ import {
   Raycaster,
   Vector2,
   BufferGeometry,
+  GreaterDepth,
   LineSegments,
   Matrix4,
   Mesh,
@@ -143,7 +144,11 @@ export class Viewer {
   /** The section box is a view range (plan / section) rather than a user box: no grips. */
   private gripsOn = true;
   /** Two-point pick in plan (e.g. drawing a section): clicks report points instead of selecting. */
-  private pointPick: { y: number; onPoint: (p: Vector3) => void } | null = null;
+  private pointPick: { plane: Plane; onPoint: (p: Vector3) => void } | null = null;
+  /** Revit "Show Hidden Lines": edges behind other geometry drawn dashed (on in structural plans). */
+  private hiddenEdges: LineSegments | null = null;
+  private hiddenEdgeMat: ShaderMaterial | null = null;
+  private hiddenLinesOn = false;
   private lastPointer: [number, number] = [0, 0];
   private animToken = 0;
   private navActive = false;
@@ -244,13 +249,22 @@ export class Viewer {
     this.edges = new LineSegments(eg, this.edgeMat);
     this.edges.frustumCulled = false;
     this.edges.renderOrder = 1;
+    this.hiddenEdgeMat = createEdgeMaterial(this.state, this.overrideTex);
+    this.hiddenEdgeMat.uniforms.uDashed.value = 1;
+    this.hiddenEdgeMat.uniforms.uDash.value = 4 * this.renderer.getPixelRatio();
+    this.hiddenEdgeMat.depthFunc = GreaterDepth; // only where something is in front
+    this.hiddenEdgeMat.clippingPlanes = this.clipPlanes;
+    this.hiddenEdges = new LineSegments(eg, this.hiddenEdgeMat);
+    this.hiddenEdges.frustumCulled = false;
+    this.hiddenEdges.renderOrder = 1;
+    this.hiddenEdges.visible = this.hiddenLinesOn;
 
     const glassMesh = new Mesh(geo, this.glassMat);
     glassMesh.frustumCulled = false;
     glassMesh.renderOrder = 2;
-    this.scene.add(this.mesh, this.edges, glassMesh);
+    this.scene.add(this.mesh, this.edges, this.hiddenEdges, glassMesh);
     this.pickScene.add(pickMesh);
-    this.objects = [this.mesh, this.edges, glassMesh, pickMesh];
+    this.objects = [this.mesh, this.edges, this.hiddenEdges, glassMesh, pickMesh];
     this.modelBox()?.getBoundingSphere(this.modelSphere);
     this.setDisplayStyle(this.style);
     this.edges.visible = this.edgesOn;
@@ -269,6 +283,9 @@ export class Viewer {
     this.meshMat?.dispose();
     this.glassMat?.dispose();
     this.glassMat = null;
+    this.hiddenEdgeMat?.dispose();
+    this.hiddenEdgeMat = null;
+    this.hiddenEdges = null;
     this.edgeMat?.dispose();
     this.pickMat?.dispose();
     this.state?.dispose();
@@ -474,7 +491,13 @@ export class Viewer {
 
   /** Clicks report points on the horizontal plane at height y (world) until stopPointPick. */
   startPointPick(y: number, onPoint: (p: Vector3) => void): void {
-    this.pointPick = { y, onPoint };
+    this.startPlanePick([0, 1, 0], [0, y, 0], onPoint);
+  }
+
+  /** Clicks report points on a plane (normal, through point), e.g. an elevation's view plane. */
+  startPlanePick(normal: readonly [number, number, number], through: readonly [number, number, number], onPoint: (p: Vector3) => void): void {
+    const n = new Vector3(normal[0], normal[1], normal[2]).normalize();
+    this.pointPick = { plane: new Plane().setFromNormalAndCoplanarPoint(n, new Vector3(through[0], through[1], through[2])), onPoint };
     this.canvas.style.cursor = 'crosshair';
   }
 
@@ -674,6 +697,13 @@ export class Viewer {
     this.requestRender();
   }
 
+  /** Revit's Show Hidden Lines: edges behind other elements drawn dashed. */
+  setHiddenLines(on: boolean): void {
+    this.hiddenLinesOn = on;
+    if (this.hiddenEdges) this.hiddenEdges.visible = on;
+    this.requestRender();
+  }
+
   /** Model edges on or off (Graphics → Edges). */
   setEdges(on: boolean): void {
     if (this.edges) this.edges.visible = on;
@@ -684,7 +714,7 @@ export class Viewer {
   /** Reveal Hidden Elements: hidden elements draw in the reveal colour and can be picked (to unhide). */
   setReveal(on: boolean): void {
     this.revealOn = on;
-    for (const m of [this.meshMat, this.glassMat, this.edgeMat, this.pickMat]) if (m) m.uniforms.uReveal.value = on ? 1 : 0;
+    for (const m of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat]) if (m) m.uniforms.uReveal.value = on ? 1 : 0;
     this.requestRender();
   }
 
@@ -1104,7 +1134,9 @@ export class Viewer {
       } else if (d.mode === 'select') {
         const mode = modeOf(e);
         if (!d.moved && this.pointPick) {
-          const p = this.planPoint(e.clientX, e.clientY, this.pointPick.y);
+          const r = this.canvas.getBoundingClientRect();
+          this.raycaster.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
+          const p = this.raycaster.ray.intersectPlane(this.pointPick.plane, new Vector3());
           if (p) this.pointPick.onPoint(p);
         } else if (!d.moved) this.events.onPick?.(this.pick(e.clientX, e.clientY), mode);
         else {
@@ -1212,6 +1244,14 @@ export class Viewer {
     set(this.edgeMat, 'uEdge', edge);
     set(this.edgeMat, 'uEdgeSel', t['edge-selected']);
     set(this.edgeMat, 'uHover', t['hover-outline']);
+    // Hidden lines: the projection line colour, clearly visible over the faces in front of them.
+    set(this.hiddenEdgeMat, 'uEdge', t['line-projection']);
+    set(this.hiddenEdgeMat, 'uEdgeSel', t['edge-selected']);
+    set(this.hiddenEdgeMat, 'uHover', t['hover-outline']);
+    if (this.hiddenEdgeMat) {
+      this.hiddenEdgeMat.uniforms.uEdgeAlpha.value = 0.85;
+      this.hiddenEdgeMat.uniforms.uEdgeSelAlpha.value = t['edge-selected'].a;
+    }
     if (this.edgeMat) {
       this.edgeMat.uniforms.uEdgeAlpha.value = this.style === 'hiddenLine' || this.style === 'wireframe' ? 1 : edge.a;
       this.edgeMat.uniforms.uEdgeSelAlpha.value = t['edge-selected'].a;

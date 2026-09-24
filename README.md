@@ -11,8 +11,8 @@ Open, IFC-native structural modelling for reinforced concrete, in the browser. N
 | `packages/tokens` | `@shanku/tokens` | 2.0.0 | Design tokens for the Paper and Ink themes, compiled to CSS custom properties |
 | `packages/brand` | `@shanku/brand` | 1.4.0 | Logos, the structural icon set, and the brand book (`BRAND.md`) |
 | `packages/ui` | `@shanku/ui` | 0.10.1 | React components: title bar, ribbon, properties, project browser, view tabs, bottom panel, status bar, app shell |
-| `packages/engine` | `@shanku/engine` | 0.18.0 | IFC loading in a worker, element model, three.js viewer with Revit navigation and picking |
-| `apps/web` | `@shanku/web` | 0.20.1 | The Shanku app |
+| `packages/engine` | `@shanku/engine` | 0.19.0 | IFC loading in a worker, element model, three.js viewer with Revit navigation and picking |
+| `apps/web` | `@shanku/web` | 0.21.0 | The Shanku app |
 | `apps/playground` | `@shanku/playground` | 0.1.5 | Component playground with sample data |
 | `tools/fixtures` | — | 1.1.0 | Python generator for sample and 50k-element test IFC files |
 

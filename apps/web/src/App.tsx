@@ -38,7 +38,7 @@ import { PipelinePanel } from './components/PipelinePanel';
 import { qaFocus, usePipeline } from './lib/usePipeline';
 import { useHistory } from './lib/useHistory';
 import { loadDrawings, loadGraphics, loadModel, loadViews, saveViews } from './lib/session';
-import { KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, nextSectionName, viewClip, viewDirection, type ModelView } from './lib/views';
+import { DEFAULT_CUT, DEFAULT_DEPTH_OFFSET, KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, nextSectionName, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection, type ModelView } from './lib/views';
 import { enterFullscreen } from './lib/fullscreen';
 import { QuickAccess } from './components/QuickAccess';
 import { ContextMenu, item, sep, type MenuItem } from './components/ContextMenu';
@@ -53,7 +53,7 @@ import { emptyRates, loadRates, saveRates, type RateBook } from './lib/rates';
 import { useShankuModel } from './lib/useShankuModel';
 import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/shortcuts';
 
-const APP_VERSION = '0.20.1';
+const APP_VERSION = '0.21.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -242,7 +242,7 @@ export function App({ start }: { start?: AppStart } = {}) {
         if (saved?.length) {
           // Keep saved views (renamed, duplicated, sections), and add plans for levels they lack.
           const have = new Set(saved.map((v) => v.id));
-          const merged = [...saved, ...defaults.filter((d) => !have.has(d.id))];
+          const merged = [...saved.map(normalizeView), ...defaults.filter((d) => !have.has(d.id))];
           setViews(merged);
           const v3 = merged.find((v) => v.id === '3d');
           if (v3) {
@@ -577,21 +577,11 @@ export function App({ start }: { start?: AppStart } = {}) {
     const after = before.map((v) => (v.id === id ? { ...v, ...applyTemplate({ graphics: v.graphics, displayStyle: v.displayStyle, edges: v.edges }, t) } : v));
     history.run(`Apply View Template: ${t.name}`, (tx) => tx.change('views', before, after, setViews));
   };
-  /** Revit's Section tool: two clicks in a plan (or 3D) view draw the section line. */
+  /** Revit's Section tool: two clicks in a plan, section or elevation (not in 3D views). */
   const startSection = () => {
     const v = activeModelView;
-    if (!v || (v.kind !== 'plan' && v.kind !== '3d')) return setNotice('Draw sections in a plan or 3D view.');
-    const y = v.kind === 'plan' && v.level ? heights.get(v.level) ?? 0 : bounds.min[1];
-    sectionA.current = null;
-    setSectionTool(true);
-    setNotice('Section: click the start of the line. Drawn left to right, it looks up the screen. Esc cancels.');
-    viewport.current?.startPointPick(y, (x, z) => {
-      if (!sectionA.current) {
-        sectionA.current = [x, z];
-        setNotice('Section: click the end of the line.');
-        return;
-      }
-      const a = sectionA.current, b: [number, number] = [x, z];
+    if (!v || !isTwoD(v)) return setNotice('Draw sections in a plan, section or elevation view.');
+    const create = (a: [number, number], b: [number, number]) => {
       viewport.current?.stopPointPick();
       setSectionTool(false);
       if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 0.2) return setNotice('That section line is too short.');
@@ -599,6 +589,34 @@ export function App({ start }: { start?: AppStart } = {}) {
       setViews((vs) => [...vs, sv]);
       openView(sv.id);
       setNotice(`${sv.name} created. Far clip is 5 m; change it in Properties.`);
+    };
+    sectionA.current = null;
+    setSectionTool(true);
+    if (v.kind === 'plan') {
+      setNotice('Section: click the start of the line. Drawn left to right, it looks up the screen. Esc cancels.');
+      const y = v.level ? heights.get(v.level) ?? 0 : 0;
+      viewport.current?.startPointPick(y, (x, z) => {
+        if (!sectionA.current) {
+          sectionA.current = [x, z];
+          return setNotice('Section: click the end of the line.');
+        }
+        create(sectionA.current, [x, z]);
+      });
+      return;
+    }
+    // Elevation or section: a vertical cut across the view, picked on the view plane.
+    setNotice('Section: click two points up or down the view where it should cut. Drawn upward it looks to the right. Esc cancels.');
+    const dir = viewDirection(v)!;
+    const through: [number, number, number] = v.kind === 'section' && v.section ? [(v.section.a[0] + v.section.b[0]) / 2, 0, (v.section.a[1] + v.section.b[1]) / 2] : [(bounds.min[0] + bounds.max[0]) / 2, 0, (bounds.min[2] + bounds.max[2]) / 2];
+    const span = Math.hypot(bounds.max[0] - bounds.min[0], bounds.max[2] - bounds.min[2]) + 2;
+    let first: [number, number, number] | null = null;
+    viewport.current?.startPlanePick(dir, through, (x, y, z) => {
+      if (!first) {
+        first = [x, y, z];
+        return setNotice('Section: click the second point.');
+      }
+      const { a, b } = sectionFromVerticalView(first, [x, y, z], dir, span);
+      create(a, b);
     });
   };
   const cancelSection = () => {
@@ -791,7 +809,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             <>
           <RibbonGroup label="Create">
             <RibbonButton icon="view3d" label="3D View" disabled={!m.model} onClick={() => openView('3d')} shortcutHint="open {3D}" />
-            <RibbonButton icon="elevation" label="Section" active={sectionTool} disabled={!m.model || !(activeModelView?.kind === 'plan' || activeModelView?.kind === '3d')} onClick={() => (sectionTool ? cancelSection() : startSection())} shortcutHint="two clicks in a plan or 3D view" />
+            <RibbonButton icon="elevation" label="Section" active={sectionTool} disabled={!m.model || !isTwoD(activeModelView ?? undefined)} onClick={() => (sectionTool ? cancelSection() : startSection())} shortcutHint="two clicks in a plan, section or elevation" />
             <RibbonButton icon="plan" label="Duplicate View" disabled={!activeModelView} onClick={() => activeModelView && duplicateModelView(activeModelView.id)} shortcutHint="copy the current view with its settings" />
           </RibbonGroup>
           <RibbonGroup label="Section">
@@ -814,6 +832,14 @@ export function App({ start }: { start?: AppStart } = {}) {
                 setVtMenu({ x: r.left, y: r.bottom + 4 });
               }}
               shortcutHint="apply, create or manage view templates"
+            />
+            <RibbonButton
+              icon="reveal"
+              label="Hidden Lines"
+              active={!!activeModelView?.hiddenLines}
+              disabled={!activeModelView}
+              onClick={() => activeModelView && setViews((vs) => vs.map((x) => (x.id === activeModelView.id ? { ...x, hiddenLines: !x.hiddenLines } : x)))}
+              shortcutHint="Show Hidden Lines: dashed edges behind other elements, this view"
             />
             <RibbonButton icon="edges" label="Edges" active={edges} disabled={!m.model} onClick={() => setEdges((v) => !v)} shortcutHint="show or hide model edges" />
             <RibbonButton icon="reveal" label="Reveal" active={reveal} disabled={!m.model} onClick={() => setReveal((v) => !v)} shortcutHint="reveal hidden elements (RH)" />
@@ -913,6 +939,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             edges={edges}
             canvasTheme={canvasTheme}
             twoD={isTwoD(activeModelView ?? undefined)}
+            hiddenLines={!!activeModelView?.hiddenLines}
             onContextMenu={(x, y) => m.model && setCtxMenu({ x, y })}
             reveal={reveal}
             onZoomRegionEnd={() => setZoomRegion(false)}
@@ -1219,8 +1246,28 @@ export function App({ start }: { start?: AppStart } = {}) {
                               ...(activeModelView.kind === 'plan'
                                 ? [
                                     { section: 'Extents', label: 'Associated Level', value: activeModelView.level ?? '' },
-                                    { section: 'View Range', label: 'Cut Plane Offset', unit: 'mm', value: Math.round((activeModelView.cutOffset ?? 1.2) * 1000), onCommit: (s: string) => Number(s) > 0 && setViewRange(activeModelView.id, { cutOffset: Number(s) / 1000 }) },
-                                    { section: 'View Range', label: 'View Depth', unit: 'mm', value: Math.round((activeModelView.viewDepth ?? 1.2) * 1000), onCommit: (s: string) => Number(s) >= 0 && setViewRange(activeModelView.id, { viewDepth: Number(s) / 1000 }) },
+                                    {
+                                      section: 'View Range',
+                                      label: 'Cut Plane Offset',
+                                      unit: 'mm',
+                                      value: Math.round((activeModelView.cutOffset ?? DEFAULT_CUT) * 1000),
+                                      onCommit: (txt: string) => {
+                                        const cut = Number(txt) / 1000, depth = activeModelView.depthOffset ?? DEFAULT_DEPTH_OFFSET;
+                                        if (!validRange(cut, depth)) return setNotice('The cut plane must be above the view depth.');
+                                        setViewRange(activeModelView.id, { cutOffset: cut });
+                                      },
+                                    },
+                                    {
+                                      section: 'View Range',
+                                      label: 'View Depth Offset',
+                                      unit: 'mm',
+                                      value: Math.round((activeModelView.depthOffset ?? DEFAULT_DEPTH_OFFSET) * 1000),
+                                      onCommit: (txt: string) => {
+                                        const depth = Number(txt) / 1000, cut = activeModelView.cutOffset ?? DEFAULT_CUT;
+                                        if (!validRange(cut, depth)) return setNotice('The view depth must be below the cut plane.');
+                                        setViewRange(activeModelView.id, { depthOffset: depth });
+                                      },
+                                    },
                                   ]
                                 : []),
                               ...(activeModelView.kind === 'section' && activeModelView.section
@@ -1228,6 +1275,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                                 : []),
                               { section: 'Graphics', label: 'Visual Style', value: STYLES.find((st) => st.id === displayStyle)?.label ?? displayStyle },
                               { section: 'Graphics', label: 'Edges', value: edges ? 'On' : 'Off' },
+                              { section: 'Graphics', label: 'Show Hidden Lines', value: activeModelView.hiddenLines ? 'On' : 'Off' },
                             ],
                           }
                         : undefined

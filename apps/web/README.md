@@ -1,10 +1,10 @@
-# @shanku/web 0.20.1
+# @shanku/web 0.21.0
 
-The Shanku app. Requires `@shanku/engine >= 0.18.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.19.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.0.0`.
 
-The Shanku app. Requires `@shanku/engine >= 0.18.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.2.0`.
+The Shanku app. Requires `@shanku/engine >= 0.19.0`, `@shanku/ui >= 0.10.0`, `@shanku/tokens >= 1.2.0`.
 
-The Shanku app. Requires `@shanku/engine >= 0.17.0`, `@shanku/ui >= 0.9.1`, `@shanku/tokens >= 2.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.19.0`, `@shanku/ui >= 0.9.1`, `@shanku/tokens >= 2.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -25,6 +25,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.21.0 — 2026-09-23
+- **Structural plans show what is under the slab as dashed hidden lines** (Revit's Show Hidden Lines) instead of making slabs transparent; toggle per view (View → Graphics → Hidden Lines, shown in Properties). Plans saved by 0.20.x lose the old 70 % slab transparency automatically.
+- **View Range is relative to the level, either sign**: Cut Plane Offset (default +1200 mm) and View Depth Offset (default −1200 mm); the depth must stay below the cut. Saved plans are converted.
+- **Section tool only in 2D views**: plans (click two points, as before) and elevations or sections (a vertical cut across the view; drawn upward it looks to the screen's right). Disabled in 3D views.
 
 ### 0.20.1 — 2026-09-23
 - Merged the design-system branch (7679278): tokens 2.0.0 (ViewCube compass hover contrast via viewcube-hot / on-viewcube-hot; on-select-window removed), clearer token notes, duplicate README titles removed.

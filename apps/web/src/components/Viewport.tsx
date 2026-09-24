@@ -20,6 +20,8 @@ export interface ViewportHandle {
   aimInstant: (dir: [number, number, number]) => void;
   /** Clicks report points on the plane y (world) instead of selecting, until stopped. */
   startPointPick: (y: number, onPoint: (x: number, z: number) => void) => void;
+  /** Clicks report points on a plane (elevation / section view plane). */
+  startPlanePick: (normal: [number, number, number], through: [number, number, number], onPoint: (x: number, y: number, z: number) => void) => void;
   stopPointPick: () => void;
   /** Revit Zoom Out (2x) and Next Pan/Zoom; can* tell the context menu what is available. */
   zoomOut2x: () => void;
@@ -45,6 +47,8 @@ export interface ViewportProps {
   overrides?: Array<{ index: number; color: [number, number, number] | null; transparency: number; halftone: boolean }>;
   /** Temporary Hide/Isolate is active (cyan frame); `hidden` also includes elements hidden by the view. */
   temporary?: boolean;
+  /** Revit's Show Hidden Lines for this view (dashed edges behind other elements). */
+  hiddenLines?: boolean;
   /** Plan, elevation or section: no ViewCube (Revit shows none in 2D views). */
   twoD?: boolean;
   /** Right-click in the view. */
@@ -119,6 +123,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   useEffect(() => viewer.current?.setDisplayStyle(displayStyle), [displayStyle, model]);
   useEffect(() => viewer.current?.setEdges(props.edges ?? true), [props.edges, model]);
   useEffect(() => viewer.current?.setReveal(!!props.reveal), [props.reveal, model]);
+  useEffect(() => viewer.current?.setHiddenLines(!!props.hiddenLines), [props.hiddenLines, model]);
   useEffect(() => viewer.current?.setOverrides(props.overrides ?? []), [props.overrides, model]);
   useEffect(() => viewer.current?.refreshTheme(), [props.canvasTheme]);
 
@@ -130,6 +135,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     setViewMode: (o) => viewer.current?.setViewMode(o),
     aimInstant: (d) => viewer.current?.aimInstant(d),
     startPointPick: (y, cb) => viewer.current?.startPointPick(y, (p) => cb(p.x, p.z)),
+    startPlanePick: (n, t, cb) => viewer.current?.startPlanePick(n, t, (p) => cb(p.x, p.y, p.z)),
     stopPointPick: () => viewer.current?.stopPointPick(),
     nextView: () => viewer.current?.nextView() ?? false,
     canPrevious: () => viewer.current?.canGoPrevious ?? false,

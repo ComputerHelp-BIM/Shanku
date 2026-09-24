@@ -185,6 +185,8 @@ export function createEdgeMaterial(state: DataTexture, overrideTex: DataTexture 
       uRevealColor: { value: new Color(0.71, 0.09, 0.62) }, // Revit's reveal magenta
       uEdge: { value: new Color() },
       uEdgeAlpha: { value: 1 },
+      uDashed: { value: 0 },
+      uDash: { value: 4 },
       uEdgeSel: { value: new Color() },
       uEdgeSelAlpha: { value: 1 },
       uHover: { value: new Color() },
@@ -207,10 +209,14 @@ flat in int vId;
 ${CLIP_F_PARS}
 uniform vec3 uEdge, uEdgeSel, uHover, uRevealColor;
 uniform float uEdgeAlpha, uEdgeSelAlpha;
+// Hidden lines (Revit "Show Hidden Lines"): this pass only draws behind other geometry, dashed.
+uniform int uDashed;
+uniform float uDash;
 void main() {
   ${CLIP_F}
   bool sel = (vState & ${STATE_SELECTED}) != 0;
   bool hov = (vState & ${STATE_HOVER}) != 0;
+  if (uDashed == 1 && mod(floor((gl_FragCoord.x + gl_FragCoord.y) / uDash), 2.0) > 0.5) discard;
   bool hid = (vState & ${STATE_HIDDEN}) != 0;
   int ovFlags = int(vOverride.a * 255.0 + 0.5);
   float fade = (1.0 - float(ovFlags & 63) / 63.0) * ((ovFlags & ${OVERRIDE_HALFTONE}) != 0 ? 0.4 : 1.0);
