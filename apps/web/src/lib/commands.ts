@@ -75,25 +75,115 @@ export function rankCommands(commands: readonly AppCommand[], query: string, lim
     .map((r) => r.cmd);
 }
 
-const RECENT_KEY = 'shanku.recentCommands';
-const RECENT_MAX = 6;
+// ---- Usage (kept on this device): how often and when each command was run ----
 
-/** Most recently run command ids, newest first (kept on this device). */
-export function loadRecent(): string[] {
+const USAGE_KEY = 'shanku.commandUsage';
+const OLD_RECENT_KEY = 'shanku.recentCommands'; // before 0.29.0: a plain list of recent ids
+
+export interface CommandUse {
+  /** Times run. */
+  count: number;
+  /** Last run, ms since epoch. */
+  last: number;
+}
+export type CommandUsage = Record<string, CommandUse>;
+
+/** Usage per command id; migrates the older recent-commands list (newest first) on first read. */
+export function loadUsage(): CommandUsage {
   try {
-    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
-    return Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(0, RECENT_MAX) : [];
+    const v = JSON.parse(localStorage.getItem(USAGE_KEY) ?? 'null');
+    if (v && typeof v === 'object' && !Array.isArray(v)) return v as CommandUsage;
+    const old = JSON.parse(localStorage.getItem(OLD_RECENT_KEY) ?? '[]');
+    const out: CommandUsage = {};
+    if (Array.isArray(old)) old.filter((x) => typeof x === 'string').forEach((id: string, i: number) => (out[id] = { count: 1, last: Date.now() - (i + 1) * 1000 }));
+    return out;
   } catch {
-    return [];
+    return {};
   }
 }
 
-export function rememberRecent(id: string): string[] {
-  const next = [id, ...loadRecent().filter((x) => x !== id)].slice(0, RECENT_MAX);
+/** Counts one run of a command and returns the updated usage. */
+export function recordUse(id: string, now = Date.now()): CommandUsage {
+  const u = loadUsage();
+  u[id] = { count: (u[id]?.count ?? 0) + 1, last: now };
+  // keep the store small: the 200 most recently used commands
+  const kept = Object.entries(u).sort((a, b) => b[1].last - a[1].last).slice(0, 200);
+  const next = Object.fromEntries(kept);
   try {
-    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    localStorage.setItem(USAGE_KEY, JSON.stringify(next));
   } catch {
-    /* storage unavailable: the palette just shows no recent commands */
+    /* storage unavailable: sections just stay empty */
   }
   return next;
+}
+
+// ---- New commands ----
+
+/**
+ * The version that introduced each command (exact id, or a prefix ending in "."). The palette calls
+ * a command new for five minor releases after it arrived, until it is first used.
+ */
+export const COMMAND_SINCE: Record<string, string> = {
+  'window.qa': '0.27.0',
+  'explode.': '0.24.0',
+  'help.guide': '0.24.0',
+  'help.keys': '0.24.0',
+  'help.whatsNew': '0.24.0',
+  'view.hiddenLines': '0.21.0',
+  'views.section': '0.20.0',
+  'views.duplicate': '0.20.0',
+  'views.templates': '0.19.0',
+};
+
+const minorOf = (v: string) => {
+  const [a, b] = v.split('.').map(Number);
+  return (a || 0) * 1000 + (b || 0);
+};
+
+export function commandSince(id: string): string | undefined {
+  if (COMMAND_SINCE[id]) return COMMAND_SINCE[id];
+  const prefix = Object.keys(COMMAND_SINCE).find((k) => k.endsWith('.') && id.startsWith(k));
+  return prefix ? COMMAND_SINCE[prefix] : undefined;
+}
+
+/** New in the last `window` minor releases (0.24–0.28 for 0.28.x with the default 5). */
+export function isNewCommand(id: string, appVersion: string, window = 5): boolean {
+  const since = commandSince(id);
+  if (!since) return false;
+  const age = minorOf(appVersion) - minorOf(since); // releases since it arrived
+  return age >= 0 && age < window; // not before it exists, and only for a few releases
+}
+
+export interface PaletteSection {
+  id: 'recent' | 'frequent' | 'new';
+  title: string;
+  commands: AppCommand[];
+}
+
+/**
+ * What the palette shows before anything is typed: recently used (newest first), most used (run at
+ * least twice, not already listed), and new commands not tried yet. Recently used holds `recentMax`
+ * (short, so Most used has room); the others up to `max`.
+ */
+export function paletteSections(commands: readonly AppCommand[], usage: CommandUsage, appVersion: string, max = 5, recentMax = 3): PaletteSection[] {
+  const byId = new Map(commands.map((c) => [c.id, c]));
+  const used = Object.entries(usage).filter(([id]) => byId.has(id));
+  const recent = used.sort((a, b) => b[1].last - a[1].last).slice(0, recentMax).map(([id]) => byId.get(id)!);
+  const shown = new Set(recent.map((c) => c.id));
+  const frequent = Object.entries(usage)
+    .filter(([id, u]) => byId.has(id) && u.count >= 2 && !shown.has(id))
+    .sort((a, b) => b[1].count - a[1].count || b[1].last - a[1].last)
+    .slice(0, max)
+    .map(([id]) => byId.get(id)!);
+  frequent.forEach((c) => shown.add(c.id));
+  const fresh = commands
+    .filter((c) => isNewCommand(c.id, appVersion) && !usage[c.id] && !shown.has(c.id) && c.enabled !== false)
+    .sort((a, b) => minorOf(commandSince(b.id)!) - minorOf(commandSince(a.id)!))
+    .slice(0, max);
+  const [maj, min] = appVersion.split('.');
+  return [
+    { id: 'recent' as const, title: 'Recently used', commands: recent },
+    { id: 'frequent' as const, title: 'Most used', commands: frequent },
+    { id: 'new' as const, title: `New in Shanku ${maj}.${min}`, commands: fresh },
+  ].filter((sct) => sct.commands.length);
 }

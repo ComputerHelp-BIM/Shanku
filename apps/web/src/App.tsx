@@ -61,7 +61,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.28.2';
+const APP_VERSION = '0.29.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -1035,7 +1035,7 @@ export function App({ start }: { start?: AppStart } = {}) {
           brandHref={import.meta.env.BASE_URL}
           quickAccess={<QuickAccess history={history} onOpen={openFromDisk} onHome={() => viewport.current?.home()} canHome={!!m.model} />}
           saveState={info ? 'Opened from this device' : undefined}
-          search={<CommandPalette inputRef={search} getCommands={getCommands} findElement={findElement} />}
+          search={<CommandPalette inputRef={search} getCommands={getCommands} findElement={findElement} appVersion={APP_VERSION} />}
           actions={
             <>
               <IconButton label="Guide & FAQ (F1)" onClick={() => (wins.guide ? toggleWin('guide', false) : openGuide())} aria-pressed={wins.guide}>

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadRecent, rankCommands, rememberRecent, scoreCommand, sequenceKeys, type AppCommand } from '../src/lib/commands';
+import { loadUsage, rankCommands, recordUse, scoreCommand, sequenceKeys, type AppCommand } from '../src/lib/commands';
 import { GUIDE, searchGuide } from '../src/lib/guide';
 
 const noop = () => undefined;
@@ -71,16 +71,19 @@ describe('recent commands', () => {
   });
   it('works without storage at all', () => {
     delete (globalThis as { localStorage?: unknown }).localStorage;
-    expect(rememberRecent('a')).toEqual(['a']);
-    expect(loadRecent()).toEqual([]);
+    expect(Object.keys(recordUse('a'))).toEqual(['a']);
+    expect(loadUsage()).toEqual({});
   });
-  it('keeps the newest first, without duplicates, at most six', () => {
-    for (const id of ['a', 'b', 'c', 'a', 'd', 'e', 'f', 'g']) rememberRecent(id);
-    expect(loadRecent()).toEqual(['g', 'f', 'e', 'd', 'a', 'c']);
+  it('counts runs and keeps the last time, newest first', () => {
+    let t = 0;
+    for (const id of ['a', 'b', 'a']) recordUse(id, (t += 10));
+    const u = loadUsage();
+    expect(u.a).toEqual({ count: 2, last: 30 });
+    expect(u.b).toEqual({ count: 1, last: 20 });
   });
   it('survives unreadable storage', () => {
-    localStorage.setItem('shanku.recentCommands', '{not json');
-    expect(loadRecent()).toEqual([]);
+    localStorage.setItem('shanku.commandUsage', '{not json');
+    expect(loadUsage()).toEqual({});
   });
 });
 

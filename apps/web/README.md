@@ -1,4 +1,4 @@
-# @shanku/web 0.28.2
+# @shanku/web 0.29.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.29.0 — 2026-09-24
+- **Command search (Ctrl + K) opens on three sections** before you type: **Recently used** (last 3, newest first), **Most used** (run at least twice, not already listed) and **New in Shanku x.y** (commands from the last five releases you have not tried yet, e.g. QA checks, exploded views, Guide & FAQ). ↑ ↓ move through all of them as one list. New commands carry a **New** badge in search results too; it goes once you use the command.
+- Usage (count and last use per command) is kept in this browser; the older recent-commands list is carried over.
+- Rows keep the ✓ column for every command, so titles line up.
 
 ### 0.28.2 — 2026-09-24
 - **Fixed: Guide & FAQ crashed the app in Chrome 154** (`TypeError: n is not a function`) when changing section or closing the window. The guide scrolled back to the top with `useEffect(() => body.current?.scrollTo(...))`; the arrow's value becomes the effect's cleanup, and Chrome 154's `scrollTo()` returns a Promise, which React then called. Reproduced by emulating the Promise-returning scroll methods; fixed with a block body.

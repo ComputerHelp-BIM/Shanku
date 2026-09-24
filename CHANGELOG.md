@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.29.0 — 2026-09-24
+
+### Added
+- Command search sections when empty: Recently used, Most used, New in this release (with New badges).
+
 ## 0.28.2 — 2026-09-24
 
 ### Fixed

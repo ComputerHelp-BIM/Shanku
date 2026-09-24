@@ -379,6 +379,9 @@
 .app-palette__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-palette__check { display: inline-block; width: 16px; color: var(--accent-text); }
 .app-palette__why { color: var(--text-faint); }
+.app-palette__heading + .app-palette__row { margin-top: 0; }
+.app-palette__row + .app-palette__heading { margin-top: 6px; border-top: 1px solid var(--border); padding-top: 8px; }
+.app-palette__new { padding: 0 6px; border-radius: var(--radius-sm); font-size: 11px; line-height: 16px; font-weight: 600; color: var(--accent-text); background: var(--chip); border: 1px solid var(--accent); }
 .app-palette__group { font-size: 12px; color: var(--text-secondary); }
 .app-palette__row kbd, .app-palette__foot kbd { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); }
 .app-palette__empty { padding: 10px; color: var(--text-secondary); }

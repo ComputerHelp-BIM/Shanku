@@ -250,6 +250,9 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.29.0', date: '2026-09-24', items: ['Command search (Ctrl + K) opens on Recently used, Most used and New in this release; new commands carry a New badge until you try them.'] },
+          { version: '0.28.2', date: '2026-09-24', items: ['Fixed: Guide & FAQ could crash the app in Chrome 154 when changing section or closing it.', 'A failing window or panel now shows its own error with Try again and Copy details instead of blanking the app.'] },
+          { version: '0.28.0', date: '2026-09-24', items: ['Exploded views combine: storeys, radial and categories together.', 'Cut faces are solid, a shade darker, answer hover and selection, and have their own cut outline.', 'Section grips in plans: lengthen, far clip, flip and move.'] },
           { version: '0.27.0', date: '2026-09-24', items: ['QA checks: duplicates, floating columns, overlaps, sizes, levels, grades and marks, with a QA panel to select, isolate and step through each finding.'] },
           { version: '0.26.0', date: '2026-09-24', items: ['DXF drawings look and work like AutoCAD: grid with red and green axes (F7), UCS icon, crosshair, X, Y, 0.000 coordinates.', 'AutoCAD right-click menus with Isolate, Select Similar, Quick Select, Find, Count and Quick Properties.'] },
           { version: '0.25.0', date: '2026-09-24', items: ['Solid cut faces in section boxes, plans and sections.', 'Section grips in plans: lengthen, far clip, flip and move, each undoable.'] },

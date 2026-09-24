@@ -1,6 +1,6 @@
-import { useId, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
+import { Fragment, useId, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import { CommandSearch } from '@shanku/ui';
-import { loadRecent, rankCommands, rememberRecent, type AppCommand } from '../lib/commands';
+import { isNewCommand, loadUsage, paletteSections, rankCommands, recordUse, type AppCommand, type CommandUsage } from '../lib/commands';
 
 /** An element the query found (mark, Element ID, GlobalId or name). */
 export interface ElementHit {
@@ -14,20 +14,23 @@ export interface CommandPaletteProps {
   getCommands: () => AppCommand[];
   findElement: (query: string) => ElementHit | null;
   inputRef?: Ref<HTMLInputElement>;
+  /** For the "New in Shanku x.y" section and the New badges. */
+  appVersion: string;
 }
 
-type Row = { kind: 'element'; hit: ElementHit } | { kind: 'command'; cmd: AppCommand };
+/** A row, and the section heading drawn above it when it starts a section (empty query only). */
+type Row = ({ kind: 'element'; hit: ElementHit } | { kind: 'command'; cmd: AppCommand }) & { heading?: string };
 
 /**
  * The title-bar search (Ctrl + K) as a command palette: type a command name ("isolate",
  * "hidden line", "vg") or a mark, Element ID, GlobalId or name. A leading ">" searches commands only.
  * WAI-ARIA combobox: ↑ ↓ move, Enter runs, Esc clears then closes.
  */
-export function CommandPalette({ getCommands, findElement, inputRef }: CommandPaletteProps) {
+export function CommandPalette({ getCommands, findElement, inputRef, appVersion }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const [recent, setRecent] = useState<string[]>(loadRecent);
+  const [usage, setUsage] = useState<CommandUsage>(loadUsage);
   const listId = useId();
   const input = useRef<HTMLInputElement | null>(null);
 
@@ -38,8 +41,10 @@ export function CommandPalette({ getCommands, findElement, inputRef }: CommandPa
     const commandsOnly = q.startsWith('>');
     const cq = commandsOnly ? q.slice(1).trim() : q;
     if (!cq) {
-      const byId = new Map(commands.map((c) => [c.id, c]));
-      return recent.map((id) => byId.get(id)).filter((c): c is AppCommand => !!c).map((cmd) => ({ kind: 'command' as const, cmd }));
+      // Nothing typed: Recently used, Most used, New in this release, as one list with headings.
+      return paletteSections(commands, usage, appVersion).flatMap((sct) =>
+        sct.commands.map((cmd, i) => ({ kind: 'command' as const, cmd, heading: i === 0 ? sct.title : undefined })),
+      );
     }
     const out: Row[] = [];
     const hit = commandsOnly ? null : findElement(cq);
@@ -48,7 +53,7 @@ export function CommandPalette({ getCommands, findElement, inputRef }: CommandPa
     return out;
     // getCommands and findElement change every render; the list only needs to follow what is typed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, query, recent]);
+  }, [open, query, usage]);
 
   const close = (blur: boolean) => {
     setOpen(false);
@@ -61,7 +66,7 @@ export function CommandPalette({ getCommands, findElement, inputRef }: CommandPa
     if (!row) return;
     if (row.kind === 'command') {
       if (row.cmd.enabled === false) return;
-      setRecent(rememberRecent(row.cmd.id));
+      setUsage(recordUse(row.cmd.id));
       close(true);
       row.cmd.run();
     } else {
@@ -121,13 +126,18 @@ export function CommandPalette({ getCommands, findElement, inputRef }: CommandPa
       />
       {showList ? (
         <div className="app-palette__list" id={listId} role="listbox" aria-label="Commands and elements">
-          {!q && rows.length ? <div className="app-palette__heading">Recent commands</div> : null}
           {rows.map((row, i) => {
             const isActive = i === Math.min(active, rows.length - 1);
             const disabled = row.kind === 'command' && row.cmd.enabled === false;
+            const fresh = row.kind === 'command' && isNewCommand(row.cmd.id, appVersion) && !usage[row.cmd.id];
             return (
+              <Fragment key={row.kind === 'command' ? `${row.heading ?? ''}${row.cmd.id}` : 'element'}>
+              {row.heading ? (
+                <div className="app-palette__heading" role="presentation">
+                  {row.heading}
+                </div>
+              ) : null}
               <div
-                key={row.kind === 'command' ? row.cmd.id : 'element'}
                 id={optionId(i)}
                 role="option"
                 aria-selected={isActive}
@@ -147,16 +157,19 @@ export function CommandPalette({ getCommands, findElement, inputRef }: CommandPa
                 ) : (
                   <>
                     <span className="app-palette__title">
-                      {row.cmd.checked !== undefined ? <span className="app-palette__check" aria-hidden="true">{row.cmd.checked ? '✓' : ''}</span> : null}
+                      {/* every row keeps the check column, so titles line up */}
+                      <span className="app-palette__check" aria-hidden="true">{row.cmd.checked ? '✓' : ''}</span>
                       {row.cmd.title}
                       {row.cmd.checked !== undefined ? <span className="app-sr">{row.cmd.checked ? ' (on)' : ' (off)'}</span> : null}
                       {disabled && row.cmd.why ? <span className="app-palette__why"> · {row.cmd.why}</span> : null}
                     </span>
+                    {fresh ? <span className="app-palette__new">New</span> : null}
                     <span className="app-palette__group">{row.cmd.group}</span>
                     {row.cmd.keys ? <kbd>{row.cmd.keys}</kbd> : null}
                   </>
                 )}
               </div>
+              </Fragment>
             );
           })}
           {q && !rows.length ? <div className="app-palette__empty">No command or element matches “{q}”.</div> : null}
