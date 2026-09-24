@@ -267,7 +267,7 @@ export function createPickMaterial(state: DataTexture, overrideTex: DataTexture 
   return new ShaderMaterial({
     glslVersion: GLSL3,
     clipping: true,
-    uniforms: { ...explodeUniforms(), uState: { value: state }, uStateWidth: { value: STATE_TEXTURE_WIDTH }, uReveal: { value: 0 }, uOverride: { value: overrideTex } },
+    uniforms: { ...explodeUniforms(), uState: { value: state }, uStateWidth: { value: STATE_TEXTURE_WIDTH }, uReveal: { value: 0 }, uOverride: { value: overrideTex }, uStateMask: { value: 0 } },
     vertexShader: /* glsl */ `
 ${STATE_VERTEX}
 ${CLIP_V_PARS}
@@ -283,9 +283,13 @@ out vec4 outColor;
 flat in int vState;
 flat in vec4 vOverride;
 flat in int vId;
+// Section caps reuse this shader: a non-zero mask keeps only elements with those state bits
+// (selected, hovered, box preview) so their caps can be drawn in their own colour.
+uniform int uStateMask;
 ${CLIP_F_PARS}
 void main() {
   ${CLIP_F}
+  if (uStateMask != 0 && (vState & uStateMask) == 0) discard;
   int v = vId + 1;
   outColor = vec4(float((v >> 16) & 255), float((v >> 8) & 255), float(v & 255), 255.0) / 255.0;
 }`,

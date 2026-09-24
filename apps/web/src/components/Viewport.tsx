@@ -72,7 +72,8 @@ export interface ViewportProps {
   /** Reveal Hidden Elements */
   reveal?: boolean;
   /** Exploded view: mode and amount 0-1 (0 or null is assembled). Changes animate. */
-  explode?: { mode: ExplodeMode; amount: number } | null;
+  /** Exploded view: combined modes and spread 0-1; null collapses. */
+  explode?: { modes: ExplodeMode[]; amount: number } | null;
   /** Canvas (3D background) theme, independent of the interface theme. */
   canvasTheme?: 'follow' | 'paper' | 'ink';
 }
@@ -150,18 +151,20 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   useEffect(() => viewer.current?.setAnnotations(props.annotations ?? []), [props.annotations, model]);
   useEffect(() => viewer.current?.setAnnotationSelection(props.annotationSelection ?? []), [props.annotationSelection, model]);
   // Exploded view: animate to the requested amount; null collapses the current mode.
-  const explodeMode = props.explode?.mode ?? null;
+  const explodeKey = props.explode ? [...props.explode.modes].sort().join('+') : null;
   const explodeAmount = props.explode?.amount ?? 0;
   // Turning explode on, off or to another mode re-frames the model when it settles; the spread slider does not.
   const lastExplodeMode = useRef<string | null>(null);
   useEffect(() => {
     const v = viewer.current;
     if (!v || !model) return;
-    const mode = explodeMode ?? v.explode.mode;
-    const refit = lastExplodeMode.current !== explodeMode;
-    lastExplodeMode.current = explodeMode;
-    if (mode) v.setExplode(mode, explodeMode ? explodeAmount : 0, true, refit);
-  }, [explodeMode, explodeAmount, model]);
+    // Collapsing keeps the current combination and animates it back to 0.
+    const modes = props.explode?.modes ?? v.explode.modes;
+    const refit = lastExplodeMode.current !== explodeKey;
+    lastExplodeMode.current = explodeKey;
+    if (modes.length) v.setExplode(modes, explodeKey ? explodeAmount : 0, true, refit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [explodeKey, explodeAmount, model]);
   useEffect(() => viewer.current?.setOverrides(props.overrides ?? []), [props.overrides, model]);
   useEffect(() => viewer.current?.refreshTheme(), [props.canvasTheme]);
 

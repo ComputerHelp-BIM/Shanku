@@ -1,4 +1,4 @@
-# @shanku/engine 0.23.0
+# @shanku/engine 0.24.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -48,6 +48,11 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.24.0 — 2026-09-24
+- Exploded views combine: `explodeOffsets` and `setExplode` take several modes (storeys, radial, categories); their offsets add up. Changing the combination glides elements from where they are to their new place (per-element offset tween), never snapping back.
+- Section caps answer hover and selection: after the cut-concrete cap, masked stencil passes (pick shader `uStateMask`) draw the caps of selected (orange), hovered (tint) and box-previewed (blue) elements in their colours; clicking a cut face picks its element.
+- Cut outlines: plane–triangle intersections per cut plane, drawn in the cut-line colour over the caps; rebuilt when the cut, hidden elements or explode state change (throttled while dragging).
 
 ### 0.23.0 — 2026-09-24
 - **Solid section caps by stencil parity**: for each cut plane that faces the camera (section box or a plan/section view range), the model is drawn into the stencil with invert on every surface behind the plane; where the count is odd the point is inside a solid and a cap is drawn, clipped by the other planes. Independent of mesh winding (real IFC meshes are often inconsistent); the model stays hollow. Follows hidden elements and exploded views. The renderer now requests a stencil buffer (three.js no longer allocates one by default).

@@ -58,3 +58,15 @@ describe('exploded view offsets', () => {
     expect(explodedBounds(model[4].bounds, null, 4, 1)).toBe(model[4].bounds);
   });
 });
+
+describe('combined exploded views', () => {
+  it('storeys, radial and categories add up', async () => {
+    const { explodeOffsets: offsets } = await import('../src/render/explode');
+    const els = model;
+    const a = offsets(els, 'storeys'), b = offsets(els, 'radial'), c = offsets(els, 'categories');
+    const all = offsets(els, ['storeys', 'radial', 'categories']);
+    for (let i = 0; i < all.length; i++) expect(all[i]).toBeCloseTo(a[i] + b[i] + c[i], 6);
+    expect(offsets(els, ['radial', 'radial'])).toEqual(b); // duplicates count once
+  });
+});
+

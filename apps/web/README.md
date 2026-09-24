@@ -1,7 +1,7 @@
-# @shanku/web 0.25.0
+# @shanku/web 0.26.0
 
-The Shanku app. Requires `@shanku/engine >= 0.23.0`, `@shanku/ui >= 0.11.0`, `@shanku/tokens >= 2.0.0`.
-The Shanku app. Requires `@shanku/engine >= 0.23.0`, `@shanku/ui >= 0.11.1`, `@shanku/tokens >= 2.1.0`.
+The Shanku app. Requires `@shanku/engine >= 0.24.0`, `@shanku/ui >= 0.11.0`, `@shanku/tokens >= 2.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.24.0`, `@shanku/ui >= 0.11.1`, `@shanku/tokens >= 2.1.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -22,6 +22,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.26.0 — 2026-09-24
+- **Exploded views stack**: Storeys, Radial and Categories are independent toggles and work together (e.g. categories side by side, each storey lifted); turning the last one off collapses the model.
+- **Cut faces behave like the element**: hover tints them, selecting turns them orange, the box preview turns them blue, and clicking a cut face selects its element.
+- **Cut outlines**: where a section box or a plan / section view range cuts an element, its outline is drawn as a darker cut line, distinct from model edges.
+- Merged the design-system branch's 0.25.0 (AutoCAD interface for DXF drawings, 2D right-click menus, Revit gap analysis).
 
 ### 0.25.0 — 2026-09-24
 - **Cut faces are solid** in section boxes and in plan and section view ranges, a shade darker than the element faces so cuts read as cuts, whatever the IFC mesh quality.

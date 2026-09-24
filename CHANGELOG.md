@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.26.0 — 2026-09-24
+
+### Added
+- Combined exploded views; cut faces respond to hover, selection and box preview; cut outlines.
+- Includes the design-system branch release also numbered 0.25.0 (AutoCAD interface for DXF, 2D right-click menus, Revit gap analysis).
+
 ## 0.25.0 — 2026-09-24
 
 ### Added

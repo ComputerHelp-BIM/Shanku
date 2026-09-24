@@ -15,6 +15,7 @@ import {
   InvertStencilOp,
   PlaneGeometry,
   SRGBColorSpace,
+  LineBasicMaterial,
   LineSegments,
   Matrix4,
   Mesh,
@@ -172,6 +173,20 @@ export class Viewer {
     polygonOffsetUnits: -1,
   });
   private capQuad = new Mesh(new PlaneGeometry(1, 1), this.capMat);
+  /** Cap colours: base (cut concrete), selected, hovered and box preview (set from the theme). */
+  private capColors = { base: new Color(), sel: new Color(), hov: new Color(), pre: new Color() };
+  /**
+   * Cut outlines (Revit's cut lines): where each cut plane slices elements, drawn darker than model
+   * edges. Computed on the CPU when the cut changes (throttled), one line set per plane.
+   */
+  private cutScene = new Scene();
+  private cutLines: LineSegments[] = [];
+  private cutMat = new LineBasicMaterial({ depthTest: false, transparent: true });
+  private cutOthers: Plane[][] = [0, 1, 2, 3, 4, 5].map(() => [0, 1, 2, 3, 4].map(() => new Plane()));
+  private cutKey = '';
+  private cutPending: ReturnType<typeof setTimeout> | undefined;
+  private cutLastBuild = 0;
+  private hiddenVersion = 0;
   private sbox: SectionBoxState | null = null;
   private gizmo = new SectionGizmo();
   private gizmoScene = new Scene();
@@ -213,7 +228,9 @@ export class Viewer {
   private disposers: Array<() => void> = [];
   private modelSphere = new Sphere(new Vector3(), 10);
   /** Exploded view: mode, current amount (0-1) and the per-element offsets at full explosion. */
-  private explodeMode: ExplodeMode | null = null;
+  /** Active exploded-view modes (combined), and their key for comparisons. */
+  private explodeModes: ExplodeMode[] = [];
+  private explodeKey = '';
   private explodeAmount = 0;
   private explodeData: Float32Array | null = null;
   private explodeTex: DataTexture | null = null;
@@ -228,6 +245,16 @@ export class Viewer {
     this.renderer.setClearColor(0x000000, 0); // the container's --viewport background shows through
     this.renderer.localClippingEnabled = true;
     this.capMat.clippingPlanes = this.capOthers;
+    for (let i = 0; i < 6; i++) {
+      const m = this.cutMat.clone();
+      m.clippingPlanes = this.cutOthers[i];
+      const ls = new LineSegments(new BufferGeometry(), m);
+      ls.frustumCulled = false;
+      ls.visible = false;
+      ls.renderOrder = 10;
+      this.cutLines.push(ls);
+      this.cutScene.add(ls);
+    }
     this.capQuad.frustumCulled = false;
     this.capScene.add(this.capQuad);
     this.canvas = this.renderer.domElement;
@@ -443,7 +470,8 @@ export class Viewer {
     this.explodeTex?.dispose();
     this.explodeTex = null;
     this.explodeData = null;
-    this.explodeMode = null;
+    this.explodeModes = [];
+    this.explodeKey = '';
     this.explodeAmount = 0;
     this.explodeToken++;
     this.meshMat = this.edgeMat = this.pickMat = null;
@@ -474,6 +502,7 @@ export class Viewer {
     if (!this.stateData || !this.state) return;
     for (const i of this.hidden) this.stateData[i * 4] &= ~STATE_HIDDEN;
     this.hidden = new Set(indices);
+    this.hiddenVersion++;
     for (const i of this.hidden) this.stateData[i * 4] |= STATE_HIDDEN;
     this.state.needsUpdate = true;
     this.requestRender();
@@ -606,34 +635,96 @@ export class Viewer {
     return this.section !== null;
   }
 
-  /** Draws solid caps on the cut planes that face the camera (see capStencilScene). */
+  /**
+   * Draws solid caps on the cut planes that face the camera (see capStencilScene): the cut concrete
+   * everywhere, then again only for selected, hovered and box-previewed elements in their colours, so
+   * cut faces answer hover and selection like the rest of the element. Then the cut outlines.
+   */
   private renderCaps(): void {
     const st = this.sbox!;
     const sm = this.capStencilMat!;
-    // keep the stencil pass in step with the model pass (exploded views, reveal)
     if (this.pickMat) {
       for (const k of ['uExplode', 'uOffset', 'uReveal']) if (sm.uniforms[k] && this.pickMat.uniforms[k]) sm.uniforms[k].value = this.pickMat.uniforms[k].value;
     }
+    this.updateCutLines();
     const forward = new Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
     const size = Math.max(10, this.modelSphere.radius * 4, st.half.length() * 4);
     const auto = this.renderer.autoClear;
     this.renderer.autoClear = false;
     const n0 = new Vector3(0, 0, 1);
+    const passes: Array<[number, Color]> = [[0, this.capColors.base]];
+    if (this.selection.size) passes.push([STATE_SELECTED, this.capColors.sel]);
+    if (this.hovered !== null) passes.push([STATE_HOVER, this.capColors.hov]);
+    if (this.preselected.length) passes.push([STATE_PRESELECT, this.capColors.pre]);
     this.clipPlanes.forEach((plane, i) => {
-      // Visible only when looking from the removed side into the kept one.
-      if (plane.normal.dot(forward) <= 1e-3) return;
+      if (plane.normal.dot(forward) <= 1e-3) return; // visible only from the removed side
       this.capClip.copy(plane);
       let k = 0;
       this.clipPlanes.forEach((q, j) => j !== i && this.capOthers[k++].copy(q));
-      this.renderer.clearStencil();
-      this.renderer.render(this.capStencilScene, this.camera);
       plane.projectPoint(st.center, this.capQuad.position);
       this.capQuad.quaternion.setFromUnitVectors(n0, plane.normal);
       this.capQuad.scale.set(size, size, 1);
       this.capQuad.updateMatrixWorld();
-      this.renderer.render(this.capScene, this.camera);
+      for (const [mask, color] of passes) {
+        sm.uniforms.uStateMask.value = mask;
+        this.capMat.color.copy(color);
+        this.renderer.clearStencil();
+        this.renderer.render(this.capStencilScene, this.camera);
+        this.renderer.render(this.capScene, this.camera);
+      }
+      // this plane's cut outline, on top of its caps
+      this.cutLines.forEach((ls, j) => (ls.visible = j === i && (ls.geometry.getAttribute('position')?.count ?? 0) > 0));
+      this.renderer.render(this.cutScene, this.camera);
     });
+    sm.uniforms.uStateMask.value = 0;
     this.renderer.autoClear = auto;
+  }
+
+  /** Rebuilds the cut outlines when the planes, hidden elements or explode state change (throttled). */
+  private updateCutLines(): void {
+    if (!this.model || !this.sbox) return;
+    const key = this.clipPlanes.map((p) => `${p.normal.x.toFixed(4)},${p.normal.y.toFixed(4)},${p.normal.z.toFixed(4)},${p.constant.toFixed(4)}`).join('|') + `#${this.hiddenVersion}#${this.explodeAmount > 0 ? 'x' : ''}`;
+    if (key === this.cutKey) return;
+    const now = performance.now();
+    if (now - this.cutLastBuild < 150) {
+      // dragging a grip: rebuild when the movement pauses
+      clearTimeout(this.cutPending);
+      this.cutPending = setTimeout(() => this.requestRender(), 160);
+      return;
+    }
+    this.cutKey = key;
+    this.cutLastBuild = now;
+    const exploded = this.explodeAmount > 0; // outlines follow the assembled model only
+    const { positions: P, indices: I, elementIds: E } = this.model.mesh;
+    this.clipPlanes.forEach((plane, i) => {
+      let k = 0;
+      this.clipPlanes.forEach((q, j) => j !== i && this.cutOthers[i][k++].copy(q));
+      const out: number[] = [];
+      if (!exploded) {
+        const nx = plane.normal.x, ny = plane.normal.y, nz = plane.normal.z, c = plane.constant;
+        for (let t = 0; t < I.length; t += 3) {
+          const a = I[t], b = I[t + 1], d = I[t + 2];
+          if (this.hidden.has(E[a])) continue;
+          const da = nx * P[a * 3] + ny * P[a * 3 + 1] + nz * P[a * 3 + 2] + c;
+          const db = nx * P[b * 3] + ny * P[b * 3 + 1] + nz * P[b * 3 + 2] + c;
+          const dd = nx * P[d * 3] + ny * P[d * 3 + 1] + nz * P[d * 3 + 2] + c;
+          if ((da > 0 && db > 0 && dd > 0) || (da < 0 && db < 0 && dd < 0)) continue;
+          const pts: number[] = [];
+          const edge = (u: number, du: number, v: number, dv: number) => {
+            if ((du > 0) === (dv > 0) || du === dv) return;
+            const s = du / (du - dv);
+            pts.push(P[u * 3] + (P[v * 3] - P[u * 3]) * s, P[u * 3 + 1] + (P[v * 3 + 1] - P[u * 3 + 1]) * s, P[u * 3 + 2] + (P[v * 3 + 2] - P[u * 3 + 2]) * s);
+          };
+          edge(a, da, b, db);
+          edge(b, db, d, dd);
+          edge(d, dd, a, da);
+          if (pts.length >= 6) out.push(pts[0], pts[1], pts[2], pts[3], pts[4], pts[5]);
+        }
+      }
+      const g = this.cutLines[i].geometry;
+      g.setAttribute('position', new BufferAttribute(new Float32Array(out), 3));
+      g.computeBoundingSphere();
+    });
   }
 
   // ----------------------------------------------------------------- camera
@@ -864,8 +955,8 @@ export class Viewer {
   }
 
   /** Current exploded view: its mode (null when never exploded) and amount 0-1. */
-  get explode(): { mode: ExplodeMode | null; amount: number } {
-    return { mode: this.explodeMode, amount: this.explodeAmount };
+  get explode(): { modes: ExplodeMode[]; amount: number } {
+    return { modes: [...this.explodeModes], amount: this.explodeAmount };
   }
 
   /**
@@ -874,28 +965,71 @@ export class Viewer {
    * user prefers reduced motion. Works on the GPU: nothing is rebuilt, picking follows.
    * `refit` frames the whole (exploded or collapsed) model when the movement ends.
    */
-  setExplode(mode: ExplodeMode, amount: number, animate = true, refit = false): void {
+  setExplode(modes: ExplodeMode | readonly ExplodeMode[], amount: number, animate = true, refit = false): void {
     if (!this.model) return;
+    const list = (typeof modes === 'string' ? [modes] : [...new Set(modes)]).sort() as ExplodeMode[];
+    const key = list.join('+');
     const target = Math.min(1, Math.max(0, amount));
-    if (mode !== this.explodeMode || !this.explodeData) {
-      this.explodeData = explodeOffsets(this.model.elements, mode);
-      this.explodeTex?.dispose();
-      this.explodeTex = createOffsetTexture(this.explodeData, this.model.elements.length);
-      for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat]) if (mat) mat.uniforms.uOffset.value = this.explodeTex;
-      // Switching mode starts from the assembled model, so the change reads as one movement.
-      if (mode !== this.explodeMode) this.explodeAmount = 0;
-      this.explodeMode = mode;
-    }
-    const from = this.explodeAmount;
-    const token = ++this.explodeToken;
     const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const token = ++this.explodeToken;
     const ms = 600;
     const t0 = performance.now();
+    const ease = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2); // ease in-out cubic
+    const n = this.model.elements.length;
+
+    if (key !== this.explodeKey || !this.explodeData) {
+      // Another combination: glide every element from where it is now to where the new one puts it
+      // (blend the effective offsets at amount 1), so adding or removing a mode never snaps back.
+      const next = explodeOffsets(this.model.elements, list);
+      const from = new Float32Array(n * 3);
+      if (this.explodeData) for (let i = 0; i < from.length; i++) from[i] = this.explodeData[i] * this.explodeAmount;
+      const to = new Float32Array(n * 3);
+      for (let i = 0; i < to.length; i++) to[i] = next[i] * target;
+      const work = new Float32Array(n * 3);
+      this.explodeTex?.dispose();
+      this.explodeData = work;
+      this.explodeTex = createOffsetTexture(work, n);
+      for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat]) if (mat) mat.uniforms.uOffset.value = this.explodeTex;
+      this.explodeModes = list;
+      this.explodeKey = key;
+      const texData = this.explodeTex.image.data as Float32Array;
+      const blend = (e: number) => {
+        for (let i = 0; i < work.length; i++) work[i] = from[i] + (to[i] - from[i]) * e;
+        // the offset texture is RGBA per element; copy xyz
+        for (let j = 0; j < n; j++) {
+          texData[j * 4] = work[j * 3];
+          texData[j * 4 + 1] = work[j * 3 + 1];
+          texData[j * 4 + 2] = work[j * 3 + 2];
+        }
+        this.explodeTex!.needsUpdate = true;
+        this.applyExplodeAmount(1);
+      };
+      const finish = () => {
+        // settle on the plain offsets of the new combination at the target amount
+        this.explodeData = next;
+        this.explodeTex?.dispose();
+        this.explodeTex = createOffsetTexture(next, n);
+        for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat]) if (mat) mat.uniforms.uOffset.value = this.explodeTex;
+        this.applyExplodeAmount(target);
+        if (refit) this.animated(() => this.fit(undefined, false));
+      };
+      const step = () => {
+        if (token !== this.explodeToken) return;
+        const k = !animate || reduce ? 1 : Math.min(1, (performance.now() - t0) / ms);
+        blend(ease(k));
+        if (k < 1) requestAnimationFrame(step);
+        else finish();
+      };
+      if (!animate || reduce) step();
+      else requestAnimationFrame(step);
+      return;
+    }
+    // Same combination: animate the spread only.
+    const from = this.explodeAmount;
     const step = () => {
       if (token !== this.explodeToken) return;
       const k = !animate || reduce ? 1 : Math.min(1, (performance.now() - t0) / ms);
-      const e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2; // ease in-out cubic, as camera moves
-      this.applyExplodeAmount(from + (target - from) * e);
+      this.applyExplodeAmount(from + (target - from) * ease(k));
       if (k < 1) requestAnimationFrame(step);
       else if (refit) this.animated(() => this.fit(undefined, false));
     };
@@ -1625,7 +1759,16 @@ export class Viewer {
     const top = t['concrete-top'], side = t['concrete-side'];
     setMesh('uCap', { r: (top.r + side.r) / 2, g: (top.g + side.g) / 2, b: (top.b + side.b) / 2, a: 1 });
     // Token values are sRGB; three's built-in materials convert from linear, so say which it is.
-    this.capMat.color.setRGB(top.r * 0.8, top.g * 0.8, top.b * 0.8, SRGBColorSpace);
+    this.capColors.base.setRGB(top.r * 0.8, top.g * 0.8, top.b * 0.8, SRGBColorSpace);
+    this.capMat.color.copy(this.capColors.base);
+    const sel = t['selected-side'], hov = t['hover-outline'];
+    this.capColors.sel.setRGB(sel.r, sel.g, sel.b, SRGBColorSpace);
+    this.capColors.hov.setRGB(top.r * 0.8 * 0.8 + hov.r * 0.2, top.g * 0.8 * 0.8 + hov.g * 0.2, top.b * 0.8 * 0.8 + hov.b * 0.2, SRGBColorSpace);
+    const pre = getComputedStyle(this.container).getPropertyValue('--select-window').trim() || '#2F7FD8';
+    this.capColors.pre.set(pre).lerp(this.capColors.base, 0.45);
+    // Cut outlines: the drawing's cut-line colour, heavier-looking than the soft model edges.
+    const cut = t['line-cut'];
+    for (const ls of this.cutLines) (ls.material as LineBasicMaterial).color.setRGB(cut.r, cut.g, cut.b, SRGBColorSpace);
     const accent = getComputedStyle(this.container).getPropertyValue('--accent').trim() || '#D9761E';
     this.gizmo.setColors(new Color(accent), new Color(t['selected-top'].r, t['selected-top'].g, t['selected-top'].b));
     // Glass tint: a cool grey-blue, lighter on Paper, deeper on Ink.

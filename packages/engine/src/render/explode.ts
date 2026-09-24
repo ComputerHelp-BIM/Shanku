@@ -62,7 +62,22 @@ function storeyRanks(elements: readonly ElementRecord[]): { rank: Int32Array; ga
  * `radial`: each element moves away from the plan centre by its own distance from it.
  * `categories`: categories are laid out along X, one model width (plus 25 %) apart, centred.
  */
-export function explodeOffsets(elements: readonly ElementRecord[], mode: ExplodeMode): Float32Array {
+/**
+ * Offsets for several modes at once: they add up (storeys lift in Y, radial spreads in the plan,
+ * categories lay out along X), so any combination is well defined.
+ */
+export function explodeOffsets(elements: readonly ElementRecord[], modes: ExplodeMode | readonly ExplodeMode[]): Float32Array {
+  const list = typeof modes === 'string' ? [modes] : [...new Set(modes)];
+  if (list.length === 1) return explodeOffsetsOne(elements, list[0]);
+  const out = new Float32Array(elements.length * 3);
+  for (const m of list) {
+    const o = explodeOffsetsOne(elements, m);
+    for (let i = 0; i < out.length; i++) out[i] += o[i];
+  }
+  return out;
+}
+
+function explodeOffsetsOne(elements: readonly ElementRecord[], mode: ExplodeMode): Float32Array {
   const out = new Float32Array(elements.length * 3);
   if (!elements.length) return out;
   if (mode === 'storeys') {

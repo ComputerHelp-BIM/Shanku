@@ -60,7 +60,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.25.0';
+const APP_VERSION = '0.26.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -196,7 +196,8 @@ export function App({ start }: { start?: AppStart } = {}) {
     setWins((w) => ({ ...w, guide: true }));
   };
   // Exploded view (3D views only): mode and spread 0-1; display only, reset for every new file.
-  const [explode, setExplode] = useState<{ mode: ExplodeMode; amount: number } | null>(null);
+  // Exploded view: any combination of storeys, radial and categories (they add up).
+  const [explode, setExplode] = useState<{ modes: ExplodeMode[]; amount: number } | null>(null);
   const toggleWin = (k: keyof typeof wins, v?: boolean) => setWins((w) => ({ ...w, [k]: v ?? !w[k] }));
   useShortcut(TOGGLE_BOTTOM_PANEL, () => dock.current?.toggleBottom(), { allowInEditable: true });
   useShortcut({ code: 'F1' }, () => (wins.guide ? toggleWin('guide', false) : openGuide()), { allowInEditable: true });
@@ -921,7 +922,7 @@ export function App({ start }: { start?: AppStart } = {}) {
         title: `Explode: ${md.label.toLowerCase()}`,
         group: 'Explode' as const,
         keywords: `${md.hint} exploded apart spread`,
-        checked: explode?.mode === md.id,
+        checked: !!explode?.modes.includes(md.id),
         enabled: in3d,
         why: need3d,
         run: () => toggleExplode(md.id),
@@ -961,7 +962,11 @@ export function App({ start }: { start?: AppStart } = {}) {
   const toggleExplode = (mode: ExplodeMode) => {
     if (!m.model) return;
     if (isTwoD(activeModelView ?? undefined) || activeDoc) return setNotice('Exploded views are for 3D views.');
-    setExplode((cur) => (cur?.mode === mode ? null : { mode, amount: cur?.amount && cur.amount > 0 ? cur.amount : 0.6 }));
+    setExplode((cur) => {
+      if (!cur) return { modes: [mode], amount: 0.6 };
+      const modes = cur.modes.includes(mode) ? cur.modes.filter((x) => x !== mode) : [...cur.modes, mode];
+      return modes.length ? { modes, amount: cur.amount > 0 ? cur.amount : 0.6 } : null; // last one off: collapse
+    });
   };
 
   const info = m.model?.info;
@@ -1051,10 +1056,10 @@ export function App({ start }: { start?: AppStart } = {}) {
                 key={md.id}
                 icon={md.id === 'storeys' ? 'explodeStoreys' : md.id === 'radial' ? 'explodeRadial' : 'explodeCategories'}
                 label={md.label}
-                active={explode?.mode === md.id}
+                active={!!explode?.modes.includes(md.id)}
                 disabled={!m.model || !!activeDoc || isTwoD(activeModelView ?? undefined)}
                 onClick={() => toggleExplode(md.id)}
-                shortcutHint={`${md.hint.toLowerCase()} (3D views; click again to collapse)`}
+                shortcutHint={`${md.hint.toLowerCase()} (3D views; combine with the others; click again to turn off)`}
               />
             ))}
           </RibbonGroup>
@@ -1535,7 +1540,7 @@ export function App({ start }: { start?: AppStart } = {}) {
           </Button>
           {explode && !isTwoD(activeModelView ?? undefined) ? (
             <span className="app-explode" role="group" aria-label="Exploded view">
-              <label htmlFor="explode-spread" title={`Exploded view: ${EXPLODE_MODES.find((md) => md.id === explode.mode)?.label.toLowerCase()}`}>Spread</label>
+              <label htmlFor="explode-spread" title={`Exploded view: ${EXPLODE_MODES.filter((md) => explode.modes.includes(md.id)).map((md) => md.label.toLowerCase()).join(' + ')}`}>Spread</label>
               <input
                 id="explode-spread"
                 type="range"
@@ -1543,7 +1548,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                 max={100}
                 step={5}
                 value={Math.round(explode.amount * 100)}
-                onChange={(e) => setExplode({ mode: explode.mode, amount: Number(e.target.value) / 100 })}
+                onChange={(e) => setExplode({ modes: explode.modes, amount: Number(e.target.value) / 100 })}
               />
               <output htmlFor="explode-spread">{Math.round(explode.amount * 100)} %</output>
               <Button size="sm" variant="ghost" onClick={() => setExplode(null)} title="Put the model back together">
