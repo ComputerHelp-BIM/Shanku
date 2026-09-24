@@ -28,6 +28,8 @@ Methods: `fit(indices?)` (ZF/ZE/ZX/ZA), `home()`, `setView(view)`, `previousView
 
 `src/dxf/extract.py` uses ezdxf's own drawing front end, so blocks, dimensions, leaders, hatches and BYLAYER/BYBLOCK colours resolve as ezdxf renders them. Linetypes are drawn solid for speed. Text is placed by insertion point, height, rotation and alignment in the app's UI font (not the drawing's SHX font). Coordinates are rebased to the drawing's lower-left corner for float precision; the cursor readout adds the origin back.
 
+The view adds AutoCAD's drafting aids: an adaptive grid with the red X and green Y axes through the real origin, the UCS icon, a crosshair with pick box, object isolation on the GPU, and Pan, Zoom, Zoom Window and Zoom Previous tools.
+
 The first DXF in a session downloads Python and ezdxf from jsDelivr and PyPI (about 15 MB, then cached by the browser). The drawing itself never leaves the device. Measured in headless Chromium: a 0.4 MB drawing opens in 6.7 s including that first download; the 23.6 MB Test17 drawing (505,000 lines, 10,465 texts, 14 floor plans) opens in 26 s. Self-hosting Pyodide for offline use is planned.
 
 ## Performance (measured)
@@ -51,6 +53,11 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - **Solid section caps by stencil parity**: for each cut plane that faces the camera (section box or a plan/section view range), the model is drawn into the stencil with invert on every surface behind the plane; where the count is odd the point is inside a solid and a cap is drawn, clipped by the other planes. Independent of mesh winding (real IFC meshes are often inconsistent); the model stays hollow. Follows hidden elements and exploded views. The renderer now requests a stencil buffer (three.js no longer allocates one by default).
 - Cut faces are the top-face colour 20 % darker (given as sRGB). **Correction:** 0.14.0 claimed to replace the old dark cap colour that made cuts look like holes; that edit never applied. It is fixed here.
 - Section grips on a selected section in plans (`onSymbolGrip`): end arrows, far clip, flip, and moving by the line; the far clip extent is drawn dashed.
+- **AutoCAD drafting aids in `DrawingViewer`**: adaptive grid (powers of ten in real drawing units, three levels that fade and strengthen so the grid never pops), red X and green Y axes through the origin, UCS icon at the origin (or lower-left when off screen), crosshair with pick box (`small`, `full`, `off`) and + / − for Ctrl / Shift. `setDisplay()`, `DEFAULT_DRAWING_DISPLAY`. Colours from the new `grid-*` and `axis-*` tokens.
+- **Object isolation**: `setHiddenObjects(mask)` hides entities on the GPU (per-entity texture); hidden objects cannot be picked, box-selected or measured to.
+- **View tools**: `setTool('pan' | 'zoom' | 'zoomWindow' | null)` (Esc, Enter or right-click ends), `previousView()` / `canPrevious` (Zoom Previous; wheel gestures count once), `zoomToObjects()`, `worldAt()`. Right-click now raises `onContextMenu`.
+- `indexEntities()` (layer, colour and kind per object), `objectTypeLabel()`, `gridLevels()` / `gridValues()`.
+- DXF extractor 1.2.0: `types` per object (DXF type, parallel to `handles`) and `Global width` for polylines. `ParsedDrawing.types` is new and required.
 
 ### 0.22.0 — 2026-09-24
 - **Exploded views**: `Viewer.setExplode(mode, amount, animate?)` with modes `storeys` (each storey lifted by one typical storey height per storey below), `radial` (out from the plan centre by each element's own distance) and `categories` (side by side along X in `CATEGORY_ORDER`). Offsets live in a float texture read by the shared vertex prelude, so shading, edges, hidden lines, glass and picking all move together with no geometry rebuild; 0.6 s ease, instant under reduced motion. Fit, box selection and temporary dimensions use the exploded positions. `explodeOffsets` and `explodedBounds` are exported and tested.

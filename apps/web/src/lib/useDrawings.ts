@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { DxfClient, type ParsedDrawing } from '@shanku/engine';
 import { nextDocColor } from './documents';
 import type { PickedFile } from './openFile';
+import type { ObjectVisibility } from './drawingTools';
 
 export interface DrawingDoc {
   id: string;
@@ -14,6 +15,8 @@ export interface DrawingDoc {
   units: string;
   /** Selected DXF objects (indices into drawing.handles); props are those of the first one. */
   selected: { entities: number[]; props: Record<string, string | number | number[]> | null } | null;
+  /** Isolate / Hide Objects in this drawing; null shows everything. */
+  objects: ObjectVisibility | null;
 }
 
 /** Open DXF drawings, one 2D view tab each. */
@@ -41,7 +44,7 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
         saved.current.set(id, { name: file.name, bytes: keep });
         void saveDrawings([...saved.current.values()]);
         const color = nextDocColor([...colorsInUse(), ...docs.map((d) => d.color)]);
-        setDocs((ds) => [...ds, { id, name: file.name, color, drawing, layerOn: drawing.layers.map((l) => l.on), units: drawing.info.units, selected: null }]);
+        setDocs((ds) => [...ds, { id, name: file.name, color, drawing, layerOn: drawing.layers.map((l) => l.on), units: drawing.info.units, selected: null, objects: null }]);
         const i = drawing.info;
         log(
           `Opened ${file.name}: ${i.segments.toLocaleString('en-IN')} lines, ${i.polygons.toLocaleString('en-IN')} fills, ` +
@@ -81,7 +84,7 @@ export function useDrawings(colorsInUse: () => string[], log: (text: string, ton
     );
   }, []);
 
-  const update = useCallback((id: string, patch: Partial<Pick<DrawingDoc, 'layerOn' | 'units'>>) => {
+  const update = useCallback((id: string, patch: Partial<Pick<DrawingDoc, 'layerOn' | 'units' | 'objects'>>) => {
     setDocs((ds) => ds.map((d) => (d.id === id ? { ...d, ...patch } : d)));
   }, []);
 

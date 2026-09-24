@@ -165,6 +165,18 @@ export const GUIDE: GuideSection[] = [
     title: 'DXF drawings and DXF → 3D',
     blocks: [
       { p: 'Open a DXF to see it as a 2D drawing: select objects to see their layer, size and handle, and turn layers on or off.' },
+      { p: 'The drawing view works like AutoCAD model space: a grid in round drawing units with the red X and green Y axes through the origin (**F7** turns it off), the UCS icon, a crosshair with a pick box, and the cursor position as `X, Y, 0.000` in the status bar. The status bar toggles Grid, UCS, Crosshair (small, full screen, off) and QP (Quick Properties).' },
+      {
+        table: {
+          head: ['Right-click', 'What you get'],
+          rows: [
+            ['Nothing selected', 'Repeat, Clipboard (copy the point), Isolate, Undo / Redo, Pan, Zoom, Zoom Window, Zoom Previous, Zoom Extents, Quick Select, Count, Find, Display, Layers, Properties'],
+            ['Objects selected', 'Repeat, Clipboard (properties, handles, point), Isolate / Hide / End Object Isolation, Select Similar, Deselect All, Zoom to Selection, Quick Select, Count Selection, Find, Properties, Quick Properties'],
+          ],
+        },
+      },
+      { list: ['**Select Similar** picks visible objects with the same type, layer and colour.', '**Quick Select** filters by type, layer and colour, in the drawing or the selection, including or excluding matches.', '**Find** searches text, MText and block attributes; pick a match to select it and zoom to it.', '**Isolate Objects** and **Hide Objects** can be undone; the cyan frame has an End button.', '**Pan** and **Zoom** from the menu run until Esc, Enter or a right-click. **ZR** is Zoom Window and **ZP** Zoom Previous, as in 3D.'] },
+      { note: 'Shanku opens drawings to view and check them. Erase, Move, Copy, Scale, Rotate, Draw Order and Group are in the menu so it matches AutoCAD, but greyed out.' },
       { p: 'Drawings in the Computer Help format can become a 3D model: Model → DXF → 3D reads frames, levels and labelled outlines, shows its checks (each with Show, to zoom the drawing to the problem), then writes an IFC4 model that opens in Shanku and can be downloaded.' },
     ],
   },
@@ -213,6 +225,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.25.0', date: '2026-09-24', items: ['DXF drawings look and work like AutoCAD: grid with red and green axes (F7), UCS icon, crosshair, X, Y, 0.000 coordinates.', 'AutoCAD right-click menus with Isolate, Select Similar, Quick Select, Find, Count and Quick Properties.'] },
           { version: '0.24.0', date: '2026-09-24', items: ['Command search: Ctrl + K finds every command as well as elements.', 'Guide & FAQ (F1).', 'Exploded views by storey, radially or by category.'] },
           { version: '0.23.0', date: '2026-09-24', items: ['View symbols behave like elements: hover, select, Properties, and Delete for sections.', 'Live preview of what a window or crossing box will select.', 'Section tool rubber band with 15° snapping, angle and length.'] },
           { version: '0.22.0', date: '2026-09-23', items: ['View symbols: section and elevation marks in plans, levels in elevations and sections; double-click a head to open its view.'] },

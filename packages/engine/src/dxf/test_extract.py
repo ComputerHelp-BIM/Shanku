@@ -70,10 +70,26 @@ def test_every_primitive_knows_its_entity_and_props_answer(dxf_path):
     seg_ent = array("I"); seg_ent.frombytes(out[8])
     assert len(seg_ent) == head["info"]["segments"]
     handles = head["handles"]
+    assert len(head["types"]) == len(handles) and {"LINE", "CIRCLE", "INSERT", "HATCH", "TEXT", "MTEXT"} <= set(head["types"])
     types = {json.loads(X.entity_props_json("d1", handles[i]))["Type"] for i in set(seg_ent)}
     assert {"Line", "Circle", "Insert"} <= types  # block contents belong to their INSERT
     assert all(t[9] < len(handles) for t in head["texts"])
     line = json.loads(X.entity_props_json("d1", handles[0]))
     assert line["Length"] == 4000 and line["Layer"] == "S-BEAM"
+    insert = json.loads(X.entity_props_json("d1", handles[head["types"].index("INSERT")]))
+    assert insert["Block"] == "COL"
     X.forget("d1")
     assert json.loads(X.entity_props_json("d1", handles[0])) is None
+
+
+def test_polyline_quick_properties(tmp_path):
+    doc = ezdxf.new("R2018")
+    doc.modelspace().add_lwpolyline([(0, 0), (100, 0), (100, 50)], close=True, dxfattribs={"layer": "Part-1", "const_width": 2.5})
+    path = tmp_path / "p.dxf"
+    doc.saveas(path)
+    out = X.extract_for_js(str(path), "p1")
+    head = json.loads(out[0])
+    props = json.loads(X.entity_props_json("p1", head["handles"][0]))
+    assert head["types"] == ["LWPOLYLINE"]
+    assert (props["Type"], props["Layer"], props["Closed"], props["Global width"]) == ("Polyline", "Part-1", "Yes", 2.5)
+    X.forget("p1")

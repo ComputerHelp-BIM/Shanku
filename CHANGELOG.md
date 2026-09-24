@@ -9,6 +9,9 @@ All notable changes to this repository. Package-level detail lives in each packa
 
 ### Fixed
 - Cut faces looked hollow: solid stencil caps on every visible cut plane, a shade darker than element faces. The 0.14.0 note claiming this colour was fixed was wrong (that edit never applied).
+- DXF viewer with an AutoCAD interface: adaptive grid with red X and green Y axes (F7), UCS icon, crosshair with pick box, `X, Y, 0.000` coordinates and status-bar toggles (engine 0.23.0, tokens 2.1.0).
+- AutoCAD right-click menus in the 2D view, with and without a selection; Isolate / Hide / End Object Isolation (undoable); Quick Select, Find, Count, Select Similar, Zoom Window, Zoom Previous and Quick Properties.
+- DXF extractor 1.2.0: object types and polyline global width.
 
 ## 0.24.0 — 2026-09-24
 

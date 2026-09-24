@@ -89,5 +89,7 @@ export const SHORTCUT_HELP: Array<{ keys: string; action: string }> = [
   { keys: 'WF · HL · SD · CO', action: 'Wireframe · hidden line · shaded · consistent colours' },
   { keys: 'Ctrl + K', action: 'Search commands, or find an element by mark, Element ID, GlobalId or name' },
   { keys: 'F1', action: 'Guide & FAQ' },
+  { keys: 'F7', action: 'DXF drawing: grid on or off' },
+  { keys: 'Right-click (DXF)', action: 'AutoCAD shortcut menu: isolate, select similar, quick select, find, zoom' },
   { keys: 'Ctrl + ` (or Ctrl + Shift + `)', action: 'Toggle this panel' },
 ];

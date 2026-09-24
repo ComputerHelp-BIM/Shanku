@@ -1,6 +1,7 @@
 # @shanku/web 0.25.0
 
 The Shanku app. Requires `@shanku/engine >= 0.23.0`, `@shanku/ui >= 0.11.0`, `@shanku/tokens >= 2.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.23.0`, `@shanku/ui >= 0.11.1`, `@shanku/tokens >= 2.1.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -26,6 +27,11 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 - **Cut faces are solid** in section boxes and in plan and section view ranges, a shade darker than the element faces so cuts read as cuts, whatever the IFC mesh quality.
 - **Section grips (Revit)**: select a section in a plan to see its far clip extent and grips: ◀ ▶ lengthen or shorten along the line, ▲ drags the far clip, ⇅ flips the direction, and dragging the line moves the section. Each drag or flip is one undoable step (named, e.g. "Resize section: Section 1").
 - Merged the design-system branch's 0.24.0 (command search Ctrl + K, Guide & FAQ F1, exploded views).
+- **AutoCAD interface for DXF drawings**: adaptive grid with red / green axes (F7 or the status-bar Grid toggle), UCS icon, crosshair with pick box (small, full screen or off), coordinates read as `X, Y, 0.000`, and MODEL, Grid, UCS, Crosshair and QP toggles in the status bar. Settings are remembered on this device.
+- **AutoCAD right-click menus in the 2D view**: nothing selected (Repeat, Clipboard, Isolate, Undo / Redo, Pan, Zoom, Zoom Window, Zoom Previous, Zoom Extents, Quick Select, Count, Find, Display, Layers, Properties) and with a selection (Repeat, Clipboard, Isolate, the editing entries greyed out with the reason, Select Similar, Deselect All, Zoom to Selection, Quick Select, Count Selection, Find, Properties, Quick Properties).
+- **Isolate Objects / Hide Objects / End Object Isolation**, undoable, with the cyan frame and an End button.
+- **Quick Select** (type, layer, colour; whole drawing or selection; include / exclude; append) with a live count, **Find** in text, MText and attributes (match case, whole words, select all), **Count**, **Select Similar** (same type, layer and colour) and **Quick Properties** (Color, Layer, Linetype, Global width, Closed for polylines).
+- ZP and ZR now work in drawings (Zoom Previous, Zoom Window); the view bar has Zoom window, Previous, Quick select and Find. All of it is in Ctrl + K too. Requires @shanku/engine 0.23.0 and @shanku/tokens 2.1.0.
 
 ### 0.24.0 — 2026-09-24
 - **Command search** (Ctrl + K): the title-bar search is now a command palette over one command registry (`lib/commands.ts`). Type what you want to do ("isolate", "hidden line", "explode storeys", a Revit key such as "ZF") or a mark, Element ID, GlobalId or name. About 70 commands plus one per category, level and view; each shows its group, shortcut and state (✓ for toggles), and greyed commands say what they need. `>` searches commands only; recent commands show first. WAI-ARIA combobox: ↑ ↓, Enter, Esc.
