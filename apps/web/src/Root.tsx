@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
+import { ErrorBoundary } from '@shanku/ui';
 import { Home } from './home/Home';
 import type { AppStart } from './App';
 import { enterFullscreen } from './lib/fullscreen';
@@ -32,7 +33,19 @@ export function Root() {
   if (!start) return <Home onOpen={open} />;
   return (
     <Suspense fallback={<div className="home-loading">Opening Shanku…</div>}>
-      <App start={start} />
+      {/* Last line of defence: an error that escapes every window and panel shows a report, not a blank page. */}
+      <ErrorBoundary
+        where="Shanku"
+        variant="page"
+        details={() => `Page: ${location.href}`}
+        onReset={() => {
+          // Only layouts and window positions: files, views and templates stay.
+          for (const k of Object.keys(localStorage)) if (k.startsWith('shanku.layout') || k.startsWith('shanku.window.')) localStorage.removeItem(k);
+          location.reload();
+        }}
+      >
+        <App start={start} />
+      </ErrorBoundary>
     </Suspense>
   );
 }

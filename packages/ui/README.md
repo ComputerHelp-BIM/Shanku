@@ -1,4 +1,4 @@
-# @shanku/ui 0.11.1
+# @shanku/ui 0.12.0
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 2.1.0` and `@shanku/brand >= 1.5.0`.
 
@@ -33,6 +33,9 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.12.0 — 2026-09-24
+- `ErrorBoundary` (inline and page variants, copyable report). `FloatingWindow` wraps its contents in one, so an error in a window stays in that window.
 
 ### 0.11.1 — 2026-09-24
 - Requires @shanku/tokens 2.1.0. No component or style changes.

@@ -1,10 +1,10 @@
-# @shanku/web 0.28.0
+# @shanku/web 0.28.1
 
-The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.11.0`, `@shanku/tokens >= 2.0.0`.
-The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.11.1`, `@shanku/tokens >= 2.1.0`.
+The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.0`, `@shanku/tokens >= 2.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.0`, `@shanku/tokens >= 2.1.0`.
 # @shanku/web 0.27.0
 
-The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.11.1`, `@shanku/tokens >= 2.1.0`.
+The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.0`, `@shanku/tokens >= 2.1.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.28.1 — 2026-09-24
+- Fixed: an error in one window or panel could wipe out the whole app and leave a blank page (seen with the Guide & FAQ window on shanku.vercel.app). Every floating window and docked panel now keeps its errors to itself and shows **Try again** / **Copy details**; an error that still escapes shows a report with **Copy details**, **Reload** and **Reset panels & windows** instead of a blank page. Errors outside a redraw go to the Activity panel.
 
 ### 0.28.0 — 2026-09-24
 - Merges main's 0.26.0 (combined exploded views, selectable cut faces, cut outlines) with the design-system branch's 0.26.0 (DXF work) and 0.27.0 (QA checks and panel). Both lines had used 0.26.0; this release is above both.

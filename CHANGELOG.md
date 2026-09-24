@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.28.1 — 2026-09-24
+
+### Fixed
+- A failing window or panel no longer blanks the whole app: error boundaries per window and panel, a page-level report as a last resort, and errors outside redraws logged to Activity.
+
 ## 0.28.0 — 2026-09-24
 
 ### Changed

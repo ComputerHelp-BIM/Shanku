@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { ErrorBoundary } from './ErrorBoundary';
 
 export interface FloatingWindowProps {
   /** Remembers position and size under this id. */
@@ -144,7 +145,10 @@ export function FloatingWindow({ id, title, subtitle, open, onClose, initial, mi
           </svg>
         </button>
       </header>
-      <div className="sk-window__body">{children}</div>
+      <div className="sk-window__body">
+        {/* an error inside one window stays in that window */}
+        <ErrorBoundary where={`${title} window`}>{children}</ErrorBoundary>
+      </div>
       {['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((edge) => (
         <div key={edge} className={`sk-window__edge sk-window__edge--${edge}`} onPointerDown={drag(edge)} aria-hidden="true" />
       ))}

@@ -1,4 +1,4 @@
-# @shanku/playground 0.1.7
+@shanku/playground 0.1.8
 
 The full Shanku window built from `@shanku/ui`, with sample data for one selected column. Use it to review the UI in Paper and Ink and to try the components.
 
@@ -11,6 +11,9 @@ Working: theme switch (follow OS → Paper → Ink), ribbon tools toggle, editab
 Placeholder: the 3D view is a static isometric drawing (three.js arrives with the app engine), and the console does not run Python yet (Pyodide arrives later).
 
 ## Changelog
+
+### 0.1.8 — 2026-09-24
+- Requires @shanku/ui 0.12.0.
 
 ### 0.1.7 — 2026-09-24
 - Uses @shanku/tokens 2.1.0 and @shanku/ui 0.11.1.

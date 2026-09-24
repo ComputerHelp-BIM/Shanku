@@ -1,4 +1,4 @@
-/* @shanku/ui 0.10.1 — requires @shanku/tokens/tokens.css loaded first. */
+/* @shanku/ui 0.12.0 — requires @shanku/tokens/tokens.css loaded first. */
 
 /* ---------- base ---------- */
 .sk-shell,
@@ -382,3 +382,13 @@ a.sk-titlebar__brand:hover { opacity: 0.85; }
 a.sk-titlebar__brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Quick Access Toolbar (title bar, after the logo) */
 .sk-titlebar__qat { display: flex; align-items: center; gap: 2px; padding: 0 8px; margin-right: 4px; border-right: 1px solid var(--border); }
+
+/* ---- ErrorBoundary: a failing window, panel or the app shows what went wrong ---- */
+.sk-crash { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; color: var(--text); font-family: var(--font-sans); font-size: 13px; }
+.sk-crash--page { position: fixed; inset: 0; justify-content: center; align-items: center; text-align: center; background: var(--bg); } /* replaces the app, so no stacking layer is needed */
+.sk-crash strong { font-size: 15px; }
+.sk-crash__msg { margin: 0; font-family: var(--font-mono); color: var(--status-error); max-width: 720px; word-break: break-word; }
+.sk-crash__hint { margin: 0; color: var(--text-secondary); max-width: 560px; }
+.sk-crash__actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: inherit; }
+.sk-crash__details { max-width: 820px; width: 100%; text-align: left; }
+.sk-crash__details pre { max-height: 240px; overflow: auto; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--field); font: 11px/1.45 var(--font-mono); white-space: pre-wrap; }

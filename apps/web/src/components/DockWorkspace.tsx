@@ -1,3 +1,4 @@
+import { ErrorBoundary } from '@shanku/ui';
 import { createContext, forwardRef, useCallback, useContext, useImperativeHandle, useRef, type ReactNode } from 'react';
 import {
   DockviewReact,
@@ -28,7 +29,14 @@ const RenderCtx = createContext<(id: PanelId) => ReactNode>(() => null);
 
 function PanelBody(props: IDockviewPanelProps) {
   const render = useContext(RenderCtx);
-  return <div className="app-dock-panel">{render(props.api.id as PanelId)}</div>;
+  const id = props.api.id as PanelId;
+  // The 3D / drawing views are not wrapped: they have their own recovery, and a boundary would
+  // remount the WebGL viewer. Every other panel keeps its errors to itself.
+  return (
+    <div className="app-dock-panel">
+      {id === 'views' ? render(id) : <ErrorBoundary where={`${PANEL_TITLES[id] ?? id} panel`}>{render(id)}</ErrorBoundary>}
+    </div>
+  );
 }
 
 /** Float and dock back, as buttons on every group's tab bar. Everything stays inside the Shanku tab. */

@@ -166,3 +166,42 @@ describe('FloatingWindow', () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe('ErrorBoundary', () => {
+  function Boom(): JSX.Element {
+    throw new Error('guide section failed');
+  }
+
+  it('keeps an error inside its floating window; the rest of the page survives', async () => {
+    const { FloatingWindow } = await import('../src');
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    render(
+      <div>
+        <p>ribbon still here</p>
+        <FloatingWindow id="t-guide" title="Guide & FAQ" open onClose={() => undefined}>
+          <Boom />
+        </FloatingWindow>
+      </div>,
+    );
+    expect(screen.getByText('ribbon still here')).toBeTruthy();
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain('Guide & FAQ window hit an error');
+    expect(alert.textContent).toContain('guide section failed');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+    spy.mockRestore();
+  });
+
+  it('page variant replaces the app with a report and a reload', async () => {
+    const { ErrorBoundary } = await import('../src');
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    render(
+      <ErrorBoundary where="Shanku" variant="page" details={() => 'Version: test'}>
+        <Boom />
+      </ErrorBoundary>,
+    );
+    expect(screen.getByText('Shanku hit an error')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy();
+    expect(screen.getByText(/Version: test/)).toBeTruthy();
+    spy.mockRestore();
+  });
+});

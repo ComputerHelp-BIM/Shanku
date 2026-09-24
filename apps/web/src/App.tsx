@@ -61,7 +61,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.28.0';
+const APP_VERSION = '0.28.1';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -491,6 +491,20 @@ export function App({ start }: { start?: AppStart } = {}) {
     setOpenViews((o) => o.filter((x) => !ids.includes(x)));
     setAnnSel([]);
   });
+
+  // Errors outside a redraw (click handlers, promises) do not blank the page, but should not vanish:
+  // they go to the Activity panel with their message.
+  useEffect(() => {
+    const onError = (e: ErrorEvent) => m.log(`Error: ${e.message}`, 'error');
+    const onRejection = (e: PromiseRejectionEvent) => m.log(`Error: ${e.reason instanceof Error ? e.reason.message : String(e.reason)}`, 'error');
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
   const heights = useMemo(() => (m.model ? levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length) : new Map<string, number>()), [m.model?.info]); // eslint-disable-line react-hooks/exhaustive-deps

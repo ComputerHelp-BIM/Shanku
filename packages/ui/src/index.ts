@@ -30,6 +30,7 @@ export {
   type BottomPanelProps,
   type AppShellProps,
 } from './components/Workspace';
+export { ErrorBoundary, type ErrorBoundaryProps } from './components/ErrorBoundary';
 export { FloatingWindow, type FloatingWindowProps } from './components/FloatingWindow';
 export { ThemeIcon } from './components/ThemeIcon';
-export const version = '0.11.1';
+export const version = '0.12.0';
