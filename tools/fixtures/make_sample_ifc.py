@@ -6,6 +6,8 @@ Usage:
     python tools/fixtures/make_sample_ifc.py large  /tmp/large-frame.ifc   # ~50k elements, not committed
 
 Requires IfcOpenShell (pip install ifcopenshell). Dev-only tool: nothing here ships in the app.
+Version 1.2.0 — ground-storey columns start on the footings (top at -900 mm), as built; they
+used to stop 900 mm above them, which Shanku's QA rightly flags as discontinuous columns.
 Version 1.1.0 — large mode builds in seconds with shared representations.
 Version 1.0.1 — lengths in quantity sets are written in project units (mm).
 """
@@ -16,7 +18,7 @@ import ifcopenshell
 import ifcopenshell.api as api
 import ifcopenshell.guid
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 def translation(x_m, y_m, z_m, z_axis=(0, 0, 1), x_axis=(1, 0, 0)):
@@ -82,7 +84,9 @@ def build(bays_x, bays_y, span_x, span_y, storeys, storey_h, name):
                     ("Qto_FootingBaseQuantities", {"NetVolume": 1.8 * 1.8 * 0.6}))
 
     col_h = storey_h - 0.15
+    footing_top = -1.5 + 0.6
     col_rep = None
+    ground_rep = api.run("geometry.add_profile_representation", f, context=body, profile=col_prof, depth=col_h - footing_top)
     for s in range(storeys):
         z = s * storey_h
         storey = api.run("root.create_entity", f, ifc_class="IfcBuildingStorey", name=f"Level {s + 1}")
@@ -91,10 +95,12 @@ def build(bays_x, bays_y, span_x, span_y, storeys, storey_h, name):
         if col_rep is None:
             col_rep = api.run("geometry.add_profile_representation", f, context=body, profile=col_prof, depth=col_h)
         grade = "M40" if s < storeys // 2 else "M30"
+        # Ground-storey columns run down to the footings; upper ones stop under the slab above.
+        h, rep, z0 = (col_h - footing_top, ground_rep, footing_top) if s == 0 else (col_h, col_rep, z)
         for x in xs:
             for y in ys:
-                element("IfcColumn", col, storey, col_rep, translation(x, y, z), "C", grade,
-                        ("Qto_ColumnBaseQuantities", {"Length": col_h * 1000, "NetVolume": 0.16 * col_h}))
+                element("IfcColumn", col, storey, rep, translation(x, y, z0), "C", grade,
+                        ("Qto_ColumnBaseQuantities", {"Length": round(h * 1000, 3), "NetVolume": 0.16 * h}))
         top = z + storey_h - 0.15
         for y in ys:
             for i in range(bays_x):

@@ -181,6 +181,31 @@ export const GUIDE: GuideSection[] = [
     ],
   },
   {
+    id: 'qa',
+    group: 'Guide',
+    title: 'QA checks',
+    blocks: [
+      { p: 'Every model is checked on this device as it opens. The status bar shows the result ("QA: 2 errors · 1 warning"); click it, or View → QA, for the QA panel.' },
+      {
+        table: {
+          head: ['Check', 'Flags'],
+          rows: [
+            ['Duplicate elements', 'Same category, all bounds within 5 mm'],
+            ['Overlapping columns', 'Column boxes overlapping by more than 1 mm'],
+            ['Discontinuous columns', 'A column with nothing under it within 50 mm (it looks through the slab it sits on)'],
+            ['Zero or tiny size', 'A dimension under 10 mm, or no volume'],
+            ['Unusual length', 'Beams, columns and members over 25 m or under 150 mm'],
+            ['No level, no grade', 'Elements the plans or the BOQ by grade will miss'],
+            ['Lateral system gap', 'Storeys without walls or bracing when others have them (a note)'],
+            ['Marks', 'Missing marks, and one mark used for different sizes'],
+          ],
+        },
+      },
+      { p: 'Each card has **Select all**, **Isolate** (Esc restores), **Zoom** and **Step** through its elements. **How this was checked** says what was measured and what the check does not prove.' },
+      { note: 'Passing every check does not mean the model is correct. It means these checks found nothing.' },
+    ],
+  },
+  {
     id: 'python',
     group: 'Guide',
     title: 'The Python console',
@@ -225,6 +250,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.27.0', date: '2026-09-24', items: ['QA checks: duplicates, floating columns, overlaps, sizes, levels, grades and marks, with a QA panel to select, isolate and step through each finding.'] },
           { version: '0.26.0', date: '2026-09-24', items: ['DXF drawings look and work like AutoCAD: grid with red and green axes (F7), UCS icon, crosshair, X, Y, 0.000 coordinates.', 'AutoCAD right-click menus with Isolate, Select Similar, Quick Select, Find, Count and Quick Properties.'] },
           { version: '0.25.0', date: '2026-09-24', items: ['Solid cut faces in section boxes, plans and sections.', 'Section grips in plans: lengthen, far clip, flip and move, each undoable.'] },
           { version: '0.24.0', date: '2026-09-24', items: ['Command search: Ctrl + K finds every command as well as elements.', 'Guide & FAQ (F1).', 'Exploded views by storey, radially or by category.'] },

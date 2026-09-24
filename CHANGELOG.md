@@ -2,6 +2,15 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.27.0 — 2026-09-24
+
+### Added
+- QA checks (actionable QA, phase 1, from the Structura viewer): 10 model-health and mark checks run on this device after every load (duplicates, overlapping columns, discontinuous columns, zero size, unusual length, no level, no grade, lateral-system gaps, missing marks, one mark for different sizes). A QA panel with severity tiles and finding cards (Select all, Isolate, Zoom, Step, what was measured and what the check does not prove) and a QA summary in the status bar (engine 0.25.0).
+- docs/design/quick-wins.md: easy features from Revit add-ons (A1–A9) and ones Revit lacks (B1–B10).
+
+### Changed
+- Sample model (fixtures 1.2.0): ground-floor columns now stand on the footings; they stopped 900 mm above them, which the new QA check reported.
+
 ## 0.26.0 — 2026-09-24
 
 ### Added

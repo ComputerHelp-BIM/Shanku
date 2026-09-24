@@ -1,6 +1,8 @@
 # Actionable QA (design)
 
-Status: **proposed**, not built. Written against Shanku 0.22.0. Nothing in this document exists in code yet unless it says "today".
+Status: **phase 1 built** in Shanku 0.27.0 (engine 0.25.0); phases 2 and 3 proposed. Written against Shanku 0.22.0.
+
+**Built in phase 1:** the `Finding` and `QaCheck` types and `runChecks` (`packages/engine/src/qa/`), the model-health and mark checks below (except "No level" fix buttons), and the QA panel with tiles, a group filter, Select all, Isolate, Zoom and Step, plus a QA summary in the status bar. **Different from this design:** checks run on the main thread, not in the worker. They are pure and take a few milliseconds (under a second for 50,000 elements), so the extra worker round trip is not worth it yet. Discontinuous columns look through a slab the column sits on, because many models stop columns under the slab. Pipeline (DXF → 3D) findings are not merged into the panel yet; the Card and Badge are app styles, not `@shanku/ui` components, until phase 2 needs them elsewhere. **Not built yet:** ignores, fixes, colour by QA status, Properties integration, exports, IS 1893 screening.
 
 ## Why
 

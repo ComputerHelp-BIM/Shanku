@@ -56,12 +56,12 @@ describe('parseIfc on the sample RCC frame', () => {
     expect(seen.size).toBe(elements.length);
   });
 
-  it('puts geometry where it belongs: a 400 x 400 column 3.05 m tall, Y up', () => {
+  it('puts geometry where it belongs: a 400 x 400 ground column 3.95 m tall (footing top to under the slab), Y up', () => {
     const c1 = result.model.elements.find((e) => e.name === 'C1')!;
     const [x0, y0, z0, x1, y1, z1] = c1.bounds;
     expect(x1 - x0).toBeCloseTo(0.4, 3);
     expect(z1 - z0).toBeCloseTo(0.4, 3);
-    expect(y1 - y0).toBeCloseTo(3.05, 3);
+    expect(y1 - y0).toBeCloseTo(3.95, 3);
   });
 
   it('extracts feature edges only: 12 per box-shaped element', () => {
@@ -110,8 +110,8 @@ describe('parseIfc on the sample RCC frame', () => {
     const els = result.model.elements;
     const c1 = els.find((e) => e.name === 'C1')!;
     expect(c1.quantitySource).toBe('ifc');
-    expect(c1.volume).toBeCloseTo(0.16 * 3.05, 3);
-    expect(c1.length).toBeCloseTo(3.05, 3); // column height from geometry
+    expect(c1.volume).toBeCloseTo(0.16 * 3.95, 3);
+    expect(c1.length).toBeCloseTo(3.95, 3); // column height from geometry
     expect(c1.grade).toBe('M40');
     expect(c1.gradeSource).toBe('Shanku_Structural.ConcreteGrade');
     const slab = els.find((e) => e.category === 'Slab')!;
@@ -125,7 +125,7 @@ describe('parseIfc on the sample RCC frame', () => {
     const c1 = els.find((e) => e.name === 'C1')!;
     expect(c1.dims.width).toBeCloseTo(0.4, 3);
     expect(c1.dims.depth).toBeCloseTo(0.4, 3);
-    expect(c1.dims.height).toBeCloseTo(3.05, 3);
+    expect(c1.dims.height).toBeCloseTo(3.95, 3);
     expect(c1.dims.length).toBeNull();
     const beam = els.find((e) => e.category === 'Beam')!;
     expect(beam.dims.length).toBeCloseTo(5.6, 3);

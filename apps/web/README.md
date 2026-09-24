@@ -1,6 +1,6 @@
-# @shanku/web 0.26.0
+# @shanku/web 0.27.0
 
-The Shanku app. Requires `@shanku/engine >= 0.24.0`, `@shanku/ui >= 0.11.1`, `@shanku/tokens >= 2.1.0`.
+The Shanku app. Requires `@shanku/engine >= 0.25.0`, `@shanku/ui >= 0.11.1`, `@shanku/tokens >= 2.1.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.27.0 — 2026-09-24
+- **QA panel** (View → QA, Ctrl + K "QA", or the QA summary in the status bar): error, warning and note tiles that filter, a check-group filter, and a card per finding with Select all, Isolate (temporary, Esc restores), Zoom and Step ‹ 1 of N ›. Each card opens "How this was checked": what was measured and what it does not prove. A clean model says so, and that this does not prove it correct. Findings update when mark or grade rules change. From a drawing tab, the actions switch to the 3D view. Requires @shanku/engine 0.25.0.
 
 ### 0.26.0 — 2026-09-24
 - **AutoCAD interface for DXF drawings**: adaptive grid with red / green axes (F7 or the status-bar Grid toggle), UCS icon, crosshair with pick box (small, full screen or off), coordinates read as `X, Y, 0.000`, and MODEL, Grid, UCS, Crosshair and QP toggles in the status bar. Settings are remembered on this device.

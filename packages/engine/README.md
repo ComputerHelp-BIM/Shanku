@@ -1,4 +1,4 @@
-# @shanku/engine 0.24.0
+# @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -48,6 +48,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.25.0 — 2026-09-24
+- **QA checks** (`src/qa/`, actionable QA phase 1): `runChecks({ elements, levels })` returns `Finding`s (severity, title, detail naming the element and the number, clause, measured, limits, element indices, stable id from GlobalIds), most severe first, with timings. `DEFAULT_CHECKS`: duplicates, overlapping columns, discontinuous columns (looks through slabs the column sits on), zero or tiny size, unusual length, no level, no grade, lateral-system gap, missing mark, mark conflicts. Tolerances in `QA_TOLERANCE` (5 mm duplicates, 50 mm support, 10 mm tiny, 150 mm–25 m length), from the Structura viewer. Plan spatial hash: 50,000 elements in well under a second.
 
 ### 0.24.0 — 2026-09-24
 - **AutoCAD drafting aids in `DrawingViewer`**: adaptive grid (powers of ten in real drawing units, three levels that fade and strengthen so the grid never pops), red X and green Y axes through the origin, UCS icon at the origin (or lower-left when off screen), crosshair with pick box (`small`, `full`, `off`) and + / − for Ctrl / Shift. `setDisplay()`, `DEFAULT_DRAWING_DISPLAY`. Colours from the new `grid-*` and `axis-*` tokens.
