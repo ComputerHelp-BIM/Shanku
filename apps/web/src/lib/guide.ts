@@ -213,7 +213,8 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
-          { version: '0.23.0', date: '2026-09-24', items: ['Command search: Ctrl + K finds every command as well as elements.', 'Guide & FAQ (F1).', 'Exploded views by storey, radially or by category.'] },
+          { version: '0.24.0', date: '2026-09-24', items: ['Command search: Ctrl + K finds every command as well as elements.', 'Guide & FAQ (F1).', 'Exploded views by storey, radially or by category.'] },
+          { version: '0.23.0', date: '2026-09-24', items: ['View symbols behave like elements: hover, select, Properties, and Delete for sections.', 'Live preview of what a window or crossing box will select.', 'Section tool rubber band with 15° snapping, angle and length.'] },
           { version: '0.22.0', date: '2026-09-23', items: ['View symbols: section and elevation marks in plans, levels in elevations and sections; double-click a head to open its view.'] },
           { version: '0.21.0', date: '2026-09-23', items: ['Dashed hidden lines in plans; View Range relative to the level; sections drawn in elevations and sections.'] },
           { version: '0.20.0', date: '2026-09-23', items: ['Views and the Project Browser: plans, 3D views, elevations and sections, each with its own settings.'] },

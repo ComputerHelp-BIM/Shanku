@@ -22,3 +22,13 @@ describe('temporary dimensions (2D)', () => {
     expect(d[0].value).toBeCloseTo(350);
   });
 });
+
+describe('view symbols in a selection box', () => {
+  it('window needs the whole symbol, crossing any touch', async () => {
+    const { segmentTouchesRect } = await import('../src/render/annotations');
+    // level line from (10, 50) to (300, 50); box 0..100 × 0..100 touches it but does not contain it
+    expect(segmentTouchesRect([10, 50], [300, 50], 0, 0, 100, 100)).toBe(true);
+    expect(segmentTouchesRect([10, 150], [300, 150], 0, 0, 100, 100)).toBe(false);
+    expect(segmentTouchesRect([-50, -50], [150, 150], 0, 0, 100, 100)).toBe(true); // passes through
+  });
+});
