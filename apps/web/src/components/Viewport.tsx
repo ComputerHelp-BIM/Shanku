@@ -57,6 +57,8 @@ export interface ViewportProps {
   onAnnotationClick?: (id: string, mode: SelectMode) => void;
   /** Selected symbols (blue; a selected level shows temporary dimensions). */
   annotationSelection?: string[];
+  /** A selected section's grip is used (plans): drag phases, or a flip click. */
+  onSymbolGrip?: (e: { id: string; grip: 'a' | 'b' | 'far' | 'move' | 'flip'; phase: 'start' | 'move' | 'end' | 'click'; point: [number, number, number]; start: [number, number, number] }) => void;
   /** A symbol's head was double-clicked: open that view. */
   onOpenView?: (id: string) => void;
   /** Revit's Show Hidden Lines for this view (dashed edges behind other elements). */
@@ -103,6 +105,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
         onSectionBoxEdit: (a, b) => handlers.current.onSectionBoxEdit?.(a, b),
         onOpenView: (id) => handlers.current.onOpenView?.(id),
         onAnnotationClick: (id, mode) => handlers.current.onAnnotationClick?.(id, mode),
+        onSymbolGrip: (e) => handlers.current.onSymbolGrip?.(e),
         onNavigate: (active) => {
           setNavActive(active);
           if (active) setTip(null);

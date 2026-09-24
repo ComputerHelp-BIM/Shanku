@@ -1,6 +1,6 @@
 {
   "name": "@shanku/web",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "private": true,
   "description": "Shanku \u2014 the web app. Open IFC, navigate like Revit, select, isolate, section, inspect.",
   "license": "UNLICENSED",
@@ -16,7 +16,7 @@
     "@fontsource/ibm-plex-mono": "^5.1.0",
     "@fontsource/ibm-plex-sans": "^5.1.0",
     "@fontsource/sora": "^5.1.0",
-    "@shanku/engine": "0.22.0",
+    "@shanku/engine": "0.23.0",
     "@shanku/tokens": "2.0.0",
     "@shanku/ui": "0.11.0",
     "dockview-react": "^8.3.1",

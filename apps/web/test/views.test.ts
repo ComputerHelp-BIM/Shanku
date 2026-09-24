@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultViews, duplicateView, levelHeights, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection } from '../src/lib/views';
+import { defaultViews, duplicateView, editSection, levelHeights, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection } from '../src/lib/views';
 
 const el = (category: string, level: string, y0: number, y1: number) => ({ category, level, bounds: [0, y0, 0, 1, y1, 1] });
 const elements = [
@@ -89,5 +89,23 @@ describe('view range and sections from 2D views', () => {
     expect(Math.abs(dx)).toBeLessThan(1e-9); // the line runs north-south (the view depth)
     const n = [dz / 10, -dx / 10]; // our section viewing direction
     expect(n[0]).toBeCloseTo(-1); // looks west = screen right from the north
+  });
+});
+
+describe('section grips (Revit)', () => {
+  const s = { a: [0, 5] as [number, number], b: [10, 5] as [number, number], depth: 4 }; // looks north (−z)
+  it('ends slide along the line and keep a minimum length', () => {
+    expect(editSection(s, 'b', [0, 0, 0], [13, 0, 9])).toEqual({ ...s, b: [13, 5] }); // off-line pointer: projected
+    expect(editSection(s, 'a', [0, 0, 0], [20, 0, 5]).a).toEqual([9.8, 5]); // cannot pass the other end
+  });
+  it('far clip follows the pointer on the viewing side', () => {
+    expect(editSection(s, 'far', [0, 0, 0], [3, 0, -2]).depth).toBeCloseTo(7); // 7 m north of the line
+    expect(editSection(s, 'far', [0, 0, 0], [3, 0, 9]).depth).toBe(0.1); // behind the line: minimum
+  });
+  it('move translates; flip reverses the direction', () => {
+    expect(editSection(s, 'move', [1, 0, 1], [3, 0, 0])).toEqual({ a: [2, 4], b: [12, 4], depth: 4 });
+    const f = editSection(s, 'flip', [0, 0, 0], [0, 0, 0]);
+    expect(f.a).toEqual([10, 5]);
+    expect(f.b).toEqual([0, 5]);
   });
 });

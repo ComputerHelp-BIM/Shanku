@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.25.0 — 2026-09-24
+
+### Added
+- Section grips in plans (lengthen, far clip, flip, move), undoable.
+
+### Fixed
+- Cut faces looked hollow: solid stencil caps on every visible cut plane, a shade darker than element faces. The 0.14.0 note claiming this colour was fixed was wrong (that edit never applied).
+
 ## 0.24.0 — 2026-09-24
 
 ### Added

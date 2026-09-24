@@ -1,6 +1,6 @@
-# @shanku/web 0.24.0
+# @shanku/web 0.25.0
 
-The Shanku app. Requires `@shanku/engine >= 0.22.0`, `@shanku/ui >= 0.11.0`, `@shanku/tokens >= 2.0.0`.
+The Shanku app. Requires `@shanku/engine >= 0.23.0`, `@shanku/ui >= 0.11.0`, `@shanku/tokens >= 2.0.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.25.0 — 2026-09-24
+- **Cut faces are solid** in section boxes and in plan and section view ranges, a shade darker than the element faces so cuts read as cuts, whatever the IFC mesh quality.
+- **Section grips (Revit)**: select a section in a plan to see its far clip extent and grips: ◀ ▶ lengthen or shorten along the line, ▲ drags the far clip, ⇅ flips the direction, and dragging the line moves the section. Each drag or flip is one undoable step (named, e.g. "Resize section: Section 1").
+- Merged the design-system branch's 0.24.0 (command search Ctrl + K, Guide & FAQ F1, exploded views).
 
 ### 0.24.0 — 2026-09-24
 - **Command search** (Ctrl + K): the title-bar search is now a command palette over one command registry (`lib/commands.ts`). Type what you want to do ("isolate", "hidden line", "explode storeys", a Revit key such as "ZF") or a mark, Element ID, GlobalId or name. About 70 commands plus one per category, level and view; each shows its group, shortcut and state (✓ for toggles), and greyed commands say what they need. `>` searches commands only; recent commands show first. WAI-ARIA combobox: ↑ ↓, Enter, Esc.
