@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.37.1 — 2026-09-25
+
+### Fixed
+- Updates from Revit reset plans and boxed views to the default 3D view (engine 0.27.1).
+
 ## 0.37.0 — 2026-09-25
 
 ### Added

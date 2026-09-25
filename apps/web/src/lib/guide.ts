@@ -310,6 +310,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.37.1', date: '2026-09-25', items: ['Fixed: updates from Revit no longer reset the view to the default 3D.'] },
           { version: '0.37.0', date: '2026-09-25', items: ['Live updates from Revit: Shanku learns what changed in Revit and brings in just those elements (Update, or Auto-update), keeping the camera, views, selection and hides.'] },
           { version: '0.36.0', date: '2026-09-25', items: ['Revit 2025 look: drag the line between names and values in Properties; Apply always visible; sort A→Z / Z→A within groups; the Project Browser with Search and Families; Type Properties like Revit\'s dialog with a Preview; units next to numbers; thin scrollbars.'] },
           { version: '0.35.0', date: '2026-09-25', items: ['Properties looks and works like Revit\'s palette: collapsible groups, lines between rows, family and type, Edit Type, an Apply button; Properties docks left and the Project Browser right, as in Revit.', 'No more duplicate Revit parameters; Revit\'s warnings (duplicate marks…) show when you check or apply.'] },

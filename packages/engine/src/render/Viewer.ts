@@ -369,6 +369,9 @@ export class Viewer {
    * camera, section box and everything the app sets stay; only the geometry changes.
    */
   setModel(model: ParsedModel | null, opts: { keepView?: boolean } = {}): void {
+    // A live update keeps the view: its clipping (plan view range, section, section box) must survive
+    // the rebuild, which clears the section box along with the old geometry.
+    const keepBox = opts.keepView ? this.sectionBox : null;
     this.clearModel();
     this.model = model;
     this.history = [];
@@ -446,8 +449,9 @@ export class Viewer {
     this.setDisplayStyle(this.style);
     this.edges.visible = this.edgesOn;
     this.setReveal(this.revealOn);
-    this.orient('iso');
+    if (!opts.keepView) this.orient('iso'); // a live update keeps the view's direction (a plan looks down)
     if (!opts.keepView) this.fit(undefined, false);
+    else if (keepBox) this.setSectionBoxState(keepBox);
   }
 
   private clearModel(): void {

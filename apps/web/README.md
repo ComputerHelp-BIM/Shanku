@@ -1,4 +1,4 @@
-# @shanku/web 0.37.0
+# @shanku/web 0.37.1
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.37.1 — 2026-09-25
+- Fixed: every update from Revit reset the view to the default 3D (a plan lost its view range and looked from the corner). The view, its clipping and the camera now stay exactly as they were.
 
 ### 0.37.0 — 2026-09-25
 - **Live updates from Revit (bridge milestone 3, needs Shanku Bridge for Revit 0.5.0).** Revit reports every change (anyone's edits and Shanku's own Apply); the Revit chip shows "N changed" and Properties re-reads those elements' parameters at once. **Revit tab → Update** (or the Revit window, or the command search) has Revit export **only the changed elements**, which are merged in: changed ones in place, deleted ones removed, new ones added. The camera, views, section box, selection, temporary hides and per-element overrides stay. **Auto-update** brings changes in as they happen. More than 2,000 changed elements: reload instead.
