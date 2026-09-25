@@ -1,4 +1,4 @@
-/* @shanku/ui 0.12.2 — requires @shanku/tokens/tokens.css loaded first. */
+/* @shanku/ui 0.13.0 — requires @shanku/tokens/tokens.css loaded first. */
 
 /* ---------- base ---------- */
 .sk-shell,
@@ -392,3 +392,8 @@ a.sk-titlebar__brand:focus-visible { outline: 2px solid var(--accent); outline-o
 .sk-crash__actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: inherit; }
 .sk-crash__details { max-width: 820px; width: 100%; text-align: left; }
 .sk-crash__details pre { max-height: 240px; overflow: auto; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--field); font: 11px/1.45 var(--font-mono); white-space: pre-wrap; }
+
+/* PropertyRow: changed here, not applied yet (e.g. pending for Revit) */
+.sk-prop-row.is-modified { box-shadow: inset 3px 0 0 var(--accent); }
+.sk-prop-row.is-modified .sk-prop-row__label { color: var(--accent-text); }
+.sk-prop-row__check { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }

@@ -546,3 +546,31 @@
 .app-revit__path { font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; color: var(--text-secondary); }
 .app-revit__check { display: inline-flex; align-items: center; gap: 6px; }
 .app-revit__note { margin: 0; color: var(--text-secondary); font-size: 12px; }
+
+/* Revit parameters in Properties */
+.app-revit-params { border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 4px; }
+.app-revit-params__head { display: flex; align-items: center; gap: 8px; padding: 8px 12px 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
+.app-revit-params__head .app-revit__dot { background: var(--status-ok); }
+.app-revit-params__pending { margin-left: auto; padding: 0 6px; border-radius: var(--radius-sm); font-size: 11px; letter-spacing: 0; text-transform: none; color: var(--accent-text); background: var(--chip); border: 1px solid var(--accent); }
+.app-revit-params__status { margin: 4px 12px 6px; font-size: 12px; color: var(--text-secondary); }
+
+/* Changes for Revit */
+.app-changes { display: flex; flex-direction: column; height: 100%; min-height: 0; font-size: 13px; color: var(--text); }
+.app-changes--empty { padding: 16px; gap: 8px; }
+.app-changes__hint { margin: 0; color: var(--text-secondary); font-size: 12px; padding: 0 12px 10px; }
+.app-changes--empty .app-changes__hint { padding: 0; }
+.app-changes__scroll { flex: 1; min-height: 0; overflow: auto; }
+.app-changes__table { width: 100%; border-collapse: collapse; }
+.app-changes__table th { white-space: nowrap; position: sticky; top: 0; background: var(--panel); text-align: left; font-size: 11px; font-weight: 600; color: var(--text-secondary); padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.app-changes__table td { padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.app-changes__table .c { width: 28px; text-align: center; }
+.app-changes__table tr.is-refused td { background: var(--row-selected); }
+.app-changes__el { border: 0; background: none; padding: 0; color: var(--accent-text); font: inherit; text-align: left; cursor: pointer; }
+.app-changes__el:hover { text-decoration: underline; }
+.app-changes__old { color: var(--text-secondary); text-decoration: line-through; }
+.app-changes__new { font-weight: 600; }
+.app-changes__st .ok { color: var(--status-ok); }
+.app-changes__st .bad { color: var(--status-error); }
+.app-changes__review { display: flex; align-items: center; gap: 8px; padding: 8px 12px 0; color: var(--status-warning); font-weight: 600; }
+.app-changes__bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); }
+.app-changes__count { color: var(--text-secondary); font-size: 12px; }

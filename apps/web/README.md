@@ -1,4 +1,4 @@
-# @shanku/web 0.33.0
+# @shanku/web 0.34.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.34.0 — 2026-09-25
+- **Edit Revit parameters from Shanku (Revit bridge milestone 2, needs Shanku Bridge for Revit 0.2.0).** Properties shows the selection's live Revit instance parameters in Revit's groups, editable (several elements at once, Varies when they differ; Yes/No as a checkbox; read-only rows say why). Edits become **pending changes**: marked, undoable with Ctrl + Z, kept per Revit model across reloads.
+- **Changes for Revit** (Revit tab → Changes, or the command search): each change with Revit's value and the new one, a tick per row (Alt + click an element for all its rows), **Check in Revit** (dry run: nothing kept), **Apply** (one Revit transaction: one Edit → Undo in Revit), **Refresh from Revit** (rebase after a conflict), Remove. Refusals stay listed with the reason: changed in Revit meanwhile, read-only, borrowed by someone else, unreadable value. Above 50 elements, Apply asks you to confirm you reviewed the list. Revit's warnings (duplicate marks…) go to Activity.
+- The pending-change layer is the foundation for later edits (saving IFC, geometry).
 
 ### 0.33.0 — 2026-09-25
 - **Revit ribbon tab**, as a Revit add-in tab would be: Connection (Connect → Connected, Disconnect), Model (Load from Revit → Reload), Selection (Sync, **Send to Revit** and **Get from Revit** to pass the selection once, useful with Sync off) and Help (Bridge guide). Buttons enable as the connection allows and explain why in their tooltip.

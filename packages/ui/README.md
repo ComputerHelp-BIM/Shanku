@@ -1,4 +1,4 @@
-# @shanku/ui 0.12.2
+# @shanku/ui 0.13.0
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 2.1.0` and `@shanku/brand >= 1.5.0`.
 
@@ -33,6 +33,9 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.13.0 — 2026-09-25
+- `PropertyRow`: `modified` (changed here, not applied yet: accent marker and tooltip), `kind: 'yesno'` (checkbox, indeterminate when values vary) and `hint` (tooltip, e.g. why read-only).
 
 ### 0.12.2 — 2026-09-25
 - Requires @shanku/brand 1.6.0 (bridge icons). No API change.

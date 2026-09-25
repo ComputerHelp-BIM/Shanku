@@ -1,4 +1,4 @@
-import { DockPanel, PropertyRow, PropertySection, TypeSelector, type IconName } from '@shanku/ui';
+import { DockPanel, PropertyRow, PropertySection, TypeSelector, type IconName, type PropertyRowProps } from '@shanku/ui';
 import type { Category, ElementRecord, ParsedModel, PropertyGroup } from '@shanku/engine';
 import { fmtBytes, fmtCount, fmtMs, fmtValue } from '../lib/format';
 
@@ -23,6 +23,15 @@ export interface PropertiesPanelProps {
   selection: number[];
   properties: { index: number; groups: PropertyGroup[] | null; error?: string } | null;
   onEditMarkRules: () => void;
+  /**
+   * Live Revit parameters of the selection (Revit bridge): editable rows grouped as in Revit, shown
+   * above the IFC data. `status` explains when they are not available (not linked, loading, too many).
+   */
+  revit?: {
+    status?: string;
+    pending?: number;
+    groups: Array<{ group: string; rows: Array<PropertyRowProps & { key: string }> }>;
+  };
   /** Revit shows the active view's properties when nothing is selected. */
   view?: {
     kind: string;
@@ -35,7 +44,24 @@ export interface PropertiesPanelProps {
 
 const LEVEL_LABEL = { recommended: 'Recommended', supported: 'Supported', limited: 'Limited', experimental: 'Experimental' } as const;
 
-export function PropertiesPanel({ model, selection, properties, onEditMarkRules, view }: PropertiesPanelProps) {
+export function PropertiesPanel({ model, selection, properties, onEditMarkRules, view, revit }: PropertiesPanelProps) {
+  const revitBlock = revit ? (
+    <div className="app-revit-params">
+      <div className="app-revit-params__head">
+        <span className="app-revit__dot" aria-hidden="true" />
+        Revit parameters
+        {revit.pending ? <span className="app-revit-params__pending">{revit.pending} to apply</span> : null}
+      </div>
+      {revit.status ? <p className="app-revit-params__status">{revit.status}</p> : null}
+      {revit.groups.map((g) => (
+        <PropertySection key={`revit-${g.group}`} title={g.group}>
+          {g.rows.map(({ key, ...r }) => (
+            <PropertyRow key={key} {...r} />
+          ))}
+        </PropertySection>
+      ))}
+    </div>
+  ) : null;
   if (!model) {
     return (
       <DockPanel title="Properties">
@@ -100,6 +126,7 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
     return (
       <DockPanel title="Properties">
         <TypeSelector icon={cat ? ICON[cat] : 'view3d'} category={`${fmtCount(els.length)} elements`} typeName={cat ? `${cat}` : 'Mixed categories'} />
+        {revitBlock}
         <PropertySection title="Common">
           <PropertyRow label="Category" value={cat} varies={cat === null} />
           <PropertyRow label="Mark" value={common(els.map((e) => e.mark)) || null} varies={common(els.map((e) => e.mark)) === null} />
@@ -115,6 +142,7 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
   return (
     <DockPanel title="Properties">
       <TypeSelector icon={ICON[el.category]} category={el.category === 'Other' ? el.ifcClass : `${el.category} · ${el.ifcClass}`} typeName={el.typeName || el.name || el.ifcClass} />
+      {revitBlock}
       <PropertySection title="Identity">
         <PropertyRow label="Element ID" value={el.expressId} mono />
         <PropertyRow label="GlobalId" value={el.globalId} mono />

@@ -35,13 +35,15 @@ project information's UniqueId) tells documents apart.
 
 | Method | Path | Auth | Returns |
 |---|---|---|---|
-| GET | `/hello` | no | `{ service: "shanku-revit", protocol: 1, addin, revit, pairingOpen, hasDocument }` |
+| GET | `/hello` | no | `{ service: "shanku-revit", protocol: 1, addin, revit, pairingOpen, hasDocument, features }` |
 | POST | `/pair` | no | `{ token }` or 403 |
 | GET | `/status` | yes | `{ document: { title, key, path, isFamily } \| null, selection: string[] }` |
 | POST | `/model/export` | yes | IFC4 Reference View bytes (`application/octet-stream`); headers `X-Shanku-Document-Key`, `X-Shanku-Document-Title` |
 | GET | `/model/ids` | yes | `{ key, ids: [[globalId, uniqueId, elementId], …] }` (model elements only) |
 | POST | `/selection` | yes | body `{ key, globalIds, elementIds? }` → `{ selected, missing }` |
 | GET | `/events?token=` | yes | `text/event-stream` (below) |
+| POST | `/params/read` | yes | body `{ key, globalIds }` (≤ 500) → `{ elements: [{ globalId, elementId, category, typeName, params: [{ id, name, group, kind, display, readOnly, why }] }] }` |
+| POST | `/params/write` | yes | body `{ key, dryRun, changes: [{ globalId, paramId, name, oldDisplay, value }] }` (≤ 5000) → `{ dryRun, undoName, results: [{ index, ok, error, newDisplay }], warnings }` |
 
 ### Events
 
@@ -55,6 +57,24 @@ data: {"document":{"title":"…","key":"…","path":"…","isFamily":false}}   (
 
 A comment line (`: ping`) every 15 s keeps the stream open. A selection that Shanku itself set is not
 echoed back.
+
+## Parameters (feature `params`, add-in 0.2.0)
+
+Instance parameters only (type parameters change every instance and come later). `kind` is `text`,
+`number` (shown and entered in the project's units: `"600"` in a millimetre project is 600 mm),
+`integer`, `yesno` (`"Yes"`/`"No"`) or `element` (chosen in Revit; read-only here).
+
+`/params/write` applies every change in **one Revit transaction** named `undoName`, so one Edit → Undo in
+Revit takes it all back. Each change runs in its own sub-transaction, so one failure does not block the
+others. A change is refused when:
+
+- `oldDisplay` differs from the value in Revit now (it changed since Shanku read it);
+- the parameter is read-only or chosen in Revit;
+- the element is borrowed by someone else in a workshared model;
+- Revit cannot read the value (for numbers, `SetValueString` in the project's units).
+
+Revit warnings (duplicate marks and the like) are collected into `warnings` instead of dialogs.
+`dryRun: true` runs the same checks and rolls everything back.
 
 ## Export
 

@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.34.0 — 2026-09-25
+
+### Added
+- Revit bridge milestone 2: edit Revit instance parameters in Shanku (pending changes, undo, review, check, apply as one Revit undo, conflict detection and refresh). Shanku Bridge for Revit 0.2.0 (`/params/read`, `/params/write`, `features`).
+
 ## 0.33.0 — 2026-09-25
 
 ### Added

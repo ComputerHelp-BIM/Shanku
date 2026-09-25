@@ -57,6 +57,8 @@ import { sequenceKeys, type AppCommand } from './lib/commands';
 import { CommandPalette, type ElementHit } from './components/CommandPalette';
 import { GuidePanel } from './components/GuidePanel';
 import { RevitPanel } from './components/RevitPanel';
+import { RevitChanges } from './components/RevitChanges';
+import { afterApply, byGroup, changeKey, commonParams, effectiveCommon, stageEdit, type PendingChange, type RevitElementParams } from './lib/paramEdits';
 import { RevitBridge, indicesForRevitSelection } from './lib/revitBridge';
 import { QaPanel } from './components/QaPanel';
 import { FileDiagnosisDialog, ViewLinkDialog } from './components/SmallDialogs';
@@ -67,7 +69,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.33.0';
+const APP_VERSION = '0.34.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -196,7 +198,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   const dock = useRef<DockWorkspaceHandle>(null);
   const [openPanels, setOpenPanels] = useState<PanelId[]>([]);
   // Revit-style windows (float above everything, ribbon included)
-  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false, revit: false });
+  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false, revit: false, changes: false });
   // Guide & FAQ (F1): which section to open on
   const [guideSection, setGuideSection] = useState<string | undefined>(undefined);
   const openGuide = (section?: string) => {
@@ -653,6 +655,171 @@ export function App({ start }: { start?: AppStart } = {}) {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.selection, revitLinked, revitSync]);
+
+  // ---- Revit parameters (milestone 2): read live for the selection, edit as pending changes,
+  //      review in the Changes window, then check or apply in Revit as one undo
+  const canParams = revitLinked && bridge.canEditParams;
+  const paramsCache = useRef(new Map<string, RevitElementParams>());
+  const [paramsTick, setParamsTick] = useState(0); // re-render when the cache fills
+  const [paramsState, setParamsState] = useState<{ loading: boolean; error?: string }>({ loading: false });
+  const pendingKey = revitLink ? `shanku.revitPending.${revitLink.key}` : null;
+  const [pending, setPending] = useState<PendingChange[]>([]);
+  const [changeStatus, setChangeStatus] = useState(new Map<string, { ok: boolean; message?: string | null }>());
+  const [changesBusy, setChangesBusy] = useState<'check' | 'apply' | null>(null);
+  const [lastApplied, setLastApplied] = useState<{ undoName: string; applied: number; warnings: string[] } | null>(null);
+  // pending changes survive a reload, per Revit document
+  useEffect(() => {
+    try {
+      setPending(pendingKey ? JSON.parse(localStorage.getItem(pendingKey) ?? '[]') : []);
+    } catch {
+      setPending([]);
+    }
+    paramsCache.current.clear();
+  }, [pendingKey]);
+  useEffect(() => {
+    if (!pendingKey) return;
+    try {
+      if (pending.length) localStorage.setItem(pendingKey, JSON.stringify(pending));
+      else localStorage.removeItem(pendingKey);
+    } catch {
+      /* storage unavailable: pending lives for this session */
+    }
+  }, [pending, pendingKey]);
+  const MAX_PARAM_SELECTION = 200;
+  const selectedGids = useMemo(() => (m.model ? m.selection.map((i) => m.model!.elements[i]?.globalId).filter(Boolean) : []), [m.selection, m.model]);
+  const fetchParams = useCallback(
+    async (gids: string[], force = false) => {
+      if (!revitLink || !gids.length) return;
+      const missing = force ? gids : gids.filter((g) => !paramsCache.current.has(g));
+      if (!missing.length) return;
+      setParamsState({ loading: true });
+      try {
+        const els = await bridge.readParams(revitLink.key, missing);
+        for (const e of els) paramsCache.current.set(e.globalId, e);
+        setParamsState({ loading: false });
+        setParamsTick((t) => t + 1);
+      } catch (e) {
+        setParamsState({ loading: false, error: (e as Error).message });
+      }
+    },
+    [bridge, revitLink],
+  );
+  useEffect(() => {
+    if (!canParams || !selectedGids.length || selectedGids.length > MAX_PARAM_SELECTION) return;
+    const t = setTimeout(() => void fetchParams(selectedGids), 250);
+    return () => clearTimeout(t);
+  }, [canParams, selectedGids, fetchParams]);
+  const elementLabel = (gid: string, fallback?: RevitElementParams) => {
+    const e = m.model?.elements.find((x) => x.globalId === gid);
+    return e ? `${e.category === 'Other' ? e.ifcClass : e.category} ${e.mark || e.typeName || e.name}`.trim() : `${fallback?.category ?? 'Element'} ${fallback?.typeName ?? ''}`.trim();
+  };
+  const stage = (els: RevitElementParams[], param: { id: number; name: string }, value: string) => {
+    const before = pending;
+    const after = stageEdit(before, els, param, value, (e) => elementLabel(e.globalId, e));
+    if (JSON.stringify(after) === JSON.stringify(before)) return;
+    history.run(`Edit ${param.name}${els.length > 1 ? ` on ${els.length} elements` : ''}`, (tx) => tx.change('revit-pending', before, after, setPending));
+    setLastApplied(null);
+  };
+  const revitProps = (() => {
+    void paramsTick;
+    if (!revitLink || m.model?.info.fileName !== revitLink.fileName || !m.selection.length) return undefined;
+    if (revit.phase !== 'connected') return { status: 'Connect to Revit to see and edit its parameters.', groups: [] };
+    if (!revitLinked) return { status: 'Revit is showing a different model.', groups: [] };
+    if (!bridge.canEditParams) return { status: `Editing needs Shanku Bridge for Revit 0.2.0 (this Revit has ${revit.addin ?? 'an older add-in'}).`, groups: [] };
+    if (selectedGids.length > MAX_PARAM_SELECTION) return { status: `Select ${MAX_PARAM_SELECTION} or fewer elements to edit Revit parameters.`, groups: [] };
+    const els = selectedGids.map((g) => paramsCache.current.get(g)).filter((e): e is RevitElementParams => !!e);
+    if (els.length < selectedGids.length) return { status: paramsState.error ? `Could not read from Revit: ${paramsState.error}` : 'Reading parameters from Revit…', groups: [] };
+    const common = commonParams(els);
+    const pendingHere = pending.filter((c) => selectedGids.includes(c.globalId)).length;
+    return {
+      pending: pendingHere,
+      status: els.length > 1 ? `${common.length} parameters shared by the ${els.length} selected elements.` : undefined,
+      groups: byGroup(common).map((g) => ({
+        group: g.group,
+        rows: g.params.map((p) => {
+          const eff = effectiveCommon(pending, els, p);
+          return {
+            key: `${p.id}|${p.name}`,
+            label: p.name,
+            value: eff.display,
+            varies: eff.varies,
+            modified: eff.modified,
+            readOnly: p.readOnly,
+            hint: p.readOnly ? (p.why ?? 'Read-only in Revit') : p.kind === 'number' ? 'In the Revit project units, e.g. 600 or 600 mm' : undefined,
+            kind: p.kind === 'yesno' ? ('yesno' as const) : ('text' as const),
+            onCommit: p.readOnly ? undefined : (v: string) => stage(els, p, v),
+          };
+        }),
+      })),
+    };
+  })();
+  /**
+   * After a conflict: re-read these changes' elements from Revit and rebase them on Revit's current
+   * values. The new values stay; a change that now equals Revit's value is dropped.
+   */
+  const refreshChanges = async (keys: string[]) => {
+    if (!revitLink) return;
+    const rows = pending.filter((c) => keys.includes(changeKey(c)));
+    const gids = [...new Set(rows.map((c) => c.globalId))];
+    try {
+      const els = await bridge.readParams(revitLink.key, gids);
+      for (const e of els) paramsCache.current.set(e.globalId, e);
+      setParamsTick((t) => t + 1);
+      let dropped = 0;
+      const next = pending.flatMap((c) => {
+        if (!keys.includes(changeKey(c))) return [c];
+        const cur = els.find((e) => e.globalId === c.globalId)?.params.find((x) => x.id === c.paramId && x.name === c.name)?.display ?? null;
+        if (cur === null) return [c];
+        if (cur === c.value) {
+          dropped++;
+          return [];
+        }
+        return [{ ...c, oldDisplay: cur }];
+      });
+      setPending(next);
+      const st = new Map(changeStatus);
+      for (const k of keys) st.delete(k);
+      setChangeStatus(st);
+      setNotice(`Refreshed ${rows.length} change${rows.length === 1 ? '' : 's'} from Revit${dropped ? `; ${dropped} already matched Revit and were removed` : ''}.`);
+    } catch (e) {
+      setNotice(`Revit: ${(e as Error).message}`);
+    }
+  };
+  /** Checks (dry run) or applies the given pending changes in Revit. */
+  const runChanges = async (keys: string[], dryRun: boolean) => {
+    if (!revitLink) return;
+    const sent = pending.filter((c) => keys.includes(changeKey(c)));
+    if (!sent.length) return;
+    setChangesBusy(dryRun ? 'check' : 'apply');
+    try {
+      const r = await bridge.writeParams(
+        revitLink.key,
+        sent.map(({ globalId, paramId, name, oldDisplay, value }) => ({ globalId, paramId, name, oldDisplay, value })),
+        dryRun,
+      );
+      const status = new Map(changeStatus);
+      sent.forEach((c, i) => status.set(changeKey(c), { ok: !!r.results[i]?.ok, message: r.results[i]?.error ?? null }));
+      if (dryRun) {
+        setChangeStatus(status);
+        const bad = r.results.filter((x) => !x.ok).length;
+        setNotice(bad ? `Revit would refuse ${bad} of ${sent.length} changes; see the Changes window.` : `Revit accepts all ${sent.length} changes. Nothing was changed yet.`);
+      } else {
+        const done = afterApply(pending, sent, r.results);
+        for (const c of sent) if (!done.failed.has(changeKey(c))) status.delete(changeKey(c));
+        setChangeStatus(status);
+        setPending(done.remaining); // applied in Revit: Revit's undo takes them back, not Shanku's
+        setLastApplied({ undoName: r.undoName, applied: done.applied, warnings: r.warnings });
+        for (const c of sent) paramsCache.current.delete(c.globalId);
+        void fetchParams(selectedGids, true);
+        m.log(`Revit: ${r.undoName} — ${done.applied} applied${done.failed.size ? `, ${done.failed.size} refused` : ''}${r.warnings.length ? `; Revit warned: ${r.warnings.join(' ')}` : ''}.`);
+        setNotice(done.applied ? `Applied ${done.applied} change${done.applied === 1 ? '' : 's'} in Revit (Edit → Undo in Revit takes them back).${done.failed.size ? ` ${done.failed.size} refused.` : ''}` : `Revit refused all ${sent.length} changes; see the Changes window.`);
+      }
+    } catch (e) {
+      setNotice(`Revit: ${(e as Error).message}`);
+    } finally {
+      setChangesBusy(null);
+    }
+  };
 
   // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
   const heights = useMemo(() => (m.model ? levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length) : new Map<string, number>()), [m.model?.info]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1273,6 +1440,8 @@ export function App({ start }: { start?: AppStart } = {}) {
       { id: 'bridge.sendSelection', title: 'Send selection to Revit', group: 'Select', keywords: 'bridge revit push select', enabled: revit.phase === 'connected' && !!revit.document && hasModel, why: revit.phase !== 'connected' ? 'connect to Revit first' : 'open a model', run: () => void sendSelectionToRevit() },
       { id: 'bridge.getSelection', title: 'Get selection from Revit', group: 'Select', keywords: 'bridge revit pull select', enabled: revit.phase === 'connected' && !!revit.document && hasModel, why: revit.phase !== 'connected' ? 'connect to Revit first' : 'open a model', run: () => void getSelectionFromRevit() },
       { id: 'bridge.disconnect', title: 'Disconnect from Revit', group: 'File', keywords: 'bridge revit unpair', enabled: revit.phase === 'connected' || revit.phase === 'unpaired', why: 'not connected', run: () => bridge.disconnect() },
+      { id: 'bridge.changes', title: 'Changes for Revit…', group: 'Edit', keywords: 'bridge revit parameters pending apply review', checked: wins.changes, run: () => toggleWin('changes') },
+      { id: 'bridge.check', title: 'Check changes in Revit', group: 'Edit', keywords: 'bridge revit parameters dry run validate', enabled: pending.length > 0 && canParams, why: !pending.length ? 'no changes waiting' : 'connect to the Revit model first', run: () => void runChanges(pending.map(changeKey), true) },
       { id: 'bridge.syncSelection', title: 'Sync selection with Revit', group: 'Select', keywords: 'bridge revit link', checked: revitSync, run: () => setRevitSync((v) => !v) },
       { id: 'window.boq', title: 'Bill of quantities (BOQ)', group: 'Windows', keywords: 'quantities rates excel export', checked: wins.boq, enabled: hasModel, why: needModel, run: () => toggleWin('boq') },
       { id: 'window.reset', title: 'Reset window layout', group: 'Windows', keywords: 'panels dock', run: () => dock.current?.reset() },
@@ -1473,6 +1642,11 @@ export function App({ start }: { start?: AppStart } = {}) {
             <RibbonButton icon="sync" label="Sync" active={revitSync} onClick={() => setRevitSync((v) => !v)} shortcutHint={revitLinked ? 'selection follows Revit both ways' : 'follows Revit once the model is loaded from Revit'} />
             <RibbonButton icon="selectSend" label="Send to Revit" disabled={revit.phase !== 'connected' || !revit.document || !m.model} onClick={() => void sendSelectionToRevit()} shortcutHint="select Shanku's selection in Revit now" />
             <RibbonButton icon="selectGet" label="Get from Revit" disabled={revit.phase !== 'connected' || !revit.document || !m.model} onClick={() => void getSelectionFromRevit()} shortcutHint="take Revit's current selection" />
+          </RibbonGroup>
+          <RibbonGroup label="Parameters">
+            <RibbonButton icon="properties" label={pending.length ? `Changes (${pending.length})` : 'Changes'} active={wins.changes} onClick={() => toggleWin('changes')} shortcutHint="parameter edits waiting for Revit" />
+            <RibbonButton icon="qa" label="Check" disabled={!pending.length || !canParams || !!changesBusy} onClick={() => void runChanges(pending.map(changeKey), true)} shortcutHint="Revit checks every change and keeps nothing" />
+            <RibbonButton icon="selectSend" label="Apply" disabled={!pending.length || !canParams || !!changesBusy} onClick={() => toggleWin('changes', true)} shortcutHint="review and apply in the Changes window (one undo in Revit)" />
           </RibbonGroup>
           <RibbonGroup label="Help">
             <RibbonButton icon="guide" label="Bridge guide" onClick={() => openGuide('revit')} shortcutHint="install the add-in, pair, load, sync" />
@@ -1708,6 +1882,24 @@ export function App({ start }: { start?: AppStart } = {}) {
                     onShow={showQa}
                   />
                 )}
+          </FloatingWindow>
+          <FloatingWindow id="changes" title="Changes for Revit" subtitle={revit.document?.title} open={wins.changes} onClose={() => toggleWin('changes', false)} initial={{ w: 760, h: 420 }} minWidth={520} minHeight={240}>
+            <RevitChanges
+              pending={pending}
+              status={changeStatus}
+              busy={changesBusy}
+              canApply={canParams}
+              why={revit.phase !== 'connected' ? 'Connect to Revit to check or apply.' : !revitLinked ? 'Revit is showing a different model.' : !bridge.canEditParams ? 'Update Shanku Bridge for Revit to 0.2.0.' : undefined}
+              lastApplied={lastApplied}
+              onCheck={(keys) => void runChanges(keys, true)}
+              onApply={(keys) => void runChanges(keys, false)}
+              onRemove={(keys) => {
+                const before = pending, after = pending.filter((c) => !keys.includes(changeKey(c)));
+                history.run(`Remove ${keys.length} change${keys.length === 1 ? '' : 's'}`, (tx) => tx.change('revit-pending', before, after, setPending));
+              }}
+              onRefresh={(keys) => void refreshChanges(keys)}
+              onSelectElements={(gids) => m.model && m.setSelection(m.model.elements.flatMap((e, i) => (gids.includes(e.globalId) ? [i] : [])))}
+            />
           </FloatingWindow>
           <FloatingWindow id="revit" title="Revit" subtitle="Shanku Bridge" open={wins.revit} onClose={() => toggleWin('revit', false)} initial={{ w: 460, h: 440 }} minWidth={380} minHeight={300}>
             <RevitPanel
@@ -1999,6 +2191,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                     selection={sel}
                     properties={m.properties}
                     onEditMarkRules={() => setMarkDialog(true)}
+                    revit={revitProps}
                     view={
                       symbolPropsFor(sel) ??
                       (activeModelView
@@ -2158,7 +2351,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             onClick={() => (wins.revit ? toggleWin('revit', false) : openRevit())}
           >
             <span className="app-revit__dot" aria-hidden="true" />
-            {revit.phase === 'connected' ? `Revit · ${revit.document?.title ?? 'no model'}` : revit.phase === 'unpaired' ? 'Revit · pair' : 'Revit'}
+            {revit.phase === 'connected' ? `Revit · ${revit.document?.title ?? 'no model'}${pending.length ? ` · ${pending.length} to apply` : ''}` : revit.phase === 'unpaired' ? 'Revit · pair' : 'Revit'}
           </button>
           {qaReport ? (
             <>

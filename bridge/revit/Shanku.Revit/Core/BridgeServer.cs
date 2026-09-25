@@ -16,6 +16,14 @@ public sealed record IdEntry(string GlobalId, string UniqueId, long ElementId);
 public sealed record IdsResult(string Key, IReadOnlyList<IdEntry> Ids);
 public sealed record SelectResult(int Selected, int Missing);
 
+/// <summary>One instance parameter as Shanku shows it. Kind: text, number, integer, yesno, element.</summary>
+public sealed record ParamInfo(long Id, string Name, string Group, string Kind, string? Display, bool ReadOnly, string? Why);
+public sealed record ElementParams(string GlobalId, long ElementId, string Category, string TypeName, IReadOnlyList<ParamInfo> Params);
+/// <summary>A change to apply. OldDisplay is what Shanku read; a different current value is a conflict.</summary>
+public sealed record ParamChange(string GlobalId, long ParamId, string Name, string? OldDisplay, string Value);
+public sealed record ChangeResult(int Index, bool Ok, string? Error, string? NewDisplay);
+public sealed record WriteResult(bool DryRun, string UndoName, IReadOnlyList<ChangeResult> Results, IReadOnlyList<string> Warnings);
+
 /// <summary>What the server needs from Revit. The add-in implements it on Revit's main thread.</summary>
 public interface IRevitHost
 {
@@ -28,6 +36,10 @@ public interface IRevitHost
     Task<ExportResult> ExportIfcAsync();
     Task<IdsResult> GetIdsAsync();
     Task<SelectResult> SetSelectionAsync(string key, IReadOnlyList<string> globalIds, IReadOnlyList<long> elementIds);
+    /// <summary>Instance parameters of these elements (milestone 2).</summary>
+    Task<IReadOnlyList<ElementParams>> ReadParamsAsync(string key, IReadOnlyList<string> globalIds);
+    /// <summary>Applies changes in one Revit transaction (one undo); dryRun rolls everything back.</summary>
+    Task<WriteResult> WriteParamsAsync(string key, IReadOnlyList<ParamChange> changes, bool dryRun);
 }
 
 /// <summary>A request the host could not serve, with the status and message to send back.</summary>
@@ -45,6 +57,10 @@ public sealed class BridgeException : Exception
 public sealed class BridgeServer : IDisposable
 {
     public const int Protocol = 1;
+    /// <summary>What this add-in can do beyond protocol 1's basics (Shanku checks before offering it).</summary>
+    public static readonly string[] Features = { "params" };
+    public const int MaxReadElements = 500;
+    public const int MaxChanges = 5000;
     private const string Prefix = "/shanku/v1";
 
     private readonly IRevitHost _host;
@@ -201,7 +217,7 @@ public sealed class BridgeServer : IDisposable
             if (method == "GET" && route == "/hello")
             {
                 // no Revit API call here: it must answer while Revit shows the pairing dialog
-                await Send(res, 200, new { service = "shanku-revit", protocol = Protocol, addin = _host.AddinVersion, revit = _host.RevitVersion, pairingOpen = _pairing.PairingOpen, hasDocument = _host.CurrentDocument != null });
+                await Send(res, 200, new { service = "shanku-revit", protocol = Protocol, addin = _host.AddinVersion, revit = _host.RevitVersion, pairingOpen = _pairing.PairingOpen, hasDocument = _host.CurrentDocument != null, features = Features });
                 return;
             }
             if (method == "POST" && route == "/pair")
@@ -263,6 +279,38 @@ public sealed class BridgeServer : IDisposable
                     var eids = body.TryGetProperty("elementIds", out var e) && e.ValueKind == JsonValueKind.Array ? e.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.Number).Select(x => x.GetInt64()).ToArray() : Array.Empty<long>();
                     var r = await _host.SetSelectionAsync(key, gids, eids);
                     await Send(res, 200, new { selected = r.Selected, missing = r.Missing });
+                    return;
+                }
+                case ("POST", "/params/read"):
+                {
+                    var body = await ReadJson(req);
+                    string key = body.TryGetProperty("key", out var k) ? k.GetString() ?? "" : "";
+                    var gids = body.TryGetProperty("globalIds", out var g) && g.ValueKind == JsonValueKind.Array ? g.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).Distinct().ToArray() : Array.Empty<string>();
+                    if (gids.Length > MaxReadElements) throw new BridgeException(400, $"Select {MaxReadElements} or fewer elements to read their parameters.");
+                    var r = await _host.ReadParamsAsync(key, gids);
+                    await Send(res, 200, new { elements = r });
+                    return;
+                }
+                case ("POST", "/params/write"):
+                {
+                    var body = await ReadJson(req);
+                    string key = body.TryGetProperty("key", out var k) ? k.GetString() ?? "" : "";
+                    bool dry = body.TryGetProperty("dryRun", out var d) && d.ValueKind == JsonValueKind.True;
+                    if (!body.TryGetProperty("changes", out var ch) || ch.ValueKind != JsonValueKind.Array) throw new BridgeException(400, "No changes were sent.");
+                    var changes = new List<ParamChange>();
+                    foreach (var c in ch.EnumerateArray())
+                    {
+                        string gid = c.TryGetProperty("globalId", out var a) ? a.GetString() ?? "" : "";
+                        long pid = c.TryGetProperty("paramId", out var pi) && pi.TryGetInt64(out var pv) ? pv : 0;
+                        string name = c.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                        string? old = c.TryGetProperty("oldDisplay", out var o) && o.ValueKind == JsonValueKind.String ? o.GetString() : null;
+                        string value = c.TryGetProperty("value", out var v) ? (v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : v.ToString()) : "";
+                        if (gid.Length == 0 || name.Length == 0) throw new BridgeException(400, "Each change needs a globalId and a parameter name.");
+                        changes.Add(new ParamChange(gid, pid, name, old, value));
+                    }
+                    if (changes.Count > MaxChanges) throw new BridgeException(400, $"At most {MaxChanges} changes at a time.");
+                    var r = await _host.WriteParamsAsync(key, changes, dry);
+                    await Send(res, 200, r);
                     return;
                 }
                 case ("GET", "/events"):

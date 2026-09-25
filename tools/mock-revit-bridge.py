@@ -39,6 +39,17 @@ class State:
         self.revit_selection = []
         self.streams = []
         self.lock = threading.Lock()
+        # instance parameters per element: {globalId: {name: [id, group, kind, display, readOnly]}}
+        self.params = {}
+        for n, (g, _, tag) in enumerate(self.ids):
+            self.params[g] = {
+                "Mark": [-1001203, "Identity Data", "text", f"E{n + 1}", False],
+                "Comments": [-1010106, "Identity Data", "text", "", False],
+                "Base Offset": [-1001107, "Constraints", "number", "0 mm", False],
+                "Enable Analytical Model": [-1018301, "Structural", "yesno", "Yes", False],
+                "Structural Material": [-1001205, "Materials and Finishes", "element", "Concrete - M25", True],
+                "Volume": [-1012806, "Dimensions", "number", "0.540 m³", True],
+            }
 
     def broadcast(self, event: str, data: dict):
         payload = f"event: {event}\ndata: {json.dumps(data)}\n\n".encode()
@@ -111,7 +122,7 @@ def make_handler(st: State):
             if path == "/mock/received":
                 return self.send_json(200, {"received": st.received})
             if path == "/shanku/v1/hello":
-                return self.send_json(200, {"service": "shanku-revit", "protocol": 1, "addin": "mock", "revit": "2025", "pairingOpen": True, "hasDocument": st.document is not None})
+                return self.send_json(200, {"service": "shanku-revit", "protocol": 1, "addin": "mock", "revit": "2025", "pairingOpen": True, "hasDocument": st.document is not None, "features": ["params"]})
             if not self.authed(q):
                 return self.send_json(401, {"error": "Not paired. Click Shanku → Connect in Revit and enter the code in Shanku."})
             if path == "/shanku/v1/status":
@@ -165,6 +176,51 @@ def make_handler(st: State):
                 return self.send_json(403, {"error": "That code is not right."})
             if not self.authed(q):
                 return self.send_json(401, {"error": "Not paired."})
+            if path == "/shanku/v1/params/read":
+                b = self.body()
+                out = []
+                for g in b.get("globalIds", []):
+                    if g not in st.params:
+                        continue
+                    tag = next((t for gg, _, t in st.ids if gg == g), 0)
+                    ps = [{"id": v[0], "name": k, "group": v[1], "kind": v[2], "display": v[3], "readOnly": v[4], "why": ("Choose it in Revit" if v[2] == "element" else "Read-only in Revit") if v[4] else None} for k, v in st.params[g].items()]
+                    out.append({"globalId": g, "elementId": tag, "category": "Structural element", "typeName": "Mock type", "params": sorted(ps, key=lambda p: (p["group"], p["name"]))})
+                return self.send_json(200, {"elements": out})
+            if path == "/shanku/v1/params/write":
+                b = self.body()
+                dry = bool(b.get("dryRun"))
+                results, pending = [], []
+                for i, c in enumerate(b.get("changes", [])):
+                    p = st.params.get(c.get("globalId"), {}).get(c.get("name"))
+                    err, after = None, None
+                    if p is None:
+                        err = "No such parameter."
+                    elif p[4]:
+                        err = f'"{c["name"]}" is read-only in Revit.'
+                    elif c.get("oldDisplay") is not None and c["oldDisplay"] != p[3]:
+                        err = f'Changed in Revit since Shanku read it (now "{p[3]}"). Refresh, then edit again.'
+                    else:
+                        v = str(c.get("value", "")).strip()
+                        if p[2] == "number":
+                            m = re.fullmatch(r"(-?\d+(?:\.\d+)?)\s*(mm)?", v)
+                            if not m:
+                                err = f'Revit could not read "{v}" as a length.'
+                            else:
+                                after = f"{float(m.group(1)):g} mm"
+                        elif p[2] == "yesno":
+                            after = "Yes" if v.lower() in ("yes", "1", "true") else "No"
+                        else:
+                            after = v
+                    if err is None:
+                        pending.append((p, after))
+                    results.append({"index": i, "ok": err is None, "error": err, "newDisplay": after})
+                if not dry:
+                    for p, after in pending:
+                        p[3] = after
+                marks = [c for c in b.get("changes", []) if c.get("name") == "Mark"]
+                warnings = ['Elements have duplicate "Mark" values.'] if len({c.get("value") for c in marks}) < len(marks) else []
+                n = len(b.get("changes", []))
+                return self.send_json(200, {"dryRun": dry, "undoName": f"Shanku: update {n} parameters", "results": results, "warnings": warnings})
             if path == "/shanku/v1/model/export":
                 self.send_response(200)
                 self.cors()

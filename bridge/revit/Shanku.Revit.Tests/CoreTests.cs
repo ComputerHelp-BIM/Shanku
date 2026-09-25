@@ -122,6 +122,26 @@ internal sealed class FakeHost : IRevitHost
     public Task<IReadOnlyList<string>> GetSelectionAsync() => Task.FromResult<IReadOnlyList<string>>(new[] { "g1" });
     public Task<ExportResult> ExportIfcAsync() => Task.FromResult(new ExportResult(Encoding.ASCII.GetBytes("ISO-10303-21;"), "key-a", "Tower A"));
     public Task<IdsResult> GetIdsAsync() => Task.FromResult(new IdsResult("key-a", new[] { new IdEntry("g1", "u1", 101) }));
+    // parameters: Mark (text, "C1"), Base Offset (number), Volume (read-only)
+    public Dictionary<string, string> Marks { get; } = new() { ["g1"] = "C1" };
+    public List<(IReadOnlyList<ParamChange> changes, bool dry)> Writes { get; } = new();
+    public Task<IReadOnlyList<ElementParams>> ReadParamsAsync(string key, IReadOnlyList<string> globalIds) =>
+        Task.FromResult<IReadOnlyList<ElementParams>>(globalIds.Where(Marks.ContainsKey).Select(g => new ElementParams(g, 101, "Structural Columns", "C 300x600", new[]
+        {
+            new ParamInfo(-1001203, "Mark", "Identity Data", "text", Marks[g], false, null),
+            new ParamInfo(-1001107, "Base Offset", "Constraints", "number", "0 mm", false, null),
+            new ParamInfo(-1012806, "Volume", "Dimensions", "number", "0.540 m³", true, "Read-only in Revit"),
+        })).ToList());
+    public Task<WriteResult> WriteParamsAsync(string key, IReadOnlyList<ParamChange> changes, bool dryRun)
+    {
+        Writes.Add((changes, dryRun));
+        var results = changes.Select((c, i) =>
+            c.Name == "Volume" ? new ChangeResult(i, false, "\"Volume\" is read-only in Revit.", null)
+            : c.Name == "Mark" && c.OldDisplay != null && Marks.TryGetValue(c.GlobalId, out var now) && now != c.OldDisplay ? new ChangeResult(i, false, $"Changed in Revit since Shanku read it (now \"{now}\").", null)
+            : new ChangeResult(i, true, null, c.Value)).ToList();
+        if (!dryRun) foreach (var (c, r) in changes.Zip(results)) if (r.Ok && c.Name == "Mark") Marks[c.GlobalId] = c.Value;
+        return Task.FromResult(new WriteResult(dryRun, $"Shanku: update {changes.Count} parameters", results, new[] { "Elements have duplicate \"Mark\" values." }));
+    }
     public Task<SelectResult> SetSelectionAsync(string key, IReadOnlyList<string> globalIds, IReadOnlyList<long> elementIds)
     {
         if (key != "key-a") throw new BridgeException(409, "Revit is showing a different model (Tower A).");
@@ -260,5 +280,48 @@ public class ServerTests : IDisposable
         _pairing.RevokeAll();
         _server.CloseStreams();
         Assert.Equal(HttpStatusCode.Unauthorized, (await _http.SendAsync(Req(HttpMethod.Get, "/status", token: token))).StatusCode);
+    }
+
+    [Fact]
+    public async Task Hello_lists_the_params_feature()
+    {
+        var j = JsonDocument.Parse(await (await _http.SendAsync(Req(HttpMethod.Get, "/hello"))).Content.ReadAsStringAsync()).RootElement;
+        Assert.Contains("params", j.GetProperty("features").EnumerateArray().Select(x => x.GetString()));
+    }
+
+    [Fact]
+    public async Task Reads_and_writes_parameters_with_dry_run_conflicts_and_limits()
+    {
+        string token = await Pair();
+        var read = JsonDocument.Parse(await (await _http.SendAsync(Req(HttpMethod.Post, "/params/read", token: token, body: new { key = "key-a", globalIds = new[] { "g1", "nope" } }))).Content.ReadAsStringAsync()).RootElement;
+        var el = read.GetProperty("elements")[0];
+        Assert.Equal("g1", el.GetProperty("globalId").GetString());
+        Assert.Equal("Mark", el.GetProperty("params")[0].GetProperty("name").GetString());
+        Assert.True(el.GetProperty("params")[2].GetProperty("readOnly").GetBoolean());
+
+        var tooMany = await _http.SendAsync(Req(HttpMethod.Post, "/params/read", token: token, body: new { key = "key-a", globalIds = Enumerable.Range(0, BridgeServer.MaxReadElements + 1).Select(i => $"g{i}").ToArray() }));
+        Assert.Equal(HttpStatusCode.BadRequest, tooMany.StatusCode);
+
+        // dry run: nothing kept
+        var dry = JsonDocument.Parse(await (await _http.SendAsync(Req(HttpMethod.Post, "/params/write", token: token, body: new { key = "key-a", dryRun = true, changes = new object[] { new { globalId = "g1", paramId = -1001203, name = "Mark", oldDisplay = "C1", value = "C1A" } } }))).Content.ReadAsStringAsync()).RootElement;
+        Assert.True(dry.GetProperty("dryRun").GetBoolean());
+        Assert.True(dry.GetProperty("results")[0].GetProperty("ok").GetBoolean());
+        Assert.Equal("C1", _host.Marks["g1"]);
+
+        // apply: one ok, one read-only refused; warnings reported
+        var body = new { key = "key-a", changes = new object[] { new { globalId = "g1", paramId = -1001203, name = "Mark", oldDisplay = "C1", value = "C1A" }, new { globalId = "g1", paramId = -1012806, name = "Volume", oldDisplay = "0.540 m³", value = "1" } } };
+        var w = JsonDocument.Parse(await (await _http.SendAsync(Req(HttpMethod.Post, "/params/write", token: token, body: body))).Content.ReadAsStringAsync()).RootElement;
+        Assert.True(w.GetProperty("results")[0].GetProperty("ok").GetBoolean());
+        Assert.False(w.GetProperty("results")[1].GetProperty("ok").GetBoolean());
+        Assert.Contains("read-only", w.GetProperty("results")[1].GetProperty("error").GetString());
+        Assert.Contains("duplicate", w.GetProperty("warnings")[0].GetString());
+        Assert.Equal("C1A", _host.Marks["g1"]);
+
+        // the same edit again, based on the old value: a conflict
+        var again = JsonDocument.Parse(await (await _http.SendAsync(Req(HttpMethod.Post, "/params/write", token: token, body: new { key = "key-a", changes = new object[] { new { globalId = "g1", paramId = -1001203, name = "Mark", oldDisplay = "C1", value = "C9" } } }))).Content.ReadAsStringAsync()).RootElement;
+        Assert.Contains("Changed in Revit", again.GetProperty("results")[0].GetProperty("error").GetString());
+
+        var bad = await _http.SendAsync(Req(HttpMethod.Post, "/params/write", token: token, body: new { key = "key-a" }));
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
     }
 }

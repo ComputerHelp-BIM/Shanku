@@ -56,6 +56,12 @@ export interface PropertyRowProps {
   varies?: boolean;
   /** When given (and not readOnly) the value is editable. Called on Enter or blur with the raw text. */
   onCommit?: (value: string) => void;
+  /** Changed here but not yet applied where it belongs (e.g. Revit): marked, with a tooltip. */
+  modified?: boolean;
+  /** Yes/No values edit as a checkbox; onCommit receives "Yes" or "No". */
+  kind?: 'text' | 'yesno';
+  /** Tooltip, e.g. why the value is read-only. */
+  hint?: string;
 }
 
 function display(value: string | number | null, unit?: string): string {
@@ -63,7 +69,7 @@ function display(value: string | number | null, unit?: string): string {
   return unit ? `${value} ${unit}` : String(value);
 }
 
-export function PropertyRow({ label, value, unit, mono, readOnly, varies, onCommit }: PropertyRowProps) {
+export function PropertyRow({ label, value, unit, mono, readOnly, varies, onCommit, modified, kind = 'text', hint }: PropertyRowProps) {
   const inputId = useId();
   const editable = Boolean(onCommit) && !readOnly;
   const initial = varies ? '' : value === null ? '' : String(value);
@@ -86,8 +92,32 @@ export function PropertyRow({ label, value, unit, mono, readOnly, varies, onComm
   };
 
   const valueClass = ['sk-prop-row__value', mono && 'is-mono', readOnly && 'is-readonly'].filter(Boolean).join(' ');
+  const title = [modified ? 'Changed here; not applied yet' : null, hint].filter(Boolean).join(' · ') || undefined;
+  if (kind === 'yesno') {
+    const on = !varies && String(value) === 'Yes';
+    return (
+      <div className={['sk-prop-row', modified && 'is-modified'].filter(Boolean).join(' ')} title={title}>
+        <label className="sk-prop-row__label" htmlFor={inputId}>
+          {label}
+        </label>
+        <span className="sk-prop-row__field">
+          <input
+            id={inputId}
+            type="checkbox"
+            className="sk-prop-row__check"
+            checked={on}
+            ref={(el) => {
+              if (el) el.indeterminate = !!varies;
+            }}
+            disabled={!editable}
+            onChange={(e) => onCommit?.(e.target.checked ? 'Yes' : 'No')}
+          />
+        </span>
+      </div>
+    );
+  }
   return (
-    <div className="sk-prop-row">
+    <div className={['sk-prop-row', modified && 'is-modified'].filter(Boolean).join(' ')} title={title}>
       <label className="sk-prop-row__label" htmlFor={editable ? inputId : undefined}>
         {label}
       </label>

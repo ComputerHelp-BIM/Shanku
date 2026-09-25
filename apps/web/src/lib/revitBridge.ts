@@ -7,6 +7,8 @@
  * browser paired before (Chrome asks once for local network access).
  */
 
+import type { RevitElementParams } from './paramEdits';
+
 export type BridgePhase =
   | 'idle' // not tried (the user has not asked)
   | 'searching'
@@ -29,6 +31,8 @@ export interface BridgeState {
   revit?: string;
   /** The model open in Revit (null: none). */
   document?: RevitDocument | null;
+  /** What the add-in can do beyond the basics, e.g. "params" (add-in 0.2.0). */
+  features?: string[];
   error?: string;
 }
 
@@ -165,7 +169,7 @@ export class RevitBridge {
       this.save();
     }
     this.set({ phase: 'searching', error: undefined });
-    let hello: { service: string; protocol: number; addin: string; revit: string };
+    let hello: { service: string; protocol: number; addin: string; revit: string; features?: string[] };
     try {
       hello = await (await this.call<typeof hello>('/hello', {}, 5000)).json();
     } catch {
@@ -181,7 +185,7 @@ export class RevitBridge {
       this.set({ phase: 'error', addin: hello.addin, revit: hello.revit, error: `This Revit add-in speaks protocol ${hello.protocol}; Shanku speaks ${PROTOCOL}. Update ${hello.protocol < PROTOCOL ? 'the add-in' : 'Shanku (reload the page)'}.` });
       return this.state;
     }
-    this.set({ addin: hello.addin, revit: hello.revit });
+    this.set({ addin: hello.addin, revit: hello.revit, features: hello.features ?? [] });
     if (!this.stored.token) {
       this.set({ phase: 'unpaired' });
       return this.state;
@@ -230,6 +234,25 @@ export class RevitBridge {
   /** Selects these elements in Revit (GlobalIds first, ElementIds as a fallback). */
   async select(key: string, globalIds: string[], elementIds: number[]): Promise<{ selected: number; missing: number }> {
     return (await this.call<{ selected: number; missing: number }>('/selection', { method: 'POST', body: JSON.stringify({ key, globalIds, elementIds }) })).json();
+  }
+
+  /** The add-in can read and write parameters (Shanku Bridge for Revit 0.2.0+). */
+  get canEditParams(): boolean {
+    return !!this.state.features?.includes('params');
+  }
+
+  /** Instance parameters of these elements, as Revit has them now (up to 500 elements). */
+  async readParams(key: string, globalIds: string[]): Promise<RevitElementParams[]> {
+    return (await (await this.call<{ elements: RevitElementParams[] }>('/params/read', { method: 'POST', body: JSON.stringify({ key, globalIds }) }, 120_000)).json()).elements;
+  }
+
+  /** Applies (or, with dryRun, only checks) parameter changes in one Revit transaction. */
+  async writeParams(
+    key: string,
+    changes: Array<{ globalId: string; paramId: number; name: string; oldDisplay: string | null; value: string }>,
+    dryRun: boolean,
+  ): Promise<{ dryRun: boolean; undoName: string; results: Array<{ index: number; ok: boolean; error?: string | null; newDisplay?: string | null }>; warnings: string[] }> {
+    return (await this.call<never>('/params/write', { method: 'POST', body: JSON.stringify({ key, dryRun, changes }) }, 600_000)).json();
   }
 
   /** What is selected in Revit right now (GlobalIds), for "Get from Revit". */

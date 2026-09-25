@@ -1,12 +1,12 @@
-# Shanku Bridge for Revit 0.1.0
+# Shanku Bridge for Revit 0.2.0
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
-into Shanku and keep the selection in step both ways. Protocol: `docs/bridge/protocol.md`.
+into Shanku, keep the selection in step both ways, and edit Revit parameters from Shanku. Protocol: `docs/bridge/protocol.md`.
 
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.1.0.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.2.0.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -24,10 +24,15 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.1.0)
+## What it does, and does not do (0.2.0)
 
-- Reads only. Loading exports IFC4 Reference View inside a transaction that is rolled back, so the
-  model is never changed. Selection sync only selects.
+- Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
+  changed. Selection sync only selects.
+- Parameter edits change the model only when you press **Apply** in Shanku's Changes window: one
+  transaction named "Shanku: update N parameters on M elements", so one Edit → Undo in Revit takes it
+  all back. Only instance parameters; each change is refused if the value changed in Revit since
+  Shanku read it, the parameter is read-only, or the element is borrowed by someone else. Numbers are
+  read in the project's units. **Check in Revit** runs the same checks and keeps nothing.
 - Listens on `http://localhost:7071` for Shanku's sites only (see `shanku_bridge_config.json` for the
   port and extra sites). Nothing leaves your computer.
 - Revit runs requests when it is idle: with a dialog open in Revit, Shanku waits.
@@ -48,6 +53,11 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.2.0 — 2026-09-25
+- Parameter editing (milestone 2): `/params/read` (instance parameters with group, kind, value,
+  read-only reason) and `/params/write` (one transaction, a sub-transaction per change, conflict and
+  worksharing checks, dry run, Revit warnings collected instead of dialogs). `/hello` lists `features`.
 
 ### 0.1.0 — 2026-09-24
 - First release (milestone 1): pairing with a one-time code, load the model as IFC4 RV, selection sync

@@ -119,6 +119,151 @@ public sealed class RevitHost : IRevitHost
         return new SelectResult(found.Count, missing);
     }, Quick);
 
+    public Task<IReadOnlyList<ElementParams>> ReadParamsAsync(string key, IReadOnlyList<string> globalIds) => _queue.Run<IReadOnlyList<ElementParams>>(ui =>
+    {
+        var doc = RequireProject(ui);
+        RequireKey(doc, key);
+        if (_mapKey != KeyOf(doc) || globalIds.Any(g => !_byGlobalId.ContainsKey(g))) BuildMap(doc);
+        var list = new List<ElementParams>();
+        foreach (var gid in globalIds)
+        {
+            if (!_byGlobalId.TryGetValue(gid, out var id) || doc.GetElement(id) is not { } e) continue;
+            string typeName = doc.GetElement(e.GetTypeId())?.Name ?? "";
+            var ps = new List<ParamInfo>();
+            foreach (Parameter p in e.Parameters)
+            {
+                if (p.Definition == null || string.IsNullOrEmpty(p.Definition.Name)) continue;
+                string kind = KindOf(p);
+                bool ro = p.IsReadOnly || kind == "element";
+                string? why = kind == "element" ? "Choose it in Revit" : p.IsReadOnly ? "Read-only in Revit" : null;
+                string group;
+                try { group = LabelUtils.GetLabelForGroup(p.Definition.GetGroupTypeId()); } catch { group = "Other"; }
+                ps.Add(new ParamInfo(p.Id.Value, p.Definition.Name, string.IsNullOrEmpty(group) ? "Other" : group, kind, DisplayOf(p), ro, why));
+            }
+            list.Add(new ElementParams(gid, e.Id.Value, e.Category?.Name ?? "", typeName, ps.OrderBy(x => x.Group).ThenBy(x => x.Name).ToList()));
+        }
+        return list;
+    }, Export);
+
+    public Task<WriteResult> WriteParamsAsync(string key, IReadOnlyList<ParamChange> changes, bool dryRun) => _queue.Run(ui =>
+    {
+        var doc = RequireProject(ui);
+        RequireKey(doc, key);
+        if (_mapKey != KeyOf(doc) || changes.Any(c => !_byGlobalId.ContainsKey(c.GlobalId))) BuildMap(doc);
+        int elements = changes.Select(c => c.GlobalId).Distinct().Count();
+        string undoName = $"Shanku: update {changes.Count} parameter{(changes.Count == 1 ? "" : "s")} on {elements} element{(elements == 1 ? "" : "s")}";
+        var results = new List<ChangeResult>();
+        var warnings = new List<string>();
+        using var t = new Transaction(doc, undoName);
+        var opts = t.GetFailureHandlingOptions();
+        opts.SetFailuresPreprocessor(new WarningCollector(warnings));
+        t.SetFailureHandlingOptions(opts);
+        t.Start();
+        for (int i = 0; i < changes.Count; i++)
+        {
+            var c = changes[i];
+            string? error = null;
+            string? after = null;
+            // one sub-transaction per change: a failure never blocks the others
+            using var st = new SubTransaction(doc);
+            try
+            {
+                st.Start();
+                if (!_byGlobalId.TryGetValue(c.GlobalId, out var id) || doc.GetElement(id) is not { } e) throw new InvalidOperationException("The element is no longer in the Revit model.");
+                var p = FindParam(e, c.ParamId, c.Name) ?? throw new InvalidOperationException($"{e.Category?.Name} has no parameter \"{c.Name}\".");
+                if (p.IsReadOnly || KindOf(p) == "element") throw new InvalidOperationException($"\"{c.Name}\" is read-only in Revit.");
+                if (doc.IsWorkshared && WorksharingUtils.GetCheckoutStatus(doc, e.Id, out string owner) == CheckoutStatus.OwnedByOtherUser)
+                    throw new InvalidOperationException($"Borrowed by {owner} in the central model.");
+                string now = DisplayOf(p) ?? "";
+                if (c.OldDisplay != null && now != c.OldDisplay) throw new InvalidOperationException($"Changed in Revit since Shanku read it (now \"{now}\"). Refresh, then edit again.");
+                SetValue(p, c.Value);
+                after = DisplayOf(p);
+                st.Commit();
+            }
+            catch (Exception ex)
+            {
+                if (st.HasStarted() && !st.HasEnded()) st.RollBack();
+                error = ex.Message;
+            }
+            results.Add(new ChangeResult(i, error == null, error, after));
+        }
+        if (dryRun || results.All(r => !r.Ok)) t.RollBack(); // nothing to keep
+        else if (t.Commit() != TransactionStatus.Committed) throw new BridgeException(500, "Revit did not accept the changes (the transaction was rolled back).");
+        return new WriteResult(dryRun, undoName, results, warnings.Distinct().ToList());
+    }, Export);
+
+    /// <summary>Revit warnings (duplicate marks and the like) are reported, not shown as dialogs.</summary>
+    private sealed class WarningCollector : IFailuresPreprocessor
+    {
+        private readonly List<string> _warnings;
+        public WarningCollector(List<string> warnings) => _warnings = warnings;
+        public FailureProcessingResult PreprocessFailures(FailuresAccessor fa)
+        {
+            foreach (var m in fa.GetFailureMessages())
+            {
+                if (m.GetSeverity() != FailureSeverity.Warning) continue;
+                _warnings.Add(m.GetDescriptionText());
+                fa.DeleteWarning(m);
+            }
+            return FailureProcessingResult.Continue;
+        }
+    }
+
+    private static string KindOf(Parameter p) => p.StorageType switch
+    {
+        StorageType.String => "text",
+        StorageType.Double => "number",
+        StorageType.ElementId => "element",
+        StorageType.Integer => p.Definition.GetDataType() == SpecTypeId.Boolean.YesNo ? "yesno" : "integer",
+        _ => "element",
+    };
+
+    /// <summary>The value as Revit shows it (with the project's units for numbers).</summary>
+    private static string? DisplayOf(Parameter p) => p.StorageType switch
+    {
+        StorageType.String => p.AsString() ?? "",
+        StorageType.Integer when KindOf(p) == "yesno" => p.AsInteger() == 1 ? "Yes" : "No",
+        StorageType.Integer => p.AsInteger().ToString(System.Globalization.CultureInfo.InvariantCulture),
+        StorageType.Double => p.AsValueString() ?? p.AsDouble().ToString(System.Globalization.CultureInfo.InvariantCulture),
+        StorageType.ElementId => p.AsValueString(),
+        _ => null,
+    };
+
+    private static void SetValue(Parameter p, string value)
+    {
+        switch (KindOf(p))
+        {
+            case "text":
+                p.Set(value);
+                break;
+            case "yesno":
+                string v = value.Trim().ToLowerInvariant();
+                p.Set(v is "yes" or "1" or "true" or "on" ? 1 : v is "no" or "0" or "false" or "off" or "" ? 0 : throw new InvalidOperationException($"\"{value}\" is not Yes or No."));
+                break;
+            case "integer":
+                if (!int.TryParse(value.Trim(), out int n)) throw new InvalidOperationException($"\"{value}\" is not a whole number.");
+                p.Set(n);
+                break;
+            case "number":
+                // Revit reads the text in the project's units ("600" = 600 mm in a millimetre project).
+                if (!p.SetValueString(value.Trim())) throw new InvalidOperationException($"Revit could not read \"{value}\" as a {LabelUtils.GetLabelForSpec(p.Definition.GetDataType()).ToLowerInvariant()}.");
+                break;
+            default:
+                throw new InvalidOperationException("This parameter is chosen in Revit.");
+        }
+    }
+
+    private static Parameter? FindParam(Element e, long id, string name)
+    {
+        foreach (Parameter p in e.Parameters) if (p.Id.Value == id && p.Definition?.Name == name) return p;
+        return e.LookupParameter(name);
+    }
+
+    private static void RequireKey(Document doc, string key)
+    {
+        if (!string.IsNullOrEmpty(key) && key != KeyOf(doc)) throw new BridgeException(409, $"Revit is showing a different model ({doc.Title}).");
+    }
+
     // ------------------------------------------------------------------ Revit events
 
     public void OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
