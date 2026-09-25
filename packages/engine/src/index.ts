@@ -24,6 +24,6 @@ export { PYODIDE_VERSION, PYODIDE_INDEX_URL } from './pyodide';
 export { History, Transaction, TransactionError, type Change, type CommittedTransaction } from './doc/transactions';
 export { tempDims, type Dim2 } from './render/tempDims';
 export { CURSOR, cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './render/cursors';
-export const ENGINE_VERSION = '0.26.0';
+export const ENGINE_VERSION = '0.29.0';
 export { DEFAULT_CHECKS, QA_TOLERANCE, duplicatePairs, elementLabel, findingId, runChecks } from './qa/checks';
 export type { Finding, QaCheck, QaContext, QaGroup, QaReport, Severity } from './qa/types';

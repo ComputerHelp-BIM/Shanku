@@ -40,6 +40,8 @@ import {
   DISPLAY_HIDDEN_LINE,
   DISPLAY_SHADED,
   DISPLAY_WIREFRAME,
+  DISPLAY_REALISTIC,
+  createShadowMaterial,
   STATE_GLASS,
   STATE_PRESELECT,
   OVERRIDE_COLOR,
@@ -60,7 +62,7 @@ import { SectionGizmo, aabbOf, axesOf, cloneState, metresPerPixel, moveFace, pla
 
 export type ViewName = 'iso' | 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
 /** Revit visual styles: SD, CO, HL, WF. */
-export type DisplayStyle = 'shaded' | 'consistent' | 'hiddenLine' | 'wireframe';
+export type DisplayStyle = 'shaded' | 'consistent' | 'hiddenLine' | 'wireframe' | 'realistic';
 /** replace = plain click; add = Ctrl; remove = Shift (Revit). */
 export type SelectMode = 'replace' | 'add' | 'remove';
 
@@ -109,6 +111,7 @@ const STYLE_CODE: Record<DisplayStyle, number> = {
   consistent: DISPLAY_CONSISTENT,
   hiddenLine: DISPLAY_HIDDEN_LINE,
   wireframe: DISPLAY_WIREFRAME,
+  realistic: DISPLAY_REALISTIC,
 };
 
 const modeOf = (e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }): SelectMode =>
@@ -136,6 +139,10 @@ export class Viewer {
   private overrideTex: DataTexture | null = null;
   private stateData: Uint8Array | null = null;
   private meshMat: ShaderMaterial | null = null;
+  /** Ground shadows (flattened model, one extra draw); off until asked for. */
+  private shadowMat: ShaderMaterial | null = null;
+  private shadowMesh: Mesh | null = null;
+  private shadowsOn = false;
   private glassMat: ShaderMaterial | null = null;
   private edgeMat: ShaderMaterial | null = null;
   private pickMat: ShaderMaterial | null = null;
@@ -442,9 +449,17 @@ export class Viewer {
     const glassMesh = new Mesh(geo, this.glassMat);
     glassMesh.frustumCulled = false;
     glassMesh.renderOrder = 2;
-    this.scene.add(this.mesh, this.edges, this.hiddenEdges, glassMesh);
+    // Ground shadows on the plane under the lowest element.
+    this.shadowMat = createShadowMaterial(this.state, this.overrideTex);
+    this.shadowMat.clippingPlanes = this.clipPlanes;
+    geo.computeBoundingBox();
+    this.shadowMat.uniforms.uGround.value = geo.boundingBox?.min.y ?? 0;
+    this.shadowMesh = new Mesh(geo, this.shadowMat);
+    this.shadowMesh.frustumCulled = false;
+    this.shadowMesh.renderOrder = 1;
+    this.scene.add(this.mesh, this.edges, this.hiddenEdges, glassMesh, this.shadowMesh);
     this.pickScene.add(pickMesh);
-    this.objects = [this.mesh, this.edges, this.hiddenEdges, glassMesh, pickMesh];
+    this.objects = [this.mesh, this.edges, this.hiddenEdges, glassMesh, pickMesh, this.shadowMesh];
     this.modelBox()?.getBoundingSphere(this.modelSphere);
     this.setDisplayStyle(this.style);
     this.edges.visible = this.edgesOn;
@@ -462,6 +477,9 @@ export class Viewer {
     this.objects = [];
     this.mesh = this.edges = null;
     this.meshMat?.dispose();
+    this.shadowMat?.dispose();
+    this.shadowMat = null;
+    this.shadowMesh = null;
     this.glassMat?.dispose();
     this.glassMat = null;
     this.hiddenEdgeMat?.dispose();
@@ -596,11 +614,27 @@ export class Viewer {
       this.edgeMat.depthTest = style !== 'wireframe';
       this.edgeMat.needsUpdate = true;
     }
+    this.syncShadows();
     this.applyTheme();
   }
 
   get displayStyle(): DisplayStyle {
     return this.style;
+  }
+
+  /** Revit's Shadows On/Off: ground shadows from the sun, in shaded, consistent and realistic 3D views. */
+  setShadows(on: boolean): void {
+    this.shadowsOn = on;
+    this.syncShadows();
+    this.requestRender();
+  }
+
+  get shadows(): boolean {
+    return this.shadowsOn;
+  }
+
+  private syncShadows(): void {
+    if (this.shadowMesh) this.shadowMesh.visible = this.shadowsOn && !this.nav2d && this.style !== 'wireframe' && this.style !== 'hiddenLine';
   }
 
   /** Section box (Revit BX) around the given elements, with a small margin; null removes it. */
@@ -770,6 +804,7 @@ export class Viewer {
   setViewMode(opts: { nav2d: boolean; grips: boolean }): void {
     this.nav2d = opts.nav2d;
     this.gripsOn = opts.grips;
+    this.syncShadows();
     this.requestRender();
   }
 
@@ -997,7 +1032,7 @@ export class Viewer {
       this.explodeTex?.dispose();
       this.explodeData = work;
       this.explodeTex = createOffsetTexture(work, n);
-      for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat]) if (mat) mat.uniforms.uOffset.value = this.explodeTex;
+      for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat, this.shadowMat]) if (mat) mat.uniforms.uOffset.value = this.explodeTex;
       this.explodeModes = list;
       this.explodeKey = key;
       const texData = this.explodeTex.image.data as Float32Array;
@@ -1017,7 +1052,7 @@ export class Viewer {
         this.explodeData = next;
         this.explodeTex?.dispose();
         this.explodeTex = createOffsetTexture(next, n);
-        for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat]) if (mat) mat.uniforms.uOffset.value = this.explodeTex;
+        for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat, this.shadowMat]) if (mat) mat.uniforms.uOffset.value = this.explodeTex;
         this.applyExplodeAmount(target);
         if (refit) this.animated(() => this.fit(undefined, false));
       };
@@ -1047,7 +1082,7 @@ export class Viewer {
 
   private applyExplodeAmount(amount: number): void {
     this.explodeAmount = amount;
-    for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat]) if (mat) mat.uniforms.uExplode.value = amount;
+    for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat, this.shadowMat]) if (mat) mat.uniforms.uExplode.value = amount;
     this.modelBox()?.getBoundingSphere(this.modelSphere);
     this.requestRender();
   }
@@ -1095,7 +1130,7 @@ export class Viewer {
   /** Reveal Hidden Elements: hidden elements draw in the reveal colour and can be picked (to unhide). */
   setReveal(on: boolean): void {
     this.revealOn = on;
-    for (const m of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat]) if (m) m.uniforms.uReveal.value = on ? 1 : 0;
+    for (const m of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat, this.shadowMat]) if (m) m.uniforms.uReveal.value = on ? 1 : 0;
     this.requestRender();
   }
 
@@ -1746,7 +1781,9 @@ export class Viewer {
   }
 
   applyTheme(): void {
-    this.cur = cursorsFor(isDarkColor(getComputedStyle(this.container).getPropertyValue('--viewport')));
+    const darkCanvas = isDarkColor(getComputedStyle(this.container).getPropertyValue('--viewport'));
+    this.cur = cursorsFor(darkCanvas);
+    if (this.shadowMat) this.shadowMat.uniforms.uShadowAlpha.value = darkCanvas ? 0.4 : 0.24; // a shadow must read on either canvas
     const t = readViewerTokens(this.container);
     const set = (m: ShaderMaterial | null, name: string, c: Rgba) => m?.uniforms[name]?.value.setRGB(c.r, c.g, c.b);
     const setMesh = (name: string, c: Rgba) => {

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEve
 import { Button } from '@shanku/ui';
 import { CATEGORY_ORDER, siFactor, type ElementRecord, type ParsedModel } from '@shanku/engine';
 import { buildBoqWorkbook, downloadFile } from '../lib/excel';
-import { clearOverride, inr, itemKey, parseRate, rateFor, rateItems, setItemRate, setOverride, type RateBook } from '../lib/rates';
+import { clearOverride, effectiveRebar, inr, itemKey, itemRate, lastProfile, parseRate, rateFor, rateItems, rememberProfile, setItemRate, setOverride, type RateBook } from '../lib/rates';
+import { CITY_PROFILES, ESTIMATED_GRADES, GRADES, profileFor, profileRate, type RateProfileValues } from '../lib/rateProfiles';
 import { describeScope, scopeElements, type BoqScope } from '../lib/boqScope';
 import { bandWarning, emptyRebar, rebarEstimate } from '../lib/rebar';
 
@@ -59,9 +60,19 @@ export function BoqWindow(p: BoqWindowProps) {
     [model, scope, p.hidden, p.selection],
   );
   const scopeSentence = describeScope(scope, els.length, model.elements.length);
+  // Typed steel values (rates.rebar) sit on top of the profile's; the estimate uses both.
   const rebarSettings = rates.rebar ?? emptyRebar();
-  const rebar = useMemo(() => rebarEstimate(els, rates.rebar ?? emptyRebar()), [els, rates.rebar]);
+  const steel = useMemo(() => effectiveRebar(rates), [rates]);
+  const rebar = useMemo(() => rebarEstimate(els, steel), [els, steel]);
   const setRebar = (patch: Partial<typeof rebarSettings>) => onRates({ ...rates, rebar: { ...rebarSettings, ...patch } });
+  // ---- rate profile (city): change a value once, every item that uses it follows
+  const profile = rates.profile ?? lastProfile();
+  const cityName = CITY_PROFILES.find((c) => c.id === profile.id)?.name ?? 'Custom';
+  const setProfile = (next: typeof profile) => {
+    rememberProfile(next);
+    onRates({ ...rates, profile: next });
+  };
+  const setProfileValue = (patch: Partial<RateProfileValues>) => setProfile({ ...profile, values: { ...profile.values, ...patch } });
   const cats = CATEGORY_ORDER.filter((c) => model.info.categories[c]);
   const q = filter.trim().toLowerCase();
   const visible = useMemo(() => {
@@ -244,6 +255,16 @@ export function BoqWindow(p: BoqWindowProps) {
           {rates.edited.length} item rate{rates.edited.length === 1 ? '' : 's'} edited · {overrides} override{overrides === 1 ? '' : 's'}
           {missing ? ` · ${missing} without a rate` : ''}
         </span>
+        <label className="bq-profile" title="Default rates for items without a typed rate. Change values in Rates → Rate profile.">
+          <span>Rates</span>
+          <select className="bq-sel" aria-label="Rate profile" value={profile.id} onChange={(e) => setProfile(profileFor(e.target.value))}>
+            {CITY_PROFILES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <Button size="sm" onClick={p.onEditGradeRules}>Grade rules…</Button>
         <Button size="sm" variant="primary" onClick={exportXlsx} disabled={busy}>{busy ? 'Exporting…' : 'Export Excel'}</Button>
       </div>
@@ -294,8 +315,8 @@ export function BoqWindow(p: BoqWindowProps) {
                     <td className={e.area === null ? 'na' : 'n'}>{d2(e.area)}</td>
                     <td className="n">{d3(e.volume)}</td>
                     <td
-                      className={['rate', r.source === 'override' ? 'ovr' : edited ? 'edited' : ''].join(' ')}
-                      title={r.source === 'override' ? `Override · item rate ${rates.items[itemKey(e)] !== undefined ? '₹' + inr(rates.items[itemKey(e)], 0) : 'not set'}` : `Item rate: ${e.category} · ${e.grade}`}
+                      className={['rate', r.source === 'override' ? 'ovr' : edited ? 'edited' : r.source === 'profile' ? 'prof' : ''].join(' ')}
+                      title={r.source === 'override' ? `Override · item rate ${itemRate(rates, e).rate !== null ? '₹' + inr(itemRate(rates, e).rate!, 0) : 'not set'}` : r.source === 'profile' ? `From the rate profile (${cityName}). Type a rate to set it for this item.` : `Item rate: ${e.category} · ${e.grade}`}
                       onContextMenu={toggleOverride(e)}
                     >
                       <input
@@ -419,6 +440,71 @@ export function BoqWindow(p: BoqWindowProps) {
           </table>
         )}
         {tab === 'rates' ? (
+          <section className="bq-rebar bq-profile-edit" aria-labelledby="bq-profile-title">
+            <h3 id="bq-profile-title">Rate profile: {cityName}</h3>
+            <p className="bq-faint">
+              Every item without a typed rate uses these values: concrete by grade plus formwork, times the city factor and escalation. Change a value once and every item follows. Base: CPWD DSR 2023 (Delhi, April 2023 prices). {CITY_PROFILES.find((c) => c.id === profile.id)?.note}. Grades marked * and the formwork areas are Shanku estimates. Replace them with your own tender rates.
+            </p>
+            <div className="bq-profile-grid">
+              <fieldset>
+                <legend>Concrete, ₹/m³ (Delhi base)</legend>
+                {GRADES.map((g) => (
+                  <NumberField key={g} label={`${g}${ESTIMATED_GRADES.includes(g) ? ' *' : ''}`} value={profile.values.concrete[g]} onChange={(v) => setProfileValue({ concrete: { ...profile.values.concrete, [g]: v } })} />
+                ))}
+              </fieldset>
+              <fieldset>
+                <legend>Formwork, ₹/m² and m² per m³</legend>
+                {(['Column', 'Beam', 'Slab', 'Wall', 'Footing', 'Stair'] as const).map((c) => (
+                  <div key={c} className="bq-pair">
+                    <NumberField label={c} value={profile.values.formwork[c] ?? 0} onChange={(v) => setProfileValue({ formwork: { ...profile.values.formwork, [c]: v } })} />
+                    <NumberField label="m²/m³" value={profile.values.formworkArea[c] ?? 0} onChange={(v) => setProfileValue({ formworkArea: { ...profile.values.formworkArea, [c]: v } })} />
+                  </div>
+                ))}
+              </fieldset>
+              <fieldset>
+                <legend>City, escalation, steel</legend>
+                <NumberField label="City factor" value={profile.values.cityFactor} step={0.01} onChange={(v) => setProfileValue({ cityFactor: v })} />
+                <NumberField label="Escalation %" value={Math.round(profile.values.escalation * 1000) / 10} step={0.5} onChange={(v) => setProfileValue({ escalation: v / 100 })} />
+                <NumberField label="Steel ₹/kg" value={profile.values.steel} onChange={(v) => setProfileValue({ steel: v })} />
+                <label className="bq-field">
+                  <span>Grade if not named</span>
+                  <select className="bq-sel" value={profile.values.defaultGrade} onChange={(e) => setProfileValue({ defaultGrade: e.target.value as typeof profile.values.defaultGrade })}>
+                    {GRADES.map((g) => (
+                      <option key={g}>{g}</option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" className="app-link" onClick={() => setProfile(profileFor(profile.id))}>
+                  Reset this profile
+                </button>
+              </fieldset>
+            </div>
+            <table className="bq-table">
+              <thead>
+                <tr className="cols">
+                  <th>Item</th><th>Priced as</th><th className="n">Concrete (₹/m³)</th><th className="n">Formwork (₹/m³)</th><th className="n">Profile rate (₹/m³)</th><th>Used</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it) => {
+                  const pr = profileRate(profile.values, it.category as never, it.grade);
+                  const typed = rates.items[it.key] !== undefined;
+                  return (
+                    <tr key={it.key}>
+                      <td>{it.category} · {it.grade}</td>
+                      <td>{pr ? `${pr.grade}${pr.gradeAssumed ? ' (assumed)' : ''}${pr.estimatedGrade ? ' *' : ''}` : '—'}</td>
+                      <td className="n">{pr ? inr(pr.concrete, 0) : '—'}</td>
+                      <td className="n">{pr ? inr(pr.formwork, 0) : '—'}</td>
+                      <td className="n amt">{pr ? inr(pr.rate, 0) : '—'}</td>
+                      <td>{typed ? <span className="bq-faint">typed rate {inr(rates.items[it.key], 0)}</span> : pr ? 'profile' : <span className="bq-faint">no rate</span>}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </section>
+        ) : null}
+        {tab === 'rates' ? (
           <section className="bq-rebar" aria-labelledby="bq-rebar-title">
             <h3 id="bq-rebar-title">Reinforcement (estimate)</h3>
             <p className="bq-faint">Steel from ratios: kg of steel per m³ of concrete, before bar bending schedules exist. A ratio outside the usual range is flagged.</p>
@@ -437,8 +523,10 @@ export function BoqWindow(p: BoqWindowProps) {
                       <td className="n">{d3(r.volume)}</td>
                       <td className={['rate', warn ? 'bad' : ''].join(' ')} title={warn ?? undefined}>
                         <input
-                          key={`${r.category}-${r.ratio}`}
+                          key={`${r.category}-${r.ratio}-${rebarSettings.ratios[r.category] ?? 'p'}`}
                           aria-label={`Steel ratio for ${r.category}, kg per m³`}
+                          className={rebarSettings.ratios[r.category] === undefined ? 'prof' : undefined}
+                          title={rebarSettings.ratios[r.category] === undefined ? 'From the rate profile; type to change, clear to go back' : undefined}
                           aria-invalid={warn ? true : undefined}
                           aria-describedby={warn ? `bq-warn-${r.category}` : undefined}
                           defaultValue={r.ratio === null ? '' : String(r.ratio)}
@@ -483,10 +571,10 @@ export function BoqWindow(p: BoqWindowProps) {
                     <label>
                       Steel rate (₹/kg){' '}
                       <input
-                        key={`rate-${rebarSettings.rate}`}
+                        key={`rate-${steel.rate}-${rebarSettings.rate}`}
                         className="bq-in bq-in--num"
                         aria-label="Steel rate, rupees per kg"
-                        defaultValue={rebarSettings.rate === null ? '' : String(rebarSettings.rate)}
+                        defaultValue={steel.rate === null ? '' : String(steel.rate)}
                         placeholder="—"
                         onKeyDown={(ev) => ev.key === 'Enter' && ev.currentTarget.blur()}
                         onBlur={(ev) => {
@@ -518,3 +606,32 @@ export function BoqWindow(p: BoqWindowProps) {
   return <div className="bq-docked">{body}</div>;
 }
 
+/** A labelled number that commits on Enter or blur; Esc puts the old value back. */
+function NumberField({ label, value, step = 1, onChange }: { label: string; value: number; step?: number; onChange: (v: number) => void }) {
+  return (
+    <label className="bq-field">
+      <span>{label}</span>
+      <input
+        key={value}
+        className="bq-in bq-in--num"
+        type="number"
+        step={step}
+        min={0}
+        defaultValue={value}
+        onKeyDown={(ev) => {
+          if (ev.key === 'Enter') ev.currentTarget.blur();
+          else if (ev.key === 'Escape') {
+            ev.stopPropagation();
+            ev.currentTarget.value = String(value);
+            ev.currentTarget.blur();
+          }
+        }}
+        onBlur={(ev) => {
+          const v = Number(ev.currentTarget.value);
+          if (ev.currentTarget.value.trim() === '' || !Number.isFinite(v) || v < 0) ev.currentTarget.value = String(value);
+          else if (v !== value) onChange(v);
+        }}
+      />
+    </label>
+  );
+}

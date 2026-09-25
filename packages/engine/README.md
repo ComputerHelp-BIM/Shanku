@@ -1,4 +1,4 @@
-# @shanku/engine 0.28.0
+# @shanku/engine 0.29.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -50,11 +50,19 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 
 ## Changelog
 
-### 0.28.0 — 2026-09-25
+### 0.29.0 — 2026-09-25
+- Combined release: main's 0.28.0 (pipeline 1.3.0 exchange for Export to Revit) and 0.27.1 (live updates keep the view) with the dev line's 0.28.0 (Realistic style, ground shadows); both had numbered a release 0.28.0.
+
+### 0.28.0 — 2026-09-25 (main: Revit exchange)
 - DXF → 3D pipeline 1.3.0: `exchange(result)` gives the model as Revit needs it (levels; per element exact geometry in mm from the drawing origin: centred rectangles with rotation, round columns from polygonised circles, beam and wall centrelines, slab outlines; stable ids from drawing handle and level; not-exported items with reasons). The `exchange` pipeline option returns it; types `RevitExchange`, `RevitExchangeElement`.
 
 ### 0.27.1 — 2026-09-25
 - Fixed: a live update (`setModel(model, { keepView: true })`) still turned the camera to the default isometric direction and cleared the section box, so a plan, section or boxed view looked like the default 3D view after every update. Both are kept now.
+
+### 0.28.0 — 2026-09-25 (dev: Realistic style and shadows)
+- **Realistic** visual style (`DisplayStyle` 'realistic'): sun and sky (hemisphere) lighting on a fair-faced concrete finish with a gentle tone curve; colour overrides become the albedo.
+- **Ground shadows** (`setShadows(on)`, `shadows`): the model drawn once more, flattened onto the ground along the sun direction as a translucent shade. One extra draw call and no shadow maps; a stencil stops overlaps darkening twice. Follows hidden elements, explode and the section box (clipping uses each point before flattening); off in plans, hidden line and wireframe. `SUN_DIRECTION`, `createShadowMaterial`.
+- `ENGINE_VERSION` matches the package again (it said 0.26.0 in 0.27.0).
 
 ### 0.27.0 — 2026-09-25
 - Live updates: `mergeModels(base, patch, deleted, source)` swaps changed elements in place, removes deleted ones, appends new ones, rebuilds the buffers and model info, and returns an old → new index map. `alignPatch` maps a patch into the model's space with web-ifc's coordination matrices (each file is shifted to the origin by its own amount). Models carry `coordination` and `revision`; elements carry `source` (their IFC file).

@@ -2,7 +2,12 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
-## 0.38.0 — 2026-09-25
+## 0.39.0 — 2026-09-25
+
+### Changed
+- Combined release: main's 0.38.0 (Export to Revit) and 0.37.1 (view kept on live updates) with the dev line's 0.38.0 (colour by parameter, Fix in Revit, paste marks, Realistic and shadows, rate profiles, branded Excel). Both lines had numbered a release 0.38.0 and engine 0.28.0; engine 0.29.0.
+
+## 0.38.0 — 2026-09-25 (main: Export to Revit)
 
 ### Added
 - Export to Revit: the DXF → 3D model built natively in Revit from the template (dry run, approval by set, one undo, placement check, loaded back). Shanku Bridge for Revit 0.6.0; engine 0.28.0 (pipeline 1.3.0).
@@ -11,6 +16,19 @@ All notable changes to this repository. Package-level detail lives in each packa
 
 ### Fixed
 - Updates from Revit reset plans and boxed views to the default 3D view (engine 0.27.1).
+
+## 0.38.0 — 2026-09-25 (dev: colour by parameter, Realistic, rate profiles)
+
+### Added
+- Colour by parameter with an element palette and legend (after the Structura viewer).
+- QA findings: Show in Revit; Fix in Revit for missing marks (proposed, reviewed, applied as one Revit undo).
+- Paste marks to select (Ctrl + V on the model), synced to Revit.
+- Realistic visual style and lightweight ground shadows (engine 0.28.0).
+- BOQ rate profiles for Indian metros on a CPWD DSR 2023 base, editable once for every item.
+- Brand 1.7.0 icons (colour, sun); ui 0.15.1.
+
+### Changed
+- The Excel BOQ follows the design system (fonts, colours, header, banding, totals).
 
 ## 0.37.0 — 2026-09-25
 

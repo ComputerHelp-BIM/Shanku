@@ -65,7 +65,11 @@ import { afterApply, byGroup, changeKey, commonParams, effectiveCommon, stageEdi
 import { RevitBridge, indicesForRevitSelection } from './lib/revitBridge';
 import { NO_CHANGES, addChanges, changeCount, remapIndices, remapRecord, toExport, withoutMerged, type ChangeSet } from './lib/liveUpdate';
 import { QaPanel } from './components/QaPanel';
-import { FileDiagnosisDialog, ViewLinkDialog } from './components/SmallDialogs';
+import { ColorLegendOverlay, ColorPanel } from './components/ColorPanel';
+import { COLOR_MODES, computeColors, loadColorSettings, mergeOverrides, saveColorSettings, type ColorMode, type ColorSettings } from './lib/colorBy';
+import { FileDiagnosisDialog, ProposedMarksDialog, SelectMarksDialog, ViewLinkDialog } from './components/SmallDialogs';
+import { looksLikeMarks, matchMarks, parseMarkList, proposeMarks } from './lib/marks';
+import type { Finding } from '@shanku/engine';
 import { WhatNow, type Intent } from './components/WhatNow';
 import { diagnoseFile, type Diagnosis } from './lib/fileDiagnosis';
 import { decodeViewToken, hiddenForLink, viewLinkUrl, type ViewToken } from './lib/viewLink';
@@ -73,12 +77,13 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.38.0';
+const APP_VERSION = '0.39.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
   { id: 'hiddenLine', label: 'Hidden line', keys: 'HL' },
   { id: 'wireframe', label: 'Wireframe', keys: 'WF' },
+  { id: 'realistic', label: 'Realistic', keys: '' },
 ];
 // Revit comes last, where Revit puts add-in tabs.
 const RIBBON_TABS = ['Model', 'View', 'Manage', 'Revit'].map((label) => ({ id: label.toLowerCase(), label }));
@@ -108,6 +113,24 @@ export function App({ start }: { start?: AppStart } = {}) {
   const openedInfo = openedInfoRef.current;
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>('shaded');
   const [sectionBox, setSectionBox] = useState(false);
+  /** Revit's Shadows On/Off (view control bar), remembered on this device. */
+  const [shadows, setShadowsState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('shanku.shadows') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const setShadows = (next: boolean | ((v: boolean) => boolean)) =>
+    setShadowsState((v) => {
+      const on = typeof next === 'function' ? next(v) : next;
+      try {
+        localStorage.setItem('shanku.shadows', String(on));
+      } catch {
+        /* storage unavailable: lasts for this visit */
+      }
+      return on;
+    });
   const [edges, setEdges] = useState(true);
   // Canvas theme is separate from the interface theme (Revit's Canvas Theme).
   const [canvasTheme, setCanvasTheme] = useState<'follow' | 'paper' | 'ink'>(() => {
@@ -260,6 +283,18 @@ export function App({ start }: { start?: AppStart } = {}) {
     try {
       const r = await bridge.select(doc.key, picked.map((e) => e.globalId), picked.map((e) => Number(e.tag) || 0));
       setNotice(picked.length ? `Selected ${r.selected} in Revit${r.missing ? `; ${r.missing} not found there` : ''}.` : 'Cleared the selection in Revit.');
+    } catch (e) {
+      setNotice(`Revit: ${(e as Error).message}`);
+    }
+  };
+  /** Selects these elements in Revit, whatever Shanku has selected. */
+  const sendSelectionToRevitFor = async (els: number[]) => {
+    const doc = revit.document;
+    if (!doc || !m.model) return;
+    const picked = els.map((i) => m.model!.elements[i]).filter(Boolean);
+    try {
+      const r = await bridge.select(doc.key, picked.map((e) => e.globalId), picked.map((e) => Number(e.tag) || 0));
+      setNotice(`Selected ${r.selected} in Revit${r.missing ? `; ${r.missing} not found there` : ''}.`);
     } catch (e) {
       setNotice(`Revit: ${(e as Error).message}`);
     }
@@ -739,6 +774,74 @@ export function App({ start }: { start?: AppStart } = {}) {
     history.run(`Edit ${param.name}${els.length > 1 ? ` on ${els.length} elements` : ''}`, (tx) => tx.change('revit-pending', before, after, setPending));
     setLastApplied(null);
   };
+  // ---- QA → Revit: show a finding's elements in Revit; fix missing marks as reviewed changes for Revit
+  const showInRevit = (els: number[]) =>
+    inModel(() => {
+      m.setSelection(els);
+      if (!revitSync) void sendSelectionToRevitFor(els);
+    });
+  const [markProposal, setMarkProposal] = useState<Array<{ index: number; mark: string }> | null>(null);
+  const [markBusy, setMarkBusy] = useState(false);
+  const qaFix = (f: Finding): { label: string; run: () => void } | null => {
+    if (f.checkId !== 'missing-mark' || !f.elements.length || !m.model) return null;
+    return {
+      label: 'Fix in Revit',
+      run: () => {
+        const model = m.model;
+        if (!model) return;
+        const rows = proposeMarks(model.elements, f.elements, model.info.levels.map((l) => l.name));
+        if (!rows.length) return setNotice('These elements have marks now.');
+        setMarkProposal(rows);
+      },
+    };
+  };
+  /** Reads each element's Mark parameter from Revit and stages the proposed values as one undoable step. */
+  const confirmMarks = async () => {
+    const model = m.model;
+    if (!markProposal || !model || !revitLink) return;
+    setMarkBusy(true);
+    try {
+      const gids = markProposal.map((r) => model.elements[r.index].globalId);
+      for (let i = 0; i < gids.length; i += 500) {
+        const els = await bridge.readParams(revitLink.key, gids.slice(i, i + 500));
+        for (const e of els) paramsCache.current.set(e.globalId, e);
+      }
+      const before = pending;
+      let after = before;
+      let skipped = 0;
+      let alreadyMarked = 0;
+      for (const r of markProposal) {
+        const gid = model.elements[r.index].globalId;
+        const els = paramsCache.current.get(gid);
+        const param = els?.params.find((p) => p.name === 'Mark' && !p.readOnly);
+        if (!els || !param) {
+          skipped++;
+          continue;
+        }
+        // Revit is the truth: marked there since this model was exported, so leave it alone.
+        if (param.display && param.display.trim()) {
+          alreadyMarked++;
+          continue;
+        }
+        after = stageEdit(after, [els], param, r.mark, (e) => elementLabel(e.globalId, e));
+      }
+      const staged = markProposal.length - skipped - alreadyMarked;
+      if (staged) {
+        history.run(`Propose ${staged} mark${staged === 1 ? '' : 's'}`, (tx) => tx.change('revit-pending', before, after, setPending));
+        setLastApplied(null);
+        toggleWin('changes', true);
+      }
+      setMarkProposal(null);
+      const already = alreadyMarked ? ` ${alreadyMarked} already ${alreadyMarked === 1 ? 'has a mark' : 'have marks'} in Revit (reload from Revit to see ${alreadyMarked === 1 ? 'it' : 'them'}).` : '';
+      const none = skipped ? ` ${skipped} ${skipped === 1 ? 'has' : 'have'} no editable Mark in Revit.` : '';
+      setNotice(staged ? `${staged === 1 ? '1 mark is' : `${staged} marks are`} waiting in Changes for Revit: check, then apply.${already}${none}` : `Nothing to change.${already}${none}`);
+    } catch (e) {
+      setNotice(`Revit: ${(e as Error).message}`);
+    } finally {
+      setMarkBusy(false);
+    }
+  };
+
   const revitProps = (() => {
     void paramsTick;
     if (!revitLink || m.model?.info.fileName !== revitLink.fileName || !m.selection.length) return undefined;
@@ -1000,7 +1103,34 @@ export function App({ start }: { start?: AppStart } = {}) {
   // View symbols for the active view (section / elevation marks in plans, levels in elevations).
   const marks = useMemo(() => marksFor(activeModelView, views, heights, bounds), [activeModelView, views, heights, bounds]);
   const resolved = useMemo(() => (m.model ? resolveGraphics(m.model.elements, graphics) : { hidden: [], overrides: [] }), [m.model, graphics]);
-  const viewHidden = useMemo(() => (resolved.hidden.length ? [...new Set([...hidden, ...resolved.hidden])] : hidden), [hidden, resolved.hidden]);
+  // Colour by parameter (element palette): colours sit under Visibility/Graphics overrides; groups hidden in the legend hide in every view.
+  const [colorSettings, setColorSettingsState] = useState<ColorSettings>(loadColorSettings);
+  const setColorSettings = (s: ColorSettings) => {
+    setColorSettingsState(s);
+    saveColorSettings(s);
+  };
+  const categoryColors = useMemo(() => {
+    const cs = getComputedStyle(document.documentElement);
+    const out: Record<string, string> = {};
+    for (const c of ['column', 'beam', 'slab', 'wall', 'footing', 'rebar']) {
+      const v = cs.getPropertyValue(`--cat-${c}`).trim();
+      if (/^#[0-9a-f]{6}$/i.test(v)) out[c[0].toUpperCase() + c.slice(1)] = v;
+    }
+    return out;
+  }, []);
+  const colorResult = useMemo(
+    () => (m.model ? computeColors(m.model.elements, m.model.info.levels, colorSettings, categoryColors) : computeColors([], [], { ...colorSettings, mode: 'none' })),
+    [m.model, colorSettings, categoryColors],
+  );
+  const viewOverrides = useMemo(() => mergeOverrides(colorResult.colors, resolved.overrides), [colorResult.colors, resolved.overrides]);
+  const setColorMode = (mode: ColorMode) => {
+    setColorSettings({ ...colorSettings, mode });
+    if (mode !== 'none') dock.current?.open('colour');
+  };
+  const viewHidden = useMemo(() => {
+    const extra = [...resolved.hidden, ...colorResult.hidden];
+    return extra.length ? [...new Set([...hidden, ...extra])] : hidden;
+  }, [hidden, resolved.hidden, colorResult.hidden]);
   const changeGraphics = (name: string, next: ViewGraphics) =>
     history.run(name, (t) => t.change('view-graphics', graphicsRef.current, next, setGraphics));
   const applyViewGraphics = (next: { categories: CategoryOverrides; applied: AppliedFilter[] }) =>
@@ -1230,6 +1360,40 @@ export function App({ start }: { start?: AppStart } = {}) {
         viewport.current?.fit([el]);
       }),
   };
+
+  // ---- Paste marks to select (quick-wins B2): Ctrl + V on the model with "C1, C4, B12" copied ----
+  const [marksDialog, setMarksDialog] = useState(false);
+  const selectByMarks = (text: string): boolean => {
+    const model = m.model;
+    if (!model) return false;
+    const list = parseMarkList(text);
+    const r = matchMarks(model.elements, list);
+    if (!r.indices.length) {
+      setNotice(`None of those marks are in this model${list.length ? ` (${list.slice(0, 5).join(', ')}${list.length > 5 ? '…' : ''})` : ''}.`);
+      return false;
+    }
+    inModel(() => {
+      m.setSelection(r.indices);
+      viewport.current?.fit(r.indices);
+    });
+    // Words from the message ("please", "check") are not marks: only report tokens that look like one.
+    const missing = r.unknown.filter((u) => /^[A-Z]{1,4}-?\d{1,4}$/.test(u));
+    const inRevit = revitLinked && revitSync ? ' Revit selects them too.' : '';
+    setNotice(`Selected ${r.indices.length} elements for ${r.found.join(', ')}.${missing.length ? ` Not in this model: ${missing.join(', ')}.` : ''}${inRevit}`);
+    return true;
+  };
+  const selectByMarksRef = useRef(selectByMarks);
+  selectByMarksRef.current = selectByMarks;
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (isEditableTarget(e.target) || document.querySelector('dialog[open]')) return;
+      const text = e.clipboardData?.getData('text/plain') ?? '';
+      if (!looksLikeMarks(text)) return;
+      if (selectByMarksRef.current(text)) e.preventDefault();
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, []);
 
   // ---- View links (Structura item 14) ----
   const [linkDialog, setLinkDialog] = useState<{ mode: 'copy' | 'open'; link: string } | null>(null);
@@ -1553,8 +1717,8 @@ export function App({ start }: { start?: AppStart } = {}) {
       { id: 'view.zoomOut', title: 'Zoom out (2x)', group: 'View', enabled: hasModel, why: needModel, run: () => viewport.current?.zoomOut2x() },
       { id: 'view.home', title: 'Default 3D view', group: 'View', keys: 'Home', enabled: hasModel, why: needModel, run: () => viewport.current?.home() },
       legacy('sectionBox', sectionBox ? 'Remove section box' : 'Section box around the selection', 'View', !hasModel ? 'open a model first' : sectionBox ? undefined : in3d ? needSel : 'works in 3D views', { checked: sectionBox }),
-      ...STYLES.map((st) =>
-        legacy(({ shaded: 'shaded', consistent: 'consistent', hiddenLine: 'hiddenLine', wireframe: 'wireframe' } as const)[st.id], `Visual style: ${st.label}`, 'View', needModel, { checked: displayStyle === st.id }),
+      ...STYLES.filter((st) => st.id !== 'realistic').map((st) =>
+        legacy(({ shaded: 'shaded', consistent: 'consistent', hiddenLine: 'hiddenLine', wireframe: 'wireframe' } as const)[st.id as 'shaded' | 'consistent' | 'hiddenLine' | 'wireframe'], `Visual style: ${st.label}`, 'View', needModel, { checked: displayStyle === st.id }),
       ),
       { id: 'view.edges', title: 'Show edges', group: 'View', checked: edges, enabled: hasModel, why: needModel, run: () => setEdges((v) => !v) },
       {
@@ -1586,6 +1750,19 @@ export function App({ start }: { start?: AppStart } = {}) {
       ...views.filter((v) => v.id !== '3d').map((v) => ({ id: `views.open.${v.id}`, title: `Open ${KIND_LABEL[v.kind].toLowerCase()}: ${v.name}`, group: 'Views' as const, keywords: 'view plan elevation section', run: () => openView(v.id) })),
       { id: 'views.duplicate', title: 'Duplicate this view', group: 'Views', enabled: !!activeModelView, why: activeModelView ? undefined : 'open a model first', run: () => activeModelView && duplicateModelView(activeModelView.id) },
       { id: 'views.section', title: 'Create a section', group: 'Views', keywords: 'cut', enabled: hasModel && isTwoD(activeModelView ?? undefined), why: !hasModel ? 'open a model first' : isTwoD(activeModelView ?? undefined) ? undefined : 'draw it in a plan, elevation or section', run: () => startSection() },
+      ...COLOR_MODES.map((cm) => ({
+        id: `colour.${cm.id}`,
+        title: cm.id === 'none' ? 'Colour by: none (normal colours)' : `Colour by ${cm.label.toLowerCase()}`,
+        group: 'View' as const,
+        keywords: `colour color palette legend ${cm.tip}`,
+        checked: colorSettings.mode === cm.id,
+        enabled: hasModel,
+        why: needModel,
+        run: () => setColorMode(cm.id),
+      })),
+      { id: 'view.shadows', title: 'Shadows', group: 'View', keywords: 'sun shadow render realistic presentation', checked: shadows, enabled: hasModel, why: needModel, run: () => setShadows((v) => !v) },
+      { id: 'view.realistic', title: 'Visual style: Realistic', group: 'View', keywords: 'render sun sky concrete presentation', checked: displayStyle === 'realistic', enabled: hasModel, why: needModel, run: () => setDisplayStyle('realistic') },
+      { id: 'select.byMarks', title: 'Select by marks…', group: 'Select', keywords: 'paste whatsapp list marks c1 b12 find', enabled: hasModel, why: needModel, run: () => setMarksDialog(true) },
       { id: 'views.copyLink', title: 'Copy view link', group: 'Views', keywords: 'share url whatsapp email send link token', enabled: hasModel, why: needModel, run: () => void copyViewLink() },
       { id: 'views.openLink', title: 'Open a view link…', group: 'Views', keywords: 'share url paste token', enabled: hasModel, why: needModel, run: () => setLinkDialog({ mode: 'open', link: '' }) },
       { id: 'help.whatNow', title: 'What now? Common tasks', group: 'Help', keywords: 'start begin tasks help', run: () => document.querySelector<HTMLButtonElement>('.app-whatnow__button')?.click() },
@@ -1598,6 +1775,7 @@ export function App({ start }: { start?: AppStart } = {}) {
           ['activity', 'Activity'],
           ['console', 'Python console'],
           ['qa', 'QA checks'],
+          ['colour', 'Colour panel'],
         ] as const
       ).map(([id, title]) => ({ id: `window.${id}`, title: `Show ${title}`, keywords: id === 'qa' ? 'check warnings errors health duplicate floating column mark' : undefined, group: 'Windows' as const, checked: openPanels.includes(id), keys: id === 'console' ? 'Ctrl + `' : undefined, run: () => dock.current?.toggle(id) })),
       { id: 'bridge.connect', title: 'Connect to Revit…', group: 'File', keywords: 'bridge revit link pair add-in live', checked: revit.phase === 'connected', run: () => openRevit() },
@@ -1697,6 +1875,7 @@ export function App({ start }: { start?: AppStart } = {}) {
           </RibbonGroup>
           <RibbonGroup label="Select">
             <RibbonButton icon="byid" label="By ID" onClick={() => search.current?.focus({ preventScroll: true })} shortcutHint="Ctrl + K" />
+            <RibbonButton icon="byid" label="By marks" disabled={!m.model} onClick={() => setMarksDialog(true)} shortcutHint="paste C1, C4, B12 (or Ctrl + V on the model)" />
           </RibbonGroup>
           <RibbonGroup label="Quantities">
             <RibbonButton
@@ -1758,6 +1937,9 @@ export function App({ start }: { start?: AppStart } = {}) {
               onClick={() => activeModelView && setViews((vs) => vs.map((x) => (x.id === activeModelView.id ? { ...x, hiddenLines: !x.hiddenLines } : x)))}
               shortcutHint="Show Hidden Lines: dashed edges behind other elements, this view"
             />
+            <RibbonButton icon="sun" label="Shadows" active={shadows} disabled={!m.model} onClick={() => setShadows((v) => !v)} shortcutHint="ground shadows from the sun" />
+            <RibbonButton icon="view3d" label="Realistic" active={displayStyle === 'realistic'} disabled={!m.model} onClick={() => setDisplayStyle(displayStyle === 'realistic' ? 'shaded' : 'realistic')} shortcutHint="sun and sky lighting on concrete" />
+            <RibbonButton icon="colour" label="Colour by" active={colorSettings.mode !== 'none' || openPanels.includes('colour')} disabled={!m.model} onClick={() => (colorSettings.mode === 'none' ? setColorMode('grade') : dock.current?.toggle('colour'))} shortcutHint="colour by grade, level, section… with a legend" />
             <RibbonButton icon="edges" label="Edges" active={edges} disabled={!m.model} onClick={() => setEdges((v) => !v)} shortcutHint="show or hide model edges" />
             <RibbonButton icon="reveal" label="Reveal" active={reveal} disabled={!m.model} onClick={() => setReveal((v) => !v)} shortcutHint="reveal hidden elements (RH)" />
           </RibbonGroup>
@@ -1769,6 +1951,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                 ['activity', 'activity', 'Activity'],
                 ['console', 'console', 'Console'],
                 ['qa', 'qa', 'QA'],
+                ['colour', 'colour', 'Colour'],
               ] as const
             ).map(([id, icon, label]) => (
               <RibbonButton key={id} icon={icon} label={label} active={openPanels.includes(id)} onClick={() => dock.current?.toggle(id)} shortcutHint="show or hide" />
@@ -1926,7 +2109,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             selection={sel}
             hidden={viewHidden}
             temporary={hidden.length > 0}
-            overrides={resolved.overrides}
+            overrides={viewOverrides}
             displayStyle={displayStyle}
             onPick={(i, mode) => {
               if (mode === 'replace') setAnnSel([]);
@@ -1968,6 +2151,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             canvasTheme={canvasTheme}
             twoD={isTwoD(activeModelView ?? undefined)}
             hiddenLines={!!activeModelView?.hiddenLines}
+            shadows={shadows}
             annotations={marks}
             explode={isTwoD(activeModelView ?? undefined) ? null : explode}
             onOpenView={(id) => views.some((v) => v.id === id) && openView(id)}
@@ -1978,6 +2162,7 @@ export function App({ start }: { start?: AppStart } = {}) {
               history.run('Edit section box', (t) => t.change('section-box', before, after, (st) => viewport.current?.setSectionBoxState(st)))
             }
           />
+          {m.model ? <ColorLegendOverlay settings={colorSettings} result={colorResult} onOpen={() => dock.current?.open('colour')} /> : null}
           </div>
           {!activeDoc && m.model && (sectionBox || zoomRegion) ? (
             <div className="app-viewstate" role="status">
@@ -2192,6 +2377,19 @@ export function App({ start }: { start?: AppStart } = {}) {
               void (dxf ? openDxfFromDisk() : openFromDisk());
             }}
           />
+          <ProposedMarksDialog
+            rows={markProposal && m.model ? markProposal.map((r) => ({ label: elementLabel(m.model!.elements[r.index].globalId), level: m.model!.elements[r.index].level, mark: r.mark })) : null}
+            busy={markBusy}
+            onConfirm={() => void confirmMarks()}
+            onClose={() => setMarkProposal(null)}
+          />
+          <SelectMarksDialog
+            open={marksDialog}
+            onClose={() => setMarksDialog(false)}
+            onSelect={(t) => {
+              if (selectByMarks(t)) setMarksDialog(false);
+            }}
+          />
           <ViewLinkDialog
             mode={linkDialog?.mode ?? null}
             link={linkDialog?.link ?? ''}
@@ -2329,13 +2527,16 @@ export function App({ start }: { start?: AppStart } = {}) {
                 role="radio"
                 aria-checked={displayStyle === st.id}
                 className={displayStyle === st.id ? 'is-active' : undefined}
-                title={`${st.label} (${st.keys})`}
+                title={st.keys ? `${st.label} (${st.keys})` : st.id === 'realistic' ? 'Realistic: sun and sky light on concrete (try with Shadows)' : st.label}
                 onClick={() => setDisplayStyle(st.id)}
               >
                 {st.label}
               </button>
             ))}
           </div>
+          <Button size="sm" variant="ghost" aria-pressed={shadows} disabled={!m.model || isTwoD(activeModelView ?? undefined)} onClick={() => setShadows((v) => !v)} title="Ground shadows from the sun (lightweight: one extra draw)">
+            Shadows: {shadows ? 'On' : 'Off'}
+          </Button>
           <span className="app-divider" aria-hidden="true" />
           <Button size="sm" variant="ghost" onClick={() => runCommand('sectionBox')} disabled={!m.model || (!sectionBox && !sel.length)} title="Section box around the selection (BX)">
             Section box: {sectionBox ? 'On' : 'Off'}
@@ -2483,8 +2684,10 @@ export function App({ start }: { start?: AppStart } = {}) {
                 ) : (
                   <p className="app-empty-note">Nothing yet. Open a model and its load times appear here.</p>
                 );
+              case 'colour':
+                return <ColorPanel settings={colorSettings} result={colorResult} hasModel={!!m.model} onChange={setColorSettings} onSelect={(els) => inModel(() => m.setSelection(els))} />;
               case 'qa':
-                return <QaPanel report={qaReport} {...qaActions} />;
+                return <QaPanel report={qaReport} {...qaActions} onShowInRevit={revitLinked ? showInRevit : undefined} fixFor={canParams ? qaFix : undefined} />;
               case 'console':
                 return (
                   <ConsolePanel

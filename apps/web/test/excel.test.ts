@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ExcelJS from 'exceljs';
 import type { ElementRecord, ModelInfo } from '@shanku/engine';
-import { buildBoqWorkbook } from '../src/lib/excel';
+import { WORKBOOK_TOKENS, buildBoqWorkbook } from '../src/lib/excel';
 import { emptyRates, setItemRate, setOverride } from '../src/lib/rates';
 
 const el = (i: number, level: string, category: ElementRecord['category'], grade: string, volume: number, dims: Partial<ElementRecord['dims']> = {}): ElementRecord => ({
@@ -19,7 +19,8 @@ const els = [
   el(2, 'L2', 'Beam', 'RCC_BEAM', 1.0, { length: 4, width: 0.23, depth: 0.45 }),
   el(3, 'L2', 'Slab', 'RCC_SLAB', 2.0),
 ];
-let rates = setItemRate(emptyRates(), 'Column|RCC_COLUMN', 8600);
+// No rate profile here: these tests check typed rates and the approved five sheets.
+let rates = setItemRate({ ...emptyRates(), profile: undefined }, 'Column|RCC_COLUMN', 8600);
 rates = setItemRate(rates, 'Beam|RCC_BEAM', 8200);
 rates = setOverride(rates, els[1].globalId, 9000);
 const info = {
@@ -61,6 +62,27 @@ describe('BOQ workbook (approved format)', () => {
     expect(r.getCell('D6').value).toBe('120–250');
     const about = wb.getWorksheet('About')!;
     expect(about.getCell('B2').value).toBe('L1 to L2 · 4 of 9 elements');
+  });
+
+  it('looks like the design system: token colours, Plex fonts, ink header, accent totals rule', async () => {
+    const tokens = JSON.parse(readFileSync(join(__dirname, '../../../packages/tokens/tokens.json'), 'utf8'));
+    const byName = new Map<string, string | { paper: string }>(tokens.color.tokens.map((t: { name: string; value: string | { paper: string } }) => [t.name, t.value]));
+    for (const [name, hex] of Object.entries(WORKBOOK_TOKENS)) {
+      const v = byName.get(name)!;
+      expect(typeof v === 'string' ? v : v.paper, name).toBe(hex);
+    }
+    const buf = await buildBoqWorkbook({ info, elements: els, rates, markRules: ['Mark'], gradeRules: ['Grade'], appVersion: 't', date: new Date(0) });
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+    const e = wb.getWorksheet('Elements')!;
+    const fill = (c: ExcelJS.Cell) => (c.fill as ExcelJS.FillPattern).fgColor?.argb;
+    expect(fill(e.getCell('A5'))).toBe('FF17191E');
+    expect(e.getCell('A5').font.color?.argb).toBe('FFFFFFFF');
+    expect(e.getCell('A6').font.name).toBe('IBM Plex Sans');
+    expect(e.getCell('C6').font.name).toBe('IBM Plex Mono'); // GlobalId
+    expect(fill(e.getCell('N7'))).toBe('FFF3E2D0'); // the override keeps its input colour
+    expect(e.getCell(`A${6 + els.length}`).border.top?.color?.argb).toBe('FFD9761E');
+    expect(e.views[0].showGridLines).toBe(false);
   });
 
   // Proves the formulas themselves: LibreOffice recalculates a workbook written without cached results.

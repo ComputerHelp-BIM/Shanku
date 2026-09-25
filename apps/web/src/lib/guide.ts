@@ -195,6 +195,25 @@ export const GUIDE: GuideSection[] = [
     ],
   },
   {
+    id: 'colour',
+    group: 'Guide',
+    title: 'Colour by parameter',
+    blocks: [
+      { p: '**View → Colour by** (or Ctrl + K, "colour by") colours the model by category, grade, level, type, section or mark, or as a gradient by height, length or volume. The Colour panel lists every group with its colour and count.' },
+      { list: ['Click a **swatch** to recolour that group.', 'Untick a group to **hide** it.', 'Click a **name** to select the group.', 'Pick a **palette**; Reset puts the colours back.'] },
+      { p: 'A small legend sits on the view while colouring, for screenshots. Visibility/Graphics overrides still win, as in Revit. **Realistic** (view bar) and **Shadows** make presentation views.' },
+    ],
+  },
+  {
+    id: 'marks',
+    group: 'Guide',
+    title: 'Selecting by marks',
+    blocks: [
+      { p: 'Copy a message like "please check C1, C4 and B12" and press **Ctrl + V on the model**: every element with those marks is selected (on every level) and the view zooms to them. Ranges work: C1-C5 or C1 to C5. Marks that are not in the model are listed. Linked to Revit with sync on, Revit selects them too.' },
+      { p: 'In the QA panel, **Show in Revit** selects a finding in Revit, and **Fix in Revit** proposes marks for unmarked elements that continue your numbering. They go to Changes for Revit: check, then apply as one Revit undo.' },
+    ],
+  },
+  {
     id: 'share',
     group: 'Guide',
     title: 'Sharing a view',
@@ -311,7 +330,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
-          { version: '0.38.0', date: '2026-09-25', items: ['Export to Revit: the DXF → 3D model built natively in Revit from your template (checked first, approved by level and kind, one undo), then loaded back into Shanku.'] },
+          { version: '0.39.0', date: '2026-09-25', items: ['Export to Revit: the DXF → 3D model built natively in Revit from your template (checked first, approved by level and kind, one undo), then loaded back into Shanku.', 'Colour by grade, level, section and more, with a legend.', 'Fix in Revit from QA, and paste marks to select (Revit follows).', 'Realistic style and shadows.', 'BOQ rates by city (CPWD DSR 2023 base) and a nicer Excel.'] },
           { version: '0.37.1', date: '2026-09-25', items: ['Fixed: updates from Revit no longer reset the view to the default 3D.'] },
           { version: '0.37.0', date: '2026-09-25', items: ['Live updates from Revit: Shanku learns what changed in Revit and brings in just those elements (Update, or Auto-update), keeping the camera, views, selection and hides.'] },
           { version: '0.36.0', date: '2026-09-25', items: ['Revit 2025 look: drag the line between names and values in Properties; Apply always visible; sort A→Z / Z→A within groups; the Project Browser with Search and Families; Type Properties like Revit\'s dialog with a Preview; units next to numbers; thin scrollbars.'] },

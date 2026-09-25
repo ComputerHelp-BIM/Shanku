@@ -1,4 +1,4 @@
-# @shanku/web 0.38.0
+# @shanku/web 0.39.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -26,12 +26,23 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 
 ## Changelog
 
-### 0.38.0 — 2026-09-25
+### 0.39.0 — 2026-09-25
+- Combined release of main's 0.38.0 (Export to Revit) and 0.37.1 (view kept on live updates) with the dev line's 0.38.0 (colour by parameter, Fix in Revit, paste marks, Realistic and shadows, rate profiles, branded Excel); both had numbered a release 0.38.0. Requires @shanku/engine 0.29.0.
+
+### 0.38.0 — 2026-09-25 (main: Export to Revit)
 - **Export to Revit** (Revit bridge milestone 4, needs Shanku Bridge for Revit 0.6.0): one button in **DXF → 3D** and in **Revit tab → Create** builds the drawing's model natively in the open Revit model, from its template. Revit checks the plan first (a dry run: nothing kept); the review shows levels (existing, reused at the same height, new), types (reused, or duplicated from a template type and resized), elements by level and kind with a tick per set, what Revit already has, what is not exported and why, and Revit's warnings. **Create** makes it as one undo in Revit, checks each element against the drawing (columns and footings are moved or turned 90° if their family places them differently), then **Load it in Shanku** links the two for live updates. Above 500 elements the plan must be confirmed as reviewed.
 - Not exported yet: windows and doors, grids (reported in the review).
 
 ### 0.37.1 — 2026-09-25
 - Fixed: every update from Revit reset the view to the default 3D (a plan lost its view range and looked from the corner). The view, its clipping and the camera now stay exactly as they were.
+
+### 0.38.0 — 2026-09-25 (dev: colour by parameter, Realistic, rate profiles)
+- **Colour by parameter** (View → Colour by, the Colour panel, Ctrl + K "colour by"), after the Structura viewer's element palette: category (design-system colours), grade, level, type, section, mark, or a gradient by height, length or volume. Five palettes. The legend recolours a group from its swatch, hides it with its check box and selects it from its name; a compact legend sits on the view for screenshots and presentations. Visibility/Graphics overrides still win.
+- **QA → Revit**: every finding has Show in Revit. "Without a mark" findings have **Fix in Revit**: marks that continue the model's numbering (prefix most used in the category, after the highest number, lowest level first), confirmed in a list, then staged in Changes for Revit to check and apply as one Revit undo. Elements already marked in Revit are left alone and reported.
+- **Paste marks**: Ctrl + V on the model with "C1, C4 and B12", one per line, or C1-C5 / C1 to C5 selects every instance and zooms; marks not in the model are listed; Revit selects them too with sync on. Also Select → By marks and Ctrl + K "select by marks".
+- **Realistic** visual style and **Shadows** (view bar, View → Graphics, Ctrl + K), remembered on this device. Requires @shanku/engine 0.28.0.
+- **BOQ rate profiles**: every item gets a rate from a city profile (Delhi NCR = CPWD DSR 2023; Mumbai, Bengaluru, Pune, Chennai, Hyderabad, Kolkata, Ahmedabad with Shanku's indicative city factors). Rate = concrete by grade + formwork (₹/m² × m² per m³), × city factor × escalation. Edit a value once in Rates → Rate profile and every item follows; typed item rates and element overrides still win. Steel rate and ratios default from the profile too. The last profile used is the default for new files.
+- **Excel in the design system**: IBM Plex fonts (Mono for IDs), brand-ink header rows, banded rows with hairline borders, panel-coloured totals with an accent rule, paper title band, input cells as in the app, no gridlines, coloured tabs; colours match tokens.json (tested).
 
 ### 0.37.0 — 2026-09-25
 - **Live updates from Revit (bridge milestone 3, needs Shanku Bridge for Revit 0.5.0).** Revit reports every change (anyone's edits and Shanku's own Apply); the Revit chip shows "N changed" and Properties re-reads those elements' parameters at once. **Revit tab → Update** (or the Revit window, or the command search) has Revit export **only the changed elements**, which are merged in: changed ones in place, deleted ones removed, new ones added. The camera, views, section box, selection, temporary hides and per-element overrides stay. **Auto-update** brings changes in as they happen. More than 2,000 changed elements: reload instead.
