@@ -118,3 +118,73 @@ export function ViewLinkDialog({ mode, link, onApply, onClose }: { mode: 'copy' 
     </Modal>
   );
 }
+
+/**
+ * Proposed marks before they become changes for Revit (QA "Fix in Revit"): every element and the mark
+ * it will get. Nothing reaches Revit until the Changes window is checked and applied.
+ */
+export function ProposedMarksDialog({ rows, busy, onConfirm, onClose }: { rows: Array<{ label: string; level: string; mark: string }> | null; busy: boolean; onConfirm: () => void; onClose: () => void }) {
+  return (
+    <Modal open={!!rows} onClose={onClose} label="Proposed marks" wide>
+      {rows ? (
+        <>
+          <h2 className="app-dialog__title">Proposed marks</h2>
+          <p className="app-dialog__text">
+            {rows.length} {rows.length === 1 ? 'element gets' : 'elements get'} a mark that continues the model&rsquo;s numbering, lowest level first. They go to Changes for Revit, where you check and apply them as one Revit undo.
+          </p>
+          <div className="app-marks">
+            <table>
+              <thead>
+                <tr>
+                  <th>Element</th>
+                  <th>Level</th>
+                  <th>New mark</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i}>
+                    <td>{r.label}</td>
+                    <td>{r.level || '—'}</td>
+                    <td className="app-marks__new">{r.mark}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="app-dialog__actions">
+            <Button onClick={onClose}>Cancel</Button>
+            <Button variant="primary" disabled={busy} onClick={onConfirm}>
+              {busy ? 'Reading Revit…' : 'Add to changes for Revit'}
+            </Button>
+          </div>
+        </>
+      ) : null}
+    </Modal>
+  );
+}
+
+/** Select by marks (quick-wins B2), for when pasting on the canvas is not convenient. */
+export function SelectMarksDialog({ open, onSelect, onClose }: { open: boolean; onSelect: (text: string) => void; onClose: () => void }) {
+  const [text, setText] = useState('');
+  useEffect(() => {
+    if (open) setText('');
+  }, [open]);
+  return (
+    <Modal open={open} onClose={onClose} label="Select by marks">
+      {open ? (
+        <>
+          <h2 className="app-dialog__title">Select by marks</h2>
+          <p className="app-dialog__text">Paste marks from WhatsApp, email or Excel: C1, C4, B12, one per line, or ranges like C1-C5. Tip: Ctrl + V on the model does the same.</p>
+          <textarea className="app-link-box" rows={5} autoFocus value={text} aria-label="Marks" onChange={(e) => setText(e.target.value)} />
+          <div className="app-dialog__actions">
+            <Button onClick={onClose}>Cancel</Button>
+            <Button variant="primary" disabled={!text.trim()} onClick={() => onSelect(text)}>
+              Select
+            </Button>
+          </div>
+        </>
+      ) : null}
+    </Modal>
+  );
+}

@@ -179,6 +179,14 @@
   "selectGet": {
    "label": "Get the selection",
    "outline": "<path d=\"M4 3.5l6 14 1.8-5.7 5.7-1.8z\"></path><path d=\"M21 18.5h-7\"></path><path d=\"M16.5 16L14 18.5l2.5 2.5\"></path>"
+  },
+  "colour": {
+   "label": "Colour by parameter",
+   "outline": "<path d=\"M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 1.9-1 1.4-2.1-.5-1.2.2-2.4 1.6-2.4h1.8a3.7 3.7 0 0 0 3.7-3.7C20.5 7.3 16.7 3.5 12 3.5z\"></path><circle cx=\"7.6\" cy=\"11\" r=\"1.2\"></circle><circle cx=\"10\" cy=\"7.3\" r=\"1.2\"></circle><circle cx=\"14.4\" cy=\"7.3\" r=\"1.2\"></circle>"
+  },
+  "sun": {
+   "label": "Sun and shadows",
+   "outline": "<circle cx=\"12\" cy=\"12\" r=\"4\"></circle><path d=\"M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6\"></path>"
   }
  }
 }

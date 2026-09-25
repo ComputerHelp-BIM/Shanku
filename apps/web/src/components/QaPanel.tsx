@@ -40,6 +40,10 @@ export interface QaPanelProps {
   onZoom: (elements: number[]) => void;
   /** Select and fit one element (Step). */
   onStep: (element: number) => void;
+  /** When linked to Revit: select the finding's elements in Revit too. */
+  onShowInRevit?: (elements: number[]) => void;
+  /** When Revit parameters can be edited: a safe fix for this finding, or null when it has none. */
+  fixFor?: (f: Finding) => { label: string; run: () => void } | null;
 }
 
 /**
@@ -47,7 +51,7 @@ export interface QaPanelProps {
  * card per finding with Select all, Isolate, Zoom and Step. Every card says what was measured and what
  * the check does not prove.
  */
-export function QaPanel({ report, onSelect, onIsolate, onZoom, onStep }: QaPanelProps) {
+export function QaPanel({ report, onSelect, onIsolate, onZoom, onStep, onShowInRevit, fixFor }: QaPanelProps) {
   const [severity, setSeverity] = useState<Severity | null>(null);
   const [group, setGroup] = useState<QaGroup | null>(null);
   const [step, setStep] = useState<{ id: string; i: number } | null>(null);
@@ -128,6 +132,19 @@ export function QaPanel({ report, onSelect, onIsolate, onZoom, onStep }: QaPanel
                   <Button size="sm" variant="ghost" onClick={() => onZoom(f.elements)}>
                     Zoom
                   </Button>
+                  {onShowInRevit ? (
+                    <Button size="sm" variant="ghost" title="Select these elements in Revit" onClick={() => onShowInRevit(f.elements)}>
+                      Show in Revit
+                    </Button>
+                  ) : null}
+                  {(() => {
+                    const fix = fixFor?.(f);
+                    return fix ? (
+                      <Button size="sm" variant="secondary" title="Propose the change, review it, then apply it in Revit as one undo" onClick={fix.run}>
+                        {fix.label}
+                      </Button>
+                    ) : null;
+                  })()}
                   {f.elements.length > 1 ? (
                     <span className="app-qa__step" role="group" aria-label="Step through elements">
                       <Button size="sm" variant="ghost" aria-label="Previous element" onClick={() => doStep(f, -1)}>

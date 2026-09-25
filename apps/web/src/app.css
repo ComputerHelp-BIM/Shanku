@@ -612,3 +612,53 @@
 .app-typeprops__cols span + span { border-left: 1px solid var(--border); }
 .app-typeprops__rows { flex: 1; min-height: 0; overflow: auto; }
 .app-typeprops__buttons { display: flex; align-items: center; gap: 8px; padding: 8px 0 12px; }
+
+/* ---- Colour by parameter: element palette and legend (quick-wins A1) ---- */
+.app-colour { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md) 14px; font-size: 13px; }
+.app-colour__label { color: var(--text-secondary); font-size: 12px; }
+.app-colour__modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.app-colour__modes button { height: 26px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.app-colour__modes button:hover { border-color: var(--accent); }
+.app-colour__modes button.is-active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--field)); color: var(--accent-text); font-weight: 600; }
+.app-colour__palette { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px var(--space-sm); color: var(--text-secondary); }
+.app-colour__palette .app-select { min-width: 0; height: 26px; }
+.app-colour__palette .app-colour__swatches { grid-column: 2; }
+.app-colour__swatches { display: flex; gap: 2px; }
+.app-colour__swatches i, .app-legend__row i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.app-colour__hint { margin: 0; color: var(--text-faint); font-size: 11px; }
+.app-colour__legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.app-colour__legend li { display: flex; align-items: center; gap: var(--space-sm); min-height: 26px; padding: 0 4px; border-radius: var(--radius-sm); }
+.app-colour__legend li:hover { background: var(--chip); }
+.app-colour__legend li.is-off { opacity: 0.5; }
+.app-colour__swatch { position: relative; flex-shrink: 0; width: 18px; height: 18px; border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 25%, transparent); cursor: pointer; }
+.app-colour__swatch input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.app-colour__swatch:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.app-colour__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; padding: 0; }
+.app-colour__name:hover { color: var(--accent-text); text-decoration: underline; }
+.app-colour__count { color: var(--text-faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+.app-colour__bar, .app-legend__bar { display: block; height: 10px; border-radius: 5px; }
+.app-colour__scale, .app-legend__scale { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+.app-colour__actions { display: flex; justify-content: flex-end; }
+.app-legend { position: absolute; left: var(--space-md); bottom: var(--space-md); z-index: var(--z-view-overlay); display: flex; flex-direction: column; gap: 3px; min-width: 150px; max-width: 240px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-md); background: color-mix(in srgb, var(--panel) 92%, transparent); color: var(--text); font: 12px/16px var(--font-sans); text-align: left; box-shadow: var(--shadow-menu); cursor: pointer; }
+.app-legend strong { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); }
+.app-legend__row { display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-legend__row em { margin-left: auto; padding-left: 8px; font-style: normal; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.app-legend__more { color: var(--text-faint); }
+
+/* ---- Proposed marks (QA Fix in Revit) ---- */
+.app-marks { max-height: 320px; overflow: auto; margin: var(--space-md) 0; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.app-marks table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.app-marks th { position: sticky; top: 0; padding: 6px 10px; background: var(--chip); color: var(--text-secondary); font-weight: 600; text-align: left; }
+.app-marks td { padding: 5px 10px; border-top: 1px solid var(--border); }
+.app-marks__new { font-family: var(--font-mono); font-weight: 600; color: var(--accent-text); }
+
+/* ---- BOQ rate profiles ---- */
+.bq-profile { display: flex; align-items: center; gap: var(--space-xs); color: var(--text-secondary); font-size: 12px; }
+.bq-profile-edit h3 { margin-top: 0; }
+.bq-profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-md); padding: 0 12px var(--space-md); }
+.bq-profile-grid fieldset { margin: 0; padding: var(--space-sm) var(--space-md); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 4px; }
+.bq-profile-grid legend { padding: 0 4px; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.bq-field { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); font-size: 12px; color: var(--text-secondary); }
+.bq-pair { display: grid; grid-template-columns: 1fr auto; gap: var(--space-sm); }
+.bq-pair .bq-field:last-child span { color: var(--text-faint); }
+.bq-table td.rate.prof input, input.prof { color: var(--text-secondary); font-style: italic; }

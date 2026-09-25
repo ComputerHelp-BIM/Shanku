@@ -1,5 +1,6 @@
 import { siFactor, type ElementRecord, type ModelInfo } from '@shanku/engine';
-import { itemKey, rateFor, rateItems, type RateBook } from './rates';
+import { effectiveRebar, itemKey, rateFor, rateItems, type RateBook } from './rates';
+import { CITY_PROFILES } from './rateProfiles';
 import { REBAR_BANDS, rebarEstimate } from './rebar';
 
 export interface BoqExportInput {
@@ -17,9 +18,28 @@ export interface BoqExportInput {
   omitResults?: boolean;
 }
 
-const TABLE_STYLE = 'TableStyleMedium15'; // dark header, light bands: closest built-in to the design system
-const INPUT_FILL = 'FFFFF7E8';
-const INPUT_TEXT = 'FFA3500C';
+/**
+ * Workbook colours from the design system (Paper theme, packages/tokens/tokens.json; a test keeps
+ * them in step). Excel cannot read CSS, so the values are copied here as ARGB.
+ */
+export const WORKBOOK_TOKENS = {
+  'brand-ink': '#17191E',
+  'brand-paper': '#F6F4EF',
+  panel: '#E9E4DA',
+  border: '#E2DED4',
+  'text-secondary': '#5B5F68',
+  accent: '#D9761E',
+  'accent-text': '#9C4C0A',
+  'row-selected': '#F3E2D0',
+  field: '#FFFFFF',
+} as const;
+const argb = (k: keyof typeof WORKBOOK_TOKENS) => `FF${WORKBOOK_TOKENS[k].slice(1)}`;
+const SANS = 'IBM Plex Sans'; // the design system's UI font; Excel substitutes its default where it is not installed
+const MONO = 'IBM Plex Mono';
+/** Minimal built-in style: the design system's own fills and borders are applied on top. */
+const TABLE_STYLE = 'TableStyleLight1';
+const INPUT_FILL = argb('row-selected'); // editable cells look like the app's rate inputs
+const INPUT_TEXT = argb('accent-text');
 const F_VOL = '#,##0.000';
 const F_DIM = '#,##0.00';
 /** Indian digit grouping: 1,23,45,678.90 */
@@ -51,15 +71,18 @@ export async function buildBoqWorkbook(input: BoqExportInput): Promise<ArrayBuff
   wb.created = date;
 
   const sheet = (name: string, title: string) => {
-    const ws = wb.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 5 }] });
+    const ws = wb.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 5, showGridLines: false }], properties: { tabColor: { argb: name === 'Summary' ? argb('accent') : argb('brand-ink') } } });
     ws.getCell('A1').value = title;
-    ws.getCell('A1').font = { bold: true, size: 14 };
+    ws.getCell('A1').font = { name: SANS, bold: true, size: 16, color: { argb: argb('brand-ink') } };
+    ws.getRow(1).height = 30;
     ws.getCell('A2').value = `${info.projectName || info.fileName} · ${info.fileName} · ${info.compatibility.format} (${info.compatibility.level}) · exported ${date.toLocaleString('en-IN')}`;
     ws.getCell('A3').value = 'Concrete quantities as modelled: net volumes, no deductions for waste or reinforcement. Rates in ₹ per m³.';
     ws.getCell('A4').value = input.scope ? `Scope: ${input.scope}` : null;
-    ws.getCell('A2').font = ws.getCell('A3').font = ws.getCell('A4').font = { color: { argb: 'FF5B5F68' }, size: 10 };
+    ws.getCell('A2').font = ws.getCell('A3').font = ws.getCell('A4').font = { name: SANS, color: { argb: argb('text-secondary') }, size: 10 };
     return ws;
   };
+  /** Tables to brand once every sheet is built (fills, borders and fonts from the design system). */
+  const branded: Array<{ ws: import('exceljs').Worksheet; cols: Col[]; rows: number }> = [];
   type Col = { name: string; width: number; fmt?: string; total?: 'sum' | 'none'; label?: string };
   const table = (ws: import('exceljs').Worksheet, name: string, cols: Col[], rows: Cell[][]) => {
     ws.addTable({
@@ -76,6 +99,7 @@ export async function buildBoqWorkbook(input: BoqExportInput): Promise<ArrayBuff
       })),
       rows: rows.length ? rows : [cols.map(() => null)],
     });
+    branded.push({ ws, cols, rows: Math.max(1, rows.length) });
     cols.forEach((c, i) => {
       const col = ws.getColumn(i + 1);
       col.width = c.width;
@@ -218,7 +242,7 @@ export async function buildBoqWorkbook(input: BoqExportInput): Promise<ArrayBuff
       { name: 'Overrides', width: 10, fmt: '#,##0' },
       { name: 'Basis / note', width: 36 },
     ],
-    items.map((it) => [it.key, it.category, it.grade, 'm³', it.rate, it.overrides, rates.edited.includes(it.key) ? 'Edited in Shanku' : null]),
+    items.map((it) => [it.key, it.category, it.grade, 'm³', it.rate, it.overrides, rates.edited.includes(it.key) ? 'Edited in Shanku' : rates.items[it.key] === undefined && it.rate !== null ? `Profile: ${CITY_PROFILES.find((c) => c.id === rates.profile?.id)?.name ?? 'custom'}` : null]),
   );
   items.forEach((_, i) => {
     const c = ws4.getCell(`E${6 + i}`);
@@ -227,7 +251,8 @@ export async function buildBoqWorkbook(input: BoqExportInput): Promise<ArrayBuff
   });
 
   // ---- Reinforcement (estimate from steel ratios; only when a ratio is set) ----
-  const rebar = rebarEstimate(elements, rates.rebar ?? { ratios: {}, rate: null });
+  const steel = effectiveRebar(rates);
+  const rebar = rebarEstimate(elements, steel);
   const withRatio = rebar.rows.filter((r) => r.ratio !== null);
   if (withRatio.length) {
     const ws5 = sheet('Reinforcement', 'Bill of quantities — Reinforcement (estimate)');
@@ -253,7 +278,7 @@ export async function buildBoqWorkbook(input: BoqExportInput): Promise<ArrayBuff
           r.ratio,
           band ? `${band[0]}–${band[1]}` : '—',
           f(`B${row}*C${row}`, r.kg),
-          rates.rebar?.rate ?? null,
+          steel.rate,
           f(`IF(F${row}="","",E${row}*F${row})`, r.amount ?? ''),
         ];
       }),
@@ -265,6 +290,33 @@ export async function buildBoqWorkbook(input: BoqExportInput): Promise<ArrayBuff
         c.font = { bold: true, color: { argb: INPUT_TEXT } };
       }
     });
+  }
+
+  // ---- Design system: title band, header row, banded rows, totals ----
+  const MONO_COLS = new Set(['Element ID', 'GlobalId', 'Key']);
+  for (const { ws, cols, rows } of branded) {
+    const n = cols.length;
+    for (let c = 1; c <= n; c++) {
+      // Title band: paper ground with the accent rule under the title, as the app's title bar.
+      for (let r = 1; r <= 4; r++) ws.getCell(r, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb('brand-paper') } };
+      ws.getCell(1, c).border = { bottom: { style: 'medium', color: { argb: argb('accent') } } };
+      const h = ws.getCell(5, c);
+      h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb('brand-ink') } };
+      h.font = { name: SANS, bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      h.alignment = { vertical: 'middle', wrapText: true };
+      const mono = MONO_COLS.has(cols[c - 1].name);
+      for (let r = 6; r < 6 + rows; r++) {
+        const cell = ws.getCell(r, c);
+        if (!cell.fill || (cell.fill as { pattern?: string }).pattern !== 'solid') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: (r - 6) % 2 ? argb('brand-paper') : argb('field') } };
+        cell.font = { ...(cell.font ?? {}), name: mono ? MONO : SANS, size: 10 };
+        cell.border = { bottom: { style: 'hair', color: { argb: argb('border') } } };
+      }
+      const t = ws.getCell(6 + rows, c);
+      t.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb('panel') } };
+      t.font = { name: SANS, bold: true, size: 10, color: { argb: argb('brand-ink') } };
+      t.border = { top: { style: 'medium', color: { argb: argb('accent') } } };
+    }
+    ws.getRow(5).height = 30;
   }
 
   // ---- About ----
@@ -287,7 +339,15 @@ export async function buildBoqWorkbook(input: BoqExportInput): Promise<ArrayBuff
   aboutRows.forEach((r) => ab.addRow(r));
   ab.getColumn(1).width = 16;
   ab.getColumn(2).width = 100;
-  ab.getColumn(1).font = { bold: true };
+  ab.views = [{ showGridLines: false }];
+  ab.properties.tabColor = { argb: argb('text-secondary') };
+  ab.eachRow((row, i) => {
+    row.getCell(1).font = { name: SANS, bold: true, size: 10, color: { argb: argb('text-secondary') } };
+    row.getCell(2).font = { name: SANS, size: 10, color: { argb: argb('brand-ink') } };
+    row.getCell(2).alignment = { wrapText: true, vertical: 'top' };
+    for (const c of [1, 2]) row.getCell(c).border = { bottom: { style: 'hair', color: { argb: argb('border') } } };
+    if (i % 2 === 0) for (const c of [1, 2]) row.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argb('brand-paper') } };
+  });
   void itemKey;
 
   return (await wb.xlsx.writeBuffer()) as ArrayBuffer;

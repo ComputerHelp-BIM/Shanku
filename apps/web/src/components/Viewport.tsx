@@ -63,6 +63,8 @@ export interface ViewportProps {
   onOpenView?: (id: string) => void;
   /** Revit's Show Hidden Lines for this view (dashed edges behind other elements). */
   hiddenLines?: boolean;
+  /** Ground shadows from the sun. */
+  shadows?: boolean;
   /** Plan, elevation or section: no ViewCube (Revit shows none in 2D views). */
   twoD?: boolean;
   /** Right-click in the view. */
@@ -162,6 +164,9 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   useEffect(() => {
     viewer.current?.setHiddenLines(!!props.hiddenLines);
   }, [props.hiddenLines, model]);
+  useEffect(() => {
+    viewer.current?.setShadows(!!props.shadows);
+  }, [props.shadows, model]);
   useEffect(() => {
     viewer.current?.setAnnotations(props.annotations ?? []);
   }, [props.annotations, model]);

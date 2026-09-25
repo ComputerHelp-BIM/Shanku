@@ -11,7 +11,8 @@ describe('rates: per item with per-element overrides', () => {
   const c = el('C', 'Beam', 'RCC_BEAM', 1);
 
   it('applies an item rate to every element of the item', () => {
-    const book = setItemRate(emptyRates(), itemKey(a), 8600);
+    // Without a rate profile, an item nobody priced has no rate (see rateProfiles.test.ts for profiles).
+    const book = setItemRate({ ...emptyRates(), profile: undefined }, itemKey(a), 8600);
     expect(rateFor(a, book)).toEqual({ rate: 8600, source: 'item', amount: 4300 });
     expect(rateFor(b, book).amount).toBeCloseTo(2580);
     expect(rateFor(c, book)).toEqual({ rate: null, source: null, amount: null });

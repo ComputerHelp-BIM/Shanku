@@ -11,7 +11,7 @@ import {
 import 'dockview-react/dist/styles/dockview.css';
 
 /** Every dockable panel in Shanku. "views" is the 3D view and drawing tabs; it always stays in the grid. */
-export type PanelId = 'views' | 'properties' | 'browser' | 'activity' | 'console' | 'qa';
+export type PanelId = 'views' | 'properties' | 'browser' | 'activity' | 'console' | 'qa' | 'colour';
 
 export const PANEL_TITLES: Record<PanelId, string> = {
   views: 'Views',
@@ -20,6 +20,7 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   activity: 'Activity',
   console: 'Python console',
   qa: 'QA',
+  colour: 'Colour',
 };
 const BOTTOM: PanelId[] = ['activity', 'console', 'qa'];
 /** v2: BOQ, DXF → 3D and Keys became windows; older saved layouts are dropped. */
@@ -84,6 +85,11 @@ function addDefault(api: DockviewApi, id: PanelId) {
   // Revit's defaults: Properties on the left, Project Browser on the right.
   if (id === 'properties') return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'left' }, initialWidth: 310 });
   if (id === 'browser') return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'right' }, initialWidth: 270 });
+  // The element palette stacks with the Project Browser when it is open, else docks right.
+  if (id === 'colour') {
+    const browser = api.getPanel('browser');
+    return browser ? api.addPanel({ ...base, position: { referencePanel: browser, direction: 'within' } }) : api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'right' }, initialWidth: 270 });
+  }
   const sibling = BOTTOM.map((b) => api.getPanel(b)).find((p) => p && p.group.api.location.type === 'grid');
   if (sibling) return api.addPanel({ ...base, position: { referencePanel: sibling, direction: 'within' } });
   return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'below' }, initialHeight: 240 });

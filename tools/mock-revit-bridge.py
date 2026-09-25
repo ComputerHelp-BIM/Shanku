@@ -9,6 +9,7 @@ pairing and event stream as the real add-in. Extra test-only routes (no auth, lo
     POST /mock/select {globalIds}  -> pretend the user selected these in Revit
     GET  /mock/received            -> the selections Shanku sent, newest last
     POST /mock/document {title,key} or {"document": null}      pretend Revit switched or closed the model
+    POST /mock/param {globalId, name, display}                 pretend a parameter has this value in Revit
 
 Usage: python3 tools/mock-revit-bridge.py [--port 7071] [--ifc apps/web/public/samples/sample-frame.ifc]
 """
@@ -170,6 +171,13 @@ def make_handler(st: State):
                 b = self.body()
                 st.document = b.get("document", b) if "document" in b else b
                 st.broadcast("document", {"document": st.document})
+                return self.send_json(200, {"ok": True})
+            if path == "/mock/param":
+                b = self.body()
+                p = st.params.get(b.get("globalId"), {}).get(b.get("name"))
+                if p is None:
+                    return self.send_json(404, {"error": "No such element or parameter."})
+                p[3] = b.get("display")
                 return self.send_json(200, {"ok": True})
             if path == "/shanku/v1/pair":
                 b = self.body()
