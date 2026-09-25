@@ -132,3 +132,53 @@ def test_wall_mesh_is_closed_and_encloses_the_net_volume():
             vol += (p0[0] * (p1[1] * p2[2] - p1[2] * p2[1]) - p0[1] * (p1[0] * p2[2] - p1[2] * p2[0]) + p0[2] * (p1[0] * p2[1] - p1[1] * p2[0])) / 6
     net = 4000 * 230 * 2400 - 1000 * 230 * 1400 - 800 * 230 * 2100
     assert abs(vol - net) < 1  # positive: faces point outward
+
+
+def test_exchange_gives_revit_exact_geometry(drawing):
+    """Export to Revit: what each element needs, in mm from the drawing origin."""
+    x = P.exchange(P.analyze(drawing))
+    assert x["version"] == 1 and x["units"] == "mm"
+    assert [l["name"] for l in x["levels"]] == [l["name"] for l in P.analyze(drawing)["levels"]]
+    by = lambda kind, mark: [e for e in x["elements"] if e["kind"] == kind and e["mark"] == mark]
+    # column C-1: 230 x 500 at (21750, 1750) in frame B (origin 20000, 0) -> centre (1865, 2000), long side along Y
+    c = by("column", "C-1")
+    assert len(c) == 2  # levels 2 and 3
+    assert c[0]["shape"] == "rect" and c[0]["center"] == [1865.0, 2000.0]
+    assert (c[0]["width"], c[0]["length"]) == (230.0, 500.0)
+    assert abs(abs(c[0]["angle"]) - 90) < 1e-6
+    assert c[0]["z1"] - c[0]["z0"] == 3000
+    # beam B-1: 4000 x 230 from x 21980 -> centreline 1980..5980 at y 1865, depth 600
+    b = by("beam", "B-1")[0]
+    assert sorted([b["start"][0], b["end"][0]]) == [1980.0, 5980.0] and b["start"][1] == b["end"][1] == 1865.0
+    assert (b["width"], b["depth"]) == (230.0, 600.0)
+    # slab: its outline and thickness
+    s = by("slab", "S-1")[0]
+    assert len(s["outline"]) == 4 and s["thickness"] == 125.0
+    # foundations: footing and PCC are centred rectangles with a thickness
+    f = by("footing", "FT-1")[0]
+    assert (f["width"], f["length"], f["thickness"]) == (1430.0, 1700.0, 500.0)
+    # windows are reported, not exported yet; ids are stable and unique
+    assert any(e["kind"] == "window" for e in x["skipped"])
+    ids = [e["id"] for e in x["elements"]]
+    assert len(ids) == len(set(ids)) and all(i.startswith("DXF:") for i in ids)
+    assert P.exchange(P.analyze(drawing))["elements"] == x["elements"]  # same drawing, same ids
+
+
+def test_exchange_round_column_and_odd_outline(tmp_path):
+    import math
+    doc = ezdxf.new("R2018")
+    msp = doc.modelspace()
+    rect(msp, "Part-1", -500, -500, 10000, 10000)
+    msp.add_circle((0, 0), 200, dxfattribs={"layer": "CH-Origin"})
+    label(msp, "CH-Level", "1", -400, 9000)
+    label(msp, "CH-Height", "3000", -400, 9200)
+    circle = [(3000 + 225 * math.cos(2 * math.pi * k / 32), 3000 + 225 * math.sin(2 * math.pi * k / 32)) for k in range(32)]
+    msp.add_lwpolyline(circle, close=True, dxfattribs={"layer": "CH-Column"}); label(msp, "CHT-Column", "T0,3000,RC-1", 3000, 3000)
+    msp.add_lwpolyline([(6000, 1000), (6600, 1000), (6600, 1300), (6300, 1600), (6000, 1600)], close=True, dxfattribs={"layer": "CH-Column"})
+    label(msp, "CHT-Column", "T0,3000,C-X", 6100, 1100)
+    path = tmp_path / "round.dxf"
+    doc.saveas(path)
+    x = P.exchange(P.analyze(str(path)))
+    rc = [e for e in x["elements"] if e["mark"] == "RC-1"][0]
+    assert rc["shape"] == "round" and abs(rc["diameter"] - 450) < 1 and rc["center"] == [3000.0, 3000.0]
+    assert [e["mark"] for e in x["skipped"]] == ["C-X"] and "rectangle" in x["skipped"][0]["reason"]

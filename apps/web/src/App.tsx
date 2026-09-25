@@ -59,6 +59,8 @@ import { GuidePanel } from './components/GuidePanel';
 import { RevitPanel } from './components/RevitPanel';
 import { RevitChanges } from './components/RevitChanges';
 import { TypeProperties } from './components/TypeProperties';
+import { ExportToRevit, type ExportState } from './components/ExportToRevit';
+import { approvedOnly } from './lib/exportPlan';
 import { afterApply, byGroup, changeKey, commonParams, effectiveCommon, stageEdit, type PendingChange, type RevitElementParams } from './lib/paramEdits';
 import { RevitBridge, indicesForRevitSelection } from './lib/revitBridge';
 import { NO_CHANGES, addChanges, changeCount, remapIndices, remapRecord, toExport, withoutMerged, type ChangeSet } from './lib/liveUpdate';
@@ -71,7 +73,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.37.1';
+const APP_VERSION = '0.38.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -207,7 +209,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   const dock = useRef<DockWorkspaceHandle>(null);
   const [openPanels, setOpenPanels] = useState<PanelId[]>([]);
   // Revit-style windows (float above everything, ribbon included)
-  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false, revit: false, changes: false, typeProps: false });
+  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false, revit: false, changes: false, typeProps: false, exportRevit: false });
   // Guide & FAQ (F1): which section to open on
   const [guideSection, setGuideSection] = useState<string | undefined>(undefined);
   const openGuide = (section?: string) => {
@@ -884,6 +886,50 @@ export function App({ start }: { start?: AppStart } = {}) {
       setLiveBusy(false);
     }
   };
+  // ---- Export to Revit (milestone 4): the DXF → 3D model built natively in Revit, then linked back
+  const [exportState, setExportState] = useState<ExportState | null>(null);
+  const [exportOff, setExportOff] = useState<Set<string>>(new Set());
+  const canExport = revit.phase === 'connected' && !!revit.document && !revit.document.isFamily && bridge.canCreate;
+  const exportWhy = revit.phase !== 'connected' ? 'connect to Revit first' : !revit.document ? 'open the target model in Revit' : revit.document.isFamily ? 'Revit is showing a family' : !bridge.canCreate ? 'needs Shanku Bridge for Revit 0.6.0' : '';
+  /** Runs the pipeline for Revit and has Revit check the plan (a dry run), for review. */
+  const exportToRevit = async () => {
+    if (!canExport) {
+      openRevit();
+      setNotice(`Export to Revit: ${exportWhy}.`);
+      return;
+    }
+    if (!pipeline.state?.summary) {
+      setNotice('Export to Revit: pick the DXF drawing first; then press Export to Revit again.');
+      void pipeline.start();
+      return;
+    }
+    toggleWin('exportRevit', true);
+    setExportOff(new Set());
+    setExportState({ phase: 'preparing', target: revit.document!.title });
+    try {
+      const exchange = await pipeline.exportPlan();
+      const report = await bridge.createModel(revit.document!.key, exchange, true);
+      setExportState({ phase: 'review', exchange, report, target: revit.document!.title });
+    } catch (e) {
+      setExportState({ phase: 'error', message: (e as Error).message, target: revit.document?.title });
+    }
+  };
+  /** Creates the approved sets in Revit (one undo), then offers to load the model back. */
+  const createInRevit = async () => {
+    const ex = exportState?.exchange;
+    if (!ex || !revit.document) return;
+    const approved = approvedOnly(ex, exportOff);
+    setExportState({ ...exportState!, phase: 'creating' });
+    try {
+      const report = await bridge.createModel(revit.document.key, approved, false);
+      setExportState({ phase: 'done', exchange: approved, report, target: revit.document.title });
+      const made = report.results.filter((r) => r.ok).length;
+      m.log(`Export to Revit: ${made} created in ${revit.document.title} (${report.undoName})${report.results.length - made ? `, ${report.results.length - made} not created` : ''}${report.existing.length ? `, ${report.existing.length} already there` : ''}.`);
+    } catch (e) {
+      setExportState({ phase: 'error', message: (e as Error).message, exchange: ex, target: revit.document.title });
+    }
+  };
+
   // After a page reload the session restores the file as first loaded: say so if Revit updates were merged.
   useEffect(() => {
     if (!m.model || m.model.revision || !revitLink || m.model.info.fileName !== revitLink.fileName) return;
@@ -1561,6 +1607,7 @@ export function App({ start }: { start?: AppStart } = {}) {
       { id: 'bridge.disconnect', title: 'Disconnect from Revit', group: 'File', keywords: 'bridge revit unpair', enabled: revit.phase === 'connected' || revit.phase === 'unpaired', why: 'not connected', run: () => bridge.disconnect() },
       { id: 'bridge.update', title: 'Update from Revit', group: 'File', keywords: 'bridge revit live sync refresh changed', enabled: canLive && liveCount > 0 && !liveBusy, why: !canLive ? 'load the model from Revit (add-in 0.5.0)' : 'nothing changed in Revit', run: () => void updateFromRevit() },
       { id: 'bridge.autoUpdate', title: 'Auto-update from Revit', group: 'File', keywords: 'bridge revit live sync', checked: autoUpdate, enabled: canLive, why: 'load the model from Revit (add-in 0.5.0)', run: () => setAutoUpdate((v) => !v) },
+      { id: 'bridge.exportDxf', title: 'Export DXF to Revit', group: 'File', keywords: 'bridge revit create native pipeline dxf 3d families', enabled: canExport, why: exportWhy, run: () => void exportToRevit() },
       { id: 'bridge.changes', title: 'Changes for Revit…', group: 'Edit', keywords: 'bridge revit parameters pending apply review', checked: wins.changes, run: () => toggleWin('changes') },
       { id: 'bridge.check', title: 'Check changes in Revit', group: 'Edit', keywords: 'bridge revit parameters dry run validate', enabled: pending.length > 0 && canParams, why: !pending.length ? 'no changes waiting' : 'connect to the Revit model first', run: () => void runChanges(pending.map(changeKey), true) },
       { id: 'bridge.syncSelection', title: 'Sync selection with Revit', group: 'Select', keywords: 'bridge revit link', checked: revitSync, run: () => setRevitSync((v) => !v) },
@@ -1771,6 +1818,9 @@ export function App({ start }: { start?: AppStart } = {}) {
             <RibbonButton icon="sync" label="Sync" active={revitSync} onClick={() => setRevitSync((v) => !v)} shortcutHint={revitLinked ? 'selection follows Revit both ways' : 'follows Revit once the model is loaded from Revit'} />
             <RibbonButton icon="selectSend" label="Send to Revit" disabled={revit.phase !== 'connected' || !revit.document || !m.model} onClick={() => void sendSelectionToRevit()} shortcutHint="select Shanku's selection in Revit now" />
             <RibbonButton icon="selectGet" label="Get from Revit" disabled={revit.phase !== 'connected' || !revit.document || !m.model} onClick={() => void getSelectionFromRevit()} shortcutHint="take Revit's current selection" />
+          </RibbonGroup>
+          <RibbonGroup label="Create">
+            <RibbonButton icon="dxf" label="Export to Revit" disabled={!canExport} onClick={() => void exportToRevit()} shortcutHint={canExport ? 'build the DXF → 3D model natively in Revit (checked first, one undo)' : exportWhy} />
           </RibbonGroup>
           <RibbonGroup label="Parameters">
             <RibbonButton icon="properties" label={pending.length ? `Changes (${pending.length})` : 'Changes'} active={wins.changes} onClick={() => toggleWin('changes')} shortcutHint="parameter edits waiting for Revit" />
@@ -2009,8 +2059,29 @@ export function App({ start }: { start?: AppStart } = {}) {
                     onBuild={() => void pipeline.build()}
                     onDownload={pipeline.download}
                     onShow={showQa}
+                    onExportRevit={() => void exportToRevit()}
+                    exportRevit={{ ready: canExport, why: exportWhy }}
                   />
                 )}
+          </FloatingWindow>
+          <FloatingWindow id="exportRevit" title="Export to Revit" subtitle={exportState?.target ? `into ${exportState.target}` : undefined} open={wins.exportRevit} onClose={() => toggleWin('exportRevit', false)} initial={{ w: 640, h: 560 }} minWidth={460} minHeight={320}>
+            {exportState ? (
+              <ExportToRevit
+                state={exportState}
+                off={exportOff}
+                onToggle={(keys, on) =>
+                  setExportOff((cur) => {
+                    const n = new Set(cur);
+                    for (const k of keys) (on ? n.delete(k) : n.add(k));
+                    return n;
+                  })
+                }
+                onCheck={() => void exportToRevit()}
+                onCreate={() => void createInRevit()}
+                onLoad={() => void loadFromRevit().then(() => toggleWin('exportRevit', false))}
+                loading={revitLoading}
+              />
+            ) : null}
           </FloatingWindow>
           <FloatingWindow id="typeProps" title="Type Properties" open={wins.typeProps} onClose={() => toggleWin('typeProps', false)} initial={{ w: 760, h: 620 }} minWidth={480} minHeight={360}>
             {(() => {

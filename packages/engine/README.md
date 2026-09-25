@@ -1,4 +1,4 @@
-# @shanku/engine 0.27.1
+# @shanku/engine 0.28.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -49,6 +49,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.28.0 — 2026-09-25
+- DXF → 3D pipeline 1.3.0: `exchange(result)` gives the model as Revit needs it (levels; per element exact geometry in mm from the drawing origin: centred rectangles with rotation, round columns from polygonised circles, beam and wall centrelines, slab outlines; stable ids from drawing handle and level; not-exported items with reasons). The `exchange` pipeline option returns it; types `RevitExchange`, `RevitExchangeElement`.
 
 ### 0.27.1 — 2026-09-25
 - Fixed: a live update (`setModel(model, { keepView: true })`) still turned the camera to the default isometric direction and cleared the section box, so a plan, section or boxed view looked like the default 3D view after every update. Both are kept now.

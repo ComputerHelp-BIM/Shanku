@@ -20,12 +20,15 @@ export interface PipelinePanelProps {
   onBuild: () => void;
   onDownload: () => void;
   onShow: (q: PipelineQa) => void;
+  /** Export to Revit: the same model, built natively in Revit through the bridge. */
+  onExportRevit?: () => void;
+  exportRevit?: { ready: boolean; why: string };
 }
 
 const ICON = { error: '●', warning: '▲', info: 'i' } as const;
 
 /** Review screen for DXF -> 3D: level table (editable names and heights), counts, QA, build. */
-export function PipelinePanel({ state, onPick, onName, onHeight, onBuild, onDownload, onShow }: PipelinePanelProps) {
+export function PipelinePanel({ state, onPick, onName, onHeight, onBuild, onDownload, onShow, onExportRevit, exportRevit }: PipelinePanelProps) {
   const s = state?.summary ?? null;
   // Elevations follow edited heights live: storeys stack from ±0 in level order.
   const levels = useMemo(() => {
@@ -108,6 +111,11 @@ export function PipelinePanel({ state, onPick, onName, onHeight, onBuild, onDown
             ) : errors ? <span className="pl-faint">{errors} error{errors === 1 ? '' : 's'}: those items are skipped</span> : null}
             <span className="app-spacer" />
             {state.built ? <Button size="sm" onClick={onDownload}>Download IFC</Button> : null}
+            {onExportRevit ? (
+              <Button size="sm" disabled={!!state.phase} onClick={onExportRevit} title={exportRevit?.ready ? 'Build this model natively in Revit (checked first, one undo in Revit)' : `Export to Revit: ${exportRevit?.why ?? 'connect to Revit'}`}>
+                Export to Revit
+              </Button>
+            ) : null}
             <Button size="sm" variant="primary" disabled={!!state.phase} onClick={onBuild}>{state.built ? 'Rebuild 3D model' : 'Create 3D model'}</Button>
           </div>
         </>

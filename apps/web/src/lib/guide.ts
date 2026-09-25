@@ -234,6 +234,7 @@ export const GUIDE: GuideSection[] = [
           '**Revit → Changes** lists every edit: Revit\'s value, the new one, a tick per row. **Check in Revit** tries them and keeps nothing; **Apply** makes them in one Revit transaction, so one Edit → Undo in Revit takes them all back.',
           'Revit refuses a change that someone made in Revit meanwhile, a read-only parameter, an element borrowed by someone else, or a number it cannot read (numbers use the project units: 600 means 600 mm in a millimetre project). **Refresh from Revit** takes Revit\'s current values as the base.',
           'Type parameters, and parameters that pick another element (material, level), are edited in Revit for now.',
+          '**Export to Revit** (add-in 0.6.0): with a DXF open in **DXF → 3D** (or from **Revit tab → Export to Revit**), Revit builds the model natively from your template: levels (matched by name, then height), columns, beams, walls, slabs and footings of your families, new sizes duplicated from template types. Revit checks the plan first and keeps nothing; you approve it by level and kind; it is created as one undo in Revit, checked against the drawing, and Shanku loads it back so both stay in step. A second export skips what Revit already has (CH-ID). Families and type names: shanku_export_config.json in the add-in folder.',
           '**Live updates** (add-in 0.5.0): when anything changes in Revit (your Apply included), the chip shows how many elements changed and Properties re-reads them at once. **Revit tab → Update** brings in just those elements (Revit exports only them, in the background): changed ones move in place, deleted ones go, new ones appear; the camera, views, selection and hides stay. **Auto-update** does it as changes happen.',
         ],
       },
@@ -310,6 +311,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.38.0', date: '2026-09-25', items: ['Export to Revit: the DXF → 3D model built natively in Revit from your template (checked first, approved by level and kind, one undo), then loaded back into Shanku.'] },
           { version: '0.37.1', date: '2026-09-25', items: ['Fixed: updates from Revit no longer reset the view to the default 3D.'] },
           { version: '0.37.0', date: '2026-09-25', items: ['Live updates from Revit: Shanku learns what changed in Revit and brings in just those elements (Update, or Auto-update), keeping the camera, views, selection and hides.'] },
           { version: '0.36.0', date: '2026-09-25', items: ['Revit 2025 look: drag the line between names and values in Properties; Apply always visible; sort A→Z / Z→A within groups; the Project Browser with Search and Families; Type Properties like Revit\'s dialog with a Preview; units next to numbers; thin scrollbars.'] },

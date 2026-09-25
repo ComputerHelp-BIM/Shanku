@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.38.0 — 2026-09-25
+
+### Added
+- Export to Revit: the DXF → 3D model built natively in Revit from the template (dry run, approval by set, one undo, placement check, loaded back). Shanku Bridge for Revit 0.6.0; engine 0.28.0 (pipeline 1.3.0).
+
 ## 0.37.1 — 2026-09-25
 
 ### Fixed

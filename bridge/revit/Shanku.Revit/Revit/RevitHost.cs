@@ -229,6 +229,18 @@ public sealed class RevitHost : IRevitHost
         return ps;
     }
 
+    /// <summary>Export to Revit (see ModelCreator). The export config is read on every run, so edits apply at once.</summary>
+    public Task<CreateReport> CreateModelAsync(string key, ExchangeModel exchange, bool dryRun) => _queue.Run(ui =>
+    {
+        var doc = RequireProject(ui);
+        RequireKey(doc, key);
+        string here = System.IO.Path.GetDirectoryName(typeof(RevitHost).Assembly.Location)!;
+        var config = ExportConfig.Load(System.IO.Path.Combine(here, "shanku_export_config.json"));
+        var report = new ModelCreator(doc, config).Run(exchange, dryRun, GlobalIdOf);
+        if (!dryRun) BuildMap(doc); // the new elements, for selection and live updates
+        return report;
+    }, Export);
+
     /// <summary>Revit warnings (duplicate marks and the like) are reported, not shown as dialogs.</summary>
     private sealed class WarningCollector : IFailuresPreprocessor
     {
@@ -472,7 +484,7 @@ public sealed class RevitHost : IRevitHost
     /// The GlobalId Revit's IFC exporter gives this element: the IfcGUID parameter when set, else the
     /// export id compressed to the IFC form.
     /// </summary>
-    private static string GlobalIdOf(Document doc, Element e)
+    internal static string GlobalIdOf(Document doc, Element e)
     {
         string? stored = e.get_Parameter(BuiltInParameter.IFC_GUID)?.AsString();
         return !string.IsNullOrWhiteSpace(stored) ? stored! : IfcGuid.FromGuid(ExportUtils.GetExportId(doc, e.Id));

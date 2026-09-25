@@ -10,7 +10,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>Shanku.Revit</AssemblyName>
     <RootNamespace>Shanku.Revit</RootNamespace>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Product>Shanku Bridge for Revit</Product>
     <Company>ComputerHelp-BIM</Company>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
@@ -24,5 +24,6 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\*.png" />
     <None Include="shanku_bridge_config.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="shanku_export_config.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

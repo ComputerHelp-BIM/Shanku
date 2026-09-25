@@ -28,4 +28,38 @@ export interface PipelineSummary {
   qa: PipelineQa[];
   ms: number;
   report: { elements: number; openings: number; by_kind: Record<string, number> } | null;
+  /** With the `exchange` option: the model as Revit needs it (dxf2ifc.exchange). */
+  exchange?: RevitExchange;
+}
+
+/** Export to Revit: levels and elements in mm from the drawing origin (Revit's Project Base Point). */
+export interface RevitExchange {
+  version: 1;
+  units: 'mm';
+  levels: Array<{ name: string; elevation: number; foundation: boolean }>;
+  elements: RevitExchangeElement[];
+  /** Drawn but not exported (windows and doors for now, odd outlines), with the reason. */
+  skipped: Array<RevitExchangeElement & { reason: string }>;
+}
+
+export interface RevitExchangeElement {
+  /** Stable: drawing handle and level ("DXF:1A2:L3"). Revit keeps it in CH-ID. */
+  id: string;
+  kind: 'column' | 'pedestal' | 'beam' | 'wall' | 'slab' | 'chajja' | 'footing' | 'pcc' | 'window' | 'door';
+  mark: string;
+  material: string | null;
+  level: string;
+  z0: number;
+  z1: number;
+  shape?: 'rect' | 'round';
+  center?: [number, number];
+  width?: number;
+  length?: number;
+  diameter?: number;
+  angle?: number;
+  thickness?: number;
+  depth?: number;
+  start?: [number, number];
+  end?: [number, number];
+  outline?: Array<[number, number]>;
 }

@@ -42,6 +42,7 @@ project information's UniqueId) tells documents apart.
 | GET | `/model/ids` | yes | `{ key, ids: [[globalId, uniqueId, elementId], …] }` (model elements only) |
 | POST | `/selection` | yes | body `{ key, globalIds, elementIds? }` → `{ selected, missing }` |
 | GET | `/events?token=` | yes | `text/event-stream` (below) |
+| POST | `/model/create` | yes | body `{ key, dryRun, exchange }` (exchange v1, ≤ 20000 elements) → `{ dryRun, undoName, levels, types, results, existing, warnings }` (0.6.0, feature `create`) |
 | POST | `/params/read` | yes | body `{ key, globalIds }` (≤ 500) → `{ elements: [{ globalId, elementId, category, typeName, params: [{ id, name, group, kind, display, readOnly, why }] }] }` |
 | POST | `/params/write` | yes | body `{ key, dryRun, changes: [{ globalId, paramId, name, oldDisplay, value }] }` (≤ 5000) → `{ dryRun, undoName, results: [{ index, ok, error, newDisplay }], warnings }` |
 
@@ -95,6 +96,16 @@ add-in creates a temporary 3D view, isolates them (`IsolateElementsTemporary` �
 with the same options as the full model, and rolls the transaction back. Shanku maps the partial file
 into the model's coordinates (web-ifc shifts each file to the origin by its own amount; the coordination
 matrices undo that) and merges it.
+
+## Export to Revit (feature `create`, add-in 0.6.0)
+
+`exchange` is the DXF → 3D pipeline's model (`dxf2ifc.exchange`, version 1): levels `{ name, elevation,
+foundation }` and elements in mm from the drawing origin (the Project Base Point) with a stable `id`,
+`kind`, `mark`, `level`, `z0`/`z1` and the geometry of the kind (centred rectangle with `angle`, round
+`diameter`, `start`/`end` with `width`, or `outline` with `thickness`). The add-in builds levels, then
+types, then each element in its own sub-transaction, writes `Mark` and the `CH-` shared parameters,
+checks every placement, and keeps it all in one transaction group (`undoName`). `dryRun` rolls the
+group back. `existing` lists ids Revit already has (by `CH-ID`), which are not created again.
 
 ## Export
 

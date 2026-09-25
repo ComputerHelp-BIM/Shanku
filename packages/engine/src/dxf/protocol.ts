@@ -11,6 +11,8 @@ export interface PipelineOptions {
   names?: Record<string, string>;
   heights?: Record<string, number>;
   build?: boolean;
+  /** Also return the Revit exchange (Export to Revit). */
+  exchange?: boolean;
   project?: string;
   source?: string;
 }

@@ -43,6 +43,8 @@ public interface IRevitHost
     Task<IReadOnlyList<ElementParams>> ReadParamsAsync(string key, IReadOnlyList<string> globalIds);
     /// <summary>Applies changes in one Revit transaction (one undo); dryRun rolls everything back.</summary>
     Task<WriteResult> WriteParamsAsync(string key, IReadOnlyList<ParamChange> changes, bool dryRun);
+    /// <summary>Export to Revit: builds native elements from the exchange (dryRun: tried, then rolled back).</summary>
+    Task<CreateReport> CreateModelAsync(string key, ExchangeModel exchange, bool dryRun);
 }
 
 /// <summary>A request the host could not serve, with the status and message to send back.</summary>
@@ -61,7 +63,8 @@ public sealed class BridgeServer : IDisposable
 {
     public const int Protocol = 1;
     /// <summary>What this add-in can do beyond protocol 1's basics (Shanku checks before offering it).</summary>
-    public static readonly string[] Features = { "params", "changes", "partial-export" };
+    public static readonly string[] Features = { "params", "changes", "partial-export", "create" };
+    public const int MaxCreateElements = 20000;
     public const int MaxReadElements = 500;
     public const int MaxChanges = 5000;
     public const int MaxPartialElements = 2000;
@@ -318,6 +321,21 @@ public sealed class BridgeServer : IDisposable
                     }
                     if (changes.Count > MaxChanges) throw new BridgeException(400, $"At most {MaxChanges} changes at a time.");
                     var r = await _host.WriteParamsAsync(key, changes, dry);
+                    await Send(res, 200, r);
+                    return;
+                }
+                case ("POST", "/model/create"):
+                {
+                    var body = await ReadJson(req);
+                    string key = body.TryGetProperty("key", out var k) ? k.GetString() ?? "" : "";
+                    bool dry = body.TryGetProperty("dryRun", out var d) && d.ValueKind == JsonValueKind.True;
+                    if (!body.TryGetProperty("exchange", out var ex) || ex.ValueKind != JsonValueKind.Object) throw new BridgeException(400, "No model to create was sent.");
+                    ExchangeModel? model;
+                    try { model = ex.Deserialize<ExchangeModel>(); }
+                    catch (JsonException je) { throw new BridgeException(400, $"The model to create cannot be read: {je.Message}"); }
+                    if (model == null || model.Version != 1) throw new BridgeException(400, "This add-in reads exchange version 1; update the add-in or Shanku.");
+                    if (model.Elements.Count > MaxCreateElements) throw new BridgeException(400, $"At most {MaxCreateElements} elements at a time.");
+                    var r = await _host.CreateModelAsync(key, model, dry);
                     await Send(res, 200, r);
                     return;
                 }

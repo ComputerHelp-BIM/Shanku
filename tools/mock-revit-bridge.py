@@ -52,6 +52,10 @@ class State:
         self.revit_selection = []
         self.streams = []
         self.lock = threading.Lock()
+        # Export to Revit: a model made from the R25 template (its levels and types), and what was created
+        self.revit_levels = {"01 GROUND LVL.": 0.0}
+        self.revit_types = {"CH-300 X 600", "CH-300", "CH-1200 X 1800 X 600", "125 THK. RCC SLAB", "150 THK. RCC SLAB", "200 THK. RCC SLAB", "CH-SHEAR-WALL-300", "CH-RETAINING-WALL-200"}
+        self.created_ids = set()
         # instance parameters per element: {globalId: {name: [id, group, kind, display, readOnly]}}
         self.params = {}
         for n, (g, _, tag) in enumerate(self.ids):
@@ -186,7 +190,7 @@ def make_handler(st: State):
             if path == "/mock/received":
                 return self.send_json(200, {"received": st.received})
             if path == "/shanku/v1/hello":
-                return self.send_json(200, {"service": "shanku-revit", "protocol": 1, "addin": "mock", "revit": "2025", "pairingOpen": True, "hasDocument": st.document is not None, "features": ["params", "changes", "partial-export"] if ifcopenshell else ["params"]})
+                return self.send_json(200, {"service": "shanku-revit", "protocol": 1, "addin": "mock", "revit": "2025", "pairingOpen": True, "hasDocument": st.document is not None, "features": (["params", "changes", "partial-export"] if ifcopenshell else ["params"]) + ["create"]})
             if not self.authed(q):
                 return self.send_json(401, {"error": "Not paired. Click Shanku → Connect in Revit and enter the code in Shanku."})
             if path == "/shanku/v1/status":
@@ -250,6 +254,47 @@ def make_handler(st: State):
                 return self.send_json(403, {"error": "That code is not right."})
             if not self.authed(q):
                 return self.send_json(401, {"error": "Not paired."})
+            if path == "/shanku/v1/model/create":
+                b = self.body()
+                x, dry = b.get("exchange") or {}, bool(b.get("dryRun"))
+                if x.get("version") != 1:
+                    return self.send_json(400, {"error": "This add-in reads exchange version 1; update the add-in or Shanku."})
+                levels = []
+                for l in x.get("levels", []):
+                    if l["name"] in st.revit_levels:
+                        levels.append({"name": l["name"], "elevation": l["elevation"], "action": "exists", "revitName": l["name"]})
+                    else:
+                        same = next((n for n, e in st.revit_levels.items() if abs(e - l["elevation"]) <= 1), None)
+                        levels.append({"name": l["name"], "elevation": l["elevation"], "action": "same-elevation" if same else "create", "revitName": same or l["name"]})
+                def type_of(e):
+                    k, r = e["kind"], lambda v: str(int(round(v or 0)))
+                    if k in ("column", "pedestal"):
+                        return ("CH-Concrete-Round-Column", "CH-" + r(e.get("diameter"))) if e.get("shape") == "round" else ("CH-Concrete-Rectangular-Column", ("CH-PED-" if k == "pedestal" else "CH-") + r(e.get("width")) + " X " + r(e.get("length")))
+                    if k == "beam":
+                        return "CH-Concrete-Rectangular-Beam", "CH-" + r(e.get("width")) + " X " + r(e.get("depth"))
+                    if k in ("footing", "pcc"):
+                        return "CH-Concrete-Rectangular-Footing", ("CH-PCC-" if k == "pcc" else "CH-") + r(e.get("width")) + " X " + r(e.get("length")) + " X " + r(e.get("thickness"))
+                    if k in ("slab", "chajja"):
+                        return "Floor", r(e.get("thickness")) + " THK. RCC SLAB"
+                    return "Basic Wall", ("CH-PARDI-WALL-" if (e.get("material") or "").lower() == "brick" else "CH-SHEAR-WALL-") + r(e.get("width"))
+                types, results, existing = {}, [], []
+                for e in x.get("elements", []):
+                    if e["id"] in st.created_ids:
+                        existing.append(e["id"])
+                        continue
+                    fam, name = type_of(e)
+                    types.setdefault(name, {"kind": e["kind"], "family": fam, "name": name, "action": "exists" if name in st.revit_types else "create"})
+                    note = "Turned 90° (its family runs length and width the other way)." if e["kind"] == "column" and abs(abs(e.get("angle") or 0) - 90) < 1e-6 else None
+                    results.append({"id": e["id"], "ok": True, "typeName": name, "elementId": 900000 + len(results), "globalId": None, "note": note})
+                marks = [e["mark"] for e in x.get("elements", []) if e["id"] not in existing]
+                warnings = ['Elements have duplicate "Mark" values.'] if len(set(marks)) < len(marks) else []
+                if not dry:
+                    st.created_ids.update(r["id"] for r in results)
+                    st.revit_types.update(types)
+                    for l in levels:
+                        st.revit_levels.setdefault(l["revitName"], l["elevation"])
+                n = len(x.get("elements", []))
+                return self.send_json(200, {"dryRun": dry, "undoName": f"Shanku: export {n} elements from the drawing", "levels": levels, "types": list(types.values()), "results": results, "existing": existing, "warnings": warnings})
             if path == "/shanku/v1/params/read":
                 b = self.body()
                 out = []

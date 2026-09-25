@@ -10,7 +10,7 @@
     Remove:
         powershell -ExecutionPolicy RemoteSigned -File .\install.ps1 -Uninstall
 .NOTES
-    Shanku Bridge 0.5.0 · Revit 2025
+    Shanku Bridge 0.6.0 · Revit 2025
 #>
 [CmdletBinding()]
 param(
@@ -44,9 +44,12 @@ if (-not (Test-Path -LiteralPath $dll)) {
 
 New-Item -ItemType Directory -Force -Path $target | Out-Null
 Copy-Item -LiteralPath $dll -Destination $target -Force
-$config = Join-Path $target 'shanku_bridge_config.json'
-if (-not (Test-Path -LiteralPath $config)) {
-    Copy-Item -LiteralPath (Join-Path $here 'Shanku.Revit\shanku_bridge_config.json') -Destination $config
+# Settings files are copied once: edits made in the add-in folder are kept on later installs.
+foreach ($name in 'shanku_bridge_config.json', 'shanku_export_config.json') {
+    $config = Join-Path $target $name
+    if (-not (Test-Path -LiteralPath $config)) {
+        Copy-Item -LiteralPath (Join-Path $here "Shanku.Revit\$name") -Destination $config
+    }
 }
 Copy-Item -LiteralPath (Join-Path $here 'Shanku.Revit.addin') -Destination $manifest -Force
 

@@ -18,7 +18,7 @@ export type { CameraState } from './render/Viewer';
 export { alignPatch, mergeModels, type MergeResult } from './model/merge';
 export type { Annotation } from './render/annotations';
 export { EXPLODE_MODES, explodeOffsets, explodedBounds, type ExplodeMode } from './render/explode';
-export type { PipelineSummary, PipelineLevel, PipelineQa } from './pipeline/types';
+export type { PipelineSummary, PipelineLevel, PipelineQa, RevitExchange, RevitExchangeElement } from './pipeline/types';
 export type { PipelineOptions } from './dxf/protocol';
 export { PYODIDE_VERSION, PYODIDE_INDEX_URL } from './pyodide';
 export { History, Transaction, TransactionError, type Change, type CommittedTransaction } from './doc/transactions';

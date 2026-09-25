@@ -1,13 +1,14 @@
-# Shanku Bridge for Revit 0.5.0
+# Shanku Bridge for Revit 0.6.0
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
 into Shanku, keep the selection in step both ways, edit Revit parameters from Shanku, and keep Shanku up
-to date as the Revit model changes. Protocol: `docs/bridge/protocol.md`.
+to date as the Revit model changes, and build the model of a DXF drawing natively in Revit (Export to
+Revit). Protocol: `docs/bridge/protocol.md`.
 
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.5.0.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.6.0.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -25,7 +26,7 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.5.0)
+## What it does, and does not do (0.6.0)
 
 - Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
   changed. Selection sync only selects.
@@ -39,6 +40,30 @@ A browser stays paired across restarts; **Shanku → Disconnect** unpairs every 
 - Listens on `http://localhost:7071` for Shanku's sites only (see `shanku_bridge_config.json` for the
   port and extra sites). Nothing leaves your computer.
 - Revit runs requests when it is idle: with a dialog open in Revit, Shanku waits.
+
+## Export to Revit
+
+Shanku's **Export to Revit** sends the drawing's model (from DXF → 3D); the add-in builds it in the open
+model with that model's families:
+
+| Drawing | Revit |
+|---|---|
+| Column, pedestal | `CH-Concrete-Rectangular-Column` (W, L) or `CH-Concrete-Round-Column` (W), base and top levels with offsets |
+| Beam | `CH-Concrete-Rectangular-Beam` (W, H), on the level at its top |
+| Wall (RCC / brick) | Basic Wall `CH-SHEAR-WALL-{T}` / `CH-PARDI-WALL-{T}` |
+| Slab, chajja | Floor `{T} THK. RCC SLAB` |
+| Footing, PCC | `CH-Concrete-Rectangular-Footing` (Width, Length, Foundation Thickness) |
+
+Levels are matched by name, then by elevation (within 1 mm), else created. A missing size is made by
+duplicating the family's first type (walls and floors: the nearest thickness) and resizing it. Every
+element gets `Mark`, `CH-ScheduleMark`, `CH-ID` (so a second export skips it) and `CH-LEVEL`. The
+drawing origin goes to the Project Base Point. After placing, each element is checked against the
+drawing; columns and footings are moved or turned 90° when their family places them differently, and
+anything still off is reported. Everything is one transaction group (one undo); the check before is a
+dry run that is always rolled back.
+
+Change families, sizing parameters and type-name patterns in `shanku_export_config.json` (in the add-in
+folder; read on every export, no restart).
 
 ## Troubleshooting
 
@@ -56,6 +81,10 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.6.0 — 2026-09-25
+- Export to Revit (`/model/create`, feature `create`): native levels, types and elements from Shanku's
+  exchange, dry run, one undo, placement check with corrections; `shanku_export_config.json`.
 
 ### 0.5.0 — 2026-09-25
 - Live updates: a `DocumentChanged` handler collects the model elements modified, added and deleted (by

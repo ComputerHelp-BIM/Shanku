@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import type { DxfClient, PipelineQa } from '@shanku/engine';
+import type { DxfClient, PipelineQa, RevitExchange } from '@shanku/engine';
 import type { PipelineState } from '../components/PipelinePanel';
 import { downloadFile } from './excel';
 import { pickFile, type PickedFile } from './openFile';
@@ -58,6 +58,14 @@ export function usePipeline({ getClient, openDrawing, openModel, log, showWindow
     }
   }, [getClient, openModel, state]);
 
+  /** Export to Revit: the model as Revit needs it, with the level names and heights as edited here. */
+  const exportPlan = useCallback(async (): Promise<RevitExchange> => {
+    if (!state?.summary) throw new Error('Open a DXF drawing first (DXF → 3D).');
+    const { summary } = await getClient().pipeline({ exchange: true, names: state.names, heights: state.heights, project: state.fileName.replace(/\.dxf$/i, ''), source: state.fileName });
+    if (!summary.exchange) throw new Error('The pipeline did not return a model for Revit; reload the page (Python may be out of date).');
+    return summary.exchange;
+  }, [getClient, state]);
+
   const download = useCallback(() => {
     if (state?.built) downloadFile(new TextEncoder().encode(ifcText.current).buffer as ArrayBuffer, state.built.ifcName, 'application/x-step');
   }, [state]);
@@ -65,7 +73,7 @@ export function usePipeline({ getClient, openDrawing, openModel, log, showWindow
   const setName = (n: number, name: string) => setState((s) => (s ? { ...s, names: { ...s.names, [n]: name } } : s));
   const setHeight = (n: number, h: number) => setState((s) => (s ? { ...s, heights: { ...s.heights, [n]: h } } : s));
 
-  return { state, start, build, download, setName, setHeight };
+  return { state, start, build, exportPlan, download, setName, setHeight };
 }
 
 /** The rectangle to zoom to for a check (its bounds, or a box around its point). */

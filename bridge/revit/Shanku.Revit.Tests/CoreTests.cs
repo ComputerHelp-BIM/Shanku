@@ -48,6 +48,86 @@ public class NumberTextTests
     public void Refuses_non_numbers(string text) => Assert.Throws<FormatException>(() => NumberText.Parse(text));
 }
 
+public class ExportPlannerTests
+{
+    private static readonly ExportConfig C = new();
+    private static ExchangeElement El(string kind, Action<ExchangeElement>? f = null)
+    {
+        var e = new ExchangeElement { Id = "DXF:1A:L2", Kind = kind, Mark = "X", Level = "L2", Z0 = 0, Z1 = 3000 };
+        f?.Invoke(e);
+        return e;
+    }
+
+    [Fact]
+    public void Levels_match_by_name_then_elevation_else_create()
+    {
+        var wanted = new[] { new ExchangeLevel { Name = "Ground", Elevation = 0 }, new ExchangeLevel { Name = "02 FIRST", Elevation = 3000 }, new ExchangeLevel { Name = "Terrace", Elevation = 6000 } };
+        var existing = new List<(string, double)> { ("01 GROUND LVL.", 0.4), ("02 FIRST", 3150) };
+        var p = ExportPlanner.MatchLevels(wanted, existing, 1);
+        Assert.Equal(("same-elevation", "01 GROUND LVL."), (p[0].Action, p[0].RevitName)); // the template's ground level is reused
+        Assert.Equal(("exists", "02 FIRST"), (p[1].Action, p[1].RevitName)); // same name wins even at another height
+        Assert.Equal(("create", "Terrace"), (p[2].Action, p[2].RevitName));
+    }
+
+    [Fact]
+    public void Type_names_follow_the_template_patterns()
+    {
+        Assert.Equal(("CH-Concrete-Rectangular-Column", "CH-300 X 600"), Pick(ExportPlanner.TypeFor(El("column", e => { e.Width = 300; e.Length = 600; }), C)));
+        Assert.Equal(("CH-Concrete-Round-Column", "CH-450"), Pick(ExportPlanner.TypeFor(El("column", e => { e.Shape = "round"; e.Diameter = 449.6; }), C)));
+        Assert.Equal(("CH-Concrete-Rectangular-Beam", "CH-230 X 600"), Pick(ExportPlanner.TypeFor(El("beam", e => { e.Width = 230; e.Depth = 600; }), C)));
+        Assert.Equal(("CH-Concrete-Rectangular-Footing", "CH-1200 X 1800 X 600"), Pick(ExportPlanner.TypeFor(El("footing", e => { e.Width = 1200; e.Length = 1800; e.Thickness = 600; }), C)));
+        Assert.Equal("CH-PCC-1400 X 2000 X 150", ExportPlanner.TypeFor(El("pcc", e => { e.Width = 1400; e.Length = 2000; e.Thickness = 150; }), C).Type);
+        Assert.Equal("150 THK. RCC SLAB", ExportPlanner.TypeFor(El("slab", e => e.Thickness = 150), C).Type);
+        Assert.Equal("CH-SHEAR-WALL-230", ExportPlanner.TypeFor(El("wall", e => { e.Width = 230; e.Material = "RCC"; }), C).Type);
+        Assert.Equal("CH-PARDI-WALL-115", ExportPlanner.TypeFor(El("wall", e => { e.Width = 115; e.Material = "Brick"; }), C).Type);
+    }
+    private static (string, string) Pick((string Family, string Type, string Group) t) => (t.Family, t.Type);
+
+    [Fact]
+    public void Levels_for_hanging_and_standing_elements()
+    {
+        var levels = new List<ExchangeLevel> { new() { Name = "F", Elevation = -1500 }, new() { Name = "L1", Elevation = 0 }, new() { Name = "L2", Elevation = 3000 } };
+        Assert.Equal("L2", ExportPlanner.NearestLevel(levels, 2990).Name); // a beam's top just under L2 hangs on L2
+        Assert.Equal("L1", ExportPlanner.BaseLevel(levels, new ExchangeElement { Level = "L1", Z0 = 0 }).Name);
+        Assert.Equal("F", ExportPlanner.BaseLevel(levels, new ExchangeElement { Level = "L1", Z0 = -900 }).Name); // starts below its own level
+    }
+
+    [Fact]
+    public void Problems_are_named_before_anything_is_built()
+    {
+        Assert.Null(ExportPlanner.Problem(El("column", e => { e.Center = new[] { 0.0, 0 }; e.Width = 230; e.Length = 500; })));
+        Assert.Contains("centre", ExportPlanner.Problem(El("column")));
+        Assert.Contains("top", ExportPlanner.Problem(El("beam", e => e.Z1 = -1)));
+        Assert.Contains("start", ExportPlanner.Problem(El("beam", e => { e.Start = new[] { 0.0, 0 }; e.End = new[] { 0.0, 0 }; e.Width = 230; })));
+        Assert.Contains("outline", ExportPlanner.Problem(El("slab", e => e.Thickness = 125)));
+        Assert.Contains("kind", ExportPlanner.Problem(El("window")));
+    }
+
+    [Fact]
+    public void Footprint_of_a_turned_rectangle()
+    {
+        var (hx, hy) = ExportPlanner.Footprint(230, 500, 90); // long side along Y
+        Assert.Equal(115, hx, 6);
+        Assert.Equal(250, hy, 6);
+        var (ax, ay) = ExportPlanner.Footprint(230, 500, 0);
+        Assert.Equal((250.0, 115.0), (Math.Round(ax, 6), Math.Round(ay, 6)));
+    }
+
+    [Fact]
+    public void Config_reads_overrides_and_survives_a_broken_file()
+    {
+        string f = Path.GetTempFileName();
+        File.WriteAllText(f, "{ \"_readme\": [\"x\"], \"rccWallTypeName\": \"CH-RCC-WALL-{T}\", \"checkToleranceMm\": 10, }");
+        var c = ExportConfig.Load(f);
+        Assert.Equal("CH-RCC-WALL-{T}", c.RccWallTypeName);
+        Assert.Equal(10, c.CheckToleranceMm);
+        Assert.Equal("CH-{W} X {H}", c.BeamTypeName); // untouched keys keep the template defaults
+        File.WriteAllText(f, "{ not json");
+        Assert.Equal("CH-SHEAR-WALL-{T}", ExportConfig.Load(f).RccWallTypeName);
+        File.Delete(f);
+    }
+}
+
 public class PairingTests
 {
     private DateTime _now = new(2026, 9, 24, 12, 0, 0, DateTimeKind.Utc);
@@ -170,6 +250,9 @@ internal sealed class FakeHost : IRevitHost
         if (!dryRun) foreach (var (c, r) in changes.Zip(results)) if (r.Ok && c.Name == "Mark") Marks[c.GlobalId] = c.Value;
         return Task.FromResult(new WriteResult(dryRun, $"Shanku: update {changes.Count} parameters", results, new[] { "Elements have duplicate \"Mark\" values." }));
     }
+    public Task<CreateReport> CreateModelAsync(string key, ExchangeModel exchange, bool dryRun) =>
+        Task.FromResult(new CreateReport(dryRun, "Shanku: export", new[] { new LevelPlan("L1", 0, "exists", "01 GROUND LVL.") }, Array.Empty<TypePlan>(),
+            exchange.Elements.Select(e => new CreateResult(e.Id, true, TypeName: "CH-300 X 600")).ToList(), Array.Empty<string>(), Array.Empty<string>()));
     public Task<SelectResult> SetSelectionAsync(string key, IReadOnlyList<string> globalIds, IReadOnlyList<long> elementIds)
     {
         if (key != "key-a") throw new BridgeException(409, "Revit is showing a different model (Tower A).");
@@ -372,5 +455,21 @@ public class ServerTests : IDisposable
 
         var tooMany = await _http.SendAsync(Req(HttpMethod.Post, "/model/export", token: token, body: new { globalIds = Enumerable.Range(0, BridgeServer.MaxPartialElements + 1).Select(i => $"g{i}").ToArray() }));
         Assert.Equal(HttpStatusCode.BadRequest, tooMany.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_reads_the_exchange_and_refuses_what_it_cannot_read()
+    {
+        string token = await Pair();
+        var ok = await _http.SendAsync(Req(HttpMethod.Post, "/model/create", token: token, body: new { dryRun = true, exchange = new { version = 1, levels = new[] { new { name = "L1", elevation = 0 } }, elements = new[] { new { id = "DXF:1:L1", kind = "column", mark = "C1", level = "L1", z0 = 0, z1 = 3000, shape = "rect", center = new[] { 0.0, 0 }, width = 300, length = 600, angle = 90 } } } }));
+        var r = JsonDocument.Parse(await ok.Content.ReadAsStringAsync()).RootElement;
+        Assert.True(r.GetProperty("dryRun").GetBoolean());
+        Assert.Equal("DXF:1:L1", r.GetProperty("results")[0].GetProperty("id").GetString());
+        Assert.Equal("01 GROUND LVL.", r.GetProperty("levels")[0].GetProperty("revitName").GetString());
+        var v2 = await _http.SendAsync(Req(HttpMethod.Post, "/model/create", token: token, body: new { exchange = new { version = 2, levels = Array.Empty<object>(), elements = Array.Empty<object>() } }));
+        Assert.Equal(HttpStatusCode.BadRequest, v2.StatusCode);
+        Assert.Contains("version 1", await v2.Content.ReadAsStringAsync());
+        var none = await _http.SendAsync(Req(HttpMethod.Post, "/model/create", token: token, body: new { dryRun = true }));
+        Assert.Equal(HttpStatusCode.BadRequest, none.StatusCode);
     }
 }

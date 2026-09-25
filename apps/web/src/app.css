@@ -615,3 +615,31 @@
 
 .app-revit__live { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--chip); }
 .app-revit__live > span { flex: 1; font-weight: 600; }
+
+/* Export to Revit */
+.app-export { display: flex; flex-direction: column; height: 100%; min-height: 0; font-size: 13px; color: var(--text); }
+.app-export--busy { padding: 20px 16px; gap: 6px; }
+.app-export__scroll { flex: 1; min-height: 0; overflow: auto; padding: 10px 14px; display: grid; gap: 14px; align-content: start; }
+.app-export h3 { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+.app-export__levels, .app-export__types { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.app-export__levels li, .app-export__types li { display: flex; gap: 10px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid var(--border); }
+.app-export__levels li span:first-child, .app-export__types li span:first-child { flex: 1; }
+.app-export__num { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+.app-export__tag { font-size: 11px; padding: 0 6px; border-radius: var(--radius-sm); border: 1px solid var(--border); color: var(--text-secondary); }
+.app-export__tag--create { border-color: var(--accent); color: var(--accent-text); }
+.app-export__sets { width: 100%; border-collapse: collapse; }
+.app-export__sets th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text-secondary); padding: 4px 6px; border-bottom: 1px solid var(--border-strong); }
+.app-export__sets td { padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.app-export__sets .c { width: 28px; text-align: center; }
+.app-export__sets .n { text-align: right; font-variant-numeric: tabular-nums; width: 70px; }
+.app-export__sets tr.is-off td { color: var(--text-faint); }
+.app-export__sets .bad, .app-export__error { color: var(--status-error); }
+.app-export__hint { margin: 0; color: var(--text-secondary); font-size: 12px; }
+.app-export__skipped summary, .app-export__problems summary, .app-export__notes summary { cursor: pointer; font-weight: 600; }
+.app-export__problems summary { color: var(--status-error); }
+.app-export__skipped ul, .app-export__problems ul, .app-export__notes ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 2px; }
+.app-export__review { display: flex; align-items: center; gap: 8px; padding: 8px 14px 0; color: var(--status-warning); font-weight: 600; }
+.app-export__bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); }
+.app-export__done { display: grid; gap: 4px; margin: 14px 14px 0; padding: 10px 12px; border: 1px solid var(--status-ok); border-radius: var(--radius-sm); background: var(--chip); }
+.app-export > details, .app-export > .app-changes__warn { margin: 10px 14px 0; }
+.app-export--busy p { margin: 0; }

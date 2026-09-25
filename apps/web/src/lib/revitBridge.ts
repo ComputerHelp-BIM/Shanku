@@ -8,6 +8,19 @@
  */
 
 import type { RevitElementParams } from './paramEdits';
+import type { RevitExchange } from '@shanku/engine';
+
+/** What Revit did, or would do, with an Export to Revit (add-in 0.6.0). */
+export interface CreateReport {
+  dryRun: boolean;
+  undoName: string;
+  levels: Array<{ name: string; elevation: number; action: 'exists' | 'same-elevation' | 'create'; revitName: string }>;
+  types: Array<{ kind: string; family: string; name: string; action: 'exists' | 'create' }>;
+  results: Array<{ id: string; ok: boolean; error?: string | null; typeName?: string | null; elementId?: number; globalId?: string | null; note?: string | null }>;
+  /** Elements Revit already has (same CH-ID): not created again. */
+  existing: string[];
+  warnings: string[];
+}
 
 export type BridgePhase =
   | 'idle' // not tried (the user has not asked)
@@ -133,6 +146,16 @@ export class RevitBridge {
   /** The add-in sends changes and exports only changed elements (Shanku Bridge for Revit 0.5.0+). */
   get canLiveUpdate(): boolean {
     return !!this.state.features?.includes('changes') && !!this.state.features?.includes('partial-export');
+  }
+
+  /** The add-in builds native elements from the drawing (Shanku Bridge for Revit 0.6.0+). */
+  get canCreate(): boolean {
+    return !!this.state.features?.includes('create');
+  }
+
+  /** Export to Revit: Revit builds the elements (dryRun: tries everything, keeps nothing). */
+  async createModel(key: string, exchange: RevitExchange, dryRun: boolean): Promise<CreateReport> {
+    return (await this.call<CreateReport>('/model/create', { method: 'POST', body: JSON.stringify({ key, dryRun, exchange }) }, 900_000)).json();
   }
 
   /** This browser paired before, so reconnecting needs no code (and no new permission prompt). */

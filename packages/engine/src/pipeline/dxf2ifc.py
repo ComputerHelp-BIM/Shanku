@@ -26,7 +26,7 @@ import uuid
 
 import ezdxf
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 # ---------------------------------------------------------------- profile (the drawing format)
 
@@ -784,6 +784,78 @@ def build_ifc(result, project_name="Shanku DXF model", source_name="drawing.dxf"
     return header + "\n" + body_txt + "\nENDSEC;\nEND-ISO-10303-21;\n", report
 
 
+# ---------------------------------------------------------------- Revit exchange (Export to Revit)
+
+EXCHANGE_VERSION = 1
+RECT_KINDS = {"column", "pedestal", "beam", "wall", "footing", "pcc"}
+
+
+def _rect_or_round(poly):
+    """('rect', long, short, (ux, uy), centre) for a rectangle; ('round', diameter, centre) for a
+    many-sided near-circle; None otherwise. Tolerance 1 % of the area."""
+    L, W, u, c = rect_axes(poly)
+    a = area(poly)
+    if L * W > 0 and abs(a - L * W) <= 0.01 * L * W:
+        return ("rect", L, W, u, c)
+    if len(poly) >= 8 and L > 0 and abs(L - W) <= 0.02 * L and abs(a - math.pi * (L / 2) ** 2) <= 0.03 * a:
+        # CAD polygonises a circle with its vertices on the circle: the diameter is twice their distance
+        cx, cy = sum(p[0] for p in poly) / len(poly), sum(p[1] for p in poly) / len(poly)
+        d = 2 * sum(math.hypot(p[0] - cx, p[1] - cy) for p in poly) / len(poly)
+        return ("round", d, (cx, cy))
+    return None
+
+
+def exchange(result):
+    """The model as Revit needs it: levels, and per element its exact geometry in mm, relative to the
+    drawing origin (which goes to Revit's Project Base Point). Every element carries a stable id
+    (drawing handle and level) so a second export can tell what Revit already has."""
+    by_num = {lv["number"]: lv for lv in result["levels"]}
+    items, skipped = [], []
+    r1 = lambda v: round(float(v), 1)
+    pt = lambda p: [r1(p[0]), r1(p[1])]
+    for el in result["elements"]:
+        lv = by_num.get(el["level"])
+        if lv is None:
+            continue
+        item = {"id": "DXF:{}:L{}".format(el["handle"], el["level"]), "kind": el["kind"], "mark": el["mark"],
+                "material": el["material"], "level": lv["name"], "z0": r1(el["z0"]), "z1": r1(el["z1"])}
+        poly = el["poly"]
+        if el["kind"] in OPENING_KINDS:
+            skipped.append(dict(item, reason="Windows and doors come in a later version."))
+            continue
+        if el["kind"] in ("slab", "chajja"):
+            item.update(outline=[pt(p) for p in poly], thickness=r1(el["z1"] - el["z0"]))
+            items.append(item)
+            continue
+        shape = _rect_or_round(poly)
+        if shape is None:
+            skipped.append(dict(item, reason="The outline is not a rectangle{}.".format(" or a circle" if el["kind"] in ("column", "pedestal") else "")))
+            continue
+        if shape[0] == "round":
+            if el["kind"] not in ("column", "pedestal"):
+                skipped.append(dict(item, reason="Only columns can be round."))
+                continue
+            item.update(shape="round", center=pt(shape[2]), diameter=r1(shape[1]))
+            items.append(item)
+            continue
+        _, L, W, u, c = shape
+        angle = round(math.degrees(math.atan2(u[1], u[0])), 3)
+        if el["kind"] in ("beam", "wall"):
+            half = L / 2
+            item.update(start=pt((c[0] - u[0] * half, c[1] - u[1] * half)), end=pt((c[0] + u[0] * half, c[1] + u[1] * half)),
+                        width=r1(W), depth=r1(el["z1"] - el["z0"]))
+        else:  # column, pedestal, footing, pcc: centred rectangles
+            item.update(shape="rect", center=pt(c), width=r1(W), length=r1(L), angle=angle, thickness=r1(el["z1"] - el["z0"]))
+        items.append(item)
+    return {
+        "version": EXCHANGE_VERSION,
+        "units": "mm",
+        "levels": [{"name": lv["name"], "elevation": r1(lv["elevation"]), "foundation": bool(lv["foundation"])} for lv in result["levels"]],
+        "elements": items,
+        "skipped": skipped,
+    }
+
+
 def summary_for_js(result):
     """analyze() result without the heavy/internal parts, for the review screen."""
     return {k: result[k] for k in ("version", "frames", "levels", "counts", "qa", "ms")}
@@ -799,4 +871,6 @@ def run_for_js(path, options_json):
         ifc, report = build_ifc(r, opts.get("project") or "Shanku model", opts.get("source") or "drawing.dxf")
     out = summary_for_js(r)
     out["report"] = report
+    if opts.get("exchange"):
+        out["exchange"] = exchange(r)  # for Export to Revit
     return json.dumps(out, default=str), ifc

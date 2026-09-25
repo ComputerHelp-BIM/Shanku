@@ -22,6 +22,7 @@ $dist = Join-Path $here 'dist\Shanku.Revit'
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 Copy-Item -LiteralPath (Join-Path $out 'Shanku.Revit.dll') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $out 'shanku_bridge_config.json') -Destination $dist -Force
+Copy-Item -LiteralPath (Join-Path $out 'shanku_export_config.json') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $here 'Shanku.Revit.addin') -Destination (Join-Path $here 'dist') -Force
 Copy-Item -LiteralPath (Join-Path $here 'install.ps1') -Destination (Join-Path $here 'dist') -Force
 Copy-Item -LiteralPath (Join-Path $here 'README.md') -Destination (Join-Path $here 'dist') -Force

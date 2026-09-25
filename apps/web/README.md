@@ -1,4 +1,4 @@
-# @shanku/web 0.37.1
+# @shanku/web 0.38.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,10 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.38.0 — 2026-09-25
+- **Export to Revit** (Revit bridge milestone 4, needs Shanku Bridge for Revit 0.6.0): one button in **DXF → 3D** and in **Revit tab → Create** builds the drawing's model natively in the open Revit model, from its template. Revit checks the plan first (a dry run: nothing kept); the review shows levels (existing, reused at the same height, new), types (reused, or duplicated from a template type and resized), elements by level and kind with a tick per set, what Revit already has, what is not exported and why, and Revit's warnings. **Create** makes it as one undo in Revit, checks each element against the drawing (columns and footings are moved or turned 90° if their family places them differently), then **Load it in Shanku** links the two for live updates. Above 500 elements the plan must be confirmed as reviewed.
+- Not exported yet: windows and doors, grids (reported in the review).
 
 ### 0.37.1 — 2026-09-25
 - Fixed: every update from Revit reset the view to the default 3D (a plan lost its view range and looked from the corner). The view, its clipping and the camera now stay exactly as they were.
