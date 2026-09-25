@@ -5,6 +5,8 @@ into Shanku, keep the selection in step both ways, edit Revit parameters from Sh
 to date as the Revit model changes, and build the model of a DXF drawing natively in Revit (Export to
 Revit). Protocol: `docs/bridge/protocol.md`.
 
+> Autodesk, Revit and AutoCAD are registered trademarks or trademarks of Autodesk, Inc., and/or its subsidiaries and/or affiliates in the USA and/or other countries. Shanku is an independent software application developed by Computer Help and is not affiliated with, sponsored by, or endorsed by Autodesk, Inc. Shanku Bridge for Revit is a third-party add-in that uses the Revit API.
+
 ## Install
 
 1. Close Revit.

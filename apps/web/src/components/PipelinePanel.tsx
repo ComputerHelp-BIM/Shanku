@@ -49,7 +49,7 @@ export function PipelinePanel({ state, onPick, onName, onHeight, onBuild, onDown
   if (!state) {
     return (
       <div className="pl-empty">
-        <p>Build an IFC4 model from a drawing in the Computer Help format: frames on Part-n layers, closed outlines on CH-* layers, one label inside each.</p>
+        <p>Build an IFC4 model from a DXF drawing drawn to Computer Help’s layer standard: frames on Part-n layers, closed outlines on CH-* layers, one label inside each.</p>
         <Button variant="primary" onClick={onPick}>Choose a DXF…</Button>
       </div>
     );

@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.39.1 — 2026-09-25
+
+### Changed
+- Trademark and independence notice (homepage footer, Guide → About Shanku, READMEs); compatibility wording ("Revit-style", generic "view cube"); homepage claims brought up to date with the Revit add-in; design rules for marks and trade dress.
+
 ## 0.39.0 — 2026-09-25
 
 ### Changed

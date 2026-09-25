@@ -1,5 +1,6 @@
 import type { FigureId } from '../components/figures';
 import { SHORTCUT_HELP } from './shortcuts';
+import { TRADEMARK_NOTICE, asOf } from './legal';
 
 /**
  * The in-app Guide & FAQ (F1), held as data so it can be searched and tested. Text uses two inline
@@ -38,7 +39,7 @@ export const GUIDE: GuideSection[] = [
             ['`.ifc` IFC4 Reference View', 'Recommended. Opens in 3D with properties, levels and quantities.'],
             ['`.ifc` IFC2x3, Design Transfer View', 'Supported. Rated in Properties with what may be missing.'],
             ['`.dxf`', 'Opens as a 2D drawing tab with its layers.'],
-            ['`.dxf` in the Computer Help format', 'Model → DXF → 3D builds an IFC4 model from it.'],
+            ['`.dxf` drawn to Computer Help’s layer standard', 'Model → DXF → 3D builds an IFC4 model from it with Computer Help’s conversion engine.'],
             ['`.dwg`', 'Not read directly: save it as DXF first.'],
             ['`.rvt`', 'Not read: export IFC from Revit (see Common questions).'],
           ],
@@ -71,7 +72,7 @@ export const GUIDE: GuideSection[] = [
       { figure: 'mouse', alt: 'Mouse map: click select, window and crossing drags, wheel zoom, middle-drag pan, Shift and middle-drag orbit, double middle-click fit, right-click menu, trackpad Alt drag.' },
       { p: 'Navigation follows Revit. On a trackpad, hold Alt to orbit and Alt + Shift to pan.' },
       { keys: SHORTCUT_HELP.filter((k) => /drag|Wheel|middle|Home|ZF|ZP|ZR/.test(k.keys)) },
-      { p: 'The ViewCube turns the model to any of 26 directions; drag its compass ring to turn in plan, and use Home for the default 3D view.' },
+      { p: 'The view cube turns the model to any of 26 directions; drag its compass ring to turn in plan, and use Home for the default 3D view.' },
     ],
   },
   {
@@ -191,7 +192,7 @@ export const GUIDE: GuideSection[] = [
       },
       { list: ['**Select Similar** picks visible objects with the same type, layer and colour.', '**Quick Select** filters by type, layer and colour, in the drawing or the selection, including or excluding matches.', '**Find** searches text, MText and block attributes; pick a match to select it and zoom to it.', '**Isolate Objects** and **Hide Objects** can be undone; the cyan frame has an End button.', '**Pan** and **Zoom** from the menu run until Esc, Enter or a right-click. **ZR** is Zoom Window and **ZP** Zoom Previous, as in 3D.'] },
       { note: 'Shanku opens drawings to view and check them. Erase, Move, Copy, Scale, Rotate, Draw Order and Group are in the menu so it matches AutoCAD, but greyed out.' },
-      { p: 'Drawings in the Computer Help format can become a 3D model: Model → DXF → 3D reads frames, levels and labelled outlines, shows its checks (each with Show, to zoom the drawing to the problem), then writes an IFC4 model that opens in Shanku and can be downloaded.' },
+      { p: 'DXF drawings drawn to Computer Help’s layer standard can become a 3D model: Model → DXF → 3D reads frames, levels and labelled outlines, shows its checks (each with Show, to zoom the drawing to the problem), then writes an IFC4 model that opens in Shanku and can be downloaded.' },
     ],
   },
   {
@@ -324,12 +325,23 @@ export const GUIDE: GuideSection[] = [
     ],
   },
   {
+    id: 'about',
+    group: 'About',
+    title: 'About Shanku',
+    blocks: [
+      { p: 'Shanku is an open, IFC-native structural BIM application by **Computer Help**, Mumbai, that runs in the browser. It opens IFC models and DXF drawings on your device, checks quantities and exports a BOQ; with the optional **Shanku Bridge for Revit** add-in it also works with the Revit model open on your computer.' },
+      { p: 'Revit-style navigation and familiar shortcuts are there so Revit users feel at home. Shanku contains no Autodesk code or artwork; the optional add-in runs inside Revit through Revit’s published API, and uses Revit’s own IFC export to send models to Shanku.' },
+      { note: TRADEMARK_NOTICE + ' Features and compatibility as of ' + asOf() + '.' },
+    ],
+  },
+  {
     id: 'news',
     group: 'About',
     title: "What's new",
     blocks: [
       {
         releases: [
+          { version: '0.39.1', date: '2026-09-25', items: ['About Shanku in the Guide, with the trademark notice; wording on the homepage and in the Guide says what Shanku does today.'] },
           { version: '0.39.0', date: '2026-09-25', items: ['Export to Revit: the DXF → 3D model built natively in Revit from your template (checked first, approved by level and kind, one undo), then loaded back into Shanku.', 'Colour by grade, level, section and more, with a legend.', 'Fix in Revit from QA, and paste marks to select (Revit follows).', 'Realistic style and shadows.', 'BOQ rates by city (CPWD DSR 2023 base) and a nicer Excel.'] },
           { version: '0.37.1', date: '2026-09-25', items: ['Fixed: updates from Revit no longer reset the view to the default 3D.'] },
           { version: '0.37.0', date: '2026-09-25', items: ['Live updates from Revit: Shanku learns what changed in Revit and brings in just those elements (Update, or Auto-update), keeping the camera, views, selection and hides.'] },

@@ -129,7 +129,7 @@ export function ViewCube({ orientation, onLookFrom, onHome, onOrbit, onSetHome, 
       ref={root}
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}
-      aria-label="ViewCube"
+      aria-label="View cube"
       onPointerDown={(e) => {
         // Presses that reach the frame (not a face, edge, corner or letter): drag the ring if on its band.
         if (e.target === e.currentTarget && onRing(e.clientX, e.clientY)) down(true)(e);
@@ -190,7 +190,7 @@ export function ViewCube({ orientation, onLookFrom, onHome, onOrbit, onSetHome, 
           </div>
         </div>
       </div>
-      <button type="button" className="vc-menu-btn" aria-label="ViewCube options" aria-expanded={menu} title="ViewCube options" onClick={() => setMenu((o) => !o)}>
+      <button type="button" className="vc-menu-btn" aria-label="View cube options" aria-expanded={menu} title="View cube options" onClick={() => setMenu((o) => !o)}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M5 8h14l-7 9z" />
         </svg>

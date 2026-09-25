@@ -83,3 +83,6 @@
 .home-section .app-fig { max-width: 880px; margin-left: auto; margin-right: auto; }
 .home-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
 .home-figs .app-fig { margin: 0; }
+
+/* Trademark and compatibility notice: full width under the footer columns */
+.home-footer .home-footer__legal { grid-column: 1 / -1; flex-basis: 100%; margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; line-height: 1.5; color: var(--text-secondary); }

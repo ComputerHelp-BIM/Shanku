@@ -34,6 +34,8 @@ export default defineConfig({
       { find: /^@shanku\/engine$/, replacement: `${engineSrc}index.ts` },
     ],
   },
+  // Stamped at build time: the legal notice says which month the features and compatibility data describe.
+  define: { __BUILD_DATE__: JSON.stringify(new Date().toISOString()) },
   worker: { format: 'es' },
   optimizeDeps: { exclude: ['web-ifc'] },
   build: { chunkSizeWarningLimit: 2000 },

@@ -3,6 +3,7 @@ import { useState, type DragEvent } from 'react';
 import { ThemeIcon, useTheme } from '@shanku/ui';
 import { ShankuMark } from '@shanku/ui';
 import type { AppStart } from '../App';
+import { disclaimer } from '../lib/legal';
 import './home.css';
 
 const BASE = import.meta.env.BASE_URL;
@@ -10,26 +11,27 @@ const REPO = 'https://github.com/Shanku-BIM/Shanku';
 
 const STEPS = [
   ['Drop in a file', 'An IFC model exported from Revit, or a DXF drawing. It opens on your machine; nothing is uploaded.'],
-  ['Explore in 3D', 'Revit navigation and shortcuts: ViewCube, section box, isolate, hide, visual styles.'],
+  ['Explore in 3D', 'Revit-style navigation and familiar Revit shortcuts: view cube, section box, isolate, hide, visual styles.'],
   ['Check quantities', 'Concrete volumes by level, category and grade, with rates, overrides and amounts.'],
   ['Export', 'An Excel BOQ with live formulas, or an IFC4 model built from your DXF.'],
 ] as const;
 
 const TOOLS = [
   ['IFC viewer', 'IFC2x3 and IFC4 from Revit and other tools; 50,000 elements stay smooth.'],
-  ['Revit navigation', 'ViewCube, orbit, pan, zoom, HI / HH / IC / BX and the rest of the two-letter shortcuts.'],
+  ['Revit-style navigation', 'View cube, orbit, pan, zoom, and familiar two-letter shortcuts such as HI, HH, IC and BX.'],
   ['Section box', 'Arrow grips on every face, plan rotation, capped cuts, undo.'],
-  ['DXF 2D viewer', 'AutoCAD-like linework with layers; click any object for its properties.'],
-  ['DXF → 3D', 'Turns drawings in the Computer Help format into an IFC4 model, with checks you can zoom to.'],
+  ['DXF 2D viewer', 'Linework and layers of DXF drawings from AutoCAD and other CAD programs; click any object for its properties.'],
+  ['DXF → 3D', 'Turns DXF drawings drawn to Computer Help’s layer standard into an IFC4 model with Computer Help’s conversion engine, with checks you can zoom to.'],
   ['BOQ and rates', 'Element-wise quantities and dimensions, item rates with per-element overrides.'],
   ['Excel export', 'Summary, Levels, Elements and Rates as Excel Tables with live formulas.'],
   ['Python console', 'Query the model with Python in the browser: elements, levels, BOQ, select and isolate.'],
   ['Marks and grades', 'Detected from Mark, ID, Comments or any parameter you choose.'],
-  ['Undo, done right', 'Every change is a named transaction, like Revit: undo and redo from the history list.'],
+  ['Undo, done right', 'Every change is a named transaction, as Revit users expect: undo and redo from the history list.'],
+  ['Revit add-in (optional)', 'Shanku Bridge for Revit connects to Revit on your own computer: load its model, sync the selection, edit parameters, and build DXF models as native Revit elements.'],
 ] as const;
 
 const SHOTS = [
-  ['shot-3d', 'A structural frame in the 3D view', 'Revit-style workspace: ribbon, Project browser, Properties, ViewCube.'],
+  ['shot-3d', 'A structural frame in the 3D view', 'Revit-style workspace: ribbon, Project browser, Properties, view cube.'],
   ['shot-boq', 'Bill of quantities window', 'Quantities, dimensions, rates and amounts for every element.'],
   ['shot-section', 'Section box with grips', 'Drag an arrow to move a face; the cut updates live.'],
   ['shot-console', 'Python console', 'Ask the model questions in Python; answers come back as tables.'],
@@ -39,17 +41,19 @@ const THEME_LABEL = { system: 'Theme: Auto (follows your system). Click to chang
 
 const SPECS = [
   ['Opens', 'IFC2x3, IFC4 (IFC4x3 experimental), DXF from AutoCAD R12 to 2018+'],
-  ['Exports', 'Excel BOQ (.xlsx), IFC4 from DXF'],
+  ['Exports', 'Excel BOQ (.xlsx), IFC4 from DXF; with the Revit add-in, native Revit elements from DXF and parameter changes back to Revit'],
   ['Largest tested', '51,280 elements open in 3.9 s; a 23.6 MB DXF with 505,000 lines in 26 s'],
-  ['Where it runs', 'Entirely in your browser. Files are read on your device and never uploaded.'],
+  ['Where it runs', 'Entirely in your browser. Files are read on your device and never uploaded. The optional Revit add-in talks to Shanku on your own computer only.'],
   ['Browsers', 'Chrome and Edge (full), Firefox and Safari (open and save by upload and download)'],
-  ['Not yet', 'DWG (save as DXF first), editing elements, reinforcement and BBS'],
+  ['Not yet', 'DWG (save as DXF first), editing geometry in Shanku, windows and doors in Export to Revit, reinforcement and BBS'],
 ] as const;
 
 const FAQ = [
   ['Is it free?', 'Yes. Open the app and start; there is no account and no paywall for anything shown here.'],
   ['Do I need to install anything?', 'No. It runs in the browser. The first DXF or Python console session downloads about 15 MB of Python once; the browser keeps it.'],
-  ['Are my files uploaded?', 'No. Models and drawings are read on your device. Nothing leaves it unless you download a file yourself.'],
+  ['Are my files uploaded?', 'No. Models and drawings are read on your device. Nothing leaves it unless you download a file yourself. The optional Revit add-in connects to Shanku on your own computer (localhost), not over the internet.'],
+  ['Is Shanku made by Autodesk?', 'No. Shanku is an independent application by Computer Help, Mumbai. It is not affiliated with, sponsored by or endorsed by Autodesk, Inc. It reads IFC and DXF files that Revit, AutoCAD and other programs write.'],
+  ['Do I need Revit?', 'No. Shanku opens IFC and DXF files on its own. Revit is only needed for the optional add-in features: loading the open Revit model, sending parameter changes back and exporting DXF models as native Revit elements.'],
   ['Which IFC export should I use from Revit?', 'IFC4 Reference View [Structural] with base quantities and Revit property sets on. The app rates every file it opens and tells you what to change.'],
   ['Can it open DWG?', 'Not directly. Save as DXF in AutoCAD, or use the free ODA File Converter, then open the DXF.'],
   ['Does it work offline?', 'After the first visit mostly yes; Python for DXF files is fetched once from a public CDN.'],
@@ -99,7 +103,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
           <h1>
             Structural BIM, <em>right in your browser</em>
           </h1>
-          <p className="home-lede">Open Revit IFC models and CAD drawings, navigate like Revit, check quantities and export a BOQ to Excel. Nothing to install.</p>
+          <p className="home-lede">Open IFC models exported from Revit and DXF drawings from AutoCAD, navigate with familiar Revit-style controls, check quantities and export a BOQ to Excel. Nothing to install.</p>
           <div className="home-cta">
             <button type="button" className="home-btn home-btn--primary home-btn--lg" onClick={() => onOpen()}>
               Try Shanku free
@@ -121,7 +125,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
             <span>It opens straight in the app, full screen.</span>
             {note ? <span className="home-drop__note">{note}</span> : null}
           </div>
-          <img className="home-hero__shot" src={shot('shot-3d')} alt="Shanku showing a structural frame in 3D with the Project browser, Properties and ViewCube" width={1440} height={900} />
+          <img className="home-hero__shot" src={shot('shot-3d')} alt="Shanku showing a structural frame in 3D with the Project browser, Properties and view cube" width={1440} height={900} />
         </section>
 
         <section id="how" className="home-section">
@@ -137,7 +141,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
           </ol>
           <ul className="home-good">
             <li>Every file stays on your machine. No uploads, no servers.</li>
-            <li>Revit users feel at home: same shortcuts, same ViewCube, same section box.</li>
+            <li>Revit users feel at home: familiar shortcuts, a view cube and a section box that work the way they expect.</li>
             <li>Each IFC file is rated for Shanku, with the Revit export settings that make it better.</li>
           </ul>
         </section>
@@ -247,6 +251,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
             <a href={REPO} target="_blank" rel="noreferrer">Source on GitHub</a> · <a href={`${REPO}/blob/main/CHANGELOG.md`} target="_blank" rel="noreferrer">Changelog</a> · <a href="#app" onClick={(e) => { e.preventDefault(); onOpen(); }}>Open the app</a>
           </p>
         </div>
+        <p className="home-footer__legal">{disclaimer()}</p>
       </footer>
     </div>
   );

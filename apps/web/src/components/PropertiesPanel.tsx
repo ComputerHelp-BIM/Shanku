@@ -52,7 +52,7 @@ export interface PropertiesPanelProps {
 const LEVEL_LABEL = { recommended: 'Recommended', supported: 'Supported', limited: 'Limited', experimental: 'Experimental' } as const;
 
 export function PropertiesPanel({ model, selection, properties, onEditMarkRules, view, revit }: PropertiesPanelProps) {
-  // Revit mode: the selection is from a model loaded from Revit and its parameters are in.
+  // Revit-linked: the selection is from a model loaded from Revit and its parameters are in.
   const revitMode = !!revit && revit.groups.length > 0;
   const revitHead =
     revitMode && revit!.header ? (
@@ -87,7 +87,7 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
     </div>
   ) : null;
   const [sort, setSort] = usePropertySort('properties');
-  // Revit's footer: always visible (the body scrolls above it): sort buttons, and Apply in Revit mode.
+  // Revit's footer: always visible (the body scrolls above it): sort buttons, and Apply for a Revit-linked selection.
   const footer = (
     <PropertiesFooter sort={sort} onSort={setSort}>
       {revitMode && revit!.apply ? (

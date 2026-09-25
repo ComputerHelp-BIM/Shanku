@@ -4,6 +4,22 @@ Shanku's panels follow Revit 2025 where Revit users would otherwise stumble, and
 tokens for colour so they fit Paper and Ink. This note records each pattern, why, and where it lives,
 and logs design reviews so the next change starts from what was decided. Newest review first.
 
+## Rules: marks, names and trade dress
+
+Shanku follows how Revit panels **behave and are organised** so Revit users feel at home. It never copies
+Autodesk's **artwork or branding**. Every new pattern keeps to these rules:
+
+- **Our own look.** Colours come from Shanku's design tokens; icons are Shanku's own (no Autodesk,
+  Revit or AutoCAD logos, icons or signature colours anywhere, including screenshots and docs).
+- **Generic names for Autodesk-branded features.** "view cube", not "ViewCube"; describe what a control
+  does rather than borrowing a trademarked feature name. Plain UI words (Properties, Project Browser,
+  Type Properties) are fine.
+- **Compatibility wording.** "Revit-style navigation", "familiar Revit shortcuts", "IFC exported from
+  Revit", "DXF drawings from AutoCAD". Not "Revit mode", "the Revit engine", or claims that Shanku
+  replaces, equals or is endorsed by Revit or AutoCAD; no disparaging comparisons.
+- **The notice.** Product copy carries the trademark and independence notice from `apps/web/src/lib/legal.ts`
+  (homepage footer, Guide → About Shanku); its month comes from the build date.
+
 ## Patterns
 
 ### Properties palette (`@shanku/ui`: `PropertySection`, `PropertyRow`, `PropertyGrid`, `PropertiesFooter`, `DockPanel` footer)

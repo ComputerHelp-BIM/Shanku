@@ -114,7 +114,7 @@ export function MouseFigure() {
       ))}
       <circle cx="180" cy="210" r="5" className="fig-dot fig-dot--right" />
       <text x="190" y="214" className="fig-h">RIGHT BUTTON</text>
-      <Label x={190} y={236} title="Right click" desc="Menu for what you clicked (Revit)" />
+      <Label x={190} y={236} title="Right click" desc="Context menu (Revit-style)" />
       <circle cx="410" cy="210" r="5" className="fig-dot fig-dot--pad" />
       <text x="420" y="214" className="fig-h">TRACKPAD</text>
       <Label x={420} y={236} title="Alt + drag · Alt + Shift + drag" desc="Orbit · pan without a middle button" />
@@ -134,7 +134,7 @@ export function InterfaceFigure() {
     </g>
   );
   return (
-    <Svg w={660} h={330} label="The interface: 1 title bar with search, 2 ribbon, 3 Project Browser, 4 view tabs and the model canvas with the ViewCube, 5 Properties, 6 view bar and status bar.">
+    <Svg w={660} h={330} label="The interface: 1 title bar with search, 2 ribbon, 3 Project Browser, 4 view tabs and the model canvas with the view cube, 5 Properties, 6 view bar and status bar.">
       <rect x="10" y="10" width="640" height="310" rx="10" className="fig-frame" />
       <rect x="10" y="10" width="640" height="30" rx="10" className="fig-strip" />
       <rect x="250" y="17" width="170" height="16" rx="8" className="fig-field" />
@@ -487,7 +487,7 @@ export function DxfPipelineFigure() {
 
 export function RevitBridgeFigure() {
   return (
-    <Svg w={660} h={230} label="The Revit bridge. The Shanku add-in in Revit and Shanku in the browser talk over localhost on this computer only, after pairing with a one-time code. Revit sends the model as IFC4; the selection follows in both directions. The Revit model is not changed.">
+    <Svg w={660} h={230} label="The Revit bridge. The Shanku add-in in Revit and Shanku in the browser talk over localhost on this computer only, after pairing with a one-time code. Revit sends the model as IFC4; the selection follows in both directions. The Revit model changes only when you apply changes or export to Revit.">
       <rect x="20" y="40" width="190" height="150" rx="10" className="fig-panel" />
       <text x="115" y="66" className="fig-t" textAnchor="middle">Revit 2025</text>
       <rect x="44" y="84" width="142" height="40" rx="8" className="fig-card fig-card--mid" />

@@ -1,4 +1,4 @@
-# @shanku/web 0.39.0
+# @shanku/web 0.39.1
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.39.1 — 2026-09-25
+- **Trademark and independence notice** (`lib/legal.ts`, Autodesk's attribution wording, dated by the build month): homepage footer and a new **Guide → About Shanku** section; also in the repository and add-in READMEs.
+- **Wording**: "Revit-style navigation" and "familiar Revit shortcuts"; the generic "view cube" instead of Autodesk's trademarked name (homepage, Guide, figures, the cube's tooltip and label); DXF drawings "from AutoCAD and other CAD programs"; DXF → 3D reads drawings "drawn to Computer Help's layer standard"; the right-click menu is "Revit-style".
+- **Accuracy**: the homepage lists the Revit add-in and Export to Revit, says what is not done yet (geometry editing in Shanku, windows and doors in Export to Revit, reinforcement and BBS), and that the add-in talks to Shanku on your own computer only; FAQ answers "Is Shanku made by Autodesk?" and "Do I need Revit?". The Revit bridge figure no longer says the Revit model is never changed.
+- Design rules for marks, names and trade dress: `docs/design/revit-parity.md`.
 
 ### 0.39.0 — 2026-09-25
 - Combined release of main's 0.38.0 (Export to Revit) and 0.37.1 (view kept on live updates) with the dev line's 0.38.0 (colour by parameter, Fix in Revit, paste marks, Realistic and shadows, rate profiles, branded Excel); both had numbered a release 0.38.0. Requires @shanku/engine 0.29.0.
