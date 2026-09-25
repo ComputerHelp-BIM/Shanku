@@ -215,7 +215,8 @@ function Problems({ list, title }: { list: CreateReport['results']; title: strin
 
 function Notes({ list }: { list: CreateReport['results'] }) {
   return (
-    <details className="app-export__notes">
+    // Opens by itself when something still needs checking by eye (e.g. a height Revit could not match).
+    <details className="app-export__notes" open={list.some((p) => p.note?.includes('Check it'))}>
       <summary>{list.length} adjusted by Revit's check</summary>
       <ul>
         {list.slice(0, 200).map((p) => (

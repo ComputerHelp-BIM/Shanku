@@ -1,4 +1,4 @@
-# @shanku/web 0.39.1
+# @shanku/web 0.39.2
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.39.2 — 2026-09-26
+- Export to Revit results: the list of elements Revit's check adjusted opens by itself when one still needs checking by eye. Pairs with Shanku Bridge for Revit 0.6.1 (beams at their drawn height).
 
 ### 0.39.1 — 2026-09-25
 - **Trademark and independence notice** (`lib/legal.ts`, Autodesk's attribution wording, dated by the build month): homepage footer and a new **Guide → About Shanku** section; also in the repository and add-in READMEs.

@@ -229,9 +229,13 @@ internal sealed class ModelCreator
         var lv = LevelOf(ExportPlanner.NearestLevel(levels, e.Z1)); // a beam hangs on the level at its top
         var line = Line.CreateBound(At(e.Start!, lv.ProjectElevation), At(e.End!, lv.ProjectElevation));
         var inst = _doc.Create.NewFamilyInstance(line, Symbol(e), lv, StructuralType.Beam);
+        // A beam's rise or sink goes in z Offset Value, top-justified; Start/End Level Offset stay 0.
+        // Every value is set: a family's own default offset (e.g. -1500) must not add to ours.
         double off = Z(e.Z1) - lv.ProjectElevation;
-        Set(inst, BuiltInParameter.STRUCTURAL_BEAM_END0_ELEVATION, off);
-        Set(inst, BuiltInParameter.STRUCTURAL_BEAM_END1_ELEVATION, off);
+        Set(inst, BuiltInParameter.STRUCTURAL_BEAM_END0_ELEVATION, 0.0);
+        Set(inst, BuiltInParameter.STRUCTURAL_BEAM_END1_ELEVATION, 0.0);
+        SetInt(inst, BuiltInParameter.Z_JUSTIFICATION, (int)ZJustification.Top);
+        Set(inst, BuiltInParameter.Z_OFFSET_VALUE, off);
         return inst;
     }
 
@@ -276,6 +280,12 @@ internal sealed class ModelCreator
     }
 
     private static void Set(Element el, BuiltInParameter bip, double value)
+    {
+        var p = el.get_Parameter(bip);
+        if (p is { IsReadOnly: false }) p.Set(value);
+    }
+
+    private static void SetInt(Element el, BuiltInParameter bip, int value)
     {
         var p = el.get_Parameter(bip);
         if (p is { IsReadOnly: false }) p.Set(value);
@@ -340,6 +350,17 @@ internal sealed class ModelCreator
             }
         }
         double top = Mm(bb.Max.Z - Z(e.Z1));
+        // Beams and slabs: a height that is off is corrected through their own offset parameter
+        // (z Offset Value; Height Offset From Level), so the element keeps its level and justification.
+        var fix = e.Kind == "beam" ? BuiltInParameter.Z_OFFSET_VALUE : e.Kind is "slab" or "chajja" ? BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM : (BuiltInParameter?)null;
+        if (Math.Abs(top) > tol && fix is { } bip && el.get_Parameter(bip) is { IsReadOnly: false } p)
+        {
+            p.Set(p.AsDouble() - Ft(top));
+            _doc.Regenerate();
+            notes.Add($"{(top > 0 ? "Lowered" : "Raised")} {Math.Abs(top):0} mm to the drawing's height ({(e.Kind == "beam" ? "z Offset Value" : "Height Offset From Level")}).");
+            bb = el.get_BoundingBox(null);
+            top = Mm(bb.Max.Z - Z(e.Z1));
+        }
         if (Math.Abs(top) > tol) notes.Add($"Check it: its top is {top:+0;-0} mm from the drawing.");
     }
 

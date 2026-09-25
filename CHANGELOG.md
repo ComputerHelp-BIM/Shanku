@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.39.2 — 2026-09-26
+
+### Fixed
+- Export to Revit: beams sat below their drawn height (Start/End Level Offset plus the family's own z Offset Value); now top-justified with the rise or sink in z Offset Value only, and the placement check corrects beam and slab heights (Shanku Bridge for Revit 0.6.1). Adjusted elements that still need checking are shown open.
+
 ## 0.39.1 — 2026-09-25
 
 ### Changed

@@ -1,4 +1,4 @@
-# Shanku Bridge for Revit 0.6.0
+# Shanku Bridge for Revit 0.6.1
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
 into Shanku, keep the selection in step both ways, edit Revit parameters from Shanku, and keep Shanku up
@@ -10,7 +10,7 @@ Revit). Protocol: `docs/bridge/protocol.md`.
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.6.0.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.6.1.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -28,7 +28,7 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.6.0)
+## What it does, and does not do (0.6.1)
 
 - Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
   changed. Selection sync only selects.
@@ -51,7 +51,7 @@ model with that model's families:
 | Drawing | Revit |
 |---|---|
 | Column, pedestal | `CH-Concrete-Rectangular-Column` (W, L) or `CH-Concrete-Round-Column` (W), base and top levels with offsets |
-| Beam | `CH-Concrete-Rectangular-Beam` (W, H), on the level at its top |
+| Beam | `CH-Concrete-Rectangular-Beam` (W, H), on the level at its top: z Justification Top, Start/End Level Offset 0, the rise or sink in z Offset Value |
 | Wall (RCC / brick) | Basic Wall `CH-SHEAR-WALL-{T}` / `CH-PARDI-WALL-{T}` |
 | Slab, chajja | Floor `{T} THK. RCC SLAB` |
 | Footing, PCC | `CH-Concrete-Rectangular-Footing` (Width, Length, Foundation Thickness) |
@@ -83,6 +83,13 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.6.1 — 2026-09-26
+- Fixed: exported beams sat 1500 mm (or more) below their height. Beams took their offset in
+  Start/End Level Offset while the family added its own default z Offset Value, so the two added up.
+  A beam is now top-justified with Start/End Level Offset 0 and its rise or sink in z Offset Value only;
+  every value is set explicitly. The placement check also corrects a beam's or slab's height through
+  its offset parameter when it still differs from the drawing.
 
 ### 0.6.0 — 2026-09-25
 - Export to Revit (`/model/create`, feature `create`): native levels, types and elements from Shanku's

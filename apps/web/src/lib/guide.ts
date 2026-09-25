@@ -341,6 +341,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.39.2', date: '2026-09-26', items: ['Export to Revit: beams now land at their drawn height (with Shanku Bridge for Revit 0.6.1).'] },
           { version: '0.39.1', date: '2026-09-25', items: ['About Shanku in the Guide, with the trademark notice; wording on the homepage and in the Guide says what Shanku does today.'] },
           { version: '0.39.0', date: '2026-09-25', items: ['Export to Revit: the DXF → 3D model built natively in Revit from your template (checked first, approved by level and kind, one undo), then loaded back into Shanku.', 'Colour by grade, level, section and more, with a legend.', 'Fix in Revit from QA, and paste marks to select (Revit follows).', 'Realistic style and shadows.', 'BOQ rates by city (CPWD DSR 2023 base) and a nicer Excel.'] },
           { version: '0.37.1', date: '2026-09-25', items: ['Fixed: updates from Revit no longer reset the view to the default 3D.'] },
