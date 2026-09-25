@@ -14,7 +14,7 @@ import type { RevitExchange } from '@shanku/engine';
 export interface CreateReport {
   dryRun: boolean;
   undoName: string;
-  levels: Array<{ name: string; elevation: number; action: 'exists' | 'same-elevation' | 'create'; revitName: string }>;
+  levels: Array<{ name: string; elevation: number; action: 'exists' | 'same-elevation' | 'create' | 'exists-elsewhere'; revitName: string; revitElevation?: number | null }>;
   types: Array<{ kind: string; family: string; name: string; action: 'exists' | 'create' }>;
   results: Array<{ id: string; ok: boolean; error?: string | null; typeName?: string | null; elementId?: number; globalId?: string | null; note?: string | null }>;
   /** Elements Revit already has (same CH-ID): not created again. */

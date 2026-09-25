@@ -46,11 +46,19 @@ def drawing(tmp_path):
     return str(path)
 
 
-def test_levels_stack_from_zero_and_foundation_sits_below(drawing):
+def test_a_level_is_the_top_of_its_storey(drawing):
+    """Pipeline 2.0.0, Revit's structural convention: Level n is the top of storey n; its columns and
+    walls rise to it from Level n-1, its beams and slabs hang from it. Level 1 (foundation) is ±0."""
     r = P.analyze(drawing)
     lv = {l["number"]: l for l in r["levels"]}
-    assert (lv[2]["elevation"], lv[3]["elevation"]) == (0, 3000)
-    assert lv[1]["foundation"] and lv[1]["elevation"] == -2150  # lowest foundation bottom
+    assert lv[1]["foundation"] and lv[1]["elevation"] == 0  # ±0: foundations hang below it
+    assert (lv[2]["elevation"], lv[3]["elevation"]) == (3000, 6000)  # the tops of storeys 2 and 3
+    assert (lv[2]["bottom"], lv[3]["bottom"]) == (0, 3000)
+    by = {(e["mark"], e["level"]): e for e in r["elements"]}
+    c2, c3 = by[("C-1", 2)], by[("C-1", 3)]
+    assert (c2["z0"], c2["z1"]) == (0, 3000) and (c3["z0"], c3["z1"]) == (3000, 6000)  # geometry unchanged: Level n-1 -> Level n
+    assert by[("B-1", 2)]["z1"] == lv[2]["elevation"]  # a beam hangs from its own level
+    assert max(e["z1"] for e in r["elements"] if e["level"] == 1) <= lv[1]["elevation"]  # nothing of the foundation above ±0
 
 
 def test_label_grammar(drawing):

@@ -692,3 +692,4 @@
 .app-export__done { display: grid; gap: 4px; margin: 14px 14px 0; padding: 10px 12px; border: 1px solid var(--status-ok); border-radius: var(--radius-sm); background: var(--chip); }
 .app-export > details, .app-export > .app-changes__warn { margin: 10px 14px 0; }
 .app-export--busy p { margin: 0; }
+.app-export__tag--exists-elsewhere { border-color: var(--status-warning); color: var(--status-warning); }

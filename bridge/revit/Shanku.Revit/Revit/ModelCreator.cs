@@ -212,8 +212,9 @@ internal sealed class ModelCreator
 
     private Element Column(ExchangeElement e, IReadOnlyList<ExchangeLevel> levels, List<string> notes)
     {
+        // Top on its own level (CH-LEVEL), base on the level below: Level n-1 -> Level n.
         var baseLv = LevelOf(ExportPlanner.BaseLevel(levels, e));
-        var topLv = LevelOf(ExportPlanner.NearestLevel(levels, e.Z1));
+        var topLv = LevelOf(ExportPlanner.OwnLevel(levels, e));
         if (topLv.ProjectElevation < baseLv.ProjectElevation) topLv = baseLv;
         var inst = _doc.Create.NewFamilyInstance(At(e.Center!, baseLv.ProjectElevation), Symbol(e), baseLv, StructuralType.Column);
         Set(inst, BuiltInParameter.FAMILY_BASE_LEVEL_PARAM, baseLv.Id);
@@ -226,7 +227,7 @@ internal sealed class ModelCreator
 
     private Element Beam(ExchangeElement e, IReadOnlyList<ExchangeLevel> levels)
     {
-        var lv = LevelOf(ExportPlanner.NearestLevel(levels, e.Z1)); // a beam hangs on the level at its top
+        var lv = LevelOf(ExportPlanner.OwnLevel(levels, e)); // a beam hangs from its own level (CH-LEVEL)
         var line = Line.CreateBound(At(e.Start!, lv.ProjectElevation), At(e.End!, lv.ProjectElevation));
         var inst = _doc.Create.NewFamilyInstance(line, Symbol(e), lv, StructuralType.Beam);
         // A beam's rise or sink goes in z Offset Value, top-justified; Start/End Level Offset stay 0.
@@ -241,14 +242,22 @@ internal sealed class ModelCreator
 
     private Element WallOf(ExchangeElement e, IReadOnlyList<ExchangeLevel> levels)
     {
+        // Base on the level below, top constrained to its own level with a top offset (e.g. -beam depth).
         var lv = LevelOf(ExportPlanner.BaseLevel(levels, e));
+        var top = LevelOf(ExportPlanner.OwnLevel(levels, e));
         var line = Line.CreateBound(At(e.Start!, lv.ProjectElevation), At(e.End!, lv.ProjectElevation));
-        return Wall.Create(_doc, line, _types[ExportPlanner.TypeFor(e, _c).Type], lv.Id, Ft(e.Z1 - e.Z0), Z(e.Z0) - lv.ProjectElevation, false, true);
+        var wall = Wall.Create(_doc, line, _types[ExportPlanner.TypeFor(e, _c).Type], lv.Id, Ft(e.Z1 - e.Z0), Z(e.Z0) - lv.ProjectElevation, false, true);
+        if (top.Id != lv.Id)
+        {
+            Set(wall, BuiltInParameter.WALL_HEIGHT_TYPE, top.Id);
+            Set(wall, BuiltInParameter.WALL_TOP_OFFSET, Z(e.Z1) - top.ProjectElevation);
+        }
+        return wall;
     }
 
     private Element FloorOf(ExchangeElement e, IReadOnlyList<ExchangeLevel> levels)
     {
-        var lv = LevelOf(ExportPlanner.NearestLevel(levels, e.Z1));
+        var lv = LevelOf(ExportPlanner.OwnLevel(levels, e)); // a slab hangs from its own level
         var pts = e.Outline!.Select(p => At(p, lv.ProjectElevation)).ToList();
         pts = pts.Where((p, i) => i == 0 || p.DistanceTo(pts[i - 1]) > 1e-6).ToList(); // no zero-length edges
         if (pts.Count > 1 && pts[0].DistanceTo(pts[^1]) < 1e-6) pts.RemoveAt(pts.Count - 1);
@@ -261,7 +270,7 @@ internal sealed class ModelCreator
 
     private Element Footing(ExchangeElement e, IReadOnlyList<ExchangeLevel> levels, List<string> notes)
     {
-        var lv = LevelOf(ExportPlanner.NearestLevel(levels, e.Z1));
+        var lv = LevelOf(ExportPlanner.OwnLevel(levels, e)); // foundations hang below their level (Level 1, ±0)
         var inst = _doc.Create.NewFamilyInstance(At(e.Center!, lv.ProjectElevation), Symbol(e), lv, StructuralType.Footing);
         // Families name this offset differently; the check below corrects the height if none applies.
         double off = Z(e.Z1) - lv.ProjectElevation;
@@ -297,15 +306,25 @@ internal sealed class ModelCreator
         if (p is { IsReadOnly: false }) p.Set(value);
     }
 
+    /// <summary>
+    /// The drawing's mark goes in CH-ScheduleMark (else Comments), never the built-in Mark: Revit wants
+    /// Mark unique per element, and a drawing's marks repeat (C-1 on every floor). Plus CH-ID, CH-LEVEL.
+    /// </summary>
     private void WriteParams(Element el, ExchangeElement e)
     {
-        el.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)?.Set(e.Mark);
+        bool markWritten = false;
         foreach (var (name, value) in new[] { (_c.MarkParam, e.Mark), (_c.IdParam, e.Id), (_c.LevelParam, e.Level) })
         {
             if (string.IsNullOrEmpty(name)) continue;
             var p = el.LookupParameter(name);
-            if (p is { IsReadOnly: false, StorageType: StorageType.String }) p.Set(value);
+            if (p is { IsReadOnly: false, StorageType: StorageType.String })
+            {
+                p.Set(value);
+                if (name == _c.MarkParam) markWritten = true;
+            }
         }
+        if (!markWritten && !string.IsNullOrEmpty(e.Mark) && el.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS) is { IsReadOnly: false } c)
+            c.Set(e.Mark);
     }
 
     // ------------------------------------------------------------------ check after placing

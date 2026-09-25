@@ -30,16 +30,16 @@ const ICON = { error: '●', warning: '▲', info: 'i' } as const;
 /** Review screen for DXF -> 3D: level table (editable names and heights), counts, QA, build. */
 export function PipelinePanel({ state, onPick, onName, onHeight, onBuild, onDownload, onShow, onExportRevit, exportRevit }: PipelinePanelProps) {
   const s = state?.summary ?? null;
-  // Elevations follow edited heights live: storeys stack from ±0 in level order.
+  // Levels follow edited heights live. A level is the top of its storey (pipeline 2.0.0): storeys stack
+  // from ±0 in level order, so Level n sits at the sum of the heights up to it; the foundation is ±0.
   const levels = useMemo(() => {
     if (!s || !state) return [];
     let z = 0;
     return s.levels.map((l) => {
-      if (l.foundation) return { ...l, name: state.names[l.number] ?? l.name };
+      if (l.foundation) return { ...l, elevation: 0, name: state.names[l.number] ?? l.name };
       const h = state.heights[l.number] ?? l.height ?? 0;
-      const row = { ...l, height: h, elevation: z, name: state.names[l.number] ?? l.name };
       z += h;
-      return row;
+      return { ...l, height: h, elevation: z, name: state.names[l.number] ?? l.name };
     });
   }, [s, state]);
   const kinds = useMemo(() => (s ? [...new Set(s.counts.map((c) => c.kind))] : []), [s]);
@@ -71,7 +71,7 @@ export function PipelinePanel({ state, onPick, onName, onHeight, onBuild, onDown
             <table className="pl-table">
               <thead>
                 <tr>
-                  <th>No.</th><th>Name</th><th className="n">Elevation (mm)</th><th className="n">Height (mm)</th>
+                  <th>No.</th><th>Name</th><th className="n" title="A level is the top of its storey: its columns and walls rise to it, its beams and slabs hang from it. Level 1 (foundation) is ±0.">Level (mm)</th><th className="n">Height (mm)</th>
                   {kinds.map((k) => <th key={k} className="n">{k}</th>)}
                 </tr>
               </thead>

@@ -23,7 +23,9 @@ public static class ExportPlanner
             var byName = existing.FirstOrDefault(e => e.Name == w.Name);
             if (byName.Name != null)
             {
-                plans.Add(new LevelPlan(w.Name, w.Elevation, "exists", byName.Name));
+                // Same name at another height (e.g. from an export before pipeline 2.0.0): reused, flagged.
+                bool elsewhere = Math.Abs(byName.ElevationMm - w.Elevation) > toleranceMm;
+                plans.Add(new LevelPlan(w.Name, w.Elevation, elsewhere ? "exists-elsewhere" : "exists", byName.Name, byName.ElevationMm));
                 used.Add(byName.Name);
                 continue;
             }
@@ -39,17 +41,26 @@ public static class ExportPlanner
         return plans;
     }
 
-    /// <summary>The level nearest to a height (a beam or slab hangs on the level at its top).</summary>
+    /// <summary>The level nearest to a height (fallback when an element's own level is unknown).</summary>
     public static ExchangeLevel NearestLevel(IReadOnlyList<ExchangeLevel> levels, double zMm) =>
         levels.OrderBy(l => Math.Abs(l.Elevation - zMm)).ThenByDescending(l => l.Elevation).First();
 
-    /// <summary>The level an element's bottom sits on or above (a column or wall starts there).</summary>
+    /// <summary>
+    /// The element's own level (its CH-LEVEL): the top of its storey. Columns and walls rise to it,
+    /// beams and slabs hang from it, foundations hang below Level 1.
+    /// </summary>
+    public static ExchangeLevel OwnLevel(IReadOnlyList<ExchangeLevel> levels, ExchangeElement e) =>
+        levels.FirstOrDefault(l => l.Name == e.Level) ?? NearestLevel(levels, e.Z1);
+
+    /// <summary>
+    /// Where a column or wall starts: the level below its own when the element starts there or above;
+    /// else its own level (a foundation pedestal starts below Level 1: own level, negative offset).
+    /// </summary>
     public static ExchangeLevel BaseLevel(IReadOnlyList<ExchangeLevel> levels, ExchangeElement e)
     {
-        var own = levels.FirstOrDefault(l => l.Name == e.Level);
-        if (own != null && own.Elevation <= e.Z0 + 1) return own;
-        var below = levels.Where(l => l.Elevation <= e.Z0 + 1).OrderByDescending(l => l.Elevation).FirstOrDefault();
-        return below ?? levels.OrderBy(l => l.Elevation).First();
+        var own = OwnLevel(levels, e);
+        var below = levels.Where(l => l.Elevation < own.Elevation - 1).OrderByDescending(l => l.Elevation).FirstOrDefault();
+        return below != null && below.Elevation <= e.Z0 + 1 ? below : own;
     }
 
     /// <summary>The Revit family and type name for an element, per the config.</summary>

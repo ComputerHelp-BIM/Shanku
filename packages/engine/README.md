@@ -1,4 +1,4 @@
-# @shanku/engine 0.29.0
+# @shanku/engine 0.30.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -49,6 +49,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.30.0 — 2026-09-26
+- **DXF → 3D pipeline 2.0.0 (breaking: what a level's elevation means).** A level is the top of its storey, Revit's structural convention: the frame labelled Level n holds the structure below Level n; Level 1 (foundation) is ±0 with the foundations below it (was: the lowest footing bottom); storey Level n sits at the sum of the heights of levels 2..n (was: the storey's floor). Element geometry is unchanged: IFC placements are relative to the storey. Levels carry `bottom` (the storey's floor).
+- Default mark rules read `CH-ScheduleMark` first (Export to Revit writes marks there).
 
 ### 0.29.0 — 2026-09-25
 - Combined release: main's 0.28.0 (pipeline 1.3.0 exchange for Export to Revit) and 0.27.1 (live updates keep the view) with the dev line's 0.28.0 (Realistic style, ground shadows); both had numbered a release 0.28.0.

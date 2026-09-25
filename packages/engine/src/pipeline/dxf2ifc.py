@@ -11,13 +11,16 @@ Reads the default drawing format agreed with the user and writes an IFC4 file:
     foundation frame      "top,size,MARK"              top relative to ±0, size downward
     superstructure        "[T]offset,size,MARK"        offset below the storey top, size downward
     windows / doors       "panels,sill,height,MARK"    panels 0 means "not given" (treated as 1)
-* Levels: the foundation frame is Level 1; storeys stack from ±0 by their heights;
-  "2-4" repeats one plan on levels 2, 3 and 4.
+* Levels (2.0.0): a level is the TOP of its storey, as in Revit's structural convention: the frame
+  labelled Level n holds the structure below Level n (columns and walls from Level n-1 up to Level n,
+  beams and slabs hanging from Level n). The foundation frame is Level 1 at ±0 (its elements hang
+  below it); storeys stack upward from ±0 by their heights, so Level n sits at the sum of the heights
+  of levels 2..n. "2-4" repeats one plan on levels 2, 3 and 4.
 * IFC4 Reference View: a wall with windows or doors is written as one closed tessellated solid with
   the holes in it (IfcPolygonalFaceSet), no opening elements or boolean voids: importers such as
   Revit have nothing to cut and nothing to merge.
 
-Version 1.2.0
+Version 2.0.0
 """
 import math
 import re
@@ -26,7 +29,7 @@ import uuid
 
 import ezdxf
 
-__version__ = "1.3.0"
+__version__ = "2.0.0"
 
 # ---------------------------------------------------------------- profile (the drawing format)
 
@@ -386,7 +389,8 @@ def analyze(path, level_names=None, level_heights=None):
         if f["height"] is None:
             f["foundation"] = True
             for n in f["levels"]:
-                levels[n] = {"number": n, "height": None, "elevation": 0.0, "foundation": True}
+                # the foundation frame's level is ±0; its elements hang below it
+                levels[n] = {"number": n, "height": None, "elevation": 0.0, "bottom": 0.0, "foundation": True}
         else:
             f["foundation"] = False
     for f in frames:
@@ -396,7 +400,8 @@ def analyze(path, level_names=None, level_heights=None):
             h = float(heights.get(str(n), heights.get(n, f["height"])))
             if n in levels:
                 _qa(qa, "error", "level-repeat", "Level {} appears in more than one frame.".format(n), bounds=list(f["bounds"]))
-            levels[n] = {"number": n, "height": h, "elevation": elevation, "foundation": False}
+            # a level is the top of its storey: the storey runs from `bottom` up to `elevation`
+            levels[n] = {"number": n, "height": h, "elevation": elevation + h, "bottom": elevation, "foundation": False}
             elevation += h
     names = dict(level_names or {})
     for n, lv in levels.items():
@@ -490,7 +495,7 @@ def analyze(path, level_names=None, level_heights=None):
             lv = levels.get(n)
             if lv is None:
                 continue
-            base = lv["elevation"]
+            base = lv["bottom"]  # the storey's floor; element labels measure down from its top (the level)
             if f["foundation"]:
                 top = values.get("first", 0.0)
                 z1, z0 = top, top - values.get("size", 0.0)
@@ -546,11 +551,8 @@ def analyze(path, level_names=None, level_heights=None):
                 if w is not None and w > TOUCH_MM and n == min(frames[a["frame"]]["levels"]):
                     _qa(qa, "warning", "overlap", "{} {} and {} {} overlap by {:.0f} mm in plan (volume counted twice).".format(a["word"], a["mark"], b["word"], b["mark"], w), at=a["at"], layer=a["layer"], handle=a["handle"])
 
+    # Level 1 (foundation) stays at ±0: its elements hang below it, as a storey's hang below its level.
     order = sorted(levels.values(), key=lambda l: (l["elevation"], l["number"]))
-    found = [el for el in elements if el["kind"] in FOUNDATION_KINDS]
-    for lv in order:
-        if lv["foundation"] and found:
-            lv["elevation"] = min(el["z0"] for el in found)  # the foundation level sits at the lowest foundation bottom
     counts = {}
     for el in elements:
         key = (el["level"], el["word"])

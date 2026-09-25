@@ -192,6 +192,7 @@ export const GUIDE: GuideSection[] = [
       },
       { list: ['**Select Similar** picks visible objects with the same type, layer and colour.', '**Quick Select** filters by type, layer and colour, in the drawing or the selection, including or excluding matches.', '**Find** searches text, MText and block attributes; pick a match to select it and zoom to it.', '**Isolate Objects** and **Hide Objects** can be undone; the cyan frame has an End button.', '**Pan** and **Zoom** from the menu run until Esc, Enter or a right-click. **ZR** is Zoom Window and **ZP** Zoom Previous, as in 3D.'] },
       { note: 'Shanku opens drawings to view and check them. Erase, Move, Copy, Scale, Rotate, Draw Order and Group are in the menu so it matches AutoCAD, but greyed out.' },
+      { note: 'Levels follow Revit’s structural convention: a level is the top of its storey. The frame labelled Level 5 holds the structure below Level 5 (columns and walls from Level 4 up, beams and slabs hanging from Level 5); Level 1, the foundation frame, is ±0 with the foundations below it.' },
       { p: 'DXF drawings drawn to Computer Help’s layer standard can become a 3D model: Model → DXF → 3D reads frames, levels and labelled outlines, shows its checks (each with Show, to zoom the drawing to the problem), then writes an IFC4 model that opens in Shanku and can be downloaded.' },
     ],
   },
@@ -341,6 +342,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.40.0', date: '2026-09-26', items: ['DXF → 3D: a level is now the top of its storey (Revit’s convention); Level 1 is ±0. Export to Revit hosts every element on its own level, walls top-constrained, and writes marks to CH-ScheduleMark instead of Mark.', 'Fixed: level heights in elevations and sections now show the model’s own elevations (they could be off by the file’s origin shift).'] },
           { version: '0.39.2', date: '2026-09-26', items: ['Export to Revit: beams now land at their drawn height (with Shanku Bridge for Revit 0.6.1).'] },
           { version: '0.39.1', date: '2026-09-25', items: ['About Shanku in the Guide, with the trademark notice; wording on the homepage and in the Guide says what Shanku does today.'] },
           { version: '0.39.0', date: '2026-09-25', items: ['Export to Revit: the DXF → 3D model built natively in Revit from your template (checked first, approved by level and kind, one undo), then loaded back into Shanku.', 'Colour by grade, level, section and more, with a legend.', 'Fix in Revit from QA, and paste marks to select (Revit follows).', 'Realistic style and shadows.', 'BOQ rates by city (CPWD DSR 2023 base) and a nicer Excel.'] },

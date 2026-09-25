@@ -106,7 +106,9 @@ export function ExportToRevit({ state, off, onToggle, onCheck, onCreate, onLoad,
               <li key={l.name}>
                 <span>{l.name}</span>
                 <span className="app-export__num">{l.elevation.toLocaleString('en-IN')} mm</span>
-                <span className={`app-export__tag app-export__tag--${l.action}`}>{l.action === 'same-elevation' ? `uses “${l.revitName}”` : ACTION[l.action]}</span>
+                <span className={`app-export__tag app-export__tag--${l.action}`} title={l.action === 'exists-elsewhere' ? 'Revit has a level with this name at another height (perhaps from an earlier export). Elements are placed at their drawn heights with offsets from it; move the level in Revit or export into a fresh model.' : undefined}>
+                  {l.action === 'same-elevation' ? `uses “${l.revitName}”` : l.action === 'exists-elsewhere' ? `in Revit at ${(l.revitElevation ?? 0).toLocaleString('en-IN')} mm: check` : ACTION[l.action]}
+                </span>
               </li>
             ))}
           </ul>

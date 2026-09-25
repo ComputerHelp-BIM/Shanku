@@ -19,7 +19,8 @@ const sectionLook = (s: NonNullable<ModelView['section']>): [number, number, num
   return [dz / len, 0, -dx / len];
 };
 
-export function marksFor(active: ModelView | null, views: readonly ModelView[], heights: Map<string, number>, box: Box): Annotation[] {
+/** offsetY: the model's originY; level heads show model heights (viewer height − offsetY). */
+export function marksFor(active: ModelView | null, views: readonly ModelView[], heights: Map<string, number>, box: Box, offsetY = 0): Annotation[] {
   if (!active || active.kind === '3d' || !Number.isFinite(box.min[0])) return [];
   const cx = (box.min[0] + box.max[0]) / 2, cz = (box.min[2] + box.max[2]) / 2;
   const hx = (box.max[0] - box.min[0]) / 2, hz = (box.max[2] - box.min[2]) / 2;
@@ -53,7 +54,7 @@ export function marksFor(active: ModelView | null, views: readonly ModelView[], 
       kind: 'level',
       id: `plan:${name}`,
       name,
-      value: `${h >= 0 ? '+' : '−'}${Math.round(Math.abs(h) * 1000).toLocaleString('en-IN')}`,
+      value: `${h - offsetY >= 0 ? '+' : '−'}${Math.round(Math.abs(h - offsetY) * 1000).toLocaleString('en-IN')}`,
       a: [mid[0] - right[0] * reach, h, mid[1] - right[1] * reach],
       b: [mid[0] + right[0] * reach, h, mid[1] + right[1] * reach],
     });

@@ -1,4 +1,4 @@
-# @shanku/web 0.39.2
+# @shanku/web 0.40.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.40.0 — 2026-09-26
+- **A level is the top of its storey** (pipeline 2.0.0, engine 0.30.0): DXF → 3D level elevations, Shanku's level lines and the levels sent to Revit now agree, and match Revit's structural convention. Level 1 is ±0. The DXF → 3D table's column is now "Level (mm)".
+- **Export to Revit** (Shanku Bridge for Revit 0.7.0): every element on its own level (columns Level n−1 → Level n, walls top-constrained with a top offset, beams and slabs hanging from their level); marks in `CH-ScheduleMark`, never `Mark`; a same-named level at another height is flagged in the review.
+- Marks are read from `CH-ScheduleMark` first.
+- **Fixed: level heights were off by the file's origin shift.** web-ifc moves every model near the origin when it opens, vertically too; level heads, the level readout and the recognition of a storey's declared elevation used the shifted heights, so labels showed values such as −4,500 or −2,870 that belonged to no level. They now show the model's own elevations (`originY` from the model's coordination matrix).
 
 ### 0.39.2 — 2026-09-26
 - Export to Revit results: the list of elements Revit's check adjusted opens by itself when one still needs checking by eye. Pairs with Shanku Bridge for Revit 0.6.1 (beams at their drawn height).

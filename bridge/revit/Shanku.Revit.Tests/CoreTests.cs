@@ -65,7 +65,7 @@ public class ExportPlannerTests
         var existing = new List<(string, double)> { ("01 GROUND LVL.", 0.4), ("02 FIRST", 3150) };
         var p = ExportPlanner.MatchLevels(wanted, existing, 1);
         Assert.Equal(("same-elevation", "01 GROUND LVL."), (p[0].Action, p[0].RevitName)); // the template's ground level is reused
-        Assert.Equal(("exists", "02 FIRST"), (p[1].Action, p[1].RevitName)); // same name wins even at another height
+        Assert.Equal(("exists-elsewhere", "02 FIRST"), (p[1].Action, p[1].RevitName)); // same name, other height: reused and flagged
         Assert.Equal(("create", "Terrace"), (p[2].Action, p[2].RevitName));
     }
 
@@ -84,12 +84,26 @@ public class ExportPlannerTests
     private static (string, string) Pick((string Family, string Type, string Group) t) => (t.Family, t.Type);
 
     [Fact]
-    public void Levels_for_hanging_and_standing_elements()
+    public void Elements_host_on_their_own_level_the_top_of_their_storey()
     {
-        var levels = new List<ExchangeLevel> { new() { Name = "F", Elevation = -1500 }, new() { Name = "L1", Elevation = 0 }, new() { Name = "L2", Elevation = 3000 } };
-        Assert.Equal("L2", ExportPlanner.NearestLevel(levels, 2990).Name); // a beam's top just under L2 hangs on L2
-        Assert.Equal("L1", ExportPlanner.BaseLevel(levels, new ExchangeElement { Level = "L1", Z0 = 0 }).Name);
-        Assert.Equal("F", ExportPlanner.BaseLevel(levels, new ExchangeElement { Level = "L1", Z0 = -900 }).Name); // starts below its own level
+        // Pipeline 2.0.0: Level 1 is ±0 (foundations below it), Level n the top of storey n.
+        var levels = new List<ExchangeLevel> { new() { Name = "Level 1", Elevation = 0, Foundation = true }, new() { Name = "Level 4", Elevation = 9000 }, new() { Name = "Level 5", Elevation = 12000 } };
+        var column = new ExchangeElement { Level = "Level 5", Z0 = 9000, Z1 = 12000 };
+        Assert.Equal("Level 5", ExportPlanner.OwnLevel(levels, column).Name); // top on its own level
+        Assert.Equal("Level 4", ExportPlanner.BaseLevel(levels, column).Name); // base on the level below: Level 4 -> Level 5
+        var sunkBeam = new ExchangeElement { Level = "Level 5", Z0 = 9900, Z1 = 10500 }; // sunk 1500: still hangs from Level 5
+        Assert.Equal("Level 5", ExportPlanner.OwnLevel(levels, sunkBeam).Name);
+        var pedestal = new ExchangeElement { Level = "Level 1", Z0 = -1500, Z1 = 0 }; // below ±0: own level, negative base offset
+        Assert.Equal("Level 1", ExportPlanner.BaseLevel(levels, pedestal).Name);
+        var unknown = new ExchangeElement { Level = "Level 9", Z0 = 9000, Z1 = 11990 };
+        Assert.Equal("Level 5", ExportPlanner.OwnLevel(levels, unknown).Name); // no such level: the nearest to its top
+    }
+
+    [Fact]
+    public void A_level_with_the_same_name_at_another_height_is_flagged()
+    {
+        var p = ExportPlanner.MatchLevels(new[] { new ExchangeLevel { Name = "Level 3", Elevation = 6000 } }, new List<(string, double)> { ("Level 3", 3000) }, 1);
+        Assert.Equal(("exists-elsewhere", "Level 3", 3000.0), (p[0].Action, p[0].RevitName, p[0].RevitElevation));
     }
 
     [Fact]

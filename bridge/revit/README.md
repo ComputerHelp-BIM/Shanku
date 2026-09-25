@@ -1,4 +1,4 @@
-# Shanku Bridge for Revit 0.6.1
+# Shanku Bridge for Revit 0.7.0
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
 into Shanku, keep the selection in step both ways, edit Revit parameters from Shanku, and keep Shanku up
@@ -10,7 +10,7 @@ Revit). Protocol: `docs/bridge/protocol.md`.
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.6.1.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.7.0.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -28,7 +28,7 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.6.1)
+## What it does, and does not do (0.7.0)
 
 - Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
   changed. Selection sync only selects.
@@ -50,15 +50,18 @@ model with that model's families:
 
 | Drawing | Revit |
 |---|---|
-| Column, pedestal | `CH-Concrete-Rectangular-Column` (W, L) or `CH-Concrete-Round-Column` (W), base and top levels with offsets |
-| Beam | `CH-Concrete-Rectangular-Beam` (W, H), on the level at its top: z Justification Top, Start/End Level Offset 0, the rise or sink in z Offset Value |
-| Wall (RCC / brick) | Basic Wall `CH-SHEAR-WALL-{T}` / `CH-PARDI-WALL-{T}` |
-| Slab, chajja | Floor `{T} THK. RCC SLAB` |
+| Column, pedestal | `CH-Concrete-Rectangular-Column` (W, L) or `CH-Concrete-Round-Column` (W): Base Level the level below, Top Level its own (CH-LEVEL) |
+| Beam | `CH-Concrete-Rectangular-Beam` (W, H), on its own level: z Justification Top, Start/End Level Offset 0, the rise or sink in z Offset Value |
+| Wall (RCC / brick) | Basic Wall `CH-SHEAR-WALL-{T}` / `CH-PARDI-WALL-{T}`: Base Constraint the level below, Top Constraint its own level with Top Offset |
+| Slab, chajja | Floor `{T} THK. RCC SLAB`, on its own level (sink in Height Offset From Level) |
 | Footing, PCC | `CH-Concrete-Rectangular-Footing` (Width, Length, Foundation Thickness) |
 
-Levels are matched by name, then by elevation (within 1 mm), else created. A missing size is made by
+A level is the top of its storey (Shanku pipeline 2.0.0): Level 1 is ±0 with the foundations below it.
+Levels are matched by name, then by elevation (within 1 mm), else created; a level with the same name at
+another height is reused and flagged in the review. A missing size is made by
 duplicating the family's first type (walls and floors: the nearest thickness) and resizing it. Every
-element gets `Mark`, `CH-ScheduleMark`, `CH-ID` (so a second export skips it) and `CH-LEVEL`. The
+element gets `CH-ScheduleMark` (else `Comments`; never the built-in `Mark`, which Revit wants unique while a
+drawing's marks repeat), `CH-ID` (so a second export skips it) and `CH-LEVEL`. The
 drawing origin goes to the Project Base Point. After placing, each element is checked against the
 drawing; columns and footings are moved or turned 90° when their family places them differently, and
 anything still off is reported. Everything is one transaction group (one undo); the check before is a
@@ -83,6 +86,14 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.7.0 — 2026-09-26
+- Export to Revit hosts each element on its own level (CH-LEVEL), the top of its storey: columns from
+  the level below up to it, walls base on the level below with Top Constraint on it and a Top Offset,
+  beams and slabs hanging from it, foundations on Level 1 (±0). Before, a nearest-level guess put
+  columns and beams one storey up and left walls unconnected.
+- Marks go to CH-ScheduleMark (else Comments), never the built-in Mark, which Revit wants unique.
+- A level with the same name at another height is flagged in the review (`exists-elsewhere`).
 
 ### 0.6.1 — 2026-09-26
 - Fixed: exported beams sat 1500 mm (or more) below their height. Beams took their offset in

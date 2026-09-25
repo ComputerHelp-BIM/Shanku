@@ -39,7 +39,7 @@ import { useHistory } from './lib/useHistory';
 import { loadDrawings, loadGraphics, loadModel, loadViews, saveViews } from './lib/session';
 import { marksFor } from './lib/viewMarks';
 import { editSection } from './lib/views';
-import { DEFAULT_CUT, DEFAULT_DEPTH_OFFSET, KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, nextSectionName, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection, type ModelView } from './lib/views';
+import { DEFAULT_CUT, DEFAULT_DEPTH_OFFSET, KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, originY, nextSectionName, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection, type ModelView } from './lib/views';
 import { enterFullscreen } from './lib/fullscreen';
 import { QuickAccess } from './components/QuickAccess';
 import { ContextMenu, item, sep, type MenuItem } from './components/ContextMenu';
@@ -77,7 +77,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.39.2';
+const APP_VERSION = '0.40.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -391,7 +391,7 @@ export function App({ start }: { start?: AppStart } = {}) {
     loadedView.current = '3d';
     setOpenViews(['3d']);
     const name = m.model?.info.fileName;
-    const defaults = m.model ? defaultViews(m.model.info.levels, levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length)) : [];
+    const defaults = m.model ? defaultViews(m.model.info.levels, levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length, originY(m.model.coordination))) : [];
     setViews(defaults);
     viewport.current?.setViewMode({ nav2d: false, grips: true });
     if (name)
@@ -1090,7 +1090,9 @@ export function App({ start }: { start?: AppStart } = {}) {
   };
 
   // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
-  const heights = useMemo(() => (m.model ? levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length) : new Map<string, number>()), [m.model?.info]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Heights of levels in the viewer; zY turns one into the model's own elevation (the file's origin shift).
+  const zY = originY(m.model?.coordination);
+  const heights = useMemo(() => (m.model ? levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length, zY) : new Map<string, number>()), [m.model?.info, zY]); // eslint-disable-line react-hooks/exhaustive-deps
   const bounds = useMemo(() => {
     const min: [number, number, number] = [Infinity, Infinity, Infinity], max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
     for (const e of m.model?.elements ?? []) for (let k = 0; k < 3; k++) {
@@ -1101,7 +1103,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   }, [m.model?.info]); // eslint-disable-line react-hooks/exhaustive-deps
   const activeModelView = views.find((v) => v.id === activeView) ?? null;
   // View symbols for the active view (section / elevation marks in plans, levels in elevations).
-  const marks = useMemo(() => marksFor(activeModelView, views, heights, bounds), [activeModelView, views, heights, bounds]);
+  const marks = useMemo(() => marksFor(activeModelView, views, heights, bounds, zY), [activeModelView, views, heights, bounds, zY]);
   const resolved = useMemo(() => (m.model ? resolveGraphics(m.model.elements, graphics) : { hidden: [], overrides: [] }), [m.model, graphics]);
   // Colour by parameter (element palette): colours sit under Visibility/Graphics overrides; groups hidden in the legend hide in every view.
   const [colorSettings, setColorSettingsState] = useState<ColorSettings>(loadColorSettings);
@@ -1294,7 +1296,7 @@ export function App({ start }: { start?: AppStart } = {}) {
         icon: 'level' as const,
         name,
         rows: [
-          { section: 'Constraints', label: 'Elevation', unit: 'mm', value: h !== undefined ? mm(h) : '—' },
+          { section: 'Constraints', label: 'Elevation', unit: 'mm', value: h !== undefined ? mm(h - zY) : '—' },
           { section: 'Constraints', label: 'Height to level above', unit: 'mm', value: h !== undefined && above !== undefined ? mm(above - h) : '—' },
           { section: 'Identity Data', label: 'Name', value: name },
           { section: 'Identity Data', label: 'Plan view', value: views.some((v) => v.id === id) ? name : '—' },

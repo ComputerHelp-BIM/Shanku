@@ -51,6 +51,7 @@ public sealed class ExchangeElement
 
 /// <summary>What Revit did (or would do) with one element.</summary>
 public sealed record CreateResult(string Id, bool Ok, string? Error = null, string? TypeName = null, long ElementId = 0, string? GlobalId = null, string? Note = null);
-public sealed record LevelPlan(string Name, double Elevation, string Action, string RevitName);
+/// <summary>Action: exists, same-elevation, create, or exists-elsewhere (same name, another height: check it).</summary>
+public sealed record LevelPlan(string Name, double Elevation, string Action, string RevitName, double? RevitElevation = null);
 public sealed record TypePlan(string Kind, string Family, string Name, string Action);
 public sealed record CreateReport(bool DryRun, string UndoName, IReadOnlyList<LevelPlan> Levels, IReadOnlyList<TypePlan> Types, IReadOnlyList<CreateResult> Results, IReadOnlyList<string> Existing, IReadOnlyList<string> Warnings);

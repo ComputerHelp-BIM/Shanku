@@ -109,3 +109,19 @@ describe('section grips (Revit)', () => {
     expect(f.b).toEqual([0, 5]);
   });
 });
+
+describe('level heights and the file origin shift', () => {
+  it('recognises declared elevations and labels model heights, whatever web-ifc shifted', async () => {
+    const { levelHeights, originY } = await import('../src/lib/views');
+    const { marksFor } = await import('../src/lib/viewMarks');
+    // web-ifc moved this file down 2.35 m: a slab top at model +3.000 m sits at viewer +0.650 m
+    const coord = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -2.35, 0, 1];
+    const dy = originY(coord);
+    const el = (level: string, cat: string, bot: number, top: number) => ({ level, category: cat, bounds: [0, bot + dy, 0, 1, top + dy, 1] as [number, number, number, number, number, number] });
+    const h = levelHeights([{ name: 'Level 2', elevation: 3000 }], [el('Level 2', 'Column', 0, 3), el('Level 2', 'Slab', 2.875, 3)], 'mm', dy);
+    expect(h.get('Level 2')).toBeCloseTo(0.65); // the declared +3000, confirmed by the slab top
+    const view = { id: 'elev:N', kind: 'elevation', name: 'North', direction: [0, 0, -1] } as never;
+    const marks = marksFor(view, [view], h, { min: [0, 0, 0], max: [1, 1, 1] }, dy);
+    expect(marks.find((m) => m.kind === 'level')?.value).toBe('+3,000');
+  });
+});

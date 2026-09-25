@@ -103,7 +103,8 @@ matrices undo that) and merges it.
 foundation }` and elements in mm from the drawing origin (the Project Base Point) with a stable `id`,
 `kind`, `mark`, `level`, `z0`/`z1` and the geometry of the kind (centred rectangle with `angle`, round
 `diameter`, `start`/`end` with `width`, or `outline` with `thickness`). The add-in builds levels, then
-types, then each element in its own sub-transaction, writes `Mark` and the `CH-` shared parameters,
+types, then each element in its own sub-transaction on its own level (the top of its storey), writes
+the `CH-` shared parameters (the mark in `CH-ScheduleMark`, else `Comments`; never `Mark`),
 checks every placement, and keeps it all in one transaction group (`undoName`). `dryRun` rolls the
 group back. `existing` lists ids Revit already has (by `CH-ID`), which are not created again.
 

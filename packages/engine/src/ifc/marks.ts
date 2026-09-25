@@ -6,7 +6,8 @@ import type { IfcAPI } from 'web-ifc';
  * A rule can be qualified with its property set: "01--COLUMN_M.ID". The first
  * rule with a non-empty value wins for each element.
  */
-export const DEFAULT_MARK_RULES: readonly string[] = ['Mark', 'Schedule Mark', 'ID', 'Type Mark', 'Comments'];
+/** CH-ScheduleMark first: Export to Revit writes the drawing's marks there (Revit's Mark must be unique). */
+export const DEFAULT_MARK_RULES: readonly string[] = ['CH-ScheduleMark', 'Mark', 'Schedule Mark', 'ID', 'Type Mark', 'Comments'];
 
 /**
  * Concrete grade rules, same syntax as marks. When none match, the element's IFC

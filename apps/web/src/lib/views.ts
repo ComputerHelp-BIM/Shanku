@@ -64,10 +64,20 @@ const UNIT_TO_M: Record<string, number> = { mm: 0.001, millimetre: 0.001, cm: 0.
  * base of columns and walls, then the level's lowest point. Files differ in which storey they put
  * columns on, so columns come late.
  */
+/**
+ * How far the viewer's heights are from the model's own: web-ifc moves each file near the origin when
+ * it opens (COORDINATE_TO_ORIGIN), vertically too. Model height = viewer height − originY.
+ */
+export function originY(coordination?: readonly number[] | null): number {
+  return coordination && coordination.length === 16 ? coordination[13] : 0;
+}
+
 export function levelHeights(
   levels: ReadonlyArray<{ name: string; elevation?: number | null }>,
   elements: ReadonlyArray<ElementLike>,
   lengthUnit?: string,
+  /** originY of the model: a storey's declared elevation is compared in viewer heights. */
+  offsetY = 0,
 ): Map<string, number> {
   const out = new Map<string, number>();
   const scale = UNIT_TO_M[(lengthUnit ?? '').toLowerCase()] ?? null;
@@ -82,7 +92,7 @@ export function levelHeights(
   for (const l of levels) {
     const on = elements.filter((e) => e.level === l.name);
     if (l.elevation !== null && l.elevation !== undefined && scale !== null) {
-      const z = l.elevation * scale;
+      const z = l.elevation * scale + offsetY;
       if (on.some((e) => Math.abs(e.bounds[1] - z) < 0.05 || Math.abs(e.bounds[4] - z) < 0.05)) {
         out.set(l.name, z);
         continue;

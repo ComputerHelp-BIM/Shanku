@@ -2,6 +2,15 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.40.0 — 2026-09-26
+
+### Changed (breaking for DXF → 3D level elevations)
+- A level is the top of its storey (Revit's structural convention); Level 1 is ±0. Pipeline 2.0.0, engine 0.30.0. Models built before keep their geometry; their levels move to storey tops when rebuilt.
+- Export to Revit hosts elements on their own level, top-constrains walls, writes marks to CH-ScheduleMark (Shanku Bridge for Revit 0.7.0).
+
+### Fixed
+- Level heads and readouts were off by the file's vertical origin shift (web-ifc COORDINATE_TO_ORIGIN): they now show the model's own elevations, for DXF → 3D models and models loaded from Revit alike.
+
 ## 0.39.2 — 2026-09-26
 
 ### Fixed
