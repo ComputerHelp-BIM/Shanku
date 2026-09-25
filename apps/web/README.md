@@ -1,4 +1,4 @@
-# @shanku/web 0.31.0
+# @shanku/web 0.32.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.32.0 — 2026-09-24
+- **Revit bridge, milestone 1** (with Shanku Bridge for Revit 0.1.0, `bridge/revit`): **Revit** in the status bar opens the Revit window: find the add-in, pair with the 6-digit code from Revit (Shanku → Connect), **Load model from Revit** (IFC4 RV, the Revit model is never changed) and keep the **selection in step both ways**, matched by GlobalId with the Revit ElementId as a fallback, only for the model loaded from that Revit document. The browser stays paired and reconnects when Revit restarts; it never contacts localhost before you connect.
+- Command search: Connect to Revit…, Load model from Revit, Sync selection with Revit. Guide: Revit bridge section with a diagram.
+- Protocol: `docs/bridge/protocol.md`. Mock add-in for testing without Revit: `tools/mock-revit-bridge.py`.
 
 ### 0.31.0 — 2026-09-24
 - Combined release: main's 0.30.0 (guide figures, homepage diagrams) and the design-system branch's 0.30.0 (What now?, BOQ scope, steel estimate, file diagnosis, view links). Both lines had numbered a release 0.30.0.

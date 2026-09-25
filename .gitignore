@@ -11,3 +11,8 @@ __pycache__/
 .pytest_cache/
 *.dxf
 *.dwg
+
+# .NET build output (bridge/revit)
+bin/
+obj/
+bridge/revit/dist/

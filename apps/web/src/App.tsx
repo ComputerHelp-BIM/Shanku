@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   AppShell,
   Button,
@@ -56,6 +56,8 @@ import { SHORTCUT_HELP, createSequenceReader, type CommandId } from './lib/short
 import { sequenceKeys, type AppCommand } from './lib/commands';
 import { CommandPalette, type ElementHit } from './components/CommandPalette';
 import { GuidePanel } from './components/GuidePanel';
+import { RevitPanel } from './components/RevitPanel';
+import { RevitBridge, indicesForRevitSelection } from './lib/revitBridge';
 import { QaPanel } from './components/QaPanel';
 import { FileDiagnosisDialog, ViewLinkDialog } from './components/SmallDialogs';
 import { WhatNow, type Intent } from './components/WhatNow';
@@ -65,7 +67,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.31.0';
+const APP_VERSION = '0.32.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -193,7 +195,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   const dock = useRef<DockWorkspaceHandle>(null);
   const [openPanels, setOpenPanels] = useState<PanelId[]>([]);
   // Revit-style windows (float above everything, ribbon included)
-  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false });
+  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false, revit: false });
   // Guide & FAQ (F1): which section to open on
   const [guideSection, setGuideSection] = useState<string | undefined>(undefined);
   const openGuide = (section?: string) => {
@@ -204,6 +206,52 @@ export function App({ start }: { start?: AppStart } = {}) {
   // Exploded view: any combination of storeys, radial and categories (they add up).
   const [explode, setExplode] = useState<{ modes: ExplodeMode[]; amount: number } | null>(null);
   const toggleWin = (k: keyof typeof wins, v?: boolean) => setWins((w) => ({ ...w, [k]: v ?? !w[k] }));
+
+  // ---- Revit bridge (docs/bridge/protocol.md): load from Revit and keep the selection in step
+  const bridge = useMemo(() => new RevitBridge(), []);
+  const revit = useSyncExternalStore(bridge.subscribe, bridge.getState);
+  const [revitLoading, setRevitLoading] = useState(false);
+  /** The Revit document the open model came from; selection syncs only with that one. */
+  const [revitLink, setRevitLink] = useState<{ key: string; fileName: string } | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('shanku.revitLink') ?? 'null');
+    } catch {
+      return null;
+    }
+  });
+  const [revitSync, setRevitSync] = useState(() => localStorage.getItem('shanku.revitSync') !== 'off');
+  const fromRevit = useRef(false);
+  useEffect(() => {
+    // Paired before: reconnect quietly (no new permission prompt). Otherwise wait for the user.
+    if (bridge.hasToken) void bridge.connect();
+    return () => bridge.dispose();
+  }, [bridge]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('shanku.revitSync', revitSync ? 'on' : 'off');
+      if (revitLink) localStorage.setItem('shanku.revitLink', JSON.stringify(revitLink));
+    } catch {
+      /* storage unavailable */
+    }
+  }, [revitSync, revitLink]);
+  const openRevit = () => {
+    toggleWin('revit', true);
+    if (revit.phase === 'idle') void bridge.connect();
+  };
+  /** Revit exports its open model; Shanku opens it and links it for selection sync. */
+  const loadFromRevit = async () => {
+    setRevitLoading(true);
+    try {
+      const r = await bridge.loadModel();
+      await m.open({ name: r.name, bytes: r.bytes });
+      setRevitLink({ key: r.key, fileName: r.name });
+      m.log(`Loaded ${r.title} from Revit (${(r.bytes.byteLength / 1e6).toFixed(1)} MB). Selection follows Revit.`);
+    } catch (e) {
+      setNotice(`Could not load from Revit: ${(e as Error).message}`);
+    } finally {
+      setRevitLoading(false);
+    }
+  };
   useShortcut(TOGGLE_BOTTOM_PANEL, () => dock.current?.toggleBottom(), { allowInEditable: true });
   useShortcut({ code: 'F1' }, () => (wins.guide ? toggleWin('guide', false) : openGuide()), { allowInEditable: true });
   const [rates, setRates] = useState<RateBook>(emptyRates);
@@ -540,6 +588,44 @@ export function App({ start }: { start?: AppStart } = {}) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---- Revit selection sync, both ways, only for the model loaded from that Revit document
+  const revitLinked = revit.phase === 'connected' && !!revitLink && !!revit.document && revit.document.key === revitLink.key && m.model?.info.fileName === revitLink.fileName;
+  const revitLinkedRef = useRef(revitLinked);
+  revitLinkedRef.current = revitLinked && revitSync;
+  const modelRef = useRef(m.model);
+  modelRef.current = m.model;
+  useEffect(
+    () =>
+      bridge.onSelection((sel) => {
+        const model = modelRef.current;
+        if (!model || !revitLinkedRef.current || sel.key !== revitLink?.key) return;
+        fromRevit.current = true; // do not send it back
+        m.setSelection(indicesForRevitSelection(model.elements, sel.globalIds, sel.elementIds));
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bridge, revitLink?.key],
+  );
+  useEffect(() => {
+    if (fromRevit.current) {
+      fromRevit.current = false;
+      return;
+    }
+    if (!revitLinked || !revitSync || !m.model || !revitLink) return;
+    const els = m.model.elements;
+    const picked = m.selection.map((i) => els[i]).filter(Boolean);
+    const timer = setTimeout(() => {
+      bridge
+        .select(
+          revitLink.key,
+          picked.map((e) => e.globalId),
+          picked.map((e) => Number(e.tag) || 0),
+        )
+        .catch((e) => m.log(`Revit selection: ${(e as Error).message}`, 'error'));
+    }, 150); // a box selection sends once
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.selection, revitLinked, revitSync]);
 
   // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
   const heights = useMemo(() => (m.model ? levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length) : new Map<string, number>()), [m.model?.info]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1155,6 +1241,9 @@ export function App({ start }: { start?: AppStart } = {}) {
           ['qa', 'QA checks'],
         ] as const
       ).map(([id, title]) => ({ id: `window.${id}`, title: `Show ${title}`, keywords: id === 'qa' ? 'check warnings errors health duplicate floating column mark' : undefined, group: 'Windows' as const, checked: openPanels.includes(id), keys: id === 'console' ? 'Ctrl + `' : undefined, run: () => dock.current?.toggle(id) })),
+      { id: 'bridge.connect', title: 'Connect to Revit…', group: 'File', keywords: 'bridge revit link pair add-in live', checked: revit.phase === 'connected', run: () => openRevit() },
+      { id: 'bridge.load', title: 'Load model from Revit', group: 'File', keywords: 'bridge revit import open live', enabled: revit.phase === 'connected' && !!revit.document && !revitLoading, why: revit.phase !== 'connected' ? 'connect to Revit first' : !revit.document ? 'open a model in Revit' : 'loading…', run: () => void loadFromRevit() },
+      { id: 'bridge.syncSelection', title: 'Sync selection with Revit', group: 'Select', keywords: 'bridge revit link', checked: revitSync, run: () => setRevitSync((v) => !v) },
       { id: 'window.boq', title: 'Bill of quantities (BOQ)', group: 'Windows', keywords: 'quantities rates excel export', checked: wins.boq, enabled: hasModel, why: needModel, run: () => toggleWin('boq') },
       { id: 'window.reset', title: 'Reset window layout', group: 'Windows', keywords: 'panels dock', run: () => dock.current?.reset() },
       // Manage
@@ -1558,6 +1647,19 @@ export function App({ start }: { start?: AppStart } = {}) {
                     onShow={showQa}
                   />
                 )}
+          </FloatingWindow>
+          <FloatingWindow id="revit" title="Revit" subtitle="Shanku Bridge" open={wins.revit} onClose={() => toggleWin('revit', false)} initial={{ w: 460, h: 440 }} minWidth={380} minHeight={300}>
+            <RevitPanel
+              state={revit}
+              linkedKey={revitLink && m.model?.info.fileName === revitLink.fileName ? revitLink.key : null}
+              loading={revitLoading}
+              syncSelection={revitSync}
+              onConnect={(port) => void bridge.connect(port)}
+              onPair={(code) => void bridge.pair(code)}
+              onLoad={() => void loadFromRevit()}
+              onSyncSelection={setRevitSync}
+              onDisconnect={() => bridge.disconnect()}
+            />
           </FloatingWindow>
           <FloatingWindow id="guide" title="Guide & FAQ" subtitle={`Shanku ${APP_VERSION}`} open={wins.guide} onClose={() => toggleWin('guide', false)} initial={{ w: 900, h: 620 }} minWidth={560} minHeight={320}>
             <GuidePanel initial={guideSection} />
@@ -1987,6 +2089,16 @@ export function App({ start }: { start?: AppStart } = {}) {
           </>
           )}
           <span className="app-spacer" />
+          <button
+            type="button"
+            className={`app-panel-toggle app-revit-status app-revit-status--${revit.phase}${revitLinked ? ' is-linked' : ''}`}
+            aria-pressed={wins.revit}
+            title={revit.phase === 'connected' ? `Revit: ${revit.document?.title ?? 'no model open'}${revitLinked ? ' · selection in sync' : ''}` : 'Connect to Revit'}
+            onClick={() => (wins.revit ? toggleWin('revit', false) : openRevit())}
+          >
+            <span className="app-revit__dot" aria-hidden="true" />
+            {revit.phase === 'connected' ? `Revit · ${revit.document?.title ?? 'no model'}` : revit.phase === 'unpaired' ? 'Revit · pair' : 'Revit'}
+          </button>
           {qaReport ? (
             <>
               <button type="button" className="app-panel-toggle app-qa-status" aria-pressed={openPanels.includes('qa')} title="QA checks: open the QA panel" onClick={() => dock.current?.open('qa')}>

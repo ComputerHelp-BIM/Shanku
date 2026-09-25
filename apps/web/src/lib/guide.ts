@@ -213,6 +213,24 @@ export const GUIDE: GuideSection[] = [
     ],
   },
   {
+    id: 'revit',
+    group: 'Guide',
+    title: 'Revit bridge',
+    blocks: [
+      { figure: 'revitBridge', alt: 'Revit bridge diagram: the Shanku add-in in Revit and Shanku in the browser, paired with a code over localhost; load the model as IFC4 and sync the selection both ways.' },
+      { p: 'With **Shanku Bridge for Revit** installed, Shanku loads the model open in Revit 2025 and keeps the selection in step both ways: select in either program and the other follows.' },
+      {
+        list: [
+          'Install the add-in (`bridge/revit` in the Shanku repository), open a model in Revit, then **Shanku → Connect**: Revit shows a 6-digit code.',
+          'In Shanku click **Revit** in the status bar (or search **Connect to Revit**), enter the code and allow Chrome\'s prompt for apps on this device.',
+          '**Load model from Revit** exports it as IFC4 inside a transaction that Revit rolls back, so the Revit model is never changed.',
+          'This browser stays paired; **Shanku → Disconnect** in Revit unpairs every browser.',
+        ],
+      },
+      { note: 'Everything stays on this computer: the add-in listens on localhost for Shanku only. Editing parameters and creating elements in Revit come in later versions.' },
+    ],
+  },
+  {
     id: 'qa',
     group: 'Guide',
     title: 'QA checks',
@@ -282,6 +300,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.32.0', date: '2026-09-24', items: ['Revit bridge: connect to Revit 2025 with Shanku Bridge for Revit, load the open model and keep the selection in step both ways.'] },
           { version: '0.31.0', date: '2026-09-24', items: ['What now? in the title bar.', 'BOQ scope (visible, selection, levels) with a scope sentence; steel estimate with range warnings.', 'Help for files that do not open, and view links to share a view.', 'Diagrams in the Guide: the mouse map, interface, selection, View Range, section grips, graphics precedence, section box, exploded views, command search, quantities and DXF → 3D.'] },
           { version: '0.29.0', date: '2026-09-24', items: ['Command search (Ctrl + K) opens on Recently used, Most used and New in this release; new commands carry a New badge until you try them.'] },
           { version: '0.28.2', date: '2026-09-24', items: ['Fixed: Guide & FAQ could crash the app in Chrome 154 when changing section or closing it.', 'A failing window or panel now shows its own error with Try again and Copy details instead of blanking the app.'] },

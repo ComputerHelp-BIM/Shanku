@@ -18,7 +18,8 @@ export type FigureId =
   | 'explode'
   | 'commandSearch'
   | 'quantities'
-  | 'dxfPipeline';
+  | 'dxfPipeline'
+  | 'revitBridge';
 
 function Svg({ w, h, label, children, className }: { w: number; h: number; label: string; children: ReactNode; className?: string }) {
   const id = useId();
@@ -482,6 +483,35 @@ export function DxfPipelineFigure() {
   );
 }
 
+/* ------------------------------------------------------------ revit bridge */
+
+export function RevitBridgeFigure() {
+  return (
+    <Svg w={660} h={230} label="The Revit bridge. The Shanku add-in in Revit and Shanku in the browser talk over localhost on this computer only, after pairing with a one-time code. Revit sends the model as IFC4; the selection follows in both directions. The Revit model is not changed.">
+      <rect x="20" y="40" width="190" height="150" rx="10" className="fig-panel" />
+      <text x="115" y="66" className="fig-t" textAnchor="middle">Revit 2025</text>
+      <rect x="44" y="84" width="142" height="40" rx="8" className="fig-card fig-card--mid" />
+      <text x="115" y="102" className="fig-t" textAnchor="middle">Shanku add-in</text>
+      <text x="115" y="117" className="fig-d" textAnchor="middle">Shanku tab → Connect</text>
+      <text x="115" y="150" className="fig-d" textAnchor="middle">your model · never changed</text>
+      <rect x="450" y="40" width="190" height="150" rx="10" className="fig-panel" />
+      <text x="545" y="66" className="fig-t" textAnchor="middle">Shanku in the browser</text>
+      <rect x="474" y="84" width="142" height="40" rx="8" className="fig-card fig-card--top" />
+      <text x="545" y="102" className="fig-t" textAnchor="middle">Revit window</text>
+      <text x="545" y="117" className="fig-d" textAnchor="middle">enter the 6-digit code</text>
+      <text x="545" y="150" className="fig-d" textAnchor="middle">status bar: ● Revit</text>
+      <Arrow x1={214} y1={92} x2={444} y2={92} />
+      <text x="330" y="84" className="fig-t" textAnchor="middle">Load model (IFC4)</text>
+      <Arrow x1={214} y1={130} x2={444} y2={130} className="fig-arrow fig-arrow--window" />
+      <Arrow x1={444} y1={146} x2={214} y2={146} className="fig-arrow fig-arrow--window" />
+      <text x="330" y="124" className="fig-t" textAnchor="middle">Selection, both ways</text>
+      <rect x="250" y="176" width="160" height="24" rx="12" className="fig-field" />
+      <text x="330" y="192" className="fig-d" textAnchor="middle">localhost:7071 · this PC only</text>
+      <text x="330" y="24" className="fig-h" textAnchor="middle">PAIR ONCE WITH A CODE · THEN IT RECONNECTS</text>
+    </Svg>
+  );
+}
+
 /** Figures by id, for the guide's `{ figure }` blocks. */
 export const FIGURES: Record<FigureId, () => JSX.Element> = {
   mouse: MouseFigure,
@@ -495,4 +525,5 @@ export const FIGURES: Record<FigureId, () => JSX.Element> = {
   commandSearch: CommandSearchFigure,
   quantities: QuantitiesFigure,
   dxfPipeline: DxfPipelineFigure,
+  revitBridge: RevitBridgeFigure,
 };

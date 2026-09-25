@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.32.0 — 2026-09-24
+
+### Added
+- Revit bridge, milestone 1: Shanku Bridge for Revit 0.1.0 (Revit 2025 add-in: pairing, IFC4 export in a rolled-back transaction, selection sync, Shanku ribbon tab) and the Revit window in Shanku (connect, pair, load, selection both ways). Protocol v1 in docs/bridge/protocol.md; mock add-in in tools/.
+
 ## 0.31.0 — 2026-09-24
 
 ### Changed

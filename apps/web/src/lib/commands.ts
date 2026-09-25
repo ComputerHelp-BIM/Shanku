@@ -124,6 +124,7 @@ export function recordUse(id: string, now = Date.now()): CommandUsage {
  * a command new for five minor releases after it arrived, until it is first used.
  */
 export const COMMAND_SINCE: Record<string, string> = {
+  'bridge.': '0.32.0',
   'window.qa': '0.27.0',
   'explode.': '0.24.0',
   'help.guide': '0.24.0',
