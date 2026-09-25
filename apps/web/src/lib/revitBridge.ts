@@ -232,6 +232,12 @@ export class RevitBridge {
     return (await this.call<{ selected: number; missing: number }>('/selection', { method: 'POST', body: JSON.stringify({ key, globalIds, elementIds }) })).json();
   }
 
+  /** What is selected in Revit right now (GlobalIds), for "Get from Revit". */
+  async revitSelection(): Promise<{ key: string | null; globalIds: string[] }> {
+    const st = await (await this.call<{ document: RevitDocument | null; selection: string[] }>('/status', {}, 60_000)).json();
+    return { key: st.document?.key ?? null, globalIds: st.selection ?? [] };
+  }
+
   /** Forgets this browser's pairing (Revit keeps other browsers until Disconnect in Revit). */
   disconnect(): void {
     this.closeEvents();

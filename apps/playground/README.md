@@ -12,6 +12,9 @@ Placeholder: the 3D view is a static isometric drawing (three.js arrives with th
 
 ## Changelog
 
+### 0.1.10 — 2026-09-25
+- Requires @shanku/ui 0.12.2.
+
 ### 0.1.9 — 2026-09-24
 - Requires @shanku/ui 0.12.1.
 

@@ -1,4 +1,4 @@
-# @shanku/brand 1.5.0
+# @shanku/brand 1.6.0
 # @shanku/brand 1.2.1
 
 Logos, the custom structural icon set and the brand book (`BRAND.md`, the full design-system guidelines: voice, themes, colour rules, type, iconography, layout, shortcuts, accessibility).
@@ -19,6 +19,9 @@ The wordmark is lowercase **shanku** in Sora SemiBold. It is typeset, not yet ou
 Round 1: 20 icons on a 24 px grid, 1.5 px round strokes, `currentColor`. `icons.json` holds each icon's inner SVG as `outline`, and a `twoTone` version for the five structural elements used on large ribbon buttons (column, beam, slab, wall, footing). Generic actions come from Lucide.
 
 ## Changelog
+
+### 1.6.0 — 2026-09-25
+- Bridge icons: link, unlink, importModel, sync, selectSend, selectGet (neutral, no third-party logos).
 
 ### 1.5.0 — 2026-09-24
 - Added four icons: explodeStoreys, explodeRadial and explodeCategories (exploded views), and guide (Guide & FAQ; an open book, no letters inside).

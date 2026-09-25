@@ -1,4 +1,4 @@
-# @shanku/web 0.32.0
+# @shanku/web 0.33.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.33.0 — 2026-09-25
+- **Revit ribbon tab**, as a Revit add-in tab would be: Connection (Connect → Connected, Disconnect), Model (Load from Revit → Reload), Selection (Sync, **Send to Revit** and **Get from Revit** to pass the selection once, useful with Sync off) and Help (Bridge guide). Buttons enable as the connection allows and explain why in their tooltip.
+- Command search: Send selection to Revit, Get selection from Revit, Disconnect from Revit.
+- Needs Shanku Bridge for Revit 0.1.0 (unchanged).
 
 ### 0.32.0 — 2026-09-24
 - **Revit bridge, milestone 1** (with Shanku Bridge for Revit 0.1.0, `bridge/revit`): **Revit** in the status bar opens the Revit window: find the add-in, pair with the 6-digit code from Revit (Shanku → Connect), **Load model from Revit** (IFC4 RV, the Revit model is never changed) and keep the **selection in step both ways**, matched by GlobalId with the Revit ElementId as a fallback, only for the model loaded from that Revit document. The browser stays paired and reconnects when Revit restarts; it never contacts localhost before you connect.

@@ -67,14 +67,15 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.32.0';
+const APP_VERSION = '0.33.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
   { id: 'hiddenLine', label: 'Hidden line', keys: 'HL' },
   { id: 'wireframe', label: 'Wireframe', keys: 'WF' },
 ];
-const RIBBON_TABS = ['Model', 'View', 'Manage'].map((label) => ({ id: label.toLowerCase(), label }));
+// Revit comes last, where Revit puts add-in tabs.
+const RIBBON_TABS = ['Model', 'View', 'Manage', 'Revit'].map((label) => ({ id: label.toLowerCase(), label }));
 
 
 /** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
@@ -238,6 +239,32 @@ export function App({ start }: { start?: AppStart } = {}) {
     toggleWin('revit', true);
     if (revit.phase === 'idle') void bridge.connect();
   };
+  /** Selects Shanku's selection in Revit now (works with sync off too). */
+  const sendSelectionToRevit = async () => {
+    const doc = revit.document;
+    if (!doc || !m.model) return;
+    const picked = m.selection.map((i) => m.model!.elements[i]).filter(Boolean);
+    try {
+      const r = await bridge.select(doc.key, picked.map((e) => e.globalId), picked.map((e) => Number(e.tag) || 0));
+      setNotice(picked.length ? `Selected ${r.selected} in Revit${r.missing ? `; ${r.missing} not found there` : ''}.` : 'Cleared the selection in Revit.');
+    } catch (e) {
+      setNotice(`Revit: ${(e as Error).message}`);
+    }
+  };
+  /** Takes Revit's current selection into Shanku. */
+  const getSelectionFromRevit = async () => {
+    if (!m.model) return;
+    try {
+      const r = await bridge.revitSelection();
+      const found = indicesForRevitSelection(m.model.elements, r.globalIds, []);
+      fromRevit.current = true;
+      m.setSelection(found);
+      setNotice(r.globalIds.length ? `Took ${found.length} of ${r.globalIds.length} selected in Revit${found.length < r.globalIds.length ? ' (the rest are not in this model)' : ''}.` : 'Nothing is selected in Revit.');
+    } catch (e) {
+      setNotice(`Revit: ${(e as Error).message}`);
+    }
+  };
+
   /** Revit exports its open model; Shanku opens it and links it for selection sync. */
   const loadFromRevit = async () => {
     setRevitLoading(true);
@@ -1243,6 +1270,9 @@ export function App({ start }: { start?: AppStart } = {}) {
       ).map(([id, title]) => ({ id: `window.${id}`, title: `Show ${title}`, keywords: id === 'qa' ? 'check warnings errors health duplicate floating column mark' : undefined, group: 'Windows' as const, checked: openPanels.includes(id), keys: id === 'console' ? 'Ctrl + `' : undefined, run: () => dock.current?.toggle(id) })),
       { id: 'bridge.connect', title: 'Connect to Revit…', group: 'File', keywords: 'bridge revit link pair add-in live', checked: revit.phase === 'connected', run: () => openRevit() },
       { id: 'bridge.load', title: 'Load model from Revit', group: 'File', keywords: 'bridge revit import open live', enabled: revit.phase === 'connected' && !!revit.document && !revitLoading, why: revit.phase !== 'connected' ? 'connect to Revit first' : !revit.document ? 'open a model in Revit' : 'loading…', run: () => void loadFromRevit() },
+      { id: 'bridge.sendSelection', title: 'Send selection to Revit', group: 'Select', keywords: 'bridge revit push select', enabled: revit.phase === 'connected' && !!revit.document && hasModel, why: revit.phase !== 'connected' ? 'connect to Revit first' : 'open a model', run: () => void sendSelectionToRevit() },
+      { id: 'bridge.getSelection', title: 'Get selection from Revit', group: 'Select', keywords: 'bridge revit pull select', enabled: revit.phase === 'connected' && !!revit.document && hasModel, why: revit.phase !== 'connected' ? 'connect to Revit first' : 'open a model', run: () => void getSelectionFromRevit() },
+      { id: 'bridge.disconnect', title: 'Disconnect from Revit', group: 'File', keywords: 'bridge revit unpair', enabled: revit.phase === 'connected' || revit.phase === 'unpaired', why: 'not connected', run: () => bridge.disconnect() },
       { id: 'bridge.syncSelection', title: 'Sync selection with Revit', group: 'Select', keywords: 'bridge revit link', checked: revitSync, run: () => setRevitSync((v) => !v) },
       { id: 'window.boq', title: 'Bill of quantities (BOQ)', group: 'Windows', keywords: 'quantities rates excel export', checked: wins.boq, enabled: hasModel, why: needModel, run: () => toggleWin('boq') },
       { id: 'window.reset', title: 'Reset window layout', group: 'Windows', keywords: 'panels dock', run: () => dock.current?.reset() },
@@ -1411,10 +1441,41 @@ export function App({ start }: { start?: AppStart } = {}) {
             <RibbonButton icon="layout" label="Reset" onClick={() => dock.current?.reset()} shortcutHint="default layout: browser left, properties right" />
           </RibbonGroup>
             </>
-          ) : (
+          ) : ribbonTab === 'manage' ? (
             <>
           <RibbonGroup label="Settings">
             <RibbonButton icon="byid" label="Marks" disabled={!m.model} onClick={() => setMarkDialog(true)} shortcutHint="which property is the mark" />
+          </RibbonGroup>
+            </>
+          ) : (
+            <>
+          {/* Revit bridge (Shanku Bridge for Revit): the same actions as the Revit window, Revit-style */}
+          <RibbonGroup label="Connection">
+            <RibbonButton
+              icon="link"
+              label={revit.phase === 'connected' ? 'Connected' : revit.phase === 'unpaired' ? 'Pair' : 'Connect'}
+              active={revit.phase === 'connected'}
+              onClick={() => openRevit()}
+              shortcutHint={revit.phase === 'connected' ? `Revit ${revit.revit ?? ''}: ${revit.document?.title ?? 'no model open'}` : 'find Revit and pair with the code from Shanku → Connect'}
+            />
+            <RibbonButton icon="unlink" label="Disconnect" disabled={revit.phase !== 'connected' && revit.phase !== 'unpaired'} onClick={() => bridge.disconnect()} shortcutHint="forget this browser's pairing" />
+          </RibbonGroup>
+          <RibbonGroup label="Model">
+            <RibbonButton
+              icon="importModel"
+              label={revitLoading ? 'Loading…' : revitLinked ? 'Reload' : 'Load from Revit'}
+              disabled={revit.phase !== 'connected' || !revit.document || revit.document.isFamily || revitLoading}
+              onClick={() => void loadFromRevit()}
+              shortcutHint={revit.phase !== 'connected' ? 'connect to Revit first' : !revit.document ? 'open a model in Revit' : `load ${revit.document.title} (the Revit model is not changed)`}
+            />
+          </RibbonGroup>
+          <RibbonGroup label="Selection">
+            <RibbonButton icon="sync" label="Sync" active={revitSync} onClick={() => setRevitSync((v) => !v)} shortcutHint={revitLinked ? 'selection follows Revit both ways' : 'follows Revit once the model is loaded from Revit'} />
+            <RibbonButton icon="selectSend" label="Send to Revit" disabled={revit.phase !== 'connected' || !revit.document || !m.model} onClick={() => void sendSelectionToRevit()} shortcutHint="select Shanku's selection in Revit now" />
+            <RibbonButton icon="selectGet" label="Get from Revit" disabled={revit.phase !== 'connected' || !revit.document || !m.model} onClick={() => void getSelectionFromRevit()} shortcutHint="take Revit's current selection" />
+          </RibbonGroup>
+          <RibbonGroup label="Help">
+            <RibbonButton icon="guide" label="Bridge guide" onClick={() => openGuide('revit')} shortcutHint="install the add-in, pair, load, sync" />
           </RibbonGroup>
             </>
           )}

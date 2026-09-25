@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.33.0 — 2026-09-25
+
+### Added
+- Revit ribbon tab (Connect, Disconnect, Load/Reload, Sync, Send to Revit, Get from Revit, Bridge guide); brand 1.6.0 bridge icons.
+
 ## 0.32.0 — 2026-09-24
 
 ### Added

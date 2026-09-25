@@ -1,5 +1,5 @@
 {
- "version": "1.5.0",
+ "version": "1.6.0",
  "grid": 24,
  "strokeWidth": 1.5,
  "icons": {
@@ -155,6 +155,30 @@
   "guide": {
    "label": "Guide and FAQ",
    "outline": "<path d=\"M3 5.5c3-1.2 6-1 9 1v13c-3-2-6-2.2-9-1z\"></path><path d=\"M21 5.5c-3-1.2-6-1-9 1v13c3-2 6-2.2 9-1z\"></path>"
+  },
+  "link": {
+   "label": "Connect (bridge)",
+   "outline": "<path d=\"M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1\"></path><path d=\"M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1\"></path>"
+  },
+  "unlink": {
+   "label": "Disconnect (bridge)",
+   "outline": "<path d=\"M15.5 13.5l3-3a4 4 0 0 0-5.66-5.66l-1 1\"></path><path d=\"M8.5 10.5l-3 3a4 4 0 0 0 5.66 5.66l1-1\"></path><path d=\"M4 4l16 16\"></path>"
+  },
+  "importModel": {
+   "label": "Load model from another program",
+   "outline": "<path d=\"M12 2.5v8.5\"></path><path d=\"M8.5 7.5L12 11l3.5-3.5\"></path><path d=\"M4 12.5l8 4 8-4\"></path><path d=\"M4 12.5v4.5l8 4 8-4v-4.5\"></path><path d=\"M12 16.5v4.5\"></path>"
+  },
+  "sync": {
+   "label": "Keep in sync",
+   "outline": "<path d=\"M4 11a8 8 0 0 1 14-4.5\"></path><path d=\"M18.5 3v4h-4\"></path><path d=\"M20 13a8 8 0 0 1-14 4.5\"></path><path d=\"M5.5 21v-4h4\"></path>"
+  },
+  "selectSend": {
+   "label": "Send the selection",
+   "outline": "<path d=\"M4 3.5l6 14 1.8-5.7 5.7-1.8z\"></path><path d=\"M14 18.5h7\"></path><path d=\"M18.5 16L21 18.5l-2.5 2.5\"></path>"
+  },
+  "selectGet": {
+   "label": "Get the selection",
+   "outline": "<path d=\"M4 3.5l6 14 1.8-5.7 5.7-1.8z\"></path><path d=\"M21 18.5h-7\"></path><path d=\"M16.5 16L14 18.5l2.5 2.5\"></path>"
   }
  }
 }

@@ -222,7 +222,8 @@ export const GUIDE: GuideSection[] = [
       {
         list: [
           'Install the add-in (`bridge/revit` in the Shanku repository), open a model in Revit, then **Shanku → Connect**: Revit shows a 6-digit code.',
-          'In Shanku click **Revit** in the status bar (or search **Connect to Revit**), enter the code and allow Chrome\'s prompt for apps on this device.',
+          'In Shanku open the **Revit** ribbon tab and click **Connect** (or click **Revit** in the status bar), enter the code and allow Chrome\'s prompt for apps on this device.',
+          'The **Revit** tab also has **Load from Revit** (Reload), **Sync**, and **Send to Revit** / **Get from Revit** to pass the selection once when Sync is off.',
           '**Load model from Revit** exports it as IFC4 inside a transaction that Revit rolls back, so the Revit model is never changed.',
           'This browser stays paired; **Shanku → Disconnect** in Revit unpairs every browser.',
         ],
@@ -300,6 +301,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.33.0', date: '2026-09-25', items: ['A Revit ribbon tab: Connect, Disconnect, Load from Revit, Sync, Send to Revit and Get from Revit, and the bridge guide.'] },
           { version: '0.32.0', date: '2026-09-24', items: ['Revit bridge: connect to Revit 2025 with Shanku Bridge for Revit, load the open model and keep the selection in step both ways.'] },
           { version: '0.31.0', date: '2026-09-24', items: ['What now? in the title bar.', 'BOQ scope (visible, selection, levels) with a scope sentence; steel estimate with range warnings.', 'Help for files that do not open, and view links to share a view.', 'Diagrams in the Guide: the mouse map, interface, selection, View Range, section grips, graphics precedence, section box, exploded views, command search, quantities and DXF → 3D.'] },
           { version: '0.29.0', date: '2026-09-24', items: ['Command search (Ctrl + K) opens on Recently used, Most used and New in this release; new commands carry a New badge until you try them.'] },
