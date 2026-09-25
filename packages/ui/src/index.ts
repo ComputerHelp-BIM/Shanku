@@ -33,4 +33,4 @@ export {
 export { ErrorBoundary, type ErrorBoundaryProps } from './components/ErrorBoundary';
 export { FloatingWindow, type FloatingWindowProps } from './components/FloatingWindow';
 export { ThemeIcon } from './components/ThemeIcon';
-export const version = '0.15.0';
+export const version = '0.15.1';

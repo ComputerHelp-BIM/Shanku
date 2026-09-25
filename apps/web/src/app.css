@@ -662,3 +662,5 @@
 .bq-pair { display: grid; grid-template-columns: 1fr auto; gap: var(--space-sm); }
 .bq-pair .bq-field:last-child span { color: var(--text-faint); }
 .bq-table td.rate.prof input, input.prof { color: var(--text-secondary); font-style: italic; }
+.app-revit__live { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--chip); }
+.app-revit__live > span { flex: 1; font-weight: 600; }

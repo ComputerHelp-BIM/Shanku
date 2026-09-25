@@ -326,8 +326,21 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
       indices: indices.toArray(),
     },
     edges: { positions: edgePos.toArray(), elementIds: edgeElement.toArray() },
+    // web-ifc's shift to the origin (COORDINATE_TO_ORIGIN): patches are mapped into this space
+    coordination: coordinationOf(api, modelID),
   };
   return { modelID, model };
+}
+
+/** The coordination matrix web-ifc applied to this model (identity if it cannot say). */
+function coordinationOf(api: IfcAPI, modelID: number): number[] {
+  try {
+    const m = api.GetCoordinationMatrix(modelID) as ArrayLike<number>;
+    if (m && m.length === 16) return Array.from(m);
+  } catch {
+    /* older web-ifc: assume no shift */
+  }
+  return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 }
 
 /**

@@ -38,7 +38,7 @@ project information's UniqueId) tells documents apart.
 | GET | `/hello` | no | `{ service: "shanku-revit", protocol: 1, addin, revit, pairingOpen, hasDocument, features }` |
 | POST | `/pair` | no | `{ token }` or 403 |
 | GET | `/status` | yes | `{ document: { title, key, path, isFamily } \| null, selection: string[] }` |
-| POST | `/model/export` | yes | IFC4 Reference View bytes (`application/octet-stream`); headers `X-Shanku-Document-Key`, `X-Shanku-Document-Title` |
+| POST | `/model/export` | yes | IFC4 Reference View bytes (`application/octet-stream`); headers `X-Shanku-Document-Key`, `X-Shanku-Document-Title`. Optional body `{ globalIds }` (≤ 2000): only those elements (0.5.0) |
 | GET | `/model/ids` | yes | `{ key, ids: [[globalId, uniqueId, elementId], …] }` (model elements only) |
 | POST | `/selection` | yes | body `{ key, globalIds, elementIds? }` → `{ selected, missing }` |
 | GET | `/events?token=` | yes | `text/event-stream` (below) |
@@ -53,6 +53,11 @@ data: {"key":"…","globalIds":["…"],"elementIds":[123]}
 
 event: document
 data: {"document":{"title":"…","key":"…","path":"…","isFamily":false}}   (null when none is open)
+```
+
+```
+event: changes
+data: {"key":"…","modified":["…"],"added":["…"],"deleted":["…"]}   (0.5.0, feature `changes`)
 ```
 
 A comment line (`: ping`) every 15 s keeps the stream open. A selection that Shanku itself set is not
@@ -79,6 +84,17 @@ others. A change is refused when:
 Revit warnings (duplicate marks and the like) are collected into `warnings` instead of dialogs.
 `dryRun: true` runs the same checks inside a transaction group that is always rolled back: the inner
 transaction commits so Revit raises its warnings, and the group rollback undoes it (0.3.0).
+
+## Live updates (features `changes` and `partial-export`, add-in 0.5.0)
+
+Revit's `DocumentChanged` reports model elements modified, added and deleted, by anyone, including
+Shanku's own `/params/write`. The add-in batches them (0.6 s after the last change) into one `changes`
+event. Shanku then asks `/model/export` with `{ globalIds }` for the changed and added elements: the
+add-in creates a temporary 3D view, isolates them (`IsolateElementsTemporary` →
+`ConvertTemporaryHideIsolateToPermanent`), sets `FilterViewId` and `VisibleElementsOfCurrentView`, exports
+with the same options as the full model, and rolls the transaction back. Shanku maps the partial file
+into the model's coordinates (web-ifc shifts each file to the origin by its own amount; the coordination
+matrices undo that) and merges it.
 
 ## Export
 

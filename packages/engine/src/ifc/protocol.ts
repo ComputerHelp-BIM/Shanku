@@ -3,10 +3,11 @@ import type { ParsedModel, PropertyGroup } from '../model/types';
 /** Main thread -> worker. */
 export type WorkerRequest =
   | { type: 'init'; wasmPath: string }
-  | { type: 'open'; requestId: number; fileName: string; bytes: ArrayBuffer; markRules?: string[]; gradeRules?: string[] }
+  /** patch: an update (partial export) opened beside the model, aligned to it, elements tagged with its slot. */
+  | { type: 'open'; requestId: number; fileName: string; bytes: ArrayBuffer; markRules?: string[]; gradeRules?: string[]; patch?: boolean }
   | { type: 'grades'; requestId: number; rules: string[] }
   | { type: 'marks'; requestId: number; rules: string[] }
-  | { type: 'properties'; requestId: number; expressId: number }
+  | { type: 'properties'; requestId: number; expressId: number; source?: number }
   | { type: 'close' };
 
 /** Worker -> main thread. */

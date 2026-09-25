@@ -2,6 +2,24 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.38.0 — 2026-09-25
+
+### Added
+- Colour by parameter with an element palette and legend (after the Structura viewer).
+- QA findings: Show in Revit; Fix in Revit for missing marks (proposed, reviewed, applied as one Revit undo).
+- Paste marks to select (Ctrl + V on the model), synced to Revit.
+- Realistic visual style and lightweight ground shadows (engine 0.28.0).
+- BOQ rate profiles for Indian metros on a CPWD DSR 2023 base, editable once for every item.
+- Brand 1.7.0 icons (colour, sun); ui 0.15.1.
+
+### Changed
+- The Excel BOQ follows the design system (fonts, colours, header, banding, totals).
+
+## 0.37.0 — 2026-09-25
+
+### Added
+- Live updates from Revit: change feed, partial export of changed elements, merged in place with the view kept (Update, Auto-update). Shanku Bridge for Revit 0.5.0; engine 0.27.0.
+
 ## 0.36.0 — 2026-09-25
 
 ### Changed

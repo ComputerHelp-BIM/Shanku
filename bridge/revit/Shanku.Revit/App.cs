@@ -49,6 +49,7 @@ public sealed class App : IExternalApplication
             app.SelectionChanged += Host.OnSelectionChanged;
             app.ViewActivated += Host.OnViewActivated;
             app.ControlledApplication.DocumentClosed += Host.OnDocumentClosed;
+            app.ControlledApplication.DocumentChanged += Host.OnDocumentChanged; // live updates for Shanku
             CreateRibbon(app);
             return Result.Succeeded;
         }
@@ -66,6 +67,7 @@ public sealed class App : IExternalApplication
             app.SelectionChanged -= Host.OnSelectionChanged;
             app.ViewActivated -= Host.OnViewActivated;
             app.ControlledApplication.DocumentClosed -= Host.OnDocumentClosed;
+            app.ControlledApplication.DocumentChanged -= Host.OnDocumentChanged;
         }
         Server?.Dispose();
         return Result.Succeeded;

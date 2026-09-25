@@ -10,11 +10,23 @@ pairing and event stream as the real add-in. Extra test-only routes (no auth, lo
     GET  /mock/received            -> the selections Shanku sent, newest last
     POST /mock/document {title,key} or {"document": null}      pretend Revit switched or closed the model
     POST /mock/param {globalId, name, display}                 pretend a parameter has this value in Revit
+    POST /mock/move {globalIds, dx, dy, dz}  (metres) -> move elements and send a `changes` event
+    POST /mock/delete {globalIds}            -> delete elements and send a `changes` event
+
+With IfcOpenShell installed (pip install ifcopenshell) the mock keeps the model in memory, so moves and
+deletes show in exports, and /model/export {globalIds} writes a real subset IFC like Revit's partial
+export (a live update). Without it, the mock serves the file as-is and offers no live updates.
 
 Usage: python3 tools/mock-revit-bridge.py [--port 7071] [--ifc apps/web/public/samples/sample-frame.ifc]
 """
 import argparse
 import json
+try:
+    import ifcopenshell  # optional: live updates (moves, deletes, partial exports) need it
+    import ifcopenshell.guid
+    import ifcopenshell.util.unit
+except ImportError:  # the mock still serves the file as-is
+    ifcopenshell = None
 import re
 import secrets
 import threading
@@ -29,6 +41,7 @@ ALLOWED = re.compile(r"^(https://shanku(-[a-z0-9-]+)?\.vercel\.app|https://compu
 class State:
     def __init__(self, ifc: Path):
         self.ifc = ifc.read_bytes()
+        self.model = ifcopenshell.open(str(ifc)) if ifcopenshell else None
         text = self.ifc.decode("latin-1")
         # GlobalId and Tag (Revit ElementId) of every product in the file
         self.ids = [(g, f"uid-{g}", int(t) if t.isdigit() else 0) for g, t in re.findall(r"=\s*IFC(?:COLUMN|BEAM|SLAB|FOOTING|WALL\w*|MEMBER|PLATE)\('([^']{22})',[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,'?([^',)]*)", text)]
@@ -56,6 +69,52 @@ class State:
                 "Comments": [-1010106, "Identity Data", "text", "", False],
                 "Mark": [-1001203, "Identity Data", "text", f"E{n + 1}", False],
             }
+
+    def current_ifc(self) -> bytes:
+        """The model as it is now (after mock moves and deletes)."""
+        return self.model.to_string().encode() if self.model else self.ifc
+
+    def partial_ifc(self, gids) -> bytes:
+        """A real subset export: project and units, the spatial structure, and each element with its
+        placement, geometry, type, property sets and storey (like Revit exporting an isolated view)."""
+        src = self.model
+        new = ifcopenshell.file(schema=src.schema)
+        new.add(src.by_type("IfcProject")[0])
+        for rel in src.by_type("IfcRelAggregates"):
+            new.add(rel)  # project > site > building > storeys
+        g = lambda: ifcopenshell.guid.new()
+        for gid in gids:
+            try:
+                el = src.by_guid(gid)
+            except RuntimeError:
+                continue
+            ne = new.add(el)
+            for rel in getattr(el, "ContainedInStructure", []) or []:
+                new.createIfcRelContainedInSpatialStructure(g(), None, None, None, [ne], new.add(rel.RelatingStructure))
+            for rel in getattr(el, "IsDefinedBy", []) or []:
+                if rel.is_a("IfcRelDefinesByProperties"):
+                    new.createIfcRelDefinesByProperties(g(), None, None, None, [ne], new.add(rel.RelatingPropertyDefinition))
+            for rel in getattr(el, "IsTypedBy", []) or []:
+                new.createIfcRelDefinesByType(g(), None, None, None, [ne], new.add(rel.RelatingType))
+        return new.to_string().encode()
+
+    def move(self, gids, dx=0.0, dy=0.0, dz=0.0):
+        """Moves elements (metres, IFC axes) by giving each a new placement point."""
+        scale = ifcopenshell.util.unit.calculate_unit_scale(self.model)  # file units -> metres
+        for gid in gids:
+            el = self.model.by_guid(gid)
+            rp = el.ObjectPlacement.RelativePlacement
+            x, y, z = (list(rp.Location.Coordinates) + [0, 0, 0])[:3]
+            rp.Location = self.model.createIfcCartesianPoint((x + dx / scale, y + dy / scale, z + dz / scale))
+
+    def delete(self, gids):
+        for gid in gids:
+            el = self.model.by_guid(gid)
+            for rel in list(getattr(el, "ContainedInStructure", []) or []):
+                rel.RelatedElements = [e for e in rel.RelatedElements if e != el] or rel.RelatedElements
+            self.model.remove(el)
+            self.params.pop(gid, None)
+            self.ids = [t for t in self.ids if t[0] != gid]
 
     def broadcast(self, event: str, data: dict):
         payload = f"event: {event}\ndata: {json.dumps(data)}\n\n".encode()
@@ -128,7 +187,7 @@ def make_handler(st: State):
             if path == "/mock/received":
                 return self.send_json(200, {"received": st.received})
             if path == "/shanku/v1/hello":
-                return self.send_json(200, {"service": "shanku-revit", "protocol": 1, "addin": "mock", "revit": "2025", "pairingOpen": True, "hasDocument": st.document is not None, "features": ["params"]})
+                return self.send_json(200, {"service": "shanku-revit", "protocol": 1, "addin": "mock", "revit": "2025", "pairingOpen": True, "hasDocument": st.document is not None, "features": ["params", "changes", "partial-export"] if ifcopenshell else ["params"]})
             if not self.authed(q):
                 return self.send_json(401, {"error": "Not paired. Click Shanku → Connect in Revit and enter the code in Shanku."})
             if path == "/shanku/v1/status":
@@ -166,6 +225,16 @@ def make_handler(st: State):
                 st.revit_selection = gids
                 tags = {g: t for g, _, t in st.ids}
                 st.broadcast("selection", {"key": st.document["key"], "globalIds": gids, "elementIds": [tags.get(g, 0) for g in gids]})
+                return self.send_json(200, {"ok": True})
+            if path == "/mock/move":
+                b = self.body()
+                st.move(b["globalIds"], b.get("dx", 0.0), b.get("dy", 0.0), b.get("dz", 0.0))
+                st.broadcast("changes", {"key": st.document["key"], "modified": b["globalIds"], "added": [], "deleted": []})
+                return self.send_json(200, {"ok": True})
+            if path == "/mock/delete":
+                b = self.body()
+                st.delete(b["globalIds"])
+                st.broadcast("changes", {"key": st.document["key"], "modified": [], "added": [], "deleted": b["globalIds"]})
                 return self.send_json(200, {"ok": True})
             if path == "/mock/document":
                 b = self.body()
@@ -233,19 +302,24 @@ def make_handler(st: State):
                 if not dry:
                     for p, after in pending:
                         p[3] = after
+                    changed = sorted({c["globalId"] for c, r in zip(b.get("changes", []), results) if r["ok"]})
+                    if changed:  # like Revit's DocumentChanged after the transaction commits
+                        st.broadcast("changes", {"key": st.document["key"], "modified": changed, "added": [], "deleted": []})
                 marks = [c for c in b.get("changes", []) if c.get("name") == "Mark"]
                 warnings = ['Elements have duplicate "Mark" values.'] if len({c.get("value") for c in marks}) < len(marks) else []
                 n = len(b.get("changes", []))
                 return self.send_json(200, {"dryRun": dry, "undoName": f"Shanku: update {n} parameters", "results": results, "warnings": warnings})
             if path == "/shanku/v1/model/export":
+                b = self.body()
+                data = st.partial_ifc(b["globalIds"]) if b.get("globalIds") and st.model else st.current_ifc()
                 self.send_response(200)
                 self.cors()
                 self.send_header("Content-Type", "application/octet-stream")
-                self.send_header("Content-Length", str(len(st.ifc)))
+                self.send_header("Content-Length", str(len(data)))
                 self.send_header("X-Shanku-Document-Key", st.document["key"])
                 self.send_header("X-Shanku-Document-Title", st.document["title"])
                 self.end_headers()
-                self.wfile.write(st.ifc)
+                self.wfile.write(data)
                 return
             if path == "/shanku/v1/selection":
                 b = self.body()

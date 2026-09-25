@@ -144,7 +144,8 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   // with the same geometry; rebuilding then reset the camera and the section box.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    viewer.current?.setModel(model);
+    // a merged update from Revit (revision > 0) keeps the camera and view; a new file fits it
+    viewer.current?.setModel(model, { keepView: (model?.revision ?? 0) > 0 });
   }, [model?.info]);
   useEffect(() => {
     viewer.current?.setSelection(selection);

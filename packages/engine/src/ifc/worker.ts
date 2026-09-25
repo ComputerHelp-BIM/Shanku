@@ -3,6 +3,7 @@
 import * as WebIFC from 'web-ifc';
 import type { ModelUnits } from '../model/types';
 import { parseIfc, readProperties } from './parse';
+import { alignPatch } from '../model/merge';
 import { detectMarks } from './marks';
 import { readMaterials } from './quantities';
 import type { WorkerRequest, WorkerResponse } from './protocol';
@@ -12,6 +13,9 @@ declare const self: DedicatedWorkerGlobalScope;
 const api = new WebIFC.IfcAPI();
 let ready: Promise<void> | null = null;
 let modelID: number | null = null;
+/** Open files by slot: 0 the model, 1+ updates merged into it (their elements carry the slot). */
+let slots: number[] = [];
+let baseCoordination: number[] | undefined;
 let units: ModelUnits = { length: 'm', area: 'm²', volume: 'm³' };
 
 const post = (msg: WorkerResponse, transfer: Transferable[] = []) => self.postMessage(msg, transfer);
@@ -31,8 +35,30 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     if (!ready) throw new Error('IFC engine is not initialised.');
     await ready;
 
+    if (msg.type === 'open' && msg.patch) {
+      if (modelID === null) throw new Error('No model is open to update.');
+      const parsed = parseIfc(api, new Uint8Array(msg.bytes), {
+        fileName: msg.fileName,
+        markRules: msg.markRules,
+        gradeRules: msg.gradeRules,
+      });
+      const slot = slots.length;
+      slots.push(parsed.modelID);
+      for (const e of parsed.model.elements) e.source = slot;
+      const model = alignPatch(parsed.model, baseCoordination);
+      post({ type: 'opened', requestId: msg.requestId, model }, [
+        model.mesh.positions.buffer,
+        model.mesh.normals.buffer,
+        model.mesh.elementIds.buffer,
+        model.mesh.indices.buffer,
+        model.edges.positions.buffer,
+        model.edges.elementIds.buffer,
+      ]);
+      return;
+    }
     if (msg.type === 'open') {
-      if (modelID !== null) api.CloseModel(modelID);
+      for (const id of slots) api.CloseModel(id); // the model and any updates
+      slots = [];
       const { modelID: id, model } = parseIfc(api, new Uint8Array(msg.bytes), {
         fileName: msg.fileName,
         markRules: msg.markRules,
@@ -40,6 +66,8 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         onProgress: (done, total) => post({ type: 'progress', requestId: msg.requestId, done, total }),
       });
       modelID = id;
+      slots = [id];
+      baseCoordination = model.coordination;
       units = model.info.units;
       post({ type: 'opened', requestId: msg.requestId, model }, [
         model.mesh.positions.buffer,
@@ -53,7 +81,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     }
     if (msg.type === 'properties') {
       if (modelID === null) throw new Error('No model is open.');
-      const groups = await readProperties(api, modelID, msg.expressId, units);
+      const groups = await readProperties(api, slots[msg.source ?? 0] ?? modelID, msg.expressId, units);
       post({ type: 'properties', requestId: msg.requestId, groups });
       return;
     }

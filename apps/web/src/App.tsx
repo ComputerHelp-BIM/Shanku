@@ -61,6 +61,7 @@ import { RevitChanges } from './components/RevitChanges';
 import { TypeProperties } from './components/TypeProperties';
 import { afterApply, byGroup, changeKey, commonParams, effectiveCommon, stageEdit, type PendingChange, type RevitElementParams } from './lib/paramEdits';
 import { RevitBridge, indicesForRevitSelection } from './lib/revitBridge';
+import { NO_CHANGES, addChanges, changeCount, remapIndices, remapRecord, toExport, withoutMerged, type ChangeSet } from './lib/liveUpdate';
 import { QaPanel } from './components/QaPanel';
 import { ColorLegendOverlay, ColorPanel } from './components/ColorPanel';
 import { COLOR_MODES, computeColors, loadColorSettings, mergeOverrides, saveColorSettings, type ColorMode, type ColorSettings } from './lib/colorBy';
@@ -74,7 +75,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.36.0';
+const APP_VERSION = '0.38.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -101,6 +102,13 @@ export function App({ start }: { start?: AppStart } = {}) {
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [hidden, setHidden] = useState<number[]>([]);
+  /**
+   * The model as opened: live updates from Revit merge into it (revision > 0) and must not look like
+   * a new file (restoring views, switching to 3D, re-applying a view's saved hides).
+   */
+  const openedInfoRef = useRef<import('@shanku/engine').ParsedModel['info'] | undefined>(undefined);
+  if (!m.model?.revision) openedInfoRef.current = m.model?.info;
+  const openedInfo = openedInfoRef.current;
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>('shaded');
   const [sectionBox, setSectionBox] = useState(false);
   /** Revit's Shadows On/Off (view control bar), remembered on this device. */
@@ -311,6 +319,11 @@ export function App({ start }: { start?: AppStart } = {}) {
       const size = r.bytes.byteLength; // read before the loader takes the buffer (it is transferred to a worker)
       await m.open({ name: r.name, bytes: r.bytes });
       setRevitLink({ key: r.key, fileName: r.name });
+      try {
+        localStorage.removeItem(`shanku.revitUpdated.${r.name}`); // a full load is up to date
+      } catch {
+        /* nothing to clear */
+      }
       m.log(`Loaded ${r.title} from Revit (${(size / 1e6).toFixed(1)} MB). Selection follows Revit.`);
     } catch (e) {
       setNotice(`Could not load from Revit: ${(e as Error).message}`);
@@ -404,7 +417,7 @@ export function App({ start }: { start?: AppStart } = {}) {
       setActiveView('3d');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [m.model?.info]);
+  }, [openedInfo]);
 
   /** Why a file did not open (Structura item 13), shown in a dialog with export steps and a report. */
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
@@ -907,6 +920,88 @@ export function App({ start }: { start?: AppStart } = {}) {
       setNotice(`Revit: ${(e as Error).message}`);
     }
   };
+  // ---- Live updates (milestone 3): Revit reports what changed; Shanku merges just those elements
+  const [liveChanges, setLiveChanges] = useState<ChangeSet>(NO_CHANGES);
+  const [liveBusy, setLiveBusy] = useState(false);
+  const [autoUpdate, setAutoUpdate] = useState(() => localStorage.getItem('shanku.revitAutoUpdate') === 'on');
+  useEffect(() => {
+    try {
+      localStorage.setItem('shanku.revitAutoUpdate', autoUpdate ? 'on' : 'off');
+    } catch {
+      /* not remembered */
+    }
+  }, [autoUpdate]);
+  useEffect(() => {
+    setLiveChanges(NO_CHANGES); // a new load starts clean
+  }, [revitLink?.key, openedInfo]);
+  const liveCount = changeCount(liveChanges);
+  const canLive = revitLinked && bridge.canLiveUpdate;
+  useEffect(
+    () =>
+      bridge.onChanges((c) => {
+        if (!revitLink || c.key !== revitLink.key) return;
+        setLiveChanges((cur) => addChanges(cur, c));
+        // Revit's parameters of those elements are stale now: Properties re-reads them at once
+        for (const g of [...c.modified, ...c.added, ...c.deleted]) paramsCache.current.delete(g);
+        setParamsTick((t) => t + 1);
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bridge, revitLink?.key],
+  );
+  useEffect(() => {
+    if (canParams && selectedGids.length && selectedGids.length <= MAX_PARAM_SELECTION) void fetchParams(selectedGids);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsTick]);
+  /** Exports only the changed elements from Revit and merges them into the model in place. */
+  const updateFromRevit = async () => {
+    if (!revitLink || !m.model || liveBusy) return;
+    const batch = liveChanges;
+    if (!changeCount(batch)) return;
+    const ids = toExport(batch);
+    if (ids.length > 2000) {
+      setNotice(`${ids.length} elements changed in Revit: reload the whole model instead (Revit tab → Reload).`);
+      return;
+    }
+    setLiveBusy(true);
+    const t0 = performance.now();
+    try {
+      const part = ids.length ? await bridge.exportElements(ids) : null;
+      const r = await m.applyUpdate(`${revitLink.fileName} (update)`, part?.bytes ?? null, batch.deleted);
+      if (!r) return;
+      // per-element state held by position follows the elements to their new positions
+      setHidden((h) => remapIndices(r.indexMap, h));
+      for (const [k, v] of hideStore.current) hideStore.current.set(k, remapIndices(r.indexMap, v));
+      setGraphics((g) => ({ ...g, elements: remapRecord(r.indexMap, g.elements) }));
+      setViews((vs) => vs.map((v) => ({ ...v, graphics: { ...v.graphics, elements: remapRecord(r.indexMap, v.graphics.elements) } })));
+      setLiveChanges((cur) => withoutMerged(cur, batch));
+      try {
+        localStorage.setItem(`shanku.revitUpdated.${revitLink.fileName}`, '1'); // the saved session is the file as first loaded
+      } catch {
+        /* not remembered */
+      }
+      m.log(`Updated from Revit in ${Math.round(performance.now() - t0)} ms: ${r.replaced} changed, ${r.added} new, ${r.removed} deleted.`);
+      setNotice(`Updated from Revit: ${[r.replaced && `${r.replaced} changed`, r.added && `${r.added} new`, r.removed && `${r.removed} deleted`].filter(Boolean).join(', ') || 'nothing to change'}.`);
+    } catch (e) {
+      setNotice(`Could not update from Revit: ${(e as Error).message}`);
+    } finally {
+      setLiveBusy(false);
+    }
+  };
+  // After a page reload the session restores the file as first loaded: say so if Revit updates were merged.
+  useEffect(() => {
+    if (!m.model || m.model.revision || !revitLink || m.model.info.fileName !== revitLink.fileName) return;
+    if (localStorage.getItem(`shanku.revitUpdated.${revitLink.fileName}`) === '1')
+      setNotice('Shanku restored this model as it was first loaded from Revit; changes merged since then are not in it. Revit tab → Reload brings it up to date.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openedInfo]);
+  const updateRef = useRef(updateFromRevit);
+  updateRef.current = updateFromRevit;
+  useEffect(() => {
+    if (!autoUpdate || !canLive || !liveCount || liveBusy) return;
+    const t = setTimeout(() => void updateRef.current(), 1200); // after Revit settles
+    return () => clearTimeout(t);
+  }, [autoUpdate, canLive, liveCount, liveBusy]);
+
   /** Checks (dry run) or applies the given pending changes in Revit. */
   const runChanges = async (keys: string[], dryRun: boolean) => {
     if (!revitLink) return;
@@ -1063,7 +1158,7 @@ export function App({ start }: { start?: AppStart } = {}) {
     setHidden(hideStore.current.get(v.id) ?? []);
     showView(v);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeView, m.model]);
+  }, [activeView, openedInfo]);
 
   const openView = (id: string) => {
     setOpenViews((o) => (o.includes(id) ? o : [...o, id]));
@@ -1642,6 +1737,8 @@ export function App({ start }: { start?: AppStart } = {}) {
       { id: 'bridge.sendSelection', title: 'Send selection to Revit', group: 'Select', keywords: 'bridge revit push select', enabled: revit.phase === 'connected' && !!revit.document && hasModel, why: revit.phase !== 'connected' ? 'connect to Revit first' : 'open a model', run: () => void sendSelectionToRevit() },
       { id: 'bridge.getSelection', title: 'Get selection from Revit', group: 'Select', keywords: 'bridge revit pull select', enabled: revit.phase === 'connected' && !!revit.document && hasModel, why: revit.phase !== 'connected' ? 'connect to Revit first' : 'open a model', run: () => void getSelectionFromRevit() },
       { id: 'bridge.disconnect', title: 'Disconnect from Revit', group: 'File', keywords: 'bridge revit unpair', enabled: revit.phase === 'connected' || revit.phase === 'unpaired', why: 'not connected', run: () => bridge.disconnect() },
+      { id: 'bridge.update', title: 'Update from Revit', group: 'File', keywords: 'bridge revit live sync refresh changed', enabled: canLive && liveCount > 0 && !liveBusy, why: !canLive ? 'load the model from Revit (add-in 0.5.0)' : 'nothing changed in Revit', run: () => void updateFromRevit() },
+      { id: 'bridge.autoUpdate', title: 'Auto-update from Revit', group: 'File', keywords: 'bridge revit live sync', checked: autoUpdate, enabled: canLive, why: 'load the model from Revit (add-in 0.5.0)', run: () => setAutoUpdate((v) => !v) },
       { id: 'bridge.changes', title: 'Changes for Revit…', group: 'Edit', keywords: 'bridge revit parameters pending apply review', checked: wins.changes, run: () => toggleWin('changes') },
       { id: 'bridge.check', title: 'Check changes in Revit', group: 'Edit', keywords: 'bridge revit parameters dry run validate', enabled: pending.length > 0 && canParams, why: !pending.length ? 'no changes waiting' : 'connect to the Revit model first', run: () => void runChanges(pending.map(changeKey), true) },
       { id: 'bridge.syncSelection', title: 'Sync selection with Revit', group: 'Select', keywords: 'bridge revit link', checked: revitSync, run: () => setRevitSync((v) => !v) },
@@ -1844,6 +1941,14 @@ export function App({ start }: { start?: AppStart } = {}) {
               onClick={() => void loadFromRevit()}
               shortcutHint={revit.phase !== 'connected' ? 'connect to Revit first' : !revit.document ? 'open a model in Revit' : `load ${revit.document.title} (the Revit model is not changed)`}
             />
+            <RibbonButton
+              icon="sync"
+              label={liveBusy ? 'Updating…' : liveCount ? `Update (${liveCount})` : 'Update'}
+              disabled={!canLive || !liveCount || liveBusy}
+              onClick={() => void updateFromRevit()}
+              shortcutHint={!revitLinked ? 'load the model from Revit first' : !bridge.canLiveUpdate ? 'needs Shanku Bridge for Revit 0.5.0' : liveCount ? `bring in the ${liveCount} element${liveCount === 1 ? '' : 's'} changed in Revit` : 'nothing changed in Revit'}
+            />
+            <RibbonButton icon="importModel" label="Auto-update" active={autoUpdate} disabled={!canLive} onClick={() => setAutoUpdate((v) => !v)} shortcutHint="bring in Revit's changes as they happen (Revit exports them in the background)" />
           </RibbonGroup>
           <RibbonGroup label="Selection">
             <RibbonButton icon="sync" label="Sync" active={revitSync} onClick={() => setRevitSync((v) => !v)} shortcutHint={revitLinked ? 'selection follows Revit both ways' : 'follows Revit once the model is loaded from Revit'} />
@@ -2131,6 +2236,7 @@ export function App({ start }: { start?: AppStart } = {}) {
               onLoad={() => void loadFromRevit()}
               onSyncSelection={setRevitSync}
               onDisconnect={() => bridge.disconnect()}
+              live={canLive ? { count: liveCount, busy: liveBusy, auto: autoUpdate, onUpdate: () => void updateFromRevit(), onAuto: setAutoUpdate } : null}
             />
           </FloatingWindow>
           <FloatingWindow id="guide" title="Guide & FAQ" subtitle={`Shanku ${APP_VERSION}`} open={wins.guide} onClose={() => toggleWin('guide', false)} initial={{ w: 900, h: 620 }} minWidth={560} minHeight={320}>
@@ -2592,7 +2698,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             onClick={() => (wins.revit ? toggleWin('revit', false) : openRevit())}
           >
             <span className="app-revit__dot" aria-hidden="true" />
-            {revit.phase === 'connected' ? `Revit · ${revit.document?.title ?? 'no model'}${pending.length ? ` · ${pending.length} to apply` : ''}` : revit.phase === 'unpaired' ? 'Revit · pair' : 'Revit'}
+            {revit.phase === 'connected' ? `Revit · ${revit.document?.title ?? 'no model'}${liveCount ? ` · ${liveCount} changed` : ''}${pending.length ? ` · ${pending.length} to apply` : ''}` : revit.phase === 'unpaired' ? 'Revit · pair' : 'Revit'}
           </button>
           {qaReport ? (
             <>

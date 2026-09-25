@@ -35,7 +35,8 @@ public interface IRevitHost
     DocumentInfo? CurrentDocument { get; }
     Task<DocumentInfo?> GetDocumentAsync();
     Task<IReadOnlyList<string>> GetSelectionAsync();
-    Task<ExportResult> ExportIfcAsync();
+    /// <summary>Exports the model, or only these elements (a live update) when globalIds is given.</summary>
+    Task<ExportResult> ExportIfcAsync(IReadOnlyList<string>? globalIds = null);
     Task<IdsResult> GetIdsAsync();
     Task<SelectResult> SetSelectionAsync(string key, IReadOnlyList<string> globalIds, IReadOnlyList<long> elementIds);
     /// <summary>Instance parameters of these elements (milestone 2).</summary>
@@ -60,9 +61,10 @@ public sealed class BridgeServer : IDisposable
 {
     public const int Protocol = 1;
     /// <summary>What this add-in can do beyond protocol 1's basics (Shanku checks before offering it).</summary>
-    public static readonly string[] Features = { "params" };
+    public static readonly string[] Features = { "params", "changes", "partial-export" };
     public const int MaxReadElements = 500;
     public const int MaxChanges = 5000;
+    public const int MaxPartialElements = 2000;
     private const string Prefix = "/shanku/v1";
 
     private readonly IRevitHost _host;
@@ -257,7 +259,11 @@ public sealed class BridgeServer : IDisposable
                 }
                 case ("POST", "/model/export"):
                 {
-                    var r = await _host.ExportIfcAsync();
+                    // optional body { globalIds }: export only those elements (a live update)
+                    var body = await ReadJson(req);
+                    string[]? only = body.TryGetProperty("globalIds", out var g) && g.ValueKind == JsonValueKind.Array ? g.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).Distinct().ToArray() : null;
+                    if (only is { Length: > MaxPartialElements }) throw new BridgeException(400, $"At most {MaxPartialElements} elements per update; load the whole model instead.");
+                    var r = await _host.ExportIfcAsync(only);
                     res.Headers["X-Shanku-Document-Key"] = r.Key;
                     res.Headers["X-Shanku-Document-Title"] = Uri.EscapeDataString(r.Title);
                     res.ContentType = "application/octet-stream";

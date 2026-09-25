@@ -6,7 +6,7 @@ Status: Analysis (2026-09-24, Shanku 0.26.0). Companion to [revit-gap.md](revit-
 
 | Id | Feature | Where it exists | Why it is used daily | Effort | How it fits Shanku |
 |---|---|---|---|---|---|
-| A1 | **Colour by parameter** (grade, mark, level, size) with an automatic legend | pyRevit Color Splasher and similar add-ons. Built-in colour schemes are mostly for rooms and areas | "Show all M30 elements", "which beams have no mark" | 2–3 days | Per-element colour overrides |
+| A1 | **Colour by parameter** (built in 0.38.0) (grade, mark, level, size) with an automatic legend | pyRevit Color Splasher and similar add-ons. Built-in colour schemes are mostly for rooms and areas | "Show all M30 elements", "which beams have no mark" | 2–3 days | Per-element colour overrides |
 | A2 | **Columns off grid**: flag columns more than a tolerance from a grid intersection | QA add-ons (Ideate Review and others) | A classic modelling mistake | 2 days | Grid lines and column centres are known |
 | A3 | **Duplicate and overlapping elements** | Revit warnings, clearer in add-ons | Duplicates inflate the BOQ | 2 days | Bounds comparison; results select and zoom |
 | A4 | **Select by parameter value** ("same size as this") | DiRoots, pyRevit | Faster than a filter | 1 day | The Select Similar pattern from the DXF view |
@@ -23,7 +23,7 @@ As far as we know. Check the Autodesk App Store before marketing any of these as
 | Id | Feature | Why it is useful | Effort | Why it is easy in Shanku |
 |---|---|---|---|---|
 | B1 | **"Why is this hidden?"**: pick or search an element; Shanku lists every reason it is not visible (category off, filter, temporary hide, section box, view range, explode) with a one-click fix for each | Probably the most common Revit complaint | 2–3 days | Shanku owns all visibility state |
-| B2 | **Paste marks to select**: "C1, C4, B12" from Excel or WhatsApp selects and zooms, and lists unknown marks | Site queries arrive as lists | 1 day | Mark search already exists |
+| B2 | **Paste marks to select** (built in 0.38.0): "C1, C4, B12" from Excel or WhatsApp selects and zooms, and lists unknown marks | Site queries arrive as lists | 1 day | Mark search already exists |
 | B3 | **Link to a view** (built in 0.30.0): the URL holds camera, section box, isolation and selection; anyone with the same model opens exactly that view | Revit cannot link into a view | 2 days | View state is serialisable; the model stays on each device |
 | B4 | **QR code to an element** on printed drawings | Site crews on phones | 1 day after B3 | Runs in a phone browser |
 | B5 | **Drawing against model**: DXF column labels and positions compared with the IFC (missing, moved, different size) | The daily architect-versus-structure check | 3–4 days | Both files are parsed in one app |

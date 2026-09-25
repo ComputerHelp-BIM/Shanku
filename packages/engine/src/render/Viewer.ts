@@ -371,7 +371,11 @@ export class Viewer {
 
   // ------------------------------------------------------------------ model
 
-  setModel(model: ParsedModel | null): void {
+  /**
+   * Shows a model. `keepView`: a live update of the same model (merged changes from Revit): the
+   * camera, section box and everything the app sets stay; only the geometry changes.
+   */
+  setModel(model: ParsedModel | null, opts: { keepView?: boolean } = {}): void {
     this.clearModel();
     this.model = model;
     this.history = [];
@@ -458,7 +462,7 @@ export class Viewer {
     this.edges.visible = this.edgesOn;
     this.setReveal(this.revealOn);
     this.orient('iso');
-    this.fit(undefined, false);
+    if (!opts.keepView) this.fit(undefined, false);
   }
 
   private clearModel(): void {

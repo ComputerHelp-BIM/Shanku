@@ -1,12 +1,13 @@
-# Shanku Bridge for Revit 0.4.0
+# Shanku Bridge for Revit 0.5.0
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
-into Shanku, keep the selection in step both ways, and edit Revit parameters from Shanku. Protocol: `docs/bridge/protocol.md`.
+into Shanku, keep the selection in step both ways, edit Revit parameters from Shanku, and keep Shanku up
+to date as the Revit model changes. Protocol: `docs/bridge/protocol.md`.
 
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.4.0.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.5.0.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -24,10 +25,12 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.4.0)
+## What it does, and does not do (0.5.0)
 
 - Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
   changed. Selection sync only selects.
+- Live updates only read: Revit exports the changed elements in the background (the export transaction
+  is rolled back); with a dialog open in Revit, Shanku waits.
 - Parameter edits change the model only when you press **Apply** in Shanku's Changes window: one
   transaction named "Shanku: update N parameters on M elements", so one Edit → Undo in Revit takes it
   all back. Only instance parameters; each change is refused if the value changed in Revit since
@@ -53,6 +56,14 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.5.0 — 2026-09-25
+- Live updates: a `DocumentChanged` handler collects the model elements modified, added and deleted (by
+  anyone, and by Shanku's Apply) and sends one `changes` event 0.6 s after a burst of changes; deleted
+  elements are named from the add-in's id map.
+- `/model/export` with `{ globalIds }` exports only those elements: a temporary 3D view isolating them,
+  exported with the same options (so coordinates and GlobalIds match the full export), inside the
+  transaction that is rolled back. `/hello` lists `changes` and `partial-export`.
 
 ### 0.4.0 — 2026-09-25
 - Numbers: each number parameter carries the project's display unit symbol ("mm", "m³"…) for Shanku to

@@ -143,7 +143,12 @@ internal sealed class FakeHost : IRevitHost
     public List<(string key, string[] gids)> Selections { get; } = new();
     public Task<DocumentInfo?> GetDocumentAsync() => Task.FromResult(CurrentDocument);
     public Task<IReadOnlyList<string>> GetSelectionAsync() => Task.FromResult<IReadOnlyList<string>>(new[] { "g1" });
-    public Task<ExportResult> ExportIfcAsync() => Task.FromResult(new ExportResult(Encoding.ASCII.GetBytes("ISO-10303-21;"), "key-a", "Tower A"));
+    public List<IReadOnlyList<string>?> Exports { get; } = new();
+    public Task<ExportResult> ExportIfcAsync(IReadOnlyList<string>? globalIds = null)
+    {
+        Exports.Add(globalIds);
+        return Task.FromResult(new ExportResult(Encoding.ASCII.GetBytes(globalIds == null ? "ISO-10303-21;" : $"PARTIAL {globalIds.Count}"), "key-a", "Tower A"));
+    }
     public Task<IdsResult> GetIdsAsync() => Task.FromResult(new IdsResult("key-a", new[] { new IdEntry("g1", "u1", 101) }));
     // parameters: Mark (text, "C1"), Base Offset (number), Volume (read-only)
     public Dictionary<string, string> Marks { get; } = new() { ["g1"] = "C1" };
@@ -346,5 +351,26 @@ public class ServerTests : IDisposable
 
         var bad = await _http.SendAsync(Req(HttpMethod.Post, "/params/write", token: token, body: new { key = "key-a" }));
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+    }
+
+    [Fact]
+    public async Task Exports_only_listed_elements_for_a_live_update()
+    {
+        string token = await Pair();
+        var hello = JsonDocument.Parse(await (await _http.SendAsync(Req(HttpMethod.Get, "/hello"))).Content.ReadAsStringAsync()).RootElement;
+        var features = hello.GetProperty("features").EnumerateArray().Select(x => x.GetString()).ToArray();
+        Assert.Contains("changes", features);
+        Assert.Contains("partial-export", features);
+
+        var full = await _http.SendAsync(Req(HttpMethod.Post, "/model/export", token: token));
+        Assert.Equal("ISO-10303-21;", await full.Content.ReadAsStringAsync());
+        Assert.Null(_host.Exports[^1]);
+
+        var part = await _http.SendAsync(Req(HttpMethod.Post, "/model/export", token: token, body: new { globalIds = new[] { "g1", "g2", "g1" } }));
+        Assert.Equal("PARTIAL 2", await part.Content.ReadAsStringAsync()); // duplicates dropped
+        Assert.Equal(new[] { "g1", "g2" }, _host.Exports[^1]);
+
+        var tooMany = await _http.SendAsync(Req(HttpMethod.Post, "/model/export", token: token, body: new { globalIds = Enumerable.Range(0, BridgeServer.MaxPartialElements + 1).Select(i => $"g{i}").ToArray() }));
+        Assert.Equal(HttpStatusCode.BadRequest, tooMany.StatusCode);
     }
 }
