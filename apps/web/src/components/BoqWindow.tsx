@@ -3,6 +3,8 @@ import { Button } from '@shanku/ui';
 import { CATEGORY_ORDER, siFactor, type ElementRecord, type ParsedModel } from '@shanku/engine';
 import { buildBoqWorkbook, downloadFile } from '../lib/excel';
 import { clearOverride, inr, itemKey, parseRate, rateFor, rateItems, setItemRate, setOverride, type RateBook } from '../lib/rates';
+import { describeScope, scopeElements, type BoqScope } from '../lib/boqScope';
+import { bandWarning, emptyRebar, rebarEstimate } from '../lib/rebar';
 
 type Tab = 'elements' | 'levels' | 'summary' | 'rates';
 type SortKey = 'mark' | 'id' | 'level' | 'category' | 'type' | 'grade' | 'length' | 'width' | 'depth' | 'height' | 'area' | 'volume' | 'rate' | 'amount';
@@ -16,6 +18,8 @@ export interface BoqWindowProps {
   rates: RateBook;
   onRates: (book: RateBook) => void;
   selection: number[];
+  /** Elements hidden in the active view, for the "Visible elements only" scope. */
+  hidden: readonly number[];
   onSelect: (indices: number[], mode: 'replace' | 'add' | 'remove') => void;
   markRules: string[];
   gradeRules: string[];
@@ -33,6 +37,7 @@ export function BoqWindow(p: BoqWindowProps) {
   const [lvl, setLvl] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({ key: 'volume', asc: false });
   const [busy, setBusy] = useState(false);
+  const [scope, setScope] = useState<BoqScope>({ kind: 'model' });
   const [scrollTop, setScrollTop] = useState(0);
   const [viewH, setViewH] = useState(400);
   const scroller = useRef<HTMLDivElement>(null);
@@ -47,8 +52,16 @@ export function BoqWindow(p: BoqWindowProps) {
   }, [tab]);
 
   // ---------- data ----------
-  const els = model.elements;
   const levels = model.info.levels.map((l) => l.name);
+  // Everything below counts only the elements in scope, and says so (scopeSentence).
+  const els = useMemo(
+    () => scopeElements(model.elements, scope, { hidden: new Set(p.hidden), selection: new Set(p.selection), levels: model.info.levels.map((l) => l.name) }),
+    [model, scope, p.hidden, p.selection],
+  );
+  const scopeSentence = describeScope(scope, els.length, model.elements.length);
+  const rebarSettings = rates.rebar ?? emptyRebar();
+  const rebar = useMemo(() => rebarEstimate(els, rates.rebar ?? emptyRebar()), [els, rates.rebar]);
+  const setRebar = (patch: Partial<typeof rebarSettings>) => onRates({ ...rates, rebar: { ...rebarSettings, ...patch } });
   const cats = CATEGORY_ORDER.filter((c) => model.info.categories[c]);
   const q = filter.trim().toLowerCase();
   const visible = useMemo(() => {
@@ -142,10 +155,10 @@ export function BoqWindow(p: BoqWindowProps) {
   const exportXlsx = async () => {
     setBusy(true);
     try {
-      const buf = await buildBoqWorkbook({ info: model.info, elements: els, rates, markRules: p.markRules, gradeRules: p.gradeRules, appVersion: p.appVersion });
+      const buf = await buildBoqWorkbook({ info: model.info, elements: els, rates, markRules: p.markRules, gradeRules: p.gradeRules, appVersion: p.appVersion, scope: scopeSentence });
       const base = model.info.fileName.replace(/\.ifc$/i, '');
       downloadFile(buf, `${base} - BOQ.xlsx`);
-      p.onLog(`Exported ${base} - BOQ.xlsx (Summary, Levels, Elements, Rates, About).`);
+      p.onLog(`Exported ${base} - BOQ.xlsx (Summary, Levels, Elements, Rates${rebar.rows.some((r) => r.ratio !== null) ? ', Reinforcement' : ''}, About). ${scopeSentence}.`);
     } catch (e) {
       p.onLog(`BOQ export failed: ${e instanceof Error ? e.message : String(e)}`, 'error');
     } finally {
@@ -181,6 +194,36 @@ export function BoqWindow(p: BoqWindowProps) {
           </button>
         ))}
       </div>
+      <div className="bq-scope" role="group" aria-label="What the BOQ counts">
+        <label>
+          <span>Count</span>
+          <select
+            className="bq-sel"
+            value={scope.kind}
+            onChange={(e) => {
+              const k = e.target.value as BoqScope['kind'];
+              setScope(k === 'levels' ? { kind: 'levels', from: levels[0] ?? '', to: levels[levels.length - 1] ?? '' } : { kind: k });
+            }}
+          >
+            <option value="model">Whole model</option>
+            <option value="visible">Visible in this view</option>
+            <option value="selection" disabled={!p.selection.length}>Selection ({p.selection.length.toLocaleString('en-IN')})</option>
+            <option value="levels" disabled={!levels.length}>Levels…</option>
+          </select>
+        </label>
+        {scope.kind === 'levels' ? (
+          <>
+            <select className="bq-sel" aria-label="From level" value={scope.from} onChange={(e) => setScope({ ...scope, from: e.target.value })}>
+              {levels.map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+            <span className="bq-faint">to</span>
+            <select className="bq-sel" aria-label="To level" value={scope.to} onChange={(e) => setScope({ ...scope, to: e.target.value })}>
+              {levels.map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </>
+        ) : null}
+        <span className="bq-scope__text" role="status">{scopeSentence}</span>
+      </div>
       <div className="bq-tools">
         {tab === 'elements' ? (
           <>
@@ -196,6 +239,7 @@ export function BoqWindow(p: BoqWindowProps) {
           </>
         ) : null}
         <span className="app-spacer" />
+        {rebar.kg > 0 ? <span className="bq-chip" title="Reinforcement estimate from steel ratios (Rates tab)">Steel ≈ {inr(rebar.kg / 1000, 2)} t</span> : null}
         <span className="bq-chip">
           {rates.edited.length} item rate{rates.edited.length === 1 ? '' : 's'} edited · {overrides} override{overrides === 1 ? '' : 's'}
           {missing ? ` · ${missing} without a rate` : ''}
@@ -374,6 +418,94 @@ export function BoqWindow(p: BoqWindowProps) {
             </tfoot>
           </table>
         )}
+        {tab === 'rates' ? (
+          <section className="bq-rebar" aria-labelledby="bq-rebar-title">
+            <h3 id="bq-rebar-title">Reinforcement (estimate)</h3>
+            <p className="bq-faint">Steel from ratios: kg of steel per m³ of concrete, before bar bending schedules exist. A ratio outside the usual range is flagged.</p>
+            <table className="bq-table">
+              <thead>
+                <tr className="cols">
+                  <th>Category</th><th className="n">Concrete (m³)</th><th className="n">Ratio (kg/m³)</th><th>Usual range</th><th className="n">Steel (kg)</th><th className="n">Amount (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rebar.rows.map((r) => {
+                  const warn = r.ratio === null ? null : bandWarning(r.category, r.ratio);
+                  return (
+                    <tr key={r.category} className={warn ? 'warn' : undefined}>
+                      <td>{r.category}</td>
+                      <td className="n">{d3(r.volume)}</td>
+                      <td className={['rate', warn ? 'bad' : ''].join(' ')} title={warn ?? undefined}>
+                        <input
+                          key={`${r.category}-${r.ratio}`}
+                          aria-label={`Steel ratio for ${r.category}, kg per m³`}
+                          aria-invalid={warn ? true : undefined}
+                          aria-describedby={warn ? `bq-warn-${r.category}` : undefined}
+                          defaultValue={r.ratio === null ? '' : String(r.ratio)}
+                          placeholder="—"
+                          onKeyDown={(ev) => {
+                            if (ev.key === 'Enter') ev.currentTarget.blur();
+                            else if (ev.key === 'Escape') {
+                              ev.stopPropagation();
+                              ev.currentTarget.value = ev.currentTarget.defaultValue;
+                              ev.currentTarget.blur();
+                            }
+                          }}
+                          onBlur={(ev) => {
+                            const raw = ev.currentTarget.value.trim();
+                            if (raw === ev.currentTarget.defaultValue) return;
+                            const ratios = { ...rebarSettings.ratios };
+                            if (raw === '') delete ratios[r.category];
+                            else {
+                              const v = parseRate(raw);
+                              if (v === null) return void (ev.currentTarget.value = ev.currentTarget.defaultValue);
+                              ratios[r.category] = v;
+                            }
+                            setRebar({ ratios });
+                          }}
+                        />
+                      </td>
+                      <td>
+                        {r.band ? `${r.band[0]}–${r.band[1]}` : <span className="bq-faint">—</span>}
+                        {warn ? <span id={`bq-warn-${r.category}`} className="bq-warn" role="alert"> ⚠ {warn}</span> : null}
+                      </td>
+                      <td className="n">{r.kg === null ? '—' : inr(r.kg, 0)}</td>
+                      <td className="n amt">{r.amount === null ? '—' : inr(r.amount)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row">Total</th>
+                  <td className="n">{d3(rebar.rows.reduce((a, r) => a + r.volume, 0))}</td>
+                  <td colSpan={2} className="bq-rebar__rate">
+                    <label>
+                      Steel rate (₹/kg){' '}
+                      <input
+                        key={`rate-${rebarSettings.rate}`}
+                        className="bq-in bq-in--num"
+                        aria-label="Steel rate, rupees per kg"
+                        defaultValue={rebarSettings.rate === null ? '' : String(rebarSettings.rate)}
+                        placeholder="—"
+                        onKeyDown={(ev) => ev.key === 'Enter' && ev.currentTarget.blur()}
+                        onBlur={(ev) => {
+                          const raw = ev.currentTarget.value.trim();
+                          if (raw === ev.currentTarget.defaultValue) return;
+                          const v = raw === '' ? null : parseRate(raw);
+                          if (raw !== '' && v === null) return void (ev.currentTarget.value = ev.currentTarget.defaultValue);
+                          setRebar({ rate: v });
+                        }}
+                      />
+                    </label>
+                  </td>
+                  <td className="n">{inr(rebar.kg, 0)} kg{rebar.kg >= 1000 ? ` (${inr(rebar.kg / 1000, 2)} t)` : ''}</td>
+                  <td className="n">₹ {inr(rebar.amount)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </section>
+        ) : null}
       </div>
       <div className="bq-foot">
         <span>Enter sets the item rate · Alt + Enter overrides this element · Right-click a rate to switch · Click a row to select</span>

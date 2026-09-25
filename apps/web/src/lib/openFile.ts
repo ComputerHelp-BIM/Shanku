@@ -56,11 +56,10 @@ export async function pickFile(kind: FileKind): Promise<PickedFile | null> {
   });
 }
 
-export async function fileFromDrop(e: { dataTransfer: DataTransfer | null }): Promise<(PickedFile & { kind: FileKind }) | null> {
+export async function fileFromDrop(e: { dataTransfer: DataTransfer | null }): Promise<(PickedFile & { kind: FileKind | 'other' }) | null> {
   const file = e.dataTransfer?.files?.[0];
   if (!file) return null;
   const kind = kindOf(file.name);
-  if (kind === 'dwg') throw new Error(`${file.name} is a DWG. Save it as DXF (AutoCAD: Save As > DXF, or the free ODA File Converter) and drop the DXF.`);
-  if (!kind) throw new Error(`${file.name} is not an IFC or DXF file.`);
-  return { name: file.name, bytes: await file.arrayBuffer(), kind };
+  // Anything that is not IFC or DXF comes back as 'other', so the app can say what it is and how to export it.
+  return { name: file.name, bytes: await file.arrayBuffer(), kind: kind === 'ifc' || kind === 'dxf' ? kind : 'other' };
 }

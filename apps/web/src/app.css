@@ -490,3 +490,35 @@
 .app-qa__icon--info circle { fill: var(--status-unchecked); }
 .app-qa__glyph { fill: none; stroke: var(--brand-paper); stroke-width: 1.8; stroke-linecap: round; }
 .app-qa__glyph--dark { stroke: var(--brand-ink); }
+
+/* ---- BOQ scope and reinforcement (Structura items 8 and 9) ---- */
+.bq-scope { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--bg); font-size: 12px; }
+.bq-scope label { display: flex; align-items: center; gap: var(--space-xs); color: var(--text-secondary); }
+.bq-scope__text { color: var(--text); font-weight: 600; }
+.bq-rebar { padding: var(--space-md) 0 var(--space-lg); border-top: 1px solid var(--border); margin-top: var(--space-md); }
+.bq-rebar h3 { margin: 0 12px 2px; font-size: 13px; font-weight: 600; }
+.bq-rebar > p { margin: 0 12px var(--space-sm); font-size: 12px; }
+.bq-table td.rate.bad input { border-color: var(--status-error); }
+.bq-warn { display: block; color: var(--text); font-size: 12px; white-space: normal; }
+.bq-rebar__rate label { display: flex; align-items: center; gap: var(--space-xs); color: var(--text-secondary); font-weight: 400; }
+.bq-in--num { width: 90px; text-align: right; height: 24px; }
+
+/* ---- What now? (Structura item 7) ---- */
+.app-whatnow { position: relative; }
+.app-whatnow__button { height: 28px; padding: 0 var(--space-md); border: 1px solid var(--control-border); border-radius: var(--radius-md); background: var(--field); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.app-whatnow__button:hover, .app-whatnow__button[aria-expanded='true'] { border-color: var(--accent); color: var(--accent-text); }
+.app-whatnow__panel { position: absolute; top: calc(100% + 6px); right: 0; z-index: var(--z-menu); width: 360px; max-width: calc(100vw - 32px); padding: 6px; background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-menu); display: flex; flex-direction: column; gap: 2px; }
+.app-whatnow__item { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.app-whatnow__item strong { font-size: 13px; font-weight: 600; }
+.app-whatnow__item span { color: var(--text-secondary); font-size: 12px; line-height: 16px; }
+.app-whatnow__item:hover, .app-whatnow__item:focus-visible { background: var(--chip); outline: none; }
+.app-whatnow__item:focus-visible { box-shadow: inset 0 0 0 2px var(--focus-ring); }
+
+/* ---- File diagnosis and view link dialogs (Structura items 13 and 14) ---- */
+.app-dialog--wide { width: min(640px, calc(100vw - 48px)); }
+.app-diag__steps { margin: var(--space-md) 0; padding-left: 22px; display: flex; flex-direction: column; gap: var(--space-xs); font-size: 14px; line-height: 20px; }
+.app-diag__report { margin-top: var(--space-md); font-size: 13px; }
+.app-diag__report summary { cursor: pointer; color: var(--text-secondary); }
+.app-diag__report pre { max-height: 220px; overflow: auto; margin: var(--space-sm) 0; padding: var(--space-sm) var(--space-md); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: 12px/18px var(--font-mono); white-space: pre-wrap; word-break: break-all; }
+.app-link-box { box-sizing: border-box; width: 100%; margin: var(--space-sm) 0; padding: var(--space-sm); border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: 12px/18px var(--font-mono); resize: vertical; word-break: break-all; }
+.app-link-box[aria-invalid='true'] { border-color: var(--status-error); }

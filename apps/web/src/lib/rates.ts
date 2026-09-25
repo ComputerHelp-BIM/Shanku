@@ -1,4 +1,5 @@
 import type { ElementRecord } from '@shanku/engine';
+import type { RebarSettings } from './rebar';
 
 /**
  * BOQ rates: one rate per item (category + grade/material), with optional per-element
@@ -11,6 +12,8 @@ export interface RateBook {
   overrides: Record<string, number>;
   /** Item keys the user has changed in this file (for the "edited" styling and count). */
   edited: string[];
+  /** Reinforcement estimate: steel ratios per category and a steel rate (optional; older books have none). */
+  rebar?: RebarSettings;
 }
 
 export const emptyRates = (): RateBook => ({ items: {}, overrides: {}, edited: [] });
@@ -84,7 +87,12 @@ export function rateItems(elements: readonly ElementRecord[], book: RateBook): R
 export function loadRates(fileName: string): RateBook {
   try {
     const v = JSON.parse(window.localStorage.getItem(`shanku.rates.${fileName}`) ?? 'null');
-    return v && typeof v === 'object' && v.items && v.overrides ? { edited: [], ...v } : emptyRates();
+    if (!(v && typeof v === 'object' && v.items && v.overrides)) return emptyRates();
+    const book: RateBook = { edited: [], ...v };
+    // Drop a malformed reinforcement block rather than the whole rate book.
+    const rb = book.rebar as unknown as { ratios?: unknown; rate?: unknown } | undefined;
+    if (rb && (typeof rb.ratios !== 'object' || rb.ratios === null || !(rb.rate === null || typeof rb.rate === 'number'))) delete book.rebar;
+    return book;
   } catch {
     return emptyRates();
   }

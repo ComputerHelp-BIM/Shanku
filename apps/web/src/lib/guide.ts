@@ -195,6 +195,24 @@ export const GUIDE: GuideSection[] = [
     ],
   },
   {
+    id: 'share',
+    group: 'Guide',
+    title: 'Sharing a view',
+    blocks: [
+      { p: '**Copy view link** (Ctrl + K, the right-click menu in 3D, or What now?) copies a link with the camera, the view, the section box, the visual style, the selection and what is hidden. The model is not in the link: whoever opens it needs the same file, and elements are matched by GlobalId, so a re-export of the same model works too.' },
+      { p: '**Open a view link…** takes a pasted link, or text starting with `SHANKU/1|`.' },
+    ],
+  },
+  {
+    id: 'files',
+    group: 'Guide',
+    title: 'Files that do not open',
+    blocks: [
+      { p: 'Shanku opens IFC (.ifc) and DXF (.dxf). For anything else, or a file that fails, it reads the first bytes on this device, says what the file really is and how to export one it can read: Revit → File → Export → IFC; DWG → Save As DXF; ETABS → export the .e2k text file.' },
+      { p: '**What is in this file?** gives a report to copy for support: name, size, the IFC schema and authoring tool or the DXF version, and the error. It never contains model data.' },
+    ],
+  },
+  {
     id: 'qa',
     group: 'Guide',
     title: 'QA checks',
@@ -264,7 +282,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
-          { version: '0.30.0', date: '2026-09-24', items: ['Diagrams in the Guide: the mouse map, interface, selection, View Range, section grips, graphics precedence, section box, exploded views, command search, quantities and DXF → 3D.'] },
+          { version: '0.31.0', date: '2026-09-24', items: ['What now? in the title bar.', 'BOQ scope (visible, selection, levels) with a scope sentence; steel estimate with range warnings.', 'Help for files that do not open, and view links to share a view.', 'Diagrams in the Guide: the mouse map, interface, selection, View Range, section grips, graphics precedence, section box, exploded views, command search, quantities and DXF → 3D.'] },
           { version: '0.29.0', date: '2026-09-24', items: ['Command search (Ctrl + K) opens on Recently used, Most used and New in this release; new commands carry a New badge until you try them.'] },
           { version: '0.28.2', date: '2026-09-24', items: ['Fixed: Guide & FAQ could crash the app in Chrome 154 when changing section or closing it.', 'A failing window or panel now shows its own error with Try again and Copy details instead of blanking the app.'] },
           { version: '0.28.0', date: '2026-09-24', items: ['Exploded views combine: storeys, radial and categories together.', 'Cut faces are solid, a shade darker, answer hover and selection, and have their own cut outline.', 'Section grips in plans: lengthen, far clip, flip and move.'] },

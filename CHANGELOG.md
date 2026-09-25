@@ -2,10 +2,16 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.31.0 — 2026-09-24
+
+### Changed
+- Combined release of main's 0.30.0 (guide figures, homepage diagrams) and the design-system branch's 0.30.0 (What now?, BOQ scope, steel estimate, file diagnosis, view links).
+
 ## 0.30.0 — 2026-09-24
 
 ### Added
 - Guide figures (mouse map and ten more diagrams) and figure sections on the homepage; themed, searchable, accessible.
+- From the Structura viewer: "What now?" tasks in the title bar; BOQ scope switch with a scope sentence on every total and in Excel; reinforcement estimate from steel ratios with out-of-range warnings and a Reinforcement sheet; a diagnosis for files that do not open (what the file is, export steps, a copyable report); shareable view links (`#app&view=`).
 
 ## 0.29.0 — 2026-09-24
 

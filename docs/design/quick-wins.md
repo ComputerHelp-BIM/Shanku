@@ -24,7 +24,7 @@ As far as we know. Check the Autodesk App Store before marketing any of these as
 |---|---|---|---|---|
 | B1 | **"Why is this hidden?"**: pick or search an element; Shanku lists every reason it is not visible (category off, filter, temporary hide, section box, view range, explode) with a one-click fix for each | Probably the most common Revit complaint | 2–3 days | Shanku owns all visibility state |
 | B2 | **Paste marks to select**: "C1, C4, B12" from Excel or WhatsApp selects and zooms, and lists unknown marks | Site queries arrive as lists | 1 day | Mark search already exists |
-| B3 | **Link to a view**: the URL holds camera, section box, isolation and selection; anyone with the same model opens exactly that view | Revit cannot link into a view | 2 days | View state is serialisable; the model stays on each device |
+| B3 | **Link to a view** (built in 0.30.0): the URL holds camera, section box, isolation and selection; anyone with the same model opens exactly that view | Revit cannot link into a view | 2 days | View state is serialisable; the model stays on each device |
 | B4 | **QR code to an element** on printed drawings | Site crews on phones | 1 day after B3 | Runs in a phone browser |
 | B5 | **Drawing against model**: DXF column labels and positions compared with the IFC (missing, moved, different size) | The daily architect-versus-structure check | 3–4 days | Both files are parsed in one app |
 | B6 | **Linked plan and 3D highlight**: hover in the plan, light up in 3D, and the other way round | Understanding complex framing | 2 days | One model, several views |
