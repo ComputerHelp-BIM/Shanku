@@ -13,6 +13,8 @@ export interface RevitPanelProps {
   onLoad: () => void;
   onSyncSelection: (on: boolean) => void;
   onDisconnect: () => void;
+  /** Live updates (add-in 0.5.0, model loaded from Revit): changed count, Update and Auto-update. */
+  live?: { count: number; busy: boolean; auto: boolean; onUpdate: () => void; onAuto: (on: boolean) => void } | null;
 }
 
 /** The Revit window: find the add-in, pair with the code from Revit, load the model, sync selection. */
@@ -117,6 +119,17 @@ export function RevitPanel(p: RevitPanelProps) {
               <input type="checkbox" checked={p.syncSelection} onChange={(e) => p.onSyncSelection(e.target.checked)} /> Sync selection
             </label>
           </div>
+          {p.live && linked ? (
+            <div className="app-revit__row app-revit__live">
+              <span>{p.live.count ? `${p.live.count} element${p.live.count === 1 ? '' : 's'} changed in Revit` : 'In step with Revit'}</span>
+              <Button size="sm" disabled={!p.live.count || p.live.busy} onClick={p.live.onUpdate}>
+                {p.live.busy ? 'Updating…' : 'Update'}
+              </Button>
+              <label className="app-revit__check">
+                <input type="checkbox" checked={p.live.auto} onChange={(e) => p.live!.onAuto(e.target.checked)} /> Auto-update
+              </label>
+            </div>
+          ) : null}
           {doc?.isFamily ? <p className="app-revit__note">Revit is showing a family. Open a project model.</p> : null}
           <p className="app-revit__note">
             Revit exports the model as IFC4 inside a transaction it rolls back, so the Revit model is never changed. Large models take a while; close dialogs in Revit.

@@ -1,4 +1,4 @@
-# @shanku/web 0.36.0
+# @shanku/web 0.37.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,10 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.37.0 — 2026-09-25
+- **Live updates from Revit (bridge milestone 3, needs Shanku Bridge for Revit 0.5.0).** Revit reports every change (anyone's edits and Shanku's own Apply); the Revit chip shows "N changed" and Properties re-reads those elements' parameters at once. **Revit tab → Update** (or the Revit window, or the command search) has Revit export **only the changed elements**, which are merged in: changed ones in place, deleted ones removed, new ones added. The camera, views, section box, selection, temporary hides and per-element overrides stay. **Auto-update** brings changes in as they happen. More than 2,000 changed elements: reload instead.
+- After a page reload the session restores the model as first loaded; Shanku says so when live updates had been merged and points to Reload.
 
 ### 0.36.0 — 2026-09-25
 - **Properties**: drag the line between names and values (remembered, shared with Type Properties); **Apply is always visible** in a fixed footer; the footer's **sort buttons** (Revit order, A → Z, Z → A) sort rows within each group, never the groups; numbers show the project's **unit** (needs Shanku Bridge for Revit 0.4.0).

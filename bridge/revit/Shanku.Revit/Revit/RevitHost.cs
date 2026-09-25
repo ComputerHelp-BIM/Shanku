@@ -57,9 +57,16 @@ public sealed class RevitHost : IRevitHost
         return uidoc.Selection.GetElementIds().Select(id => doc.GetElement(id)).Where(IsModelElement).Select(e => GlobalIdOf(doc, e!)).ToList();
     }, Quick);
 
-    public Task<ExportResult> ExportIfcAsync() => _queue.Run(ui =>
+    public Task<ExportResult> ExportIfcAsync(IReadOnlyList<string>? globalIds = null) => _queue.Run(ui =>
     {
         var doc = RequireProject(ui);
+        List<ElementId>? only = null;
+        if (globalIds != null)
+        {
+            if (_mapKey != KeyOf(doc) || globalIds.Any(g => !_byGlobalId.ContainsKey(g))) BuildMap(doc);
+            only = globalIds.Where(_byGlobalId.ContainsKey).Select(g => _byGlobalId[g]).Where(id => doc.GetElement(id) != null).ToList();
+            if (only.Count == 0) throw new BridgeException(404, "None of these elements are in the Revit model any more.");
+        }
         string dir = Path.Combine(Path.GetTempPath(), "Shanku", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
@@ -77,6 +84,17 @@ public sealed class RevitHost : IRevitHost
             using (var t = new Transaction(doc, "Shanku: export IFC"))
             {
                 t.Start();
+                if (only != null)
+                {
+                    // A live update: a temporary 3D view showing only these elements, exported with the
+                    // same options, so their coordinates and GlobalIds match the full export exactly.
+                    var vft = new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().First(x => x.ViewFamily == ViewFamily.ThreeDimensional);
+                    var view = View3D.CreateIsometric(doc, vft.Id);
+                    view.IsolateElementsTemporary(only);
+                    view.ConvertTemporaryHideIsolateToPermanent();
+                    options.FilterViewId = view.Id;
+                    options.AddOption("VisibleElementsOfCurrentView", "true");
+                }
                 bool ok = doc.Export(dir, "model.ifc", options);
                 t.RollBack();
                 if (!ok) throw new BridgeException(500, "Revit's IFC export did not finish. Check that the IFC exporter is installed (File → Export → IFC works).");
@@ -324,6 +342,66 @@ public sealed class RevitHost : IRevitHost
         if (!string.IsNullOrEmpty(key) && key != KeyOf(doc)) throw new BridgeException(409, $"Revit is showing a different model ({doc.Title}).");
     }
 
+    // ------------------------------------------------------------------ live changes
+
+    private readonly object _changesGate = new();
+    private readonly HashSet<string> _modified = new(), _added = new(), _deleted = new();
+    private string? _changesKey;
+    private System.Threading.Timer? _changesTimer;
+    /// <summary>ElementId → GlobalId, so deleted elements (gone from the document) can still be named.</summary>
+    private readonly Dictionary<long, string> _gidOf = new();
+
+    /// <summary>
+    /// Revit's DocumentChanged: collects model elements modified, added and deleted (by anyone, and by
+    /// Shanku's own Apply), then sends one `changes` event 0.6 s after the last change.
+    /// </summary>
+    public void OnDocumentChanged(object? sender, DocumentChangedEventArgs e)
+    {
+        var doc = e.GetDocument();
+        if (doc == null || doc.IsFamilyDocument) return;
+        string key = KeyOf(doc);
+        if (_mapKey != key) BuildMap(doc);
+        var modified = new List<string>();
+        var added = new List<string>();
+        var deleted = new List<string>();
+        foreach (var id in e.GetModifiedElementIds())
+            if (doc.GetElement(id) is { } el && IsModelElement(el)) modified.Add(Remember(doc, el));
+        foreach (var id in e.GetAddedElementIds())
+            if (doc.GetElement(id) is { } el && IsModelElement(el)) added.Add(Remember(doc, el));
+        foreach (var id in e.GetDeletedElementIds())
+            if (_gidOf.TryGetValue(id.Value, out var gid)) deleted.Add(gid);
+        if (modified.Count + added.Count + deleted.Count == 0) return;
+        lock (_changesGate)
+        {
+            if (_changesKey != key) { _modified.Clear(); _added.Clear(); _deleted.Clear(); _changesKey = key; }
+            foreach (var g in added) { _added.Add(g); _deleted.Remove(g); }
+            foreach (var g in modified) if (!_added.Contains(g)) _modified.Add(g);
+            foreach (var g in deleted) { _deleted.Add(g); _modified.Remove(g); if (_added.Remove(g)) _deleted.Remove(g); }
+            _changesTimer ??= new System.Threading.Timer(_ => FlushChanges(), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+            _changesTimer.Change(600, System.Threading.Timeout.Infinite); // one event for a burst of changes
+        }
+    }
+
+    private void FlushChanges()
+    {
+        object payload;
+        lock (_changesGate)
+        {
+            if (_modified.Count + _added.Count + _deleted.Count == 0) return;
+            payload = new { key = _changesKey, modified = _modified.ToArray(), added = _added.ToArray(), deleted = _deleted.ToArray() };
+            _modified.Clear(); _added.Clear(); _deleted.Clear();
+        }
+        Broadcast?.Invoke("changes", payload);
+    }
+
+    private string Remember(Document doc, Element el)
+    {
+        string gid = GlobalIdOf(doc, el);
+        _gidOf[el.Id.Value] = gid;
+        _byGlobalId[gid] = el.Id;
+        return gid;
+    }
+
     // ------------------------------------------------------------------ Revit events
 
     public void OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -403,7 +481,13 @@ public sealed class RevitHost : IRevitHost
     private void BuildMap(Document doc)
     {
         var map = new Dictionary<string, ElementId>();
-        foreach (var e in ModelElements(doc)) map[GlobalIdOf(doc, e)] = e.Id;
+        _gidOf.Clear();
+        foreach (var e in ModelElements(doc))
+        {
+            string gid = GlobalIdOf(doc, e);
+            map[gid] = e.Id;
+            _gidOf[e.Id.Value] = gid;
+        }
         _byGlobalId = map;
         _mapKey = KeyOf(doc);
     }

@@ -1,6 +1,6 @@
 import { clearModel as clearSavedModel, saveModel as saveSessionModel } from './session';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, IfcClient, type Category, type ParsedModel, type PropertyGroup, type SelectMode } from '@shanku/engine';
+import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, IfcClient, mergeModels, type Category, type MergeResult, type ParsedModel, type PropertyGroup, type SelectMode } from '@shanku/engine';
 import { fmtBytes, fmtCount, fmtMs } from './format';
 import type { PickedFile } from './openFile';
 
@@ -22,6 +22,8 @@ export function useShankuModel() {
   const clientRef = useRef<IfcClient | null>(null);
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
   const [model, setModel] = useState<ParsedModel | null>(null);
+  const modelRef = useRef<ParsedModel | null>(null);
+  modelRef.current = model;
   const [selection, setSelection] = useState<number[]>([]);
   const [properties, setProperties] = useState<{ index: number; groups: PropertyGroup[] | null; error?: string } | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
@@ -107,6 +109,27 @@ export function useShankuModel() {
     [log],
   );
 
+  /**
+   * Live update from Revit: opens a partial export of changed elements beside the model, merges it
+   * (changed elements in place, deleted ones out, new ones added) and keeps the selection by
+   * GlobalId. Returns the merge result so the app can carry its own per-element state across.
+   */
+  const applyUpdate = useCallback(
+    async (fileName: string, bytes: ArrayBuffer | null, deleted: string[]): Promise<MergeResult | null> => {
+      const client = clientRef.current;
+      const cur = modelRef.current;
+      if (!client || !cur) return null;
+      const empty: ParsedModel = { info: cur.info, elements: [], mesh: { positions: new Float32Array(), normals: new Float32Array(), elementIds: new Float32Array(), indices: new Uint32Array() }, edges: { positions: new Float32Array(), elementIds: new Float32Array() }, coordination: cur.coordination };
+      const patch = bytes ? await client.openPatch(fileName, bytes, markRulesRef.current, gradeRulesRef.current) : empty;
+      const r = mergeModels(cur, patch, deleted, patch.elements[0]?.source ?? 0);
+      modelRef.current = r.model;
+      setModel(r.model);
+      setSelection((sel) => sel.flatMap((i) => (r.indexMap.has(i) ? [r.indexMap.get(i)!] : [])));
+      return r;
+    },
+    [],
+  );
+
   /** Changes the mark rules, saves them, and re-detects marks on the open model. */
   const setMarkRules = useCallback(
     async (rules: string[]) => {
@@ -169,7 +192,7 @@ export function useShankuModel() {
     const req = ++propRequest.current;
     setProperties({ index, groups: null });
     clientRef.current
-      ?.properties(el.expressId)
+      ?.properties(el.expressId, el.source ?? 0) // an updated element reads from its update's file
       .then((groups) => req === propRequest.current && setProperties({ index, groups }))
       .catch((e: Error) => req === propRequest.current && setProperties({ index, groups: [], error: e.message }));
   }, [model, selection]);
@@ -223,7 +246,7 @@ export function useShankuModel() {
   );
 
   return useMemo(
-    () => ({ load, model, selection, setSelection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules, close }),
-    [close, load, model, selection, properties, activity, log, open, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules],
+    () => ({ load, model, selection, setSelection, properties, activity, log, open, applyUpdate, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules, close }),
+    [close, load, model, selection, properties, activity, log, open, applyUpdate, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules],
   );
 }

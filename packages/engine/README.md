@@ -1,4 +1,4 @@
-# @shanku/engine 0.26.0
+# @shanku/engine 0.27.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -49,6 +49,11 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.27.0 — 2026-09-25
+- Live updates: `mergeModels(base, patch, deleted, source)` swaps changed elements in place, removes deleted ones, appends new ones, rebuilds the buffers and model info, and returns an old → new index map. `alignPatch` maps a patch into the model's space with web-ifc's coordination matrices (each file is shifted to the origin by its own amount). Models carry `coordination` and `revision`; elements carry `source` (their IFC file).
+- `IfcClient.openPatch()` opens an update beside the model in the worker; `properties(expressId, source)` reads from the element's own file.
+- `Viewer.setModel(model, { keepView })` keeps the camera for a merged update.
 
 ### 0.26.0 — 2026-09-24
 - Merges main's engine 0.24.0 (combined explode, masked cap passes, cut outlines) with the branch's 0.25.0 (QA checks: `runChecks`, `DEFAULT_CHECKS`).

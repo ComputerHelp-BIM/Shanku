@@ -612,3 +612,6 @@
 .app-typeprops__cols span + span { border-left: 1px solid var(--border); }
 .app-typeprops__rows { flex: 1; min-height: 0; overflow: auto; }
 .app-typeprops__buttons { display: flex; align-items: center; gap: 8px; padding: 8px 0 12px; }
+
+.app-revit__live { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--chip); }
+.app-revit__live > span { flex: 1; font-weight: 600; }

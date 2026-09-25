@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.37.0 — 2026-09-25
+
+### Added
+- Live updates from Revit: change feed, partial export of changed elements, merged in place with the view kept (Update, Auto-update). Shanku Bridge for Revit 0.5.0; engine 0.27.0.
+
 ## 0.36.0 — 2026-09-25
 
 ### Changed

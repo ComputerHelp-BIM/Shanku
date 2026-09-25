@@ -42,6 +42,14 @@ export interface RevitSelection {
   elementIds: number[];
 }
 
+/** Elements Revit changed (by anyone, including Shanku's Apply), by GlobalId. */
+export interface RevitChanges {
+  key: string;
+  modified: string[];
+  added: string[];
+  deleted: string[];
+}
+
 export const DEFAULT_PORT = 7071;
 const STORE = 'shanku.revitBridge';
 const PROTOCOL = 1;
@@ -89,6 +97,7 @@ export class RevitBridge {
   private state: BridgeState;
   private readonly listeners = new Set<(s: BridgeState) => void>();
   private readonly selectionListeners = new Set<(s: RevitSelection) => void>();
+  private readonly changeListeners = new Set<(c: RevitChanges) => void>();
   private events: EventSourceLike | null = null;
   private retry: unknown = null;
   private retryMs = 2000;
@@ -113,6 +122,17 @@ export class RevitBridge {
   onSelection(fn: (s: RevitSelection) => void): () => void {
     this.selectionListeners.add(fn);
     return () => this.selectionListeners.delete(fn);
+  }
+
+  /** Revit changed elements (add-in 0.5.0+). */
+  onChanges(fn: (c: RevitChanges) => void): () => void {
+    this.changeListeners.add(fn);
+    return () => this.changeListeners.delete(fn);
+  }
+
+  /** The add-in sends changes and exports only changed elements (Shanku Bridge for Revit 0.5.0+). */
+  get canLiveUpdate(): boolean {
+    return !!this.state.features?.includes('changes') && !!this.state.features?.includes('partial-export');
   }
 
   /** This browser paired before, so reconnecting needs no code (and no new permission prompt). */
@@ -231,6 +251,12 @@ export class RevitBridge {
     return { name: `${title}.ifc`, bytes, key, title };
   }
 
+  /** Revit exports only these elements (a live update), with the same options as the full model. */
+  async exportElements(globalIds: string[]): Promise<{ bytes: ArrayBuffer; key: string }> {
+    const res = await this.call<never>('/model/export', { method: 'POST', body: JSON.stringify({ globalIds }) }, 600_000);
+    return { bytes: await res.arrayBuffer(), key: res.headers.get('X-Shanku-Document-Key') ?? '' };
+  }
+
   /** Selects these elements in Revit (GlobalIds first, ElementIds as a fallback). */
   async select(key: string, globalIds: string[], elementIds: number[]): Promise<{ selected: number; missing: number }> {
     return (await this.call<{ selected: number; missing: number }>('/selection', { method: 'POST', body: JSON.stringify({ key, globalIds, elementIds }) })).json();
@@ -287,6 +313,10 @@ export class RevitBridge {
     es.addEventListener('selection', (e) => {
       const s = JSON.parse((e as MessageEvent).data) as RevitSelection;
       for (const fn of this.selectionListeners) fn({ key: s.key, globalIds: s.globalIds ?? [], elementIds: s.elementIds ?? [] });
+    });
+    es.addEventListener('changes', (e) => {
+      const c = JSON.parse((e as MessageEvent).data) as RevitChanges;
+      for (const fn of this.changeListeners) fn({ key: c.key, modified: c.modified ?? [], added: c.added ?? [], deleted: c.deleted ?? [] });
     });
     es.onerror = () => {
       // Revit closed or restarted: look again, with backoff

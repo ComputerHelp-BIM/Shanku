@@ -15,6 +15,7 @@ export { siFactor } from './ifc/quantities';
 export { assessCompatibility, readViewDefinition, RECOMMENDED_EXPORT, type Compatibility, type CompatLevel } from './ifc/compat';
 export { boxState, type SectionBoxState } from './render/sectionBox';
 export type { CameraState } from './render/Viewer';
+export { alignPatch, mergeModels, type MergeResult } from './model/merge';
 export type { Annotation } from './render/annotations';
 export { EXPLODE_MODES, explodeOffsets, explodedBounds, type ExplodeMode } from './render/explode';
 export type { PipelineSummary, PipelineLevel, PipelineQa } from './pipeline/types';

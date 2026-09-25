@@ -15,6 +15,8 @@ export type Category =
 /** One selectable element. `index` is its position in the model and in the GPU buffers. */
 export interface ElementRecord {
   index: number;
+  /** Which open IFC file the element's properties live in: 0 the model, 1+ merged updates. */
+  source?: number;
   /** STEP line number. Shown as the Element ID: short, readable, stable within one file. */
   expressId: number;
   /** IFC GlobalId (22 chars): the permanent identity across files and revisions. */
@@ -106,6 +108,13 @@ export interface ParsedModel {
   elements: ElementRecord[];
   mesh: MeshBuffers;
   edges: EdgeBuffers;
+  /**
+   * The translation/rotation web-ifc applied to bring the file near the origin (column-major 4×4).
+   * Patches (partial exports) are mapped into the full model's space with it.
+   */
+  coordination?: number[];
+  /** Updates merged into this model since it was opened (0 or absent: as opened). */
+  revision?: number;
 }
 
 export type PropertyValue = string | number | boolean | null;

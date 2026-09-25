@@ -74,12 +74,26 @@ export class IfcClient {
     });
   }
 
-  async properties(expressId: number): Promise<PropertyGroup[]> {
+  /** Properties of an element; `source` is its file (0 the model, 1+ merged updates). */
+  async properties(expressId: number, source = 0): Promise<PropertyGroup[]> {
     await this.readyPromise;
     const requestId = this.nextId++;
     return new Promise<PropertyGroup[]>((resolve, reject) => {
       this.pending.set(requestId, { resolve, reject });
-      this.post({ type: 'properties', requestId, expressId });
+      this.post({ type: 'properties', requestId, expressId, source });
+    });
+  }
+
+  /**
+   * Opens an update (a partial export of changed elements) beside the model: aligned to the model's
+   * coordinates, its elements tagged with the file's slot. Merge it with mergeModels.
+   */
+  async openPatch(fileName: string, bytes: ArrayBuffer, markRules?: readonly string[], gradeRules?: readonly string[]): Promise<ParsedModel> {
+    await this.readyPromise;
+    const requestId = this.nextId++;
+    return new Promise<ParsedModel>((resolve, reject) => {
+      this.pending.set(requestId, { resolve, reject });
+      this.post({ type: 'open', requestId, fileName, bytes, patch: true, markRules: markRules ? [...markRules] : undefined, gradeRules: gradeRules ? [...gradeRules] : undefined }, [bytes]);
     });
   }
 
