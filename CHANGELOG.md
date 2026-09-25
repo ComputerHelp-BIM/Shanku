@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.36.0 — 2026-09-25
+
+### Changed
+- Revit 2025 look: adjustable label/value split, fixed Apply footer, sort within groups, Project Browser (search, guides, Families), Type Properties dialog with Preview, units next to numbers, thin scrollbars. Shanku Bridge for Revit 0.4.0.
+
+### Fixed
+- Missing row line under nested IFC groups.
+
 ## 0.35.0 — 2026-09-25
 
 ### Changed

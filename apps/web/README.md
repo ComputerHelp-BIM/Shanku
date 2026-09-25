@@ -1,4 +1,4 @@
-# @shanku/web 0.35.0
+# @shanku/web 0.36.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,14 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.36.0 — 2026-09-25
+- **Properties**: drag the line between names and values (remembered, shared with Type Properties); **Apply is always visible** in a fixed footer; the footer's **sort buttons** (Revit order, A → Z, Z → A) sort rows within each group, never the groups; numbers show the project's **unit** (needs Shanku Bridge for Revit 0.4.0).
+- **Project Browser like Revit 2025**: Search box, boxed +/− expanders with dotted guides, icons, the open view in bold, and **Families** (category → family → type; clicking a type selects its instances).
+- **Type Properties like Revit's dialog**: Family and Type, Load / Duplicate / Rename, the Parameter | Value table with groups, Sort by, **Preview** (a small 3D view of one instance), OK / Cancel / Apply. Read-only until type editing.
+- Fixed: nested groups under IFC data lost the line under their last row.
+- Numbers: the add-in 0.4.0 also reads "600", "600.000", "600 mm", "0.6 m" itself when Revit's text reader refuses them.
+- Thin scrollbars. Design notes: `docs/design/revit-parity.md`.
 
 ### 0.35.0 — 2026-09-25
 - **Fixed: duplicate Revit parameters** (two Base Level, Base Offset, Top Level, Category…). The add-in read every parameter, including the hidden copies Revit keeps for schedules; editing one of those is why a Base Offset change needed both rows. Shanku Bridge for Revit 0.3.0 reads the palette's own list (`GetOrderedParameters`); Shanku also drops a repeated name within a group for older add-ins.

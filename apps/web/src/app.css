@@ -586,7 +586,29 @@
 .app-prop-filter__what { font-weight: 600; }
 .app-prop-filter__edit { height: 24px; padding: 0 10px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
 .app-prop-filter__edit:disabled { color: var(--text-faint); cursor: default; }
-.app-ifc-data .sk-prop-section__rows .sk-prop-section { border-bottom: 0; }
+/* nested IFC groups keep their bottom line: it separates their last row from the next header */
+.app-ifc-data .sk-prop-section__rows .sk-prop-section:last-child { border-bottom: 0; }
 .app-ifc-data .sk-prop-section__rows .sk-prop-section__title { background: var(--panel); font-weight: 600; padding-left: 16px; }
-.app-prop-apply { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--border-strong); background: var(--panel); }
 .app-type-props { padding-bottom: 8px; }
+
+/* Project Browser search (Revit 2025) */
+.app-browser-search { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text-secondary); }
+.app-browser-search svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.app-browser-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); font: inherit; outline: none; }
+.app-browser-search input:focus, .app-browser-search input:focus-visible { outline: none; box-shadow: none; } /* the field's frame shows focus */
+.app-browser-search:focus-within { border-color: var(--focus-ring); }
+
+/* Type Properties (Revit's dialog) */
+.app-typeprops { display: grid; grid-template-columns: 1fr; height: 100%; min-height: 0; }
+.app-typeprops.has-preview { grid-template-columns: minmax(180px, 38%) minmax(430px, 1fr); }
+.app-type-preview { position: relative; min-height: 0; border-right: 1px solid var(--border-strong); background: var(--viewport); }
+.app-typeprops__main { display: flex; flex-direction: column; min-height: 0; padding: 12px 12px 0; gap: 8px; }
+.app-typeprops__head { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; }
+.app-typeprops__head label { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 8px; }
+.app-typeprops__head select { height: 26px; padding: 0 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; }
+.app-typeprops__label { font-weight: 600; margin-top: 4px; }
+.app-typeprops__table { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--border-strong); }
+.app-typeprops__cols { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: minmax(0, var(--sk-prop-label, 45%)) 1fr; height: 24px; align-items: center; background: var(--ribbon); border-bottom: 1px solid var(--border-strong); font-weight: 600; text-align: center; }
+.app-typeprops__cols span + span { border-left: 1px solid var(--border); }
+.app-typeprops__rows { flex: 1; min-height: 0; overflow: auto; }
+.app-typeprops__buttons { display: flex; align-items: center; gap: 8px; padding: 8px 0 12px; }

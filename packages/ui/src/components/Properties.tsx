@@ -1,18 +1,130 @@
-import { useEffect, useId, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { Children, createContext, isValidElement, useContext, useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 
 /** A docked panel with a header (Properties, Project browser, ...). */
-export function DockPanel({ title, children, grow }: { title: string; children: ReactNode; grow?: boolean }) {
+export function DockPanel({ title, children, grow, toolbar, footer }: { title: string; children: ReactNode; grow?: boolean; toolbar?: ReactNode; footer?: ReactNode }) {
   const id = useId();
   return (
-    <section className={['sk-dock', grow && 'sk-dock--grow'].filter(Boolean).join(' ')} aria-labelledby={id}>
+    <section className={['sk-dock', grow && 'sk-dock--grow', footer && 'sk-dock--footer'].filter(Boolean).join(' ')} aria-labelledby={id}>
       <h2 id={id} className="sk-dock__title">
         {title}
       </h2>
+      {toolbar ? <div className="sk-dock__toolbar">{toolbar}</div> : null}
       <div className="sk-dock__body">{children}</div>
+      {/* the footer stays put while the body scrolls (Revit's Apply bar) */}
+      {footer ? <div className="sk-dock__footer">{footer}</div> : null}
     </section>
   );
 }
+
+// ---------------------------------------------------------------- property grid
+
+/** Row order inside each group: Revit's (categorized), A → Z or Z → A. Groups keep their order. */
+export type PropertySort = 'categorized' | 'asc' | 'desc';
+const SortCtx = createContext<PropertySort>('categorized');
+
+const SPLIT_KEY = 'shanku.propSplit';
+const SPLIT_EVENT = 'shanku:prop-split';
+function readSplit(): number | null {
+  try {
+    const v = Number(localStorage.getItem(SPLIT_KEY));
+    return Number.isFinite(v) && v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Sort mode kept per panel on this device (Properties and Type Properties each remember theirs). */
+export function usePropertySort(key: string): [PropertySort, (s: PropertySort) => void] {
+  const store = `shanku.propSort.${key}`;
+  const [sort, setSort] = useState<PropertySort>(() => {
+    try {
+      const v = localStorage.getItem(store);
+      return v === 'asc' || v === 'desc' ? v : 'categorized';
+    } catch {
+      return 'categorized';
+    }
+  });
+  return [
+    sort,
+    (s) => {
+      setSort(s);
+      try {
+        localStorage.setItem(store, s);
+      } catch {
+        /* not remembered */
+      }
+    },
+  ];
+}
+
+/**
+ * Holds property sections as Revit's palette does: drag the thin line between labels and values to
+ * resize the label column (shared by every panel and remembered), and sort rows within each group.
+ */
+export function PropertyGrid({ children, sort = 'categorized' }: { children: ReactNode; sort?: PropertySort }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [split, setSplit] = useState<number | null>(readSplit);
+  useEffect(() => {
+    const on = (e: Event) => setSplit((e as CustomEvent<number>).detail);
+    window.addEventListener(SPLIT_EVENT, on);
+    return () => window.removeEventListener(SPLIT_EVENT, on);
+  }, []);
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (!(e.target as Element).classList?.contains('sk-prop-row__split') || !ref.current) return;
+    e.preventDefault();
+    const box = ref.current.getBoundingClientRect();
+    const move = (ev: globalThis.PointerEvent) => {
+      const w = Math.round(Math.min(box.width - 80, Math.max(80, ev.clientX - box.left)));
+      setSplit(w);
+      window.dispatchEvent(new CustomEvent(SPLIT_EVENT, { detail: w }));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      try {
+        localStorage.setItem(SPLIT_KEY, String(readSplitFromDom(ref.current)));
+      } catch {
+        /* not remembered */
+      }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <SortCtx.Provider value={sort}>
+      <div ref={ref} className="sk-prop-grid" style={split ? ({ '--sk-prop-label': `${split}px` } as CSSProperties) : undefined} onPointerDown={onPointerDown}>
+        {children}
+      </div>
+    </SortCtx.Provider>
+  );
+}
+function readSplitFromDom(el: HTMLDivElement | null): number {
+  const v = el?.style.getPropertyValue('--sk-prop-label') ?? '';
+  return parseInt(v, 10) || 0;
+}
+
+/** Revit's footer: sort buttons (categorized, A → Z, Z → A) and a slot for actions such as Apply. */
+export function PropertiesFooter({ sort, onSort, children }: { sort: PropertySort; onSort: (s: PropertySort) => void; children?: ReactNode }) {
+  const b = (s: PropertySort, label: string, path: string) => (
+    <button type="button" className={['sk-prop-sort', sort === s && 'is-on'].filter(Boolean).join(' ')} aria-pressed={sort === s} title={label} aria-label={label} onClick={() => onSort(s)}>
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d={path} />
+      </svg>
+    </button>
+  );
+  return (
+    <div className="sk-prop-footer">
+      <div className="sk-prop-footer__sort" role="group" aria-label="Sort parameters">
+        {b('categorized', 'Categorized (Revit order)', 'M2 3.5h7M2 6.5h7M2 9.5h7M2 12.5h7M12 3v10M10.5 11.5L12 13l1.5-1.5')}
+        {b('asc', 'Sort A to Z within groups', 'M2.5 7l2-5 2 5M3.2 5.3h2.6M2.5 9h4l-4 5h4M12 3v10M10.5 11.5L12 13l1.5-1.5')}
+        {b('desc', 'Sort Z to A within groups', 'M2.5 2h4l-4 5h4M2.5 14l2-5 2 5M3.2 12.3h2.6M12 3v10M10.5 11.5L12 13l1.5-1.5')}
+      </div>
+      {children ? <div className="sk-prop-footer__actions">{children}</div> : null}
+    </div>
+  );
+}
+
 
 export interface TypeSelectorProps {
   icon: IconName;
@@ -47,6 +159,16 @@ export interface PropertySectionProps {
   className?: string;
 }
 
+/** Rows sorted by their label within a group (A → Z or Z → A); other children keep their place last. */
+function sortRows(children: ReactNode, mode: PropertySort): ReactNode {
+  if (mode === 'categorized') return children;
+  const items = Children.toArray(children);
+  const label = (c: ReactNode) => (isValidElement(c) && typeof (c.props as { label?: unknown }).label === 'string' ? ((c.props as { label: string }).label) : null);
+  const rows = items.filter((c) => label(c) !== null).sort((a, b) => label(a)!.localeCompare(label(b)!, undefined, { numeric: true, sensitivity: 'base' }));
+  if (mode === 'desc') rows.reverse();
+  return [...rows, ...items.filter((c) => label(c) === null)];
+}
+
 const SECTION_STORE = 'shanku.propSections';
 function readSections(): Record<string, boolean> {
   try {
@@ -59,6 +181,7 @@ function readSections(): Record<string, boolean> {
 /** A Properties group: a bold header band that collapses the rows under it, as in Revit's palette. */
 export function PropertySection({ title, children, collapsible = true, defaultOpen = true, persistKey, className }: PropertySectionProps) {
   const id = useId();
+  const sortMode = useContext(SortCtx);
   const key = persistKey === false ? null : (persistKey ?? title.toLowerCase());
   const [open, setOpen] = useState(() => {
     if (!collapsible) return true;
@@ -89,7 +212,7 @@ export function PropertySection({ title, children, collapsible = true, defaultOp
           {title}
         </div>
       )}
-      {open ? <div className="sk-prop-section__rows">{children}</div> : null}
+      {open ? <div className="sk-prop-section__rows">{sortRows(children, sortMode)}</div> : null}
     </div>
   );
 }
@@ -150,6 +273,7 @@ export function PropertyRow({ label, value, unit, mono, readOnly, varies, onComm
       <div className={rowClass} title={title}>
         <label className="sk-prop-row__label" htmlFor={inputId}>
           {label}
+          <span className="sk-prop-row__split" aria-hidden="true" />
         </label>
         <span className="sk-prop-row__field">
           <input
@@ -171,6 +295,7 @@ export function PropertyRow({ label, value, unit, mono, readOnly, varies, onComm
     <div className={rowClass} title={title}>
       <label className="sk-prop-row__label" htmlFor={editable ? inputId : undefined}>
         {label}
+        <span className="sk-prop-row__split" aria-hidden="true" />
       </label>
       {editable ? (
         <span className="sk-prop-row__field">

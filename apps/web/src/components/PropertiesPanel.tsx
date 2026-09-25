@@ -1,4 +1,4 @@
-import { DockPanel, PropertyRow, PropertySection, TypeSelector, type IconName, type PropertyRowProps } from '@shanku/ui';
+import { DockPanel, PropertiesFooter, PropertyGrid, PropertyRow, PropertySection, TypeSelector, usePropertySort, type IconName, type PropertyRowProps } from '@shanku/ui';
 import type { ReactNode } from 'react';
 import type { Category, ElementRecord, ParsedModel, PropertyGroup } from '@shanku/engine';
 import { fmtBytes, fmtCount, fmtMs, fmtValue } from '../lib/format';
@@ -86,17 +86,22 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
       ))}
     </div>
   ) : null;
-  const applyBar =
-    revitMode && revit!.apply ? (
-      <div className="app-prop-apply">
-        <button type="button" className="app-link" onClick={revit!.apply.onReview}>
-          {revit!.apply.count ? `${revit!.apply.count} change${revit!.apply.count === 1 ? '' : 's'} waiting · Review` : 'Changes'}
-        </button>
-        <button type="button" className="sk-button sk-button--sm sk-button--primary" disabled={revit!.apply.disabled || !revit!.apply.count || revit!.apply.busy} title={revit!.apply.why ?? 'Apply these elements\' changes in Revit (one undo in Revit)'} onClick={revit!.apply.onApply}>
-          {revit!.apply.busy ? 'Applying…' : 'Apply'}
-        </button>
-      </div>
-    ) : null;
+  const [sort, setSort] = usePropertySort('properties');
+  // Revit's footer: always visible (the body scrolls above it): sort buttons, and Apply in Revit mode.
+  const footer = (
+    <PropertiesFooter sort={sort} onSort={setSort}>
+      {revitMode && revit!.apply ? (
+        <>
+          <button type="button" className="app-link" onClick={revit!.apply.onReview}>
+            {revit!.apply.count ? `${revit!.apply.count} waiting · Review` : 'Changes'}
+          </button>
+          <button type="button" className="sk-button sk-button--sm sk-button--primary" disabled={revit!.apply.disabled || !revit!.apply.count || revit!.apply.busy} title={revit!.apply.why ?? "Apply these elements' changes in Revit (one undo in Revit)"} onClick={revit!.apply.onApply}>
+            {revit!.apply.busy ? 'Applying…' : 'Apply'}
+          </button>
+        </>
+      ) : null}
+    </PropertiesFooter>
+  );
   /** IFC details sit in one closed group under Revit's parameters (they repeat much of them). */
   const ifc = (content: ReactNode) =>
     revitMode ? (
@@ -108,8 +113,10 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
     );
   if (!model) {
     return (
-      <DockPanel title="Properties">
+      <DockPanel title="Properties" footer={footer}>
+      <PropertyGrid sort={sort}>
         <p className="app-empty-note">Open a model to see properties.</p>
+      </PropertyGrid>
       </DockPanel>
     );
   }
@@ -117,7 +124,8 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
   if (selection.length === 0) {
     const i = model.info;
     return (
-      <DockPanel title="Properties">
+      <DockPanel title="Properties" footer={footer}>
+      <PropertyGrid sort={sort}>
         {view ? (
           <>
             <TypeSelector icon={view.icon ?? (view.kind === 'Structural Plan' ? 'plan' : view.kind === '3D View' ? 'view3d' : 'section')} category={view.kind} typeName={view.name} />
@@ -158,6 +166,7 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
           <PropertyRow label="Triangles" value={fmtCount(i.triangleCount)} readOnly />
           <PropertyRow label="Opened in" value={fmtMs(i.timings.total)} readOnly />
         </PropertySection>
+      </PropertyGrid>
       </DockPanel>
     );
   }
@@ -168,7 +177,8 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
     const type = common(els.map((e) => e.typeName));
     const level = common(els.map((e) => e.level));
     return (
-      <DockPanel title="Properties">
+      <DockPanel title="Properties" footer={footer}>
+      <PropertyGrid sort={sort}>
         {revitHead ?? <TypeSelector icon={cat ? ICON[cat] : 'view3d'} category={`${fmtCount(els.length)} elements`} typeName={cat ? `${cat}` : 'Mixed categories'} />}
         {revitBlock}
         {ifc(
@@ -179,7 +189,7 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
             <PropertyRow label="Level" value={level || null} varies={level === null} />
           </PropertySection>,
         )}
-        {applyBar}
+      </PropertyGrid>
       </DockPanel>
     );
   }
@@ -187,7 +197,8 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
   const el: ElementRecord = model.elements[selection[0]];
   const groups = properties?.index === el.index ? properties.groups : null;
   return (
-    <DockPanel title="Properties">
+    <DockPanel title="Properties" footer={footer}>
+      <PropertyGrid sort={sort}>
       {revitHead ?? <TypeSelector icon={ICON[el.category]} category={el.category === 'Other' ? el.ifcClass : `${el.category} · ${el.ifcClass}`} typeName={el.typeName || el.name || el.ifcClass} />}
       {revitBlock}
       {ifc(
@@ -229,7 +240,7 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
       )}
       </>,
       )}
-      {applyBar}
-    </DockPanel>
+    </PropertyGrid>
+      </DockPanel>
   );
 }

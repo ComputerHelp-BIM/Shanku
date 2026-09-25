@@ -17,7 +17,8 @@ public sealed record IdsResult(string Key, IReadOnlyList<IdEntry> Ids);
 public sealed record SelectResult(int Selected, int Missing);
 
 /// <summary>One instance parameter as Shanku shows it. Kind: text, number, integer, yesno, element.</summary>
-public sealed record ParamInfo(long Id, string Name, string Group, string Kind, string? Display, bool ReadOnly, string? Why);
+/// <remarks>Unit: the project's display unit symbol for numbers ("mm", "m³"…), when it has one (0.4.0).</remarks>
+public sealed record ParamInfo(long Id, string Name, string Group, string Kind, string? Display, bool ReadOnly, string? Why, string? Unit = null);
 /// <summary>Params: instance parameters in the Properties palette's order. TypeParams: the type's (read-only for now).</summary>
 public sealed record ElementParams(string GlobalId, long ElementId, string Category, string TypeName, IReadOnlyList<ParamInfo> Params, string FamilyName = "", IReadOnlyList<ParamInfo>? TypeParams = null);
 /// <summary>A change to apply. OldDisplay is what Shanku read; a different current value is a conflict.</summary>

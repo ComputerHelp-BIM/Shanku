@@ -205,3 +205,58 @@ describe('ErrorBoundary', () => {
     spy.mockRestore();
   });
 });
+
+describe('Properties like Revit', () => {
+  it('sorts rows within each group, never the groups', async () => {
+    const { PropertyGrid, PropertySection, PropertyRow } = await import('../src');
+    const view = (sort: 'categorized' | 'asc' | 'desc') =>
+      render(
+        <PropertyGrid sort={sort}>
+          <PropertySection title="Zeta" persistKey={false}>
+            <PropertyRow label="Top Offset" value="0" />
+            <PropertyRow label="Base Level" value="L1" />
+          </PropertySection>
+          <PropertySection title="Alpha" persistKey={false}>
+            <PropertyRow label="Mark" value="C1" />
+            <PropertyRow label="Comments" value="" />
+          </PropertySection>
+        </PropertyGrid>,
+      );
+    const labels = (c: HTMLElement) => [...c.querySelectorAll('.sk-prop-row__label')].map((l) => l.textContent);
+    const groups = (c: HTMLElement) => [...c.querySelectorAll('.sk-prop-section__title')].map((t) => t.textContent);
+    const a = view('categorized');
+    expect(labels(a.container)).toEqual(['Top Offset', 'Base Level', 'Mark', 'Comments']);
+    a.unmount();
+    const b = view('asc');
+    expect(labels(b.container)).toEqual(['Base Level', 'Top Offset', 'Comments', 'Mark']);
+    expect(groups(b.container)).toEqual(['Zeta', 'Alpha']);
+    b.unmount();
+    const c = view('desc');
+    expect(labels(c.container)).toEqual(['Top Offset', 'Base Level', 'Mark', 'Comments']);
+  });
+
+  it('a group collapses from its header', async () => {
+    const { PropertySection, PropertyRow } = await import('../src');
+    const { container } = render(
+      <PropertySection title="Constraints" persistKey={false}>
+        <PropertyRow label="Base Level" value="L1" />
+      </PropertySection>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Constraints' }));
+    expect(container.querySelector('.sk-prop-row')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Constraints' }).getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('Project Browser tree (Revit variant)', () => {
+  it('search keeps matches and their parents, opened', async () => {
+    const { TreeView } = await import('../src');
+    const nodes = [
+      { id: 'views', label: 'Views (all)', children: [{ id: 'plans', label: 'Structural Plans', children: [{ id: 'l1', label: 'Level 1' }, { id: 'l2', label: 'Level 2' }] }] },
+      { id: 'fam', label: 'Families', children: [{ id: 'c', label: 'Columns' }] },
+    ];
+    render(<TreeView nodes={nodes} label="Browser" variant="revit" filter="level 2" />);
+    const rows = screen.getAllByRole('treeitem').map((r) => r.textContent?.replace(/[+−]/g, '').trim());
+    expect(rows).toEqual(['Views (all)', 'Structural Plans', 'Level 2']);
+  });
+});

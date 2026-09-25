@@ -61,7 +61,7 @@ echoed back.
 ## Parameters (feature `params`, add-in 0.2.0; palette order and type parameters 0.3.0)
 
 Instance parameters as the Properties palette shows them (`GetOrderedParameters`: no hidden schedule
-copies), in its order, plus `familyName` and `typeParams` (read-only for now: type parameters change
+copies), in its order, each number with its display `unit` symbol (0.4.0), plus `familyName` and `typeParams` (read-only for now: type parameters change
 every instance and come later). `kind` is `text`,
 `number` (shown and entered in the project's units: `"600"` in a millimetre project is 600 mm),
 `integer`, `yesno` (`"Yes"`/`"No"`) or `element` (chosen in Revit; read-only here).
@@ -73,7 +73,8 @@ others. A change is refused when:
 - `oldDisplay` differs from the value in Revit now (it changed since Shanku read it);
 - the parameter is read-only or chosen in Revit;
 - the element is borrowed by someone else in a workshared model;
-- Revit cannot read the value (for numbers, `SetValueString` in the project's units).
+- Revit cannot read the value. Numbers go through `SetValueString` in the project's units; when it
+  refuses, the add-in reads "600", "600.000", "600 mm", "0.6 m" itself (0.4.0).
 
 Revit warnings (duplicate marks and the like) are collected into `warnings` instead of dialogs.
 `dryRun: true` runs the same checks inside a transaction group that is always rolled back: the inner

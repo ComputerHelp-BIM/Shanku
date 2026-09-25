@@ -309,6 +309,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.36.0', date: '2026-09-25', items: ['Revit 2025 look: drag the line between names and values in Properties; Apply always visible; sort A→Z / Z→A within groups; the Project Browser with Search and Families; Type Properties like Revit\'s dialog with a Preview; units next to numbers; thin scrollbars.'] },
           { version: '0.35.0', date: '2026-09-25', items: ['Properties looks and works like Revit\'s palette: collapsible groups, lines between rows, family and type, Edit Type, an Apply button; Properties docks left and the Project Browser right, as in Revit.', 'No more duplicate Revit parameters; Revit\'s warnings (duplicate marks…) show when you check or apply.'] },
           { version: '0.34.0', date: '2026-09-25', items: ['Edit Revit parameters in Shanku: Properties shows the live Revit parameters; edits wait in the Changes window, are checked in Revit, and apply as one Revit undo.'] },
           { version: '0.33.0', date: '2026-09-25', items: ['A Revit ribbon tab: Connect, Disconnect, Load from Revit, Sync, Send to Revit and Get from Revit, and the bridge guide.'] },

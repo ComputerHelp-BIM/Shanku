@@ -1,4 +1,4 @@
-/* @shanku/ui 0.14.0 — requires @shanku/tokens/tokens.css loaded first. */
+/* @shanku/ui 0.15.0 — requires @shanku/tokens/tokens.css loaded first. */
 
 /* ---------- base ---------- */
 .sk-shell,
@@ -224,6 +224,11 @@
   border-bottom: 1px solid var(--border);
 }
 .sk-dock__body { overflow: auto; min-height: 0; padding-bottom: var(--space-sm); }
+/* With a footer the panel fills its dock: the body scrolls, the footer stays (Revit's Apply bar). */
+.sk-dock--footer { height: 100%; }
+.sk-dock--footer .sk-dock__body { flex: 1; padding-bottom: 0; }
+.sk-dock__footer { flex: none; border-top: 1px solid var(--border-strong); background: var(--panel); }
+.sk-dock__toolbar { flex: none; padding: 6px 8px; border-bottom: 1px solid var(--border); }
 
 .sk-type-selector {
   margin: 10px 14px 4px;
@@ -266,7 +271,7 @@ button.sk-prop-section__title:focus-visible { outline: 2px solid var(--focus-rin
 .sk-prop-section.is-collapsed .sk-prop-section__chevron { transform: rotate(180deg); }
 .sk-prop-row {
   display: grid;
-  grid-template-columns: minmax(0, 45%) minmax(0, 1fr);
+  grid-template-columns: minmax(0, var(--sk-prop-label, 45%)) minmax(0, 1fr);
   align-items: stretch;
   min-height: 24px;
   border-bottom: 1px solid var(--border);
@@ -283,6 +288,21 @@ button.sk-prop-section__title:focus-visible { outline: 2px solid var(--focus-rin
   text-overflow: ellipsis;
 }
 .sk-prop-row.is-readonly .sk-prop-row__label { color: var(--text-faint); }
+.sk-prop-row__label { position: relative; }
+/* Drag the line between label and value (PropertyGrid) to resize the label column, as in Revit. */
+.sk-prop-row__split { position: absolute; top: 0; right: 0; bottom: 0; width: 6px; cursor: col-resize; z-index: 1; } /* fully inside the label: its overflow clipping must not shrink the grab zone */
+.sk-prop-row__split:hover { background: linear-gradient(var(--focus-ring), var(--focus-ring)) right / 2px 100% no-repeat; }
+.sk-prop-grid { min-width: 0; }
+
+/* Revit's footer: sort buttons, then actions */
+.sk-prop-footer { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
+.sk-prop-footer__sort { display: flex; gap: 2px; }
+.sk-prop-footer__actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.sk-prop-sort { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); cursor: pointer; }
+.sk-prop-sort svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.sk-prop-sort:hover { background: var(--chip); }
+.sk-prop-sort.is-on { border-color: var(--accent); background: var(--chip); color: var(--accent-text); }
+.sk-prop-sort:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .sk-prop-row__value { display: block; align-self: center; padding: 0 8px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
 .sk-prop-row__value.is-mono { font-family: var(--font-mono); font-size: 12px; }
 .sk-prop-row__value.is-readonly { color: var(--text-faint); }
@@ -318,6 +338,21 @@ button.sk-prop-section__title:focus-visible { outline: 2px solid var(--focus-rin
 .sk-tree__row:hover { background: var(--chip); }
 .sk-tree__row.is-active { background: var(--row-selected); font-weight: 600; }
 .sk-tree__chevron { width: 12px; display: flex; color: var(--text-secondary); }
+.sk-tree__row.is-bold { font-weight: 700; }
+.sk-tree__empty { padding: 8px 14px; color: var(--text-secondary); font-size: 12px; }
+
+/* Revit's Project Browser: boxed +/− expanders and dotted guides, one 16px column per level */
+.sk-tree--revit .sk-tree__row { gap: 0; padding-left: 6px; height: 22px; }
+.sk-tree--revit .sk-tree__row.is-active { font-weight: 700; }
+.sk-tree__guide, .sk-tree__elbow { position: relative; flex: none; width: 16px; align-self: stretch; }
+.sk-tree__guide.is-through::before, .sk-tree__elbow::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; border-left: 1px dotted var(--text-faint); }
+.sk-tree__elbow.is-last::before { bottom: 50%; }
+.sk-tree__elbow::after { content: ''; position: absolute; left: 7px; right: -2px; top: 50%; border-top: 1px dotted var(--text-faint); }
+.sk-tree__box { flex: none; width: 14px; display: grid; place-items: center; }
+.sk-tree__boxmark { width: 11px; height: 11px; display: grid; place-items: center; border: 1px solid var(--text-faint); background: var(--panel); color: var(--text); font-size: 11px; line-height: 1; font-weight: 700; }
+.sk-tree__icon { flex: none; margin: 0 5px 0 3px; color: var(--text-secondary); }
+.sk-tree__label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sk-tree__box + .sk-tree__label { margin-left: 5px; } /* no icon: keep a gap after the +/− box */
 
 /* ---------- view tabs ---------- */
 .sk-view-tabs {
@@ -425,3 +460,11 @@ a.sk-titlebar__brand:focus-visible { outline: 2px solid var(--accent); outline-o
 .sk-prop-row.is-modified { box-shadow: inset 3px 0 0 var(--accent); }
 .sk-prop-row.is-modified .sk-prop-row__label { color: var(--accent-text); }
 .sk-prop-row__check { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+
+/* ---------- scrollbars: thin and themed everywhere ---------- */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--text-faint); }
+::-webkit-scrollbar-corner { background: transparent; }

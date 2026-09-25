@@ -188,7 +188,8 @@ def make_handler(st: State):
                     if g not in st.params:
                         continue
                     tag = next((t for gg, _, t in st.ids if gg == g), 0)
-                    ps = [{"id": v[0], "name": k, "group": v[1], "kind": v[2], "display": v[3], "readOnly": v[4], "why": ("Choose it in Revit" if v[2] == "element" else "Read-only in Revit") if v[4] else None} for k, v in st.params[g].items()]
+                    unit = lambda k, v: ("m³" if k == "Volume" else "mm") if v[2] == "number" else None
+                    ps = [{"id": v[0], "name": k, "group": v[1], "kind": v[2], "display": v[3], "readOnly": v[4], "unit": unit(k, v), "why": ("Choose it in Revit" if v[2] == "element" else "Read-only in Revit") if v[4] else None} for k, v in st.params[g].items()]
                     tps = [{"id": -2001, "name": n2, "group": g2, "kind": k2, "display": d2, "readOnly": True, "why": "Type parameter: edit it in Revit (Edit Type) for now"} for n2, g2, k2, d2 in [("b", "Dimensions", "number", "300.000"), ("h", "Dimensions", "number", "600.000"), ("Type Mark", "Identity Data", "text", "C1"), ("Keynote", "Identity Data", "text", "E")]]
                     out.append({"globalId": g, "elementId": tag, "category": "Structural Columns", "typeName": "CH-300 X 600", "familyName": "Concrete-Rectangular-Column", "params": ps, "typeParams": tps})
                 return self.send_json(200, {"elements": out})
@@ -208,11 +209,12 @@ def make_handler(st: State):
                     else:
                         v = str(c.get("value", "")).strip()
                         if p[2] == "number":
-                            m = re.fullmatch(r"(-?\d+(?:\.\d+)?)\s*(mm)?", v)
+                            m = re.fullmatch(r"(-?\d+(?:[.,]\d+)?)\s*(mm|m)?", v)
                             if not m:
-                                err = f'Revit could not read "{v}" as a length.'
+                                err = f'"{v}" is not a number.'
                             else:
-                                after = f"{float(m.group(1)):g} mm"
+                                val = float(m.group(1).replace(",", ".")) * (1000 if m.group(2) == "m" else 1)
+                                after = f"{val:.3f}"
                         elif p[2] == "yesno":
                             after = "Yes" if v.lower() in ("yes", "1", "true") else "No"
                         else:

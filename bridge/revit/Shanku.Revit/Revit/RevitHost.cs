@@ -206,7 +206,7 @@ public sealed class RevitHost : IRevitHost
             string kind = KindOf(p);
             bool ro = forceReadOnly || p.IsReadOnly || kind == "element";
             string? why = forceReadOnly ? "Type parameter: edit it in Revit (Edit Type) for now" : kind == "element" ? "Choose it in Revit" : p.IsReadOnly ? "Read-only in Revit" : null;
-            ps.Add(new ParamInfo(p.Id.Value, p.Definition.Name, group, kind, DisplayOf(p), ro, why));
+            ps.Add(new ParamInfo(p.Id.Value, p.Definition.Name, group, kind, DisplayOf(p), ro, why, kind == "number" ? UnitSymbolOf(e.Document, p) : null));
         }
         return ps;
     }
@@ -265,10 +265,51 @@ public sealed class RevitHost : IRevitHost
                 break;
             case "number":
                 // Revit reads the text in the project's units ("600" = 600 mm in a millimetre project).
-                if (!p.SetValueString(value.Trim())) throw new InvalidOperationException($"Revit could not read \"{value}\" as a {LabelUtils.GetLabelForSpec(p.Definition.GetDataType()).ToLowerInvariant()}.");
+                // When it will not (some formats refuse "600.000"), read the number ourselves: an optional
+                // unit ("mm", "m", "ft"...) or else the project's display unit, converted to Revit's units.
+                if (p.SetValueString(value.Trim())) break;
+                p.Set(ParseNumber(p, value));
                 break;
             default:
                 throw new InvalidOperationException("This parameter is chosen in Revit.");
+        }
+    }
+
+    private static readonly Dictionary<string, ForgeTypeId> UnitWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["mm"] = UnitTypeId.Millimeters, ["cm"] = UnitTypeId.Centimeters, ["m"] = UnitTypeId.Meters,
+        ["ft"] = UnitTypeId.Feet, ["'"] = UnitTypeId.Feet, ["in"] = UnitTypeId.Inches, ["\""] = UnitTypeId.Inches,
+        ["m2"] = UnitTypeId.SquareMeters, ["m²"] = UnitTypeId.SquareMeters, ["m3"] = UnitTypeId.CubicMeters, ["m³"] = UnitTypeId.CubicMeters,
+        ["mm2"] = UnitTypeId.SquareMillimeters, ["mm²"] = UnitTypeId.SquareMillimeters, ["ft2"] = UnitTypeId.SquareFeet, ["ft²"] = UnitTypeId.SquareFeet,
+        ["ft3"] = UnitTypeId.CubicFeet, ["ft³"] = UnitTypeId.CubicFeet, ["°"] = UnitTypeId.Degrees, ["deg"] = UnitTypeId.Degrees,
+    };
+
+    /// <summary>"600", "600.000", "600,5", "600 mm", "0.6 m" → Revit's internal value for this parameter.</summary>
+    private static double ParseNumber(Parameter p, string text)
+    {
+        (double n, string word) = NumberText.Parse(text); // FormatException: not a number
+        var spec = p.Definition.GetDataType();
+        if (!UnitUtils.IsMeasurableSpec(spec)) return n;
+        ForgeTypeId unit;
+        if (word.Length == 0) unit = p.Element.Document.GetUnits().GetFormatOptions(spec).GetUnitTypeId();
+        else if (!UnitWords.TryGetValue(word, out unit!)) throw new InvalidOperationException($"\"{word}\" is not a unit Shanku knows (use mm, cm, m, ft or in).");
+        return UnitUtils.ConvertToInternalUnits(n, unit);
+    }
+
+    /// <summary>The project's display unit symbol for this number ("mm", "m³"…), when it has a common one.</summary>
+    private static string? UnitSymbolOf(Document doc, Parameter p)
+    {
+        try
+        {
+            var spec = p.Definition.GetDataType();
+            if (!UnitUtils.IsMeasurableSpec(spec)) return null;
+            var unit = doc.GetUnits().GetFormatOptions(spec).GetUnitTypeId();
+            foreach (var kv in UnitWords) if (kv.Value == unit && !kv.Key.EndsWith('2') && !kv.Key.EndsWith('3') && kv.Key != "'" && kv.Key != "\"" && kv.Key != "deg") return kv.Key;
+            return null;
+        }
+        catch
+        {
+            return null;
         }
     }
 

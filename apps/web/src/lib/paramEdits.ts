@@ -17,6 +17,8 @@ export interface RevitParam {
   display: string | null;
   readOnly: boolean;
   why?: string | null;
+  /** Display unit symbol for numbers ("mm", "m³"…), add-in 0.4.0+. */
+  unit?: string | null;
 }
 
 export interface RevitElementParams {
@@ -58,6 +60,7 @@ export interface CommonParam {
   kind: ParamKind;
   readOnly: boolean;
   why?: string | null;
+  unit?: string | null;
   /** Revit's value (null when the selection differs). */
   display: string | null;
   varies: boolean;
@@ -86,6 +89,7 @@ export function commonParams(els: readonly RevitElementParams[]): CommonParam[] 
       kind: p.kind,
       readOnly: all.some((o) => o.readOnly),
       why: all.find((o) => o.readOnly)?.why ?? null,
+      unit: p.unit ?? null,
       display: varies ? null : p.display,
       varies,
     });

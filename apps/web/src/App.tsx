@@ -19,8 +19,6 @@ import {
   TOGGLE_BOTTOM_PANEL,
   useShortcut,
   useTheme,
-  PropertyRow,
-  PropertySection,
 } from '@shanku/ui';
 import { runChecks, CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, EXPLODE_MODES, boxState, type ExplodeMode, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
 import { Browser } from './components/Browser';
@@ -60,6 +58,7 @@ import { CommandPalette, type ElementHit } from './components/CommandPalette';
 import { GuidePanel } from './components/GuidePanel';
 import { RevitPanel } from './components/RevitPanel';
 import { RevitChanges } from './components/RevitChanges';
+import { TypeProperties } from './components/TypeProperties';
 import { afterApply, byGroup, changeKey, commonParams, effectiveCommon, stageEdit, type PendingChange, type RevitElementParams } from './lib/paramEdits';
 import { RevitBridge, indicesForRevitSelection } from './lib/revitBridge';
 import { QaPanel } from './components/QaPanel';
@@ -71,7 +70,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.35.0';
+const APP_VERSION = '0.36.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -761,6 +760,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             key: `${p.id}|${p.name}`,
             label: p.name,
             value: eff.display,
+            unit: p.unit && eff.display && !eff.display.trim().endsWith(p.unit) ? p.unit : undefined,
             varies: eff.varies,
             modified: eff.modified,
             readOnly: p.readOnly,
@@ -1907,23 +1907,12 @@ export function App({ start }: { start?: AppStart } = {}) {
                   />
                 )}
           </FloatingWindow>
-          <FloatingWindow id="typeProps" title="Type Properties" subtitle={(() => { const e = paramsCache.current.get(selectedGids[0] ?? ''); return e ? `${e.familyName ?? ''} · ${e.typeName}` : undefined; })()} open={wins.typeProps} onClose={() => toggleWin('typeProps', false)} initial={{ w: 420, h: 520 }} minWidth={320} minHeight={240}>
+          <FloatingWindow id="typeProps" title="Type Properties" open={wins.typeProps} onClose={() => toggleWin('typeProps', false)} initial={{ w: 760, h: 620 }} minWidth={480} minHeight={360}>
             {(() => {
               void paramsTick;
-              const e = paramsCache.current.get(selectedGids[0] ?? '');
-              if (!e?.typeParams?.length) return <p className="app-empty-note">Select an element of a model loaded from Revit.</p>;
-              return (
-                <div className="app-type-props">
-                  <p className="app-revit-params__status">Type parameters change every {e.category.toLowerCase()} of this type. Edit them in Revit for now; editing here comes later.</p>
-                  {byGroup(e.typeParams).map((g) => (
-                    <PropertySection key={g.group} title={g.group} persistKey={`revit-type:${g.group.toLowerCase()}`}>
-                      {g.params.map((p) => (
-                        <PropertyRow key={`${p.id}|${p.name}`} label={p.name} value={p.display} readOnly hint={p.why ?? undefined} kind={p.kind === 'yesno' ? 'yesno' : 'text'} />
-                      ))}
-                    </PropertySection>
-                  ))}
-                </div>
-              );
+              const gid = selectedGids[0] ?? '';
+              const idx = m.model ? m.model.elements.findIndex((e) => e.globalId === gid) : -1;
+              return <TypeProperties element={paramsCache.current.get(gid) ?? null} model={m.model} index={idx >= 0 ? idx : null} onClose={() => toggleWin('typeProps', false)} />;
             })()}
           </FloatingWindow>
           <FloatingWindow id="changes" title="Changes for Revit" subtitle={revit.document?.title} open={wins.changes} onClose={() => toggleWin('changes', false)} initial={{ w: 760, h: 420 }} minWidth={520} minHeight={240}>
@@ -2299,6 +2288,10 @@ export function App({ start }: { start?: AppStart } = {}) {
                       openView(id);
                     }}
                     onViewMenu={(id, x, y) => setViewMenu({ id, x, y })}
+                    onSelectElements={(idx) => {
+                      m.setSelection(idx);
+                      setNotice(`${idx.length} selected.`);
+                    }}
                   />
                 );
               case 'activity':

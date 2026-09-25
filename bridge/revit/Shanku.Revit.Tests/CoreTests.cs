@@ -25,6 +25,29 @@ public class IfcGuidTests
     public void Matches_ifcopenshell(string guid, string expected) => Assert.Equal(expected, IfcGuid.FromGuid(Guid.Parse(guid)));
 }
 
+public class NumberTextTests
+{
+    [Theory]
+    [InlineData("600", 600, "")]
+    [InlineData("600.000", 600, "")]
+    [InlineData(" 600,5 mm ", 600.5, "mm")]
+    [InlineData("0.6 m", 0.6, "m")]
+    [InlineData("-150mm", -150, "mm")]
+    [InlineData("12 m³", 12, "m³")]
+    public void Reads_values_and_units(string text, double value, string unit)
+    {
+        var (v, u) = NumberText.Parse(text);
+        Assert.Equal(value, v, 9);
+        Assert.Equal(unit, u);
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("6 00")]
+    [InlineData("")]
+    public void Refuses_non_numbers(string text) => Assert.Throws<FormatException>(() => NumberText.Parse(text));
+}
+
 public class PairingTests
 {
     private DateTime _now = new(2026, 9, 24, 12, 0, 0, DateTimeKind.Utc);

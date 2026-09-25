@@ -1,4 +1,4 @@
-# @shanku/ui 0.14.0
+# @shanku/ui 0.15.0
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 2.1.0` and `@shanku/brand >= 1.5.0`.
 
@@ -33,6 +33,14 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.15.0 — 2026-09-25
+- `PropertyGrid`: the line between labels and values drags to resize the label column (shared by every panel, remembered); provides the sort mode to its sections.
+- `PropertiesFooter` + `usePropertySort(key)`: Revit's sort buttons (categorized, A → Z, Z → A), sorting rows within groups; a slot for actions such as Apply.
+- `DockPanel`: `footer` (stays put while the body scrolls) and `toolbar` (e.g. a search box).
+- `TreeView variant="revit"`: boxed +/− expanders, dotted guide lines, node `icon`, `bold`, `hint`; `filter` keeps matches with their parents, opened.
+- Thin, themed scrollbars everywhere.
+- Design decisions and review log: `docs/design/revit-parity.md`.
 
 ### 0.14.0 — 2026-09-25
 - `PropertySection` is collapsible like Revit's palette groups: a bold header band with a chevron, open/closed remembered on the device (`persistKey`, defaults to the title; `false` keeps nothing), `defaultOpen`, `collapsible`.

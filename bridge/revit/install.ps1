@@ -10,7 +10,7 @@
     Remove:
         powershell -ExecutionPolicy RemoteSigned -File .\install.ps1 -Uninstall
 .NOTES
-    Shanku Bridge 0.3.0 · Revit 2025
+    Shanku Bridge 0.4.0 · Revit 2025
 #>
 [CmdletBinding()]
 param(
