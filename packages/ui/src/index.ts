@@ -15,7 +15,7 @@ export { ShankuMark, type ShankuMarkProps } from './components/ShankuMark';
 export { Button, IconButton, Kbd, type ButtonProps, type IconButtonProps } from './components/Button';
 export { TitleBar, CommandSearch, type TitleBarProps, type CommandSearchProps } from './components/TitleBar';
 export { Ribbon, RibbonTabs, RibbonGroup, RibbonButton, type RibbonTab, type RibbonTabsProps, type RibbonButtonProps } from './components/Ribbon';
-export { DockPanel, TypeSelector, PropertySection, PropertyRow, type PropertyRowProps, type TypeSelectorProps } from './components/Properties';
+export { DockPanel, TypeSelector, PropertySection, PropertyRow, type PropertyRowProps, type PropertySectionProps, type TypeSelectorProps } from './components/Properties';
 export { TreeView, type TreeNode, type TreeViewProps } from './components/TreeView';
 export {
   ViewTabs,
@@ -33,4 +33,4 @@ export {
 export { ErrorBoundary, type ErrorBoundaryProps } from './components/ErrorBoundary';
 export { FloatingWindow, type FloatingWindowProps } from './components/FloatingWindow';
 export { ThemeIcon } from './components/ThemeIcon';
-export const version = '0.13.0';
+export const version = '0.14.0';

@@ -230,7 +230,7 @@ export const GUIDE: GuideSection[] = [
       },
       {
         list: [
-          '**Edit parameters** (add-in 0.2.0): select elements of the model loaded from Revit; Properties shows their **Revit parameters** as Revit groups them. Edit a value (several elements at once too); the row is marked and waits. Ctrl + Z undoes an edit.',
+          '**Edit parameters** (add-in 0.3.0): select elements of the model loaded from Revit; Properties shows them as Revit\'s palette does: family and type, the category with **Edit Type** (the type\'s parameters), then Revit\'s groups in Revit\'s order (click a group to collapse it). Edit a value (several elements at once too); the row is marked and waits; **Apply** at the bottom applies the selection\'s changes. Ctrl + Z undoes an edit.',
           '**Revit → Changes** lists every edit: Revit\'s value, the new one, a tick per row. **Check in Revit** tries them and keeps nothing; **Apply** makes them in one Revit transaction, so one Edit → Undo in Revit takes them all back.',
           'Revit refuses a change that someone made in Revit meanwhile, a read-only parameter, an element borrowed by someone else, or a number it cannot read (numbers use the project units: 600 means 600 mm in a millimetre project). **Refresh from Revit** takes Revit\'s current values as the base.',
           'Type parameters, and parameters that pick another element (material, level), are edited in Revit for now.',
@@ -309,6 +309,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.35.0', date: '2026-09-25', items: ['Properties looks and works like Revit\'s palette: collapsible groups, lines between rows, family and type, Edit Type, an Apply button; Properties docks left and the Project Browser right, as in Revit.', 'No more duplicate Revit parameters; Revit\'s warnings (duplicate marks…) show when you check or apply.'] },
           { version: '0.34.0', date: '2026-09-25', items: ['Edit Revit parameters in Shanku: Properties shows the live Revit parameters; edits wait in the Changes window, are checked in Revit, and apply as one Revit undo.'] },
           { version: '0.33.0', date: '2026-09-25', items: ['A Revit ribbon tab: Connect, Disconnect, Load from Revit, Sync, Send to Revit and Get from Revit, and the bridge guide.'] },
           { version: '0.32.0', date: '2026-09-24', items: ['Revit bridge: connect to Revit 2025 with Shanku Bridge for Revit, load the open model and keep the selection in step both ways.'] },

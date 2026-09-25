@@ -32,14 +32,64 @@ export function TypeSelector({ icon, category, typeName }: TypeSelectorProps) {
   );
 }
 
-export function PropertySection({ title, children }: { title: string; children: ReactNode }) {
+export interface PropertySectionProps {
+  title: string;
+  children: ReactNode;
+  /** Revit-style: the header collapses the group (default). */
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  /**
+   * Remembers open/closed on this device, like Revit remembers its palette groups. Defaults to the
+   * title, so every "Constraints" group opens or closes together; false keeps nothing.
+   */
+  persistKey?: string | false;
+  /** Extra class for the section (e.g. a nested block). */
+  className?: string;
+}
+
+const SECTION_STORE = 'shanku.propSections';
+function readSections(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(SECTION_STORE) ?? '{}');
+  } catch {
+    return {};
+  }
+}
+
+/** A Properties group: a bold header band that collapses the rows under it, as in Revit's palette. */
+export function PropertySection({ title, children, collapsible = true, defaultOpen = true, persistKey, className }: PropertySectionProps) {
   const id = useId();
+  const key = persistKey === false ? null : (persistKey ?? title.toLowerCase());
+  const [open, setOpen] = useState(() => {
+    if (!collapsible) return true;
+    const saved = key ? readSections()[key] : undefined;
+    return saved ?? defaultOpen;
+  });
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (!key) return;
+    try {
+      localStorage.setItem(SECTION_STORE, JSON.stringify({ ...readSections(), [key]: next }));
+    } catch {
+      /* storage unavailable: not remembered */
+    }
+  };
   return (
-    <div className="sk-prop-section" role="group" aria-labelledby={id}>
-      <div id={id} className="sk-prop-section__title">
-        {title}
-      </div>
-      {children}
+    <div className={['sk-prop-section', !open && 'is-collapsed', className].filter(Boolean).join(' ')} role="group" aria-labelledby={id}>
+      {collapsible ? (
+        <button type="button" id={id} className="sk-prop-section__title" aria-expanded={open} onClick={toggle}>
+          <span>{title}</span>
+          <svg className="sk-prop-section__chevron" viewBox="0 0 12 12" aria-hidden="true">
+            <path d="M3 7.5l3-3 3 3" />
+          </svg>
+        </button>
+      ) : (
+        <div id={id} className="sk-prop-section__title">
+          {title}
+        </div>
+      )}
+      {open ? <div className="sk-prop-section__rows">{children}</div> : null}
     </div>
   );
 }
@@ -92,11 +142,12 @@ export function PropertyRow({ label, value, unit, mono, readOnly, varies, onComm
   };
 
   const valueClass = ['sk-prop-row__value', mono && 'is-mono', readOnly && 'is-readonly'].filter(Boolean).join(' ');
+  const rowClass = ['sk-prop-row', modified && 'is-modified', readOnly && 'is-readonly'].filter(Boolean).join(' ');
   const title = [modified ? 'Changed here; not applied yet' : null, hint].filter(Boolean).join(' · ') || undefined;
   if (kind === 'yesno') {
     const on = !varies && String(value) === 'Yes';
     return (
-      <div className={['sk-prop-row', modified && 'is-modified'].filter(Boolean).join(' ')} title={title}>
+      <div className={rowClass} title={title}>
         <label className="sk-prop-row__label" htmlFor={inputId}>
           {label}
         </label>
@@ -117,7 +168,7 @@ export function PropertyRow({ label, value, unit, mono, readOnly, varies, onComm
     );
   }
   return (
-    <div className={['sk-prop-row', modified && 'is-modified'].filter(Boolean).join(' ')} title={title}>
+    <div className={rowClass} title={title}>
       <label className="sk-prop-row__label" htmlFor={editable ? inputId : undefined}>
         {label}
       </label>

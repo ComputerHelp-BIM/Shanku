@@ -128,19 +128,8 @@ public sealed class RevitHost : IRevitHost
         foreach (var gid in globalIds)
         {
             if (!_byGlobalId.TryGetValue(gid, out var id) || doc.GetElement(id) is not { } e) continue;
-            string typeName = doc.GetElement(e.GetTypeId())?.Name ?? "";
-            var ps = new List<ParamInfo>();
-            foreach (Parameter p in e.Parameters)
-            {
-                if (p.Definition == null || string.IsNullOrEmpty(p.Definition.Name)) continue;
-                string kind = KindOf(p);
-                bool ro = p.IsReadOnly || kind == "element";
-                string? why = kind == "element" ? "Choose it in Revit" : p.IsReadOnly ? "Read-only in Revit" : null;
-                string group;
-                try { group = LabelUtils.GetLabelForGroup(p.Definition.GetGroupTypeId()); } catch { group = "Other"; }
-                ps.Add(new ParamInfo(p.Id.Value, p.Definition.Name, string.IsNullOrEmpty(group) ? "Other" : group, kind, DisplayOf(p), ro, why));
-            }
-            list.Add(new ElementParams(gid, e.Id.Value, e.Category?.Name ?? "", typeName, ps.OrderBy(x => x.Group).ThenBy(x => x.Name).ToList()));
+            var type = doc.GetElement(e.GetTypeId()) as ElementType;
+            list.Add(new ElementParams(gid, e.Id.Value, e.Category?.Name ?? "", type?.Name ?? "", PaletteParams(e, forceReadOnly: false), type?.FamilyName ?? "", type != null ? PaletteParams(type, forceReadOnly: true) : Array.Empty<ParamInfo>()));
         }
         return list;
     }, Export);
@@ -154,6 +143,11 @@ public sealed class RevitHost : IRevitHost
         string undoName = $"Shanku: update {changes.Count} parameter{(changes.Count == 1 ? "" : "s")} on {elements} element{(elements == 1 ? "" : "s")}";
         var results = new List<ChangeResult>();
         var warnings = new List<string>();
+        // Dry run: a transaction group that is always rolled back. The inner transaction still commits,
+        // so Revit raises its warnings (they only appear on commit); the group rollback then undoes it
+        // whether or not any warning came up.
+        using var group = dryRun ? new TransactionGroup(doc, "Shanku: check " + undoName) : null;
+        group?.Start();
         using var t = new Transaction(doc, undoName);
         var opts = t.GetFailureHandlingOptions();
         opts.SetFailuresPreprocessor(new WarningCollector(warnings));
@@ -187,10 +181,35 @@ public sealed class RevitHost : IRevitHost
             }
             results.Add(new ChangeResult(i, error == null, error, after));
         }
-        if (dryRun || results.All(r => !r.Ok)) t.RollBack(); // nothing to keep
-        else if (t.Commit() != TransactionStatus.Committed) throw new BridgeException(500, "Revit did not accept the changes (the transaction was rolled back).");
+        if (results.All(r => !r.Ok)) t.RollBack(); // nothing to keep
+        else if (t.Commit() != TransactionStatus.Committed && !dryRun) throw new BridgeException(500, "Revit did not accept the changes (the transaction was rolled back).");
+        group?.RollBack(); // dry run: always undone
         return new WriteResult(dryRun, undoName, results, warnings.Distinct().ToList());
     }, Export);
+
+    /// <summary>
+    /// The parameters the Properties palette shows, in its order: GetOrderedParameters() leaves out the
+    /// hidden copies Revit keeps for schedules (a second "Base Level", "Base Offset", "Category"...).
+    /// A name that still repeats within a group is kept once.
+    /// </summary>
+    private static List<ParamInfo> PaletteParams(Element e, bool forceReadOnly)
+    {
+        var ps = new List<ParamInfo>();
+        var seen = new HashSet<string>();
+        foreach (Parameter p in e.GetOrderedParameters())
+        {
+            if (p.Definition == null || string.IsNullOrEmpty(p.Definition.Name)) continue;
+            string group;
+            try { group = LabelUtils.GetLabelForGroup(p.Definition.GetGroupTypeId()); } catch { group = "Other"; }
+            if (string.IsNullOrEmpty(group)) group = "Other";
+            if (!seen.Add(group + "\u0001" + p.Definition.Name)) continue;
+            string kind = KindOf(p);
+            bool ro = forceReadOnly || p.IsReadOnly || kind == "element";
+            string? why = forceReadOnly ? "Type parameter: edit it in Revit (Edit Type) for now" : kind == "element" ? "Choose it in Revit" : p.IsReadOnly ? "Read-only in Revit" : null;
+            ps.Add(new ParamInfo(p.Id.Value, p.Definition.Name, group, kind, DisplayOf(p), ro, why));
+        }
+        return ps;
+    }
 
     /// <summary>Revit warnings (duplicate marks and the like) are reported, not shown as dialogs.</summary>
     private sealed class WarningCollector : IFailuresPreprocessor
@@ -202,8 +221,8 @@ public sealed class RevitHost : IRevitHost
             foreach (var m in fa.GetFailureMessages())
             {
                 if (m.GetSeverity() != FailureSeverity.Warning) continue;
-                _warnings.Add(m.GetDescriptionText());
-                fa.DeleteWarning(m);
+                _warnings.Add(m.GetDescriptionText().TrimEnd('.', ' ') + ".");
+                fa.DeleteWarning(m); // reported to Shanku instead of a dialog
             }
             return FailureProcessingResult.Continue;
         }

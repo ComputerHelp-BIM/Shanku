@@ -1,4 +1,4 @@
-# @shanku/web 0.34.0
+# @shanku/web 0.35.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,14 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.35.0 — 2026-09-25
+- **Fixed: duplicate Revit parameters** (two Base Level, Base Offset, Top Level, Category…). The add-in read every parameter, including the hidden copies Revit keeps for schedules; editing one of those is why a Base Offset change needed both rows. Shanku Bridge for Revit 0.3.0 reads the palette's own list (`GetOrderedParameters`); Shanku also drops a repeated name within a group for older add-ins.
+- **Properties like Revit's palette**: family and type at the top, the category with the count and **Edit Type** (the type's parameters, read-only for now), Revit's groups in Revit's order as collapsible bold bands (remembered), thin row lines, an **Apply** button at the bottom for the selection's changes. Shanku's IFC details sit in one closed **IFC data** group under them.
+- **Docking as in Revit**: Properties on the left, Project Browser on the right. A layout you arranged before is reset once to the new default.
+- **Revit's warnings are shown**: after **Check in Revit** too (the add-in now raises them in a dry run), in a box in the Changes window, which opens when Revit warns; the warning text no longer ends in "..".
+- After an apply, the Changes window offers **Reload from Revit** (Shanku keeps showing the model as loaded until then; keeping it in step automatically is the next milestone).
+- Fixed: "Loaded … from Revit (0.0 MB)": the size was read after the file had been handed to the loader.
 
 ### 0.34.0 — 2026-09-25
 - **Edit Revit parameters from Shanku (Revit bridge milestone 2, needs Shanku Bridge for Revit 0.2.0).** Properties shows the selection's live Revit instance parameters in Revit's groups, editable (several elements at once, Varies when they differ; Yes/No as a checkbox; read-only rows say why). Edits become **pending changes**: marked, undoable with Ctrl + Z, kept per Revit model across reloads.

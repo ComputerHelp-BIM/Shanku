@@ -24,7 +24,11 @@ export interface RevitElementParams {
   elementId: number;
   category: string;
   typeName: string;
+  /** Instance parameters, in the Properties palette's order (add-in 0.3.0+). */
   params: RevitParam[];
+  familyName?: string;
+  /** Type parameters, read-only for now (add-in 0.3.0+). */
+  typeParams?: RevitParam[];
 }
 
 export interface PendingChange {
@@ -65,7 +69,12 @@ export function commonParams(els: readonly RevitElementParams[]): CommonParam[] 
   const key = (p: RevitParam) => `${p.id}|${p.name}`;
   const rest = els.slice(1).map((e) => new Map(e.params.map((p) => [key(p), p])));
   const out: CommonParam[] = [];
+  const seen = new Set<string>();
   for (const p of els[0].params) {
+    // An add-in before 0.3.0 also sent Revit's hidden schedule copies (a second "Base Offset"): keep one.
+    const shown = `${p.group}\u0001${p.name}`;
+    if (seen.has(shown)) continue;
+    seen.add(shown);
     const others = rest.map((m) => m.get(key(p)));
     if (others.some((o) => !o)) continue;
     const all = [p, ...(others as RevitParam[])];
@@ -132,11 +141,9 @@ export function afterApply(pending: readonly PendingChange[], sent: readonly Pen
   return { remaining: pending.filter((c) => !done.has(changeKey(c))), applied: done.size, failed };
 }
 
-/** Groups parameters by their Revit group, in Revit's usual order for the common ones. */
+/** Groups parameters by their Revit group, keeping Revit's order (groups and rows as they come). */
 export function byGroup<T extends { group: string; name: string }>(params: readonly T[]): Array<{ group: string; params: T[] }> {
-  const ORDER = ['Constraints', 'Structural', 'Dimensions', 'Identity Data', 'Materials and Finishes', 'Phasing'];
   const groups = new Map<string, T[]>();
   for (const p of params) groups.set(p.group, [...(groups.get(p.group) ?? []), p]);
-  const rank = (g: string) => (ORDER.includes(g) ? ORDER.indexOf(g) : ORDER.length);
-  return [...groups.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0])).map(([group, ps]) => ({ group, params: ps }));
+  return [...groups.entries()].map(([group, ps]) => ({ group, params: ps }));
 }

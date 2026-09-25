@@ -43,12 +43,17 @@ class State:
         self.params = {}
         for n, (g, _, tag) in enumerate(self.ids):
             self.params[g] = {
-                "Mark": [-1001203, "Identity Data", "text", f"E{n + 1}", False],
-                "Comments": [-1010106, "Identity Data", "text", "", False],
-                "Base Offset": [-1001107, "Constraints", "number", "0 mm", False],
+                "Base Level": [-1001100, "Constraints", "element", "01 GROUND LVL.", True],
+                "Base Offset": [-1001107, "Constraints", "number", "0.000", False],
+                "Top Level": [-1001101, "Constraints", "element", "02 1ST FLOOR LVL.", True],
+                "Top Offset": [-1001108, "Constraints", "number", "0.000", False],
+                "Moves With Grids": [-1001109, "Constraints", "yesno", "Yes", False],
+                "Structural Material": [-1001205, "Materials and Finishes", "element", "Concrete, Cast In Situ", True],
                 "Enable Analytical Model": [-1018301, "Structural", "yesno", "Yes", False],
-                "Structural Material": [-1001205, "Materials and Finishes", "element", "Concrete - M25", True],
+                "Length": [-1012807, "Dimensions", "number", "3000.000", True],
                 "Volume": [-1012806, "Dimensions", "number", "0.540 m³", True],
+                "Comments": [-1010106, "Identity Data", "text", "", False],
+                "Mark": [-1001203, "Identity Data", "text", f"E{n + 1}", False],
             }
 
     def broadcast(self, event: str, data: dict):
@@ -184,7 +189,8 @@ def make_handler(st: State):
                         continue
                     tag = next((t for gg, _, t in st.ids if gg == g), 0)
                     ps = [{"id": v[0], "name": k, "group": v[1], "kind": v[2], "display": v[3], "readOnly": v[4], "why": ("Choose it in Revit" if v[2] == "element" else "Read-only in Revit") if v[4] else None} for k, v in st.params[g].items()]
-                    out.append({"globalId": g, "elementId": tag, "category": "Structural element", "typeName": "Mock type", "params": sorted(ps, key=lambda p: (p["group"], p["name"]))})
+                    tps = [{"id": -2001, "name": n2, "group": g2, "kind": k2, "display": d2, "readOnly": True, "why": "Type parameter: edit it in Revit (Edit Type) for now"} for n2, g2, k2, d2 in [("b", "Dimensions", "number", "300.000"), ("h", "Dimensions", "number", "600.000"), ("Type Mark", "Identity Data", "text", "C1"), ("Keynote", "Identity Data", "text", "E")]]
+                    out.append({"globalId": g, "elementId": tag, "category": "Structural Columns", "typeName": "CH-300 X 600", "familyName": "Concrete-Rectangular-Column", "params": ps, "typeParams": tps})
                 return self.send_json(200, {"elements": out})
             if path == "/shanku/v1/params/write":
                 b = self.body()

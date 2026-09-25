@@ -574,3 +574,19 @@
 .app-changes__review { display: flex; align-items: center; gap: 8px; padding: 8px 12px 0; color: var(--status-warning); font-weight: 600; }
 .app-changes__bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); }
 .app-changes__count { color: var(--text-secondary); font-size: 12px; }
+
+.app-changes__warn { margin: 10px 12px 0; padding: 8px 10px; border: 1px solid var(--status-warning); border-radius: var(--radius-sm); background: var(--chip); }
+.app-changes__warn strong { color: var(--status-warning); }
+.app-changes__warn ul { margin: 4px 0 0; padding-left: 18px; }
+.app-changes__done { display: flex; align-items: center; gap: 10px; margin: 10px 12px 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--chip); font-size: 12px; }
+.app-changes__done span { flex: 1; }
+
+/* Properties in Revit mode: category count with Edit Type, IFC data group, Apply bar */
+.app-prop-filter { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px 4px 14px; border-bottom: 1px solid var(--border-strong); }
+.app-prop-filter__what { font-weight: 600; }
+.app-prop-filter__edit { height: 24px; padding: 0 10px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.app-prop-filter__edit:disabled { color: var(--text-faint); cursor: default; }
+.app-ifc-data .sk-prop-section__rows .sk-prop-section { border-bottom: 0; }
+.app-ifc-data .sk-prop-section__rows .sk-prop-section__title { background: var(--panel); font-weight: 600; padding-left: 16px; }
+.app-prop-apply { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--border-strong); background: var(--panel); }
+.app-type-props { padding-bottom: 8px; }

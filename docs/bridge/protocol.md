@@ -58,9 +58,11 @@ data: {"document":{"title":"…","key":"…","path":"…","isFamily":false}}   (
 A comment line (`: ping`) every 15 s keeps the stream open. A selection that Shanku itself set is not
 echoed back.
 
-## Parameters (feature `params`, add-in 0.2.0)
+## Parameters (feature `params`, add-in 0.2.0; palette order and type parameters 0.3.0)
 
-Instance parameters only (type parameters change every instance and come later). `kind` is `text`,
+Instance parameters as the Properties palette shows them (`GetOrderedParameters`: no hidden schedule
+copies), in its order, plus `familyName` and `typeParams` (read-only for now: type parameters change
+every instance and come later). `kind` is `text`,
 `number` (shown and entered in the project's units: `"600"` in a millimetre project is 600 mm),
 `integer`, `yesno` (`"Yes"`/`"No"`) or `element` (chosen in Revit; read-only here).
 
@@ -74,7 +76,8 @@ others. A change is refused when:
 - Revit cannot read the value (for numbers, `SetValueString` in the project's units).
 
 Revit warnings (duplicate marks and the like) are collected into `warnings` instead of dialogs.
-`dryRun: true` runs the same checks and rolls everything back.
+`dryRun: true` runs the same checks inside a transaction group that is always rolled back: the inner
+transaction commits so Revit raises its warnings, and the group rollback undoes it (0.3.0).
 
 ## Export
 

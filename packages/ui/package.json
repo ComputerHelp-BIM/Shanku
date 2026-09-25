@@ -1,6 +1,6 @@
 {
   "name": "@shanku/ui",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Shanku React UI components built on @shanku/tokens.",
   "license": "UNLICENSED",
   "type": "module",

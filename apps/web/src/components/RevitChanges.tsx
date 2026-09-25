@@ -18,6 +18,10 @@ export interface RevitChangesProps {
   onRemove: (keys: string[]) => void;
   /** Re-reads these rows' elements from Revit and takes Revit's current values as the base. */
   onRefresh: (keys: string[]) => void;
+  /** Revit's warnings from the last check or apply. */
+  warnings?: { dryRun: boolean; list: string[] } | null;
+  /** Reload the model from Revit (Shanku still shows it as loaded). */
+  onReload: () => void;
   onSelectElements: (globalIds: string[]) => void;
 }
 
@@ -43,14 +47,35 @@ export function RevitChanges(p: RevitChangesProps) {
       return n;
     });
 
+  const banner = (
+    <>
+      {p.warnings?.list.length ? (
+        <div className="app-changes__warn" role="status">
+          <strong>{p.warnings.dryRun ? 'Revit would warn' : 'Revit warned'}</strong>
+          <ul>
+            {p.warnings.list.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {p.lastApplied ? (
+        <div className="app-changes__done">
+          <span>
+            Applied {p.lastApplied.applied} in Revit as <strong>{p.lastApplied.undoName}</strong> (Edit → Undo in Revit takes it back). Shanku still shows the model as it was loaded.
+          </span>
+          <Button size="sm" onClick={p.onReload}>
+            Reload from Revit
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
+
   if (!p.pending.length) {
     return (
       <div className="app-changes app-changes--empty">
-        {p.lastApplied ? (
-          <p>
-            Applied {p.lastApplied.applied} change{p.lastApplied.applied === 1 ? '' : 's'} in Revit as <strong>{p.lastApplied.undoName}</strong>. In Revit, Edit → Undo takes them back in one step.
-          </p>
-        ) : null}
+        {banner}
         <p className="app-changes__hint">No changes waiting. Select elements from a model loaded from Revit and edit their Revit parameters in Properties.</p>
       </div>
     );
@@ -58,6 +83,7 @@ export function RevitChanges(p: RevitChangesProps) {
 
   return (
     <div className="app-changes">
+      {banner}
       <div className="app-changes__scroll">
         <table className="app-changes__table">
           <thead>

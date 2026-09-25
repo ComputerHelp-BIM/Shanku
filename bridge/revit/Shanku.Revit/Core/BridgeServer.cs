@@ -18,7 +18,8 @@ public sealed record SelectResult(int Selected, int Missing);
 
 /// <summary>One instance parameter as Shanku shows it. Kind: text, number, integer, yesno, element.</summary>
 public sealed record ParamInfo(long Id, string Name, string Group, string Kind, string? Display, bool ReadOnly, string? Why);
-public sealed record ElementParams(string GlobalId, long ElementId, string Category, string TypeName, IReadOnlyList<ParamInfo> Params);
+/// <summary>Params: instance parameters in the Properties palette's order. TypeParams: the type's (read-only for now).</summary>
+public sealed record ElementParams(string GlobalId, long ElementId, string Category, string TypeName, IReadOnlyList<ParamInfo> Params, string FamilyName = "", IReadOnlyList<ParamInfo>? TypeParams = null);
 /// <summary>A change to apply. OldDisplay is what Shanku read; a different current value is a conflict.</summary>
 public sealed record ParamChange(string GlobalId, long ParamId, string Name, string? OldDisplay, string Value);
 public sealed record ChangeResult(int Index, bool Ok, string? Error, string? NewDisplay);

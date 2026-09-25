@@ -1,4 +1,4 @@
-# @shanku/ui 0.13.0
+# @shanku/ui 0.14.0
 
 React 18 components for the Shanku window, styled only with `@shanku/tokens`. Requires `@shanku/tokens >= 2.1.0` and `@shanku/brand >= 1.5.0`.
 
@@ -33,6 +33,10 @@ import { ThemeProvider, AppShell } from '@shanku/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.14.0 — 2026-09-25
+- `PropertySection` is collapsible like Revit's palette groups: a bold header band with a chevron, open/closed remembered on the device (`persistKey`, defaults to the title; `false` keeps nothing), `defaultOpen`, `collapsible`.
+- Rows as in Revit: thin lines between rows and between label and value, values left-aligned, read-only labels greyed.
 
 ### 0.13.0 — 2026-09-25
 - `PropertyRow`: `modified` (changed here, not applied yet: accent marker and tooltip), `kind: 'yesno'` (checkbox, indeterminate when values vary) and `hint` (tooltip, e.g. why read-only).

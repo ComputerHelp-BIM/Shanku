@@ -23,7 +23,8 @@ export const PANEL_TITLES: Record<PanelId, string> = {
 };
 const BOTTOM: PanelId[] = ['activity', 'console', 'qa'];
 /** v2: BOQ, DXF → 3D and Keys became windows; older saved layouts are dropped. */
-const LAYOUT_KEY = 'shanku.layout.v2';
+/** v3: Properties left, Project Browser right, as Revit docks them; older saved layouts are dropped once. */
+const LAYOUT_KEY = 'shanku.layout.v3';
 
 const RenderCtx = createContext<(id: PanelId) => ReactNode>(() => null);
 
@@ -54,7 +55,7 @@ function HeaderActions({ group, containerApi }: IDockviewHeaderActionsProps) {
       {where !== 'grid'
         ? btn('Dock', '⤓', () => {
             const views = containerApi.getPanel('views')?.group;
-            group.api.moveTo({ group: views, position: group.panels.some((p) => p.id === 'properties') ? 'right' : group.panels.some((p) => p.id === 'browser') ? 'left' : 'bottom' });
+            group.api.moveTo({ group: views, position: group.panels.some((p) => p.id === 'properties') ? 'left' : group.panels.some((p) => p.id === 'browser') ? 'right' : 'bottom' });
           })
         : null}
     </div>
@@ -80,8 +81,9 @@ export interface DockWorkspaceProps {
 function addDefault(api: DockviewApi, id: PanelId) {
   const base = { id, component: 'panel', title: PANEL_TITLES[id], renderer: 'always' as const, minimumWidth: id === 'views' ? 320 : 200, minimumHeight: 120 };
   if (id === 'views') return api.addPanel(base);
-  if (id === 'browser') return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'left' }, initialWidth: 270 });
-  if (id === 'properties') return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'right' }, initialWidth: 310 });
+  // Revit's defaults: Properties on the left, Project Browser on the right.
+  if (id === 'properties') return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'left' }, initialWidth: 310 });
+  if (id === 'browser') return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'right' }, initialWidth: 270 });
   const sibling = BOTTOM.map((b) => api.getPanel(b)).find((p) => p && p.group.api.location.type === 'grid');
   if (sibling) return api.addPanel({ ...base, position: { referencePanel: sibling, direction: 'within' } });
   return api.addPanel({ ...base, position: { referencePanel: 'views', direction: 'below' }, initialHeight: 240 });

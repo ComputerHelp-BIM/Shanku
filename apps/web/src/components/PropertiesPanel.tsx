@@ -1,4 +1,5 @@
 import { DockPanel, PropertyRow, PropertySection, TypeSelector, type IconName, type PropertyRowProps } from '@shanku/ui';
+import type { ReactNode } from 'react';
 import type { Category, ElementRecord, ParsedModel, PropertyGroup } from '@shanku/engine';
 import { fmtBytes, fmtCount, fmtMs, fmtValue } from '../lib/format';
 
@@ -31,6 +32,12 @@ export interface PropertiesPanelProps {
     status?: string;
     pending?: number;
     groups: Array<{ group: string; rows: Array<PropertyRowProps & { key: string }> }>;
+    /** As Revit's palette head: family and type, and the category with the selection count. */
+    header?: { family: string; typeName: string; category: string; count: number };
+    /** Edit Type: the type's parameters (null when the selection has several types). */
+    onEditType?: (() => void) | null;
+    /** The Apply bar at the bottom, as in Revit. */
+    apply?: { count: number; busy: boolean; disabled: boolean; why?: string; onApply: () => void; onReview: () => void };
   };
   /** Revit shows the active view's properties when nothing is selected. */
   view?: {
@@ -45,16 +52,33 @@ export interface PropertiesPanelProps {
 const LEVEL_LABEL = { recommended: 'Recommended', supported: 'Supported', limited: 'Limited', experimental: 'Experimental' } as const;
 
 export function PropertiesPanel({ model, selection, properties, onEditMarkRules, view, revit }: PropertiesPanelProps) {
+  // Revit mode: the selection is from a model loaded from Revit and its parameters are in.
+  const revitMode = !!revit && revit.groups.length > 0;
+  const revitHead =
+    revitMode && revit!.header ? (
+      <>
+        <TypeSelector icon="column" category={revit!.header.family || revit!.header.category} typeName={revit!.header.typeName || 'Multiple types'} />
+        <div className="app-prop-filter">
+          <span className="app-prop-filter__what">
+            {revit!.header.category} ({revit!.header.count})
+          </span>
+          <button type="button" className="app-prop-filter__edit" disabled={!revit!.onEditType} onClick={() => revit!.onEditType?.()} title={revit!.onEditType ? 'Type properties' : 'The selection has more than one type'}>
+            Edit Type
+          </button>
+        </div>
+      </>
+    ) : null;
   const revitBlock = revit ? (
     <div className="app-revit-params">
-      <div className="app-revit-params__head">
-        <span className="app-revit__dot" aria-hidden="true" />
-        Revit parameters
-        {revit.pending ? <span className="app-revit-params__pending">{revit.pending} to apply</span> : null}
-      </div>
+      {!revitMode ? (
+        <div className="app-revit-params__head">
+          <span className="app-revit__dot" aria-hidden="true" />
+          Revit parameters
+        </div>
+      ) : null}
       {revit.status ? <p className="app-revit-params__status">{revit.status}</p> : null}
       {revit.groups.map((g) => (
-        <PropertySection key={`revit-${g.group}`} title={g.group}>
+        <PropertySection key={`revit-${g.group}`} title={g.group} persistKey={`revit:${g.group.toLowerCase()}`}>
           {g.rows.map(({ key, ...r }) => (
             <PropertyRow key={key} {...r} />
           ))}
@@ -62,6 +86,26 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
       ))}
     </div>
   ) : null;
+  const applyBar =
+    revitMode && revit!.apply ? (
+      <div className="app-prop-apply">
+        <button type="button" className="app-link" onClick={revit!.apply.onReview}>
+          {revit!.apply.count ? `${revit!.apply.count} change${revit!.apply.count === 1 ? '' : 's'} waiting · Review` : 'Changes'}
+        </button>
+        <button type="button" className="sk-button sk-button--sm sk-button--primary" disabled={revit!.apply.disabled || !revit!.apply.count || revit!.apply.busy} title={revit!.apply.why ?? 'Apply these elements\' changes in Revit (one undo in Revit)'} onClick={revit!.apply.onApply}>
+          {revit!.apply.busy ? 'Applying…' : 'Apply'}
+        </button>
+      </div>
+    ) : null;
+  /** IFC details sit in one closed group under Revit's parameters (they repeat much of them). */
+  const ifc = (content: ReactNode) =>
+    revitMode ? (
+      <PropertySection title="IFC data" defaultOpen={false} persistKey="ifc-data-under-revit" className="app-ifc-data">
+        {content}
+      </PropertySection>
+    ) : (
+      content
+    );
   if (!model) {
     return (
       <DockPanel title="Properties">
@@ -125,14 +169,17 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
     const level = common(els.map((e) => e.level));
     return (
       <DockPanel title="Properties">
-        <TypeSelector icon={cat ? ICON[cat] : 'view3d'} category={`${fmtCount(els.length)} elements`} typeName={cat ? `${cat}` : 'Mixed categories'} />
+        {revitHead ?? <TypeSelector icon={cat ? ICON[cat] : 'view3d'} category={`${fmtCount(els.length)} elements`} typeName={cat ? `${cat}` : 'Mixed categories'} />}
         {revitBlock}
-        <PropertySection title="Common">
-          <PropertyRow label="Category" value={cat} varies={cat === null} />
-          <PropertyRow label="Mark" value={common(els.map((e) => e.mark)) || null} varies={common(els.map((e) => e.mark)) === null} />
-          <PropertyRow label="Type" value={type || null} varies={type === null} />
-          <PropertyRow label="Level" value={level || null} varies={level === null} />
-        </PropertySection>
+        {ifc(
+          <PropertySection title="Common" persistKey="ifc:common">
+            <PropertyRow label="Category" value={cat} varies={cat === null} />
+            <PropertyRow label="Mark" value={common(els.map((e) => e.mark)) || null} varies={common(els.map((e) => e.mark)) === null} />
+            <PropertyRow label="Type" value={type || null} varies={type === null} />
+            <PropertyRow label="Level" value={level || null} varies={level === null} />
+          </PropertySection>,
+        )}
+        {applyBar}
       </DockPanel>
     );
   }
@@ -141,9 +188,11 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
   const groups = properties?.index === el.index ? properties.groups : null;
   return (
     <DockPanel title="Properties">
-      <TypeSelector icon={ICON[el.category]} category={el.category === 'Other' ? el.ifcClass : `${el.category} · ${el.ifcClass}`} typeName={el.typeName || el.name || el.ifcClass} />
+      {revitHead ?? <TypeSelector icon={ICON[el.category]} category={el.category === 'Other' ? el.ifcClass : `${el.category} · ${el.ifcClass}`} typeName={el.typeName || el.name || el.ifcClass} />}
       {revitBlock}
-      <PropertySection title="Identity">
+      {ifc(
+      <>
+      <PropertySection title="Identity" persistKey="ifc:identity">
         <PropertyRow label="Element ID" value={el.expressId} mono />
         <PropertyRow label="GlobalId" value={el.globalId} mono />
         <PropertyRow label="Name" value={el.name || null} />
@@ -155,10 +204,10 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
           </button>
         </div>
       </PropertySection>
-      <PropertySection title="Constraints">
+      <PropertySection title="Constraints" persistKey="ifc:constraints">
         <PropertyRow label="Level" value={el.level || null} />
       </PropertySection>
-      <PropertySection title="Quantities (BOQ)">
+      <PropertySection title="Quantities (BOQ)" persistKey="ifc:quantities">
         <PropertyRow label="Grade / material" value={el.grade || '—'} />
         <PropertyRow label="Volume" value={el.volume.toFixed(3)} unit="m³" readOnly />
         {el.length !== null ? <PropertyRow label="Length" value={el.length.toFixed(2)} unit="m" readOnly /> : null}
@@ -171,13 +220,16 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
         <p className="app-empty-note">Properties could not be read: {properties.error}</p>
       ) : (
         groups.map((g, gi) => (
-          <PropertySection key={`${g.name}-${gi}`} title={g.name}>
+          <PropertySection key={`${g.name}-${gi}`} title={g.name} persistKey={`ifc:${g.name.toLowerCase()}`}>
             {g.items.map((p, pi) => (
               <PropertyRow key={`${p.name}-${pi}`} label={p.name} value={fmtValue(p.value)} unit={p.value === null ? undefined : p.unit || undefined} readOnly={g.kind === 'qto'} />
             ))}
           </PropertySection>
         ))
       )}
+      </>,
+      )}
+      {applyBar}
     </DockPanel>
   );
 }

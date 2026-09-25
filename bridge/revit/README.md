@@ -1,4 +1,4 @@
-# Shanku Bridge for Revit 0.2.0
+# Shanku Bridge for Revit 0.3.0
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
 into Shanku, keep the selection in step both ways, and edit Revit parameters from Shanku. Protocol: `docs/bridge/protocol.md`.
@@ -6,7 +6,7 @@ into Shanku, keep the selection in step both ways, and edit Revit parameters fro
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.2.0.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.3.0.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -24,7 +24,7 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.2.0)
+## What it does, and does not do (0.3.0)
 
 - Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
   changed. Selection sync only selects.
@@ -53,6 +53,14 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.3.0 — 2026-09-25
+- Parameters are read the way the Properties palette shows them (`GetOrderedParameters`): no hidden
+  schedule copies (a second Base Level, Base Offset, Category…), in the palette's order. Adds the family
+  name and the type's parameters (read-only).
+- **Check in Revit** now reports Revit's warnings (duplicate marks…): the dry run commits inside a
+  transaction group that is always rolled back, so warnings are raised and nothing is kept, whether or
+  not a warning comes up. Warning text is tidied (no "..").
 
 ### 0.2.0 — 2026-09-25
 - Parameter editing (milestone 2): `/params/read` (instance parameters with group, kind, value,

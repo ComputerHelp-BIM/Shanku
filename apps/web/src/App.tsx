@@ -19,6 +19,8 @@ import {
   TOGGLE_BOTTOM_PANEL,
   useShortcut,
   useTheme,
+  PropertyRow,
+  PropertySection,
 } from '@shanku/ui';
 import { runChecks, CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, EXPLODE_MODES, boxState, type ExplodeMode, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
 import { Browser } from './components/Browser';
@@ -69,7 +71,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.34.0';
+const APP_VERSION = '0.35.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -198,7 +200,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   const dock = useRef<DockWorkspaceHandle>(null);
   const [openPanels, setOpenPanels] = useState<PanelId[]>([]);
   // Revit-style windows (float above everything, ribbon included)
-  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false, revit: false, changes: false });
+  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false, revit: false, changes: false, typeProps: false });
   // Guide & FAQ (F1): which section to open on
   const [guideSection, setGuideSection] = useState<string | undefined>(undefined);
   const openGuide = (section?: string) => {
@@ -272,9 +274,10 @@ export function App({ start }: { start?: AppStart } = {}) {
     setRevitLoading(true);
     try {
       const r = await bridge.loadModel();
+      const size = r.bytes.byteLength; // read before the loader takes the buffer (it is transferred to a worker)
       await m.open({ name: r.name, bytes: r.bytes });
       setRevitLink({ key: r.key, fileName: r.name });
-      m.log(`Loaded ${r.title} from Revit (${(r.bytes.byteLength / 1e6).toFixed(1)} MB). Selection follows Revit.`);
+      m.log(`Loaded ${r.title} from Revit (${(size / 1e6).toFixed(1)} MB). Selection follows Revit.`);
     } catch (e) {
       setNotice(`Could not load from Revit: ${(e as Error).message}`);
     } finally {
@@ -667,6 +670,8 @@ export function App({ start }: { start?: AppStart } = {}) {
   const [changeStatus, setChangeStatus] = useState(new Map<string, { ok: boolean; message?: string | null }>());
   const [changesBusy, setChangesBusy] = useState<'check' | 'apply' | null>(null);
   const [lastApplied, setLastApplied] = useState<{ undoName: string; applied: number; warnings: string[] } | null>(null);
+  /** Revit's warnings from the last check or apply (duplicate marks…), shown in the Changes window. */
+  const [changeWarnings, setChangeWarnings] = useState<{ dryRun: boolean; list: string[] } | null>(null);
   // pending changes survive a reload, per Revit document
   useEffect(() => {
     try {
@@ -731,7 +736,21 @@ export function App({ start }: { start?: AppStart } = {}) {
     if (els.length < selectedGids.length) return { status: paramsState.error ? `Could not read from Revit: ${paramsState.error}` : 'Reading parameters from Revit…', groups: [] };
     const common = commonParams(els);
     const pendingHere = pending.filter((c) => selectedGids.includes(c.globalId)).length;
+    const same = <T,>(f: (e: RevitElementParams) => T) => (els.every((e) => f(e) === f(els[0])) ? f(els[0]) : null);
+    const family = same((e) => e.familyName ?? '') ?? '';
+    const typeName = same((e) => e.typeName) ?? '';
+    const category = same((e) => e.category) ?? 'Common';
+    const selKeys = pending.filter((c) => selectedGids.includes(c.globalId)).map(changeKey);
     return {
+      header: { family, typeName, category, count: els.length },
+      onEditType: typeName && els[0].typeParams?.length ? () => toggleWin('typeProps', true) : null,
+      apply: {
+        count: pendingHere,
+        busy: changesBusy === 'apply',
+        disabled: !canParams,
+        onApply: () => void runChanges(selKeys, false),
+        onReview: () => toggleWin('changes', true),
+      },
       pending: pendingHere,
       status: els.length > 1 ? `${common.length} parameters shared by the ${els.length} selected elements.` : undefined,
       groups: byGroup(common).map((g) => ({
@@ -799,10 +818,14 @@ export function App({ start }: { start?: AppStart } = {}) {
       );
       const status = new Map(changeStatus);
       sent.forEach((c, i) => status.set(changeKey(c), { ok: !!r.results[i]?.ok, message: r.results[i]?.error ?? null }));
+      setChangeWarnings(r.warnings.length ? { dryRun, list: r.warnings } : null);
+      const warned = r.warnings.length ? ` Revit warns: ${r.warnings.join(' ')}` : '';
+      if (r.warnings.length) m.log(`Revit ${dryRun ? 'would warn' : 'warned'}: ${r.warnings.join(' ')}`);
+      if (r.warnings.length) toggleWin('changes', true); // Revit's warnings must be seen, after a check as after an apply
       if (dryRun) {
         setChangeStatus(status);
         const bad = r.results.filter((x) => !x.ok).length;
-        setNotice(bad ? `Revit would refuse ${bad} of ${sent.length} changes; see the Changes window.` : `Revit accepts all ${sent.length} changes. Nothing was changed yet.`);
+        setNotice((bad ? `Revit would refuse ${bad} of ${sent.length} changes; see the Changes window.` : `Revit accepts all ${sent.length} changes. Nothing was changed yet.`) + warned);
       } else {
         const done = afterApply(pending, sent, r.results);
         for (const c of sent) if (!done.failed.has(changeKey(c))) status.delete(changeKey(c));
@@ -811,8 +834,9 @@ export function App({ start }: { start?: AppStart } = {}) {
         setLastApplied({ undoName: r.undoName, applied: done.applied, warnings: r.warnings });
         for (const c of sent) paramsCache.current.delete(c.globalId);
         void fetchParams(selectedGids, true);
-        m.log(`Revit: ${r.undoName} — ${done.applied} applied${done.failed.size ? `, ${done.failed.size} refused` : ''}${r.warnings.length ? `; Revit warned: ${r.warnings.join(' ')}` : ''}.`);
-        setNotice(done.applied ? `Applied ${done.applied} change${done.applied === 1 ? '' : 's'} in Revit (Edit → Undo in Revit takes them back).${done.failed.size ? ` ${done.failed.size} refused.` : ''}` : `Revit refused all ${sent.length} changes; see the Changes window.`);
+        m.log(`Revit: ${r.undoName} — ${done.applied} applied${done.failed.size ? `, ${done.failed.size} refused` : ''}.`);
+        setNotice((done.applied ? `Applied ${done.applied} change${done.applied === 1 ? '' : 's'} in Revit (Edit → Undo in Revit takes them back).${done.failed.size ? ` ${done.failed.size} refused.` : ''}` : `Revit refused all ${sent.length} changes; see the Changes window.`) + warned);
+
       }
     } catch (e) {
       setNotice(`Revit: ${(e as Error).message}`);
@@ -1883,6 +1907,25 @@ export function App({ start }: { start?: AppStart } = {}) {
                   />
                 )}
           </FloatingWindow>
+          <FloatingWindow id="typeProps" title="Type Properties" subtitle={(() => { const e = paramsCache.current.get(selectedGids[0] ?? ''); return e ? `${e.familyName ?? ''} · ${e.typeName}` : undefined; })()} open={wins.typeProps} onClose={() => toggleWin('typeProps', false)} initial={{ w: 420, h: 520 }} minWidth={320} minHeight={240}>
+            {(() => {
+              void paramsTick;
+              const e = paramsCache.current.get(selectedGids[0] ?? '');
+              if (!e?.typeParams?.length) return <p className="app-empty-note">Select an element of a model loaded from Revit.</p>;
+              return (
+                <div className="app-type-props">
+                  <p className="app-revit-params__status">Type parameters change every {e.category.toLowerCase()} of this type. Edit them in Revit for now; editing here comes later.</p>
+                  {byGroup(e.typeParams).map((g) => (
+                    <PropertySection key={g.group} title={g.group} persistKey={`revit-type:${g.group.toLowerCase()}`}>
+                      {g.params.map((p) => (
+                        <PropertyRow key={`${p.id}|${p.name}`} label={p.name} value={p.display} readOnly hint={p.why ?? undefined} kind={p.kind === 'yesno' ? 'yesno' : 'text'} />
+                      ))}
+                    </PropertySection>
+                  ))}
+                </div>
+              );
+            })()}
+          </FloatingWindow>
           <FloatingWindow id="changes" title="Changes for Revit" subtitle={revit.document?.title} open={wins.changes} onClose={() => toggleWin('changes', false)} initial={{ w: 760, h: 420 }} minWidth={520} minHeight={240}>
             <RevitChanges
               pending={pending}
@@ -1891,6 +1934,8 @@ export function App({ start }: { start?: AppStart } = {}) {
               canApply={canParams}
               why={revit.phase !== 'connected' ? 'Connect to Revit to check or apply.' : !revitLinked ? 'Revit is showing a different model.' : !bridge.canEditParams ? 'Update Shanku Bridge for Revit to 0.2.0.' : undefined}
               lastApplied={lastApplied}
+              warnings={changeWarnings}
+              onReload={() => void loadFromRevit()}
               onCheck={(keys) => void runChanges(keys, true)}
               onApply={(keys) => void runChanges(keys, false)}
               onRemove={(keys) => {

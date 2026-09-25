@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.35.0 — 2026-09-25
+
+### Changed
+- Properties works like Revit's palette (collapsible groups, family/type, Edit Type, Apply); Properties docks left and the Project Browser right (saved layouts reset once).
+
+### Fixed
+- Duplicate Revit parameters (hidden schedule copies); Revit warnings missing from Check and easy to miss after Apply; 0.0 MB in the load message. Shanku Bridge for Revit 0.3.0.
+
 ## 0.34.0 — 2026-09-25
 
 ### Added

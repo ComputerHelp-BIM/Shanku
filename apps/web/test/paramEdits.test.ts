@@ -53,7 +53,13 @@ describe('parameter editing', () => {
     expect(r.failed.get(changeKey(p[1]))).toMatch(/Borrowed/);
   });
 
-  it('groups in Revit order', () => {
-    expect(byGroup(commonParams([el('a', 'C1')])).map((g) => g.group)).toEqual(['Constraints', 'Dimensions', 'Identity Data']);
+  it('groups in the order Revit sends them', () => {
+    expect(byGroup(commonParams([el('a', 'C1')])).map((g) => g.group)).toEqual(['Identity Data', 'Constraints', 'Dimensions']);
+  });
+
+  it('drops a repeated name within a group (hidden schedule copies from add-ins before 0.3.0)', () => {
+    const dup = el('a', 'C1', '0 mm', [{ id: -99, name: 'Base Offset', group: 'Constraints', kind: 'number', display: '0 mm', readOnly: true }]);
+    expect(commonParams([dup]).filter((p) => p.name === 'Base Offset')).toHaveLength(1);
+    expect(commonParams([dup]).find((p) => p.name === 'Base Offset')?.id).toBe(-2); // the first, editable one
   });
 });
