@@ -1,4 +1,4 @@
-# Shanku Bridge for Revit 0.7.2
+# Shanku Bridge for Revit 0.8.0
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
 into Shanku, keep the selection in step both ways, edit Revit parameters from Shanku, and keep Shanku up
@@ -10,7 +10,7 @@ Revit). Protocol: `docs/bridge/protocol.md`.
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.7.2.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.8.0.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -28,7 +28,7 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.7.2)
+## What it does, and does not do (0.8.0)
 
 - Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
   changed. Selection sync only selects.
@@ -86,6 +86,18 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.8.0 — 2026-09-26
+- **Export to Revit is fast on large drawings.** Each element used to get its own sub-transaction and one
+  or two full-model regenerations (plus geometry reads), and a regeneration costs more as the model grows:
+  a 4,444-element drawing took minutes, and the check (dry run) cost as much because it built everything.
+  - The check builds **one element of each type** (with every family quirk and Revit warning), rolls back,
+    and reports the rest as their type went: seconds.
+  - The build creates every element with its parameters, regenerates **once**, then runs the placement
+    check on bounding boxes and applies turns and moves without regenerating, and regenerates once more.
+  - A family's offset quirk (e.g. a beam's default −1500) is measured on the **first element of its
+    type** and applied to the rest.
+- **Progress:** `progress` events while checking and building (`done` of `total`, and the phase).
 
 ### 0.7.2 — 2026-09-26
 - Requests from Shanku run at once. Revit runs external events when its window processes messages,

@@ -25,6 +25,11 @@ internal sealed class ModelCreator
     private readonly Dictionary<string, ElementId> _types = new(); // type name → type
     private readonly Dictionary<string, string> _typeErrors = new();
     private readonly List<TypePlan> _typePlans = new();
+    /// <summary>Per type: what brings its top to its level at offset 0 (a family default such as -1500), measured once.</summary>
+    private readonly Dictionary<ElementId, double> _baseline = new();
+
+    /// <summary>Progress while building: (done, total, phase), called on Revit's thread every few dozen elements.</summary>
+    public Action<int, int, string>? Progress { get; init; }
 
     public ModelCreator(Document doc, ExportConfig config)
     {
@@ -63,11 +68,14 @@ internal sealed class ModelCreator
             opts.SetFailuresPreprocessor(new Collector(_warnings));
             t.SetFailureHandlingOptions(opts);
             t.Start();
+            Progress?.Invoke(0, todo.Count, "Levels and types");
             PrepareLevels(x.Levels);
             foreach (var e in todo) EnsureType(e);
             _doc.Regenerate();
             var levels = x.Levels.OrderBy(l => l.Elevation).ToList();
-            foreach (var e in todo) results.Add(CreateOne(e, levels, globalIdOf));
+            if (dryRun) results.AddRange(Trial(todo, levels, globalIdOf));
+            else results.AddRange(Build(todo, levels, globalIdOf));
+            Progress?.Invoke(todo.Count, todo.Count, "Finishing (Revit joins and checks the elements)");
             t.Commit();
         }
         if (dryRun) group.RollBack();
@@ -178,6 +186,81 @@ internal sealed class ModelCreator
 
     // ------------------------------------------------------------------ elements
 
+    /// <summary>
+    /// The dry run checks the plan, it does not build it: levels and types are prepared (and rolled back),
+    /// and ONE element of each type is built and checked — enough to meet every family's quirks and Revit's
+    /// warnings in seconds. The others are reported as their type's trial went.
+    /// </summary>
+    private IEnumerable<CreateResult> Trial(List<ExchangeElement> todo, IReadOnlyList<ExchangeLevel> levels, Func<Document, Element, string> globalIdOf)
+    {
+        var byType = todo.GroupBy(e => ExportPlanner.TypeFor(e, _c).Type).ToList();
+        var outcome = new Dictionary<string, CreateResult>();
+        int n = 0;
+        foreach (var g in byType)
+        {
+            outcome[g.Key] = CreateOne(g.First(), levels, globalIdOf);
+            if (++n % 5 == 0) Progress?.Invoke(n, byType.Count, "Trying one element of each type");
+        }
+        foreach (var e in todo)
+        {
+            var typeName = ExportPlanner.TypeFor(e, _c).Type;
+            var r = outcome[typeName];
+            yield return e.Id == r.Id ? r : new CreateResult(e.Id, r.Ok, r.Error, typeName); // as its type's trial went
+        }
+    }
+
+    /// <summary>
+    /// The real build, in three passes so Revit regenerates the model a handful of times, not once or twice
+    /// per element (a regeneration costs more as the model grows, so per-element regenerations made a large
+    /// export take minutes): (1) every element created with its parameters; (2) one regeneration; (3) the
+    /// placement check on bounding boxes, turns and moves applied without regenerating; one more at the end.
+    /// </summary>
+    private IEnumerable<CreateResult> Build(List<ExchangeElement> todo, IReadOnlyList<ExchangeLevel> levels, Func<Document, Element, string> globalIdOf)
+    {
+        var made = new List<(ExchangeElement e, Element el, List<string> notes, string type)>();
+        var results = new List<CreateResult>();
+        for (int i = 0; i < todo.Count; i++)
+        {
+            var e = todo[i];
+            var typeName = ExportPlanner.TypeFor(e, _c).Type;
+            if (_typeErrors.TryGetValue(typeName, out var terr)) { results.Add(new CreateResult(e.Id, false, terr, typeName)); continue; }
+            Element? el = null;
+            try
+            {
+                var notes = new List<string>();
+                el = Make(e, levels, notes);
+                WriteParams(el, e);
+                made.Add((e, el, notes, typeName));
+            }
+            catch (Exception ex)
+            {
+                if (el != null) try { _doc.Delete(el.Id); } catch { /* already gone */ }
+                results.Add(new CreateResult(e.Id, false, ex.Message, typeName));
+            }
+            if ((i + 1) % 50 == 0) Progress?.Invoke(i + 1, todo.Count, "Creating the elements");
+        }
+        Progress?.Invoke(todo.Count, todo.Count, "Regenerating the model");
+        _doc.Regenerate();
+        foreach (var (e, el, notes, _) in made) PlaceCheck(el, e, notes);
+        _doc.Regenerate();
+        foreach (var (e, el, notes, type) in made)
+        {
+            if (_pendingNotes.TryGetValue(e.Id, out var early)) notes.InsertRange(0, early);
+            results.Add(new CreateResult(e.Id, true, null, type, el.Id.Value, globalIdOf(_doc, el), notes.Count > 0 ? string.Join(" ", notes) : null));
+        }
+        return results;
+    }
+
+    private Element Make(ExchangeElement e, IReadOnlyList<ExchangeLevel> levels, List<string> notes) => e.Kind switch
+    {
+        "column" or "pedestal" => Column(e, levels, notes),
+        "beam" => Beam(e, levels),
+        "wall" => WallOf(e, levels),
+        "slab" or "chajja" => FloorOf(e, levels),
+        _ => Footing(e, levels, notes),
+    };
+
+    /// <summary>One element built and checked on its own (the dry run's trial of a type).</summary>
     private CreateResult CreateOne(ExchangeElement e, IReadOnlyList<ExchangeLevel> levels, Func<Document, Element, string> globalIdOf)
     {
         var (_, typeName, group) = ExportPlanner.TypeFor(e, _c);
@@ -188,14 +271,7 @@ internal sealed class ModelCreator
             st.Start();
             var notes = new List<string>();
             _pendingNotes.Remove(e.Id);
-            Element el = e.Kind switch
-            {
-                "column" or "pedestal" => Column(e, levels, notes),
-                "beam" => Beam(e, levels),
-                "wall" => WallOf(e, levels),
-                "slab" or "chajja" => FloorOf(e, levels),
-                _ => Footing(e, levels, notes),
-            };
+            Element el = Make(e, levels, notes);
             WriteParams(el, e);
             _doc.Regenerate();
             if (_pendingNotes.TryGetValue(e.Id, out var early)) notes.AddRange(early);
@@ -292,14 +368,20 @@ internal sealed class ModelCreator
     {
         var p = el.get_Parameter(bip);
         if (p is not { IsReadOnly: false }) return;
-        p.Set(0.0);
-        _doc.Regenerate();
-        double baseline = 0;
-        double? top = SolidTop(el);
-        if (top is { } t && Math.Abs(Mm(t - lv.ProjectElevation)) > _c.CheckToleranceMm)
+        var type = el.GetTypeId();
+        if (!_baseline.TryGetValue(type, out double baseline))
         {
-            baseline = lv.ProjectElevation - t; // what brings its top to the level
-            Note(e, $"Its family placed it {Mm(t - lv.ProjectElevation):+0;-0} mm from its level at offset 0; corrected in {paramName}.");
+            // the first element of its type: measured once (a family's default offset is the same for all)
+            p.Set(0.0);
+            _doc.Regenerate();
+            baseline = 0;
+            double? top = SolidTop(el);
+            if (top is { } t && Math.Abs(Mm(t - lv.ProjectElevation)) > _c.CheckToleranceMm)
+            {
+                baseline = lv.ProjectElevation - t; // what brings its top to the level
+                Note(e, $"Its family placed it {Mm(t - lv.ProjectElevation):+0;-0} mm from its level at offset 0; corrected in {paramName} for every element of its type.");
+            }
+            _baseline[type] = baseline;
         }
         p.Set(baseline + (Z(e.Z1) - lv.ProjectElevation));
     }
@@ -423,6 +505,48 @@ internal sealed class ModelCreator
         bool hanging = e.Kind is "beam" or "slab" or "chajja";
         double top = hanging && SolidTop(el) is { } st ? Mm(st - Z(e.Z1)) : Mm(bb.Max.Z - Z(e.Z1));
         if (Math.Abs(top) > tol) notes.Add($"Check it: its top is {top:+0;-0} mm from the drawing.");
+    }
+
+    /// <summary>
+    /// The placement check for the batch, after one regeneration: columns and footings turned 90° when their
+    /// family runs the other way and moved to their place, all without regenerating (a turn about the
+    /// element's own centre keeps its centre, so the move is known without measuring again). Tops are
+    /// reported from the bounding box; beams and slabs rely on their type's measured baseline.
+    /// </summary>
+    private void PlaceCheck(Element el, ExchangeElement e, List<string> notes)
+    {
+        var bb = el.get_BoundingBox(null);
+        if (bb == null) return;
+        double tol = _c.CheckToleranceMm;
+        bool point = e.Kind is "column" or "pedestal" or "footing" or "pcc";
+        double topMm = Mm(bb.Max.Z - Z(e.Z1));
+        if (point && e.Center != null)
+        {
+            var want = At(e.Center, 0);
+            var mid = (bb.Min + bb.Max) / 2;
+            if (e.Shape != "round")
+            {
+                var (hx, hy) = ExportPlanner.Footprint(e.Width, e.Length, e.Angle);
+                double gx = Mm(bb.Max.X - bb.Min.X) / 2, gy = Mm(bb.Max.Y - bb.Min.Y) / 2;
+                bool swapped = Math.Abs(gx - hy) <= tol && Math.Abs(gy - hx) <= tol && (Math.Abs(gx - hx) > tol || Math.Abs(gy - hy) > tol);
+                if (swapped)
+                {
+                    ElementTransformUtils.RotateElement(_doc, el.Id, Line.CreateBound(new XYZ(mid.X, mid.Y, 0), new XYZ(mid.X, mid.Y, 1)), Math.PI / 2);
+                    notes.Add("Turned 90° (its family runs length and width the other way).");
+                }
+            }
+            var dxy = new XYZ(want.X - mid.X, want.Y - mid.Y, 0);
+            double dz = Z(e.Z1) - bb.Max.Z;
+            bool moveZ = e.Kind is "footing" or "pcc" && Math.Abs(Mm(dz)) > tol; // columns follow their levels
+            if (Mm(dxy.GetLength()) > tol || moveZ)
+            {
+                ElementTransformUtils.MoveElement(_doc, el.Id, new XYZ(dxy.X, dxy.Y, moveZ ? dz : 0));
+                notes.Add($"Moved {Mm(dxy.GetLength()):0} mm in plan{(moveZ ? $", {Mm(dz):0} mm in height" : "")} to its place in the drawing.");
+                if (moveZ) topMm = 0;
+            }
+        }
+        bool hanging = e.Kind is "beam" or "slab" or "chajja";
+        if (!hanging && Math.Abs(topMm) > tol) notes.Add($"Check it: its top is {topMm:+0;-0} mm from the drawing.");
     }
 
     // ------------------------------------------------------------------ helpers

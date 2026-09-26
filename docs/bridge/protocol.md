@@ -64,6 +64,12 @@ data: {"key":"…","modified":["…"],"added":["…"],"deleted":["…"]}   (0.5.
 A comment line (`: ping`) every 15 s keeps the stream open. A selection that Shanku itself set is not
 echoed back.
 
+
+`progress` (add-in 0.8.0+): Revit's progress on long work, sent while `/model/create` runs:
+`{ "task": "check" | "create", "done": 1200, "total": 4444, "phase": "Creating the elements" }`.
+The check (`dryRun`) counts types tried (one element per type is built and rolled back); the build
+counts elements created, then reports "Regenerating the model" and "Finishing".
+
 ## Parameters (feature `params`, add-in 0.2.0; palette order and type parameters 0.3.0)
 
 Instance parameters as the Properties palette shows them (`GetOrderedParameters`: no hidden schedule

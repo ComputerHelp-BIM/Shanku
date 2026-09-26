@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.46.0 — 2026-09-26
+
+### Changed
+- DXF → 3D reads large drawings about 14× faster with identical output (pipeline 2.0.1, engine 0.35.1).
+- Export to Revit: the check tries one element per type (seconds); the build creates everything and regenerates Revit once; Revit's progress shows in the Export window (Shanku Bridge for Revit 0.8.0).
+
 ## 0.45.0 — 2026-09-26
 
 ### Added

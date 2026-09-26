@@ -267,6 +267,12 @@ def make_handler(st: State):
                 x, dry = b.get("exchange") or {}, bool(b.get("dryRun"))
                 if x.get("version") != 1:
                     return self.send_json(400, {"error": "This add-in reads exchange version 1; update the add-in or Shanku."})
+                # progress, as add-in 0.8.0 sends it (the dry run tries one element per type; the build creates all)
+                n_el = len(x.get("elements", []))
+                steps = 4 if dry else 10
+                for k in range(1, steps + 1):
+                    time.sleep(0.25)
+                    st.broadcast("progress", {"task": "check" if dry else "create", "done": round(n_el * k / steps), "total": n_el, "phase": "Trying one element of each type" if dry else "Creating the elements"})
                 levels = []
                 for l in x.get("levels", []):
                     if l["name"] in st.revit_levels:

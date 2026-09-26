@@ -381,6 +381,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.46.0', date: '2026-09-26', items: ['DXF → 3D reads large drawings much faster (a 4,444-element drawing: about 2 s instead of half a minute).', 'Export to Revit: the check takes seconds, the build regenerates Revit once, and Revit’s progress shows in the Export window (with Shanku Bridge for Revit 0.8.0).'] },
           { version: '0.45.0', date: '2026-09-26', items: ['Progress you can watch: a frame builds itself while files open, DXF → 3D runs and Revit works, with a timer and tips.', 'Download IFC: the model as a file; from Revit, a fresh export with every change.', 'Models open faster, and Revit answers at once without moving the mouse over it.'] },
           { version: '0.44.0', date: '2026-09-26', items: ['A start page with three sample buildings to open: the small frame, a G+14 residential tower and G+24 twin towers on a G+3 podium (4,780 elements). .ifc.gz files open directly.', 'Measure and dimensions snap to the cut outline in plans (cut corners and edges, the cut face, a column’s centre), and on section box cuts in 3D.'] },
           { version: '0.43.0', date: '2026-09-26', items: ['Annotate → Dimension, as in Revit: Aligned (strings), Linear, Angular, Radial, Diameter, Arc Length, Spot Elevation, Spot Coordinate and Spot Slope, placed in plans, sections, elevations and 3D views. Kept with the view, undoable, text overrides in Properties, a grip to move them, and they follow the model when Revit sends changes. DI and EL.'] },

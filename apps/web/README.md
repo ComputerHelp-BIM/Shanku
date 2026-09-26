@@ -1,4 +1,4 @@
-# @shanku/web 0.45.0
+# @shanku/web 0.46.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,10 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.46.0 — 2026-09-26
+- **Faster DXF → 3D** (engine 0.35.1, pipeline 2.0.1): a 4,444-element drawing in about 2.7 s instead of about half a minute.
+- **Export to Revit shows Revit's progress in its own window** ("2,666 of 4,444 elements"), from the add-in's `progress` events (Shanku Bridge for Revit 0.8.0, whose check takes seconds and whose build regenerates Revit once). The floating progress display hides while the Export window shows it.
 
 ### 0.45.0 — 2026-09-26
 - **Rising frame progress** (`components/BuildProgress.tsx`, `lib/progress.ts`) for every long operation: opening IFC and DXF files, DXF → 3D, and the Revit bridge (load, update, Export to Revit's check and build, Download IFC). A structural frame builds itself in construction order — footings, then storey by storey columns, beams and the slab — exactly as far as the work has gone, or in a loop with a running timer while Revit works; a tip rotates underneath. Centred over an empty viewport, floating over an open model, inside the DXF → 3D window. Design tokens and category colours; reduced motion respected.

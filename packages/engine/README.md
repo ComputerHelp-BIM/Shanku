@@ -1,4 +1,4 @@
-# @shanku/engine 0.35.0
+# @shanku/engine 0.35.1
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.35.1 — 2026-09-26
+- **DXF → 3D pipeline 2.0.1: large drawings read about 14× faster, output identical.** Three all-pairs loops dominated (millions of calls on a 4,444-element drawing): the overlap check now runs only on the levels that report it (a repeated plan's first level) with candidates from a sweep over x-sorted boxes; labels are found through a grid index (`PointGrid`) instead of scanning every label per outline; openings test wall boxes first. adani.dxf: analysis 8.6 s → 0.59 s natively (about 30 s → 2.7 s in the browser); QA findings, exchange and levels byte-identical, checked against the previous output.
 
 ### 0.35.0 — 2026-09-26
 - **Faster loading:** marks, grades and CH-LEVEL are read in ONE pass over the property sets (`detectMany`; `detectMarks` wraps it). 0.31.0 had added a third full pass. The G+24 sample: relations 1.45 → 0.75 s, the whole load 1.8 → 1.1 s.

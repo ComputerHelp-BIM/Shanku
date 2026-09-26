@@ -29,6 +29,6 @@ export { DIMENSION_TOOLS, dimensionSummary, dimensionValues, followModel, type D
 export type { DimensionReadout } from './render/dimensionTool';
 export { fmtMm, faceOrientation, toRevitAxes, SNAP_LABEL, type SnapKind } from './render/measure';
 export { CURSOR, cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './render/cursors';
-export const ENGINE_VERSION = '0.35.0';
+export const ENGINE_VERSION = '0.35.1';
 export { DEFAULT_CHECKS, QA_TOLERANCE, duplicatePairs, elementLabel, findingId, runChecks } from './qa/checks';
 export type { Finding, QaCheck, QaContext, QaGroup, QaReport, Severity } from './qa/types';

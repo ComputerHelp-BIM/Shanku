@@ -236,7 +236,12 @@ public sealed class RevitHost : IRevitHost
         RequireKey(doc, key);
         string here = System.IO.Path.GetDirectoryName(typeof(RevitHost).Assembly.Location)!;
         var config = ExportConfig.Load(System.IO.Path.Combine(here, "shanku_export_config.json"));
-        var report = new ModelCreator(doc, config).Run(exchange, dryRun, GlobalIdOf);
+        var creator = new ModelCreator(doc, config)
+        {
+            // progress to Shanku as it builds (server-sent events: the browser's progress display fills in)
+            Progress = (done, total, phase) => Broadcast?.Invoke("progress", new { task = dryRun ? "check" : "create", done, total, phase }),
+        };
+        var report = creator.Run(exchange, dryRun, GlobalIdOf);
         if (!dryRun) BuildMap(doc); // the new elements, for selection and live updates
         return report;
     }, Export);

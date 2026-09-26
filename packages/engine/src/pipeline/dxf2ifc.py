@@ -20,7 +20,7 @@ Reads the default drawing format agreed with the user and writes an IFC4 file:
   the holes in it (IfcPolygonalFaceSet), no opening elements or boolean voids: importers such as
   Revit have nothing to cut and nothing to merge.
 
-Version 2.0.0
+Version 2.0.1
 """
 import math
 import re
@@ -29,7 +29,7 @@ import uuid
 
 import ezdxf
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 
 # ---------------------------------------------------------------- profile (the drawing format)
 
@@ -124,6 +124,28 @@ def clip(subject, clipper):
             elif inside(p):
                 out.append(cross(p, q))
     return out
+
+
+class PointGrid:
+    """Points (e.g. label insertion points) bucketed on a square grid: `within(bounds)` returns only the
+    items whose point can lie in the box, so matching labels to outlines is not outlines x labels."""
+
+    def __init__(self, items, xy, cell=2000.0):
+        self.cell = cell
+        self.cells = {}
+        for it in items:
+            x, y = xy(it)
+            self.cells.setdefault((int(x // cell), int(y // cell)), []).append((x, y, it))
+
+    def within(self, b):
+        c = self.cell
+        out = []
+        for i in range(int(b[0] // c), int(b[2] // c) + 1):
+            for j in range(int(b[1] // c), int(b[3] // c) + 1):
+                for x, y, it in self.cells.get((i, j), ()):
+                    if b[0] <= x <= b[2] and b[1] <= y <= b[3]:
+                        out.append(it)
+        return out
 
 
 def overlap_width(p, q):
@@ -414,6 +436,14 @@ def analyze(path, level_names=None, level_heights=None):
     labels_by_layer = {}
     for e in texts:
         labels_by_layer.setdefault(e.dxf.layer, []).append(e)
+    # the labels of each layer on a grid: an outline looks only at labels within its own box
+    label_grid = {layer: PointGrid(list(enumerate(ts)), lambda it: (it[1].dxf.insert[0], it[1].dxf.insert[1])) for layer, ts in labels_by_layer.items()}
+
+    def labels_inside(layer, pts):
+        grid = label_grid.get(layer)
+        if grid is None:
+            return []
+        return [t for _, t in sorted(grid.within(bbox(pts)), key=lambda it: it[0]) if point_in(pts, t.dxf.insert[0], t.dxf.insert[1])]
     used_labels = set()
     seen_labels = set()  # labels that sit inside some outline (ambiguous ones are not "orphans")
     # Identical outlines stacked on the same layer (copy-paste duplicates): report once, build neither.
@@ -428,7 +458,7 @@ def analyze(path, level_names=None, level_heights=None):
         if len(group) > 1:
             e0, pts = group[0]
             spec = ELEMENT_LAYERS[layer]
-            inside = [t for t in labels_by_layer.get(spec[1], []) if point_in(pts, t.dxf.insert[0], t.dxf.insert[1])]
+            inside = labels_inside(spec[1], pts)
             cx, cy = centroid(pts)
             handles = ", ".join(g[0].dxf.handle for g in group)
             if len(inside) <= 1:
@@ -461,7 +491,7 @@ def analyze(path, level_names=None, level_heights=None):
         if fi is None:
             _qa(qa, "warning", "outside-frame", "{} outline is outside every frame; ignored.".format(word), at=[cx, cy], layer=e.dxf.layer, handle=e.dxf.handle, bounds=list(bbox(pts)))
             continue
-        inside = [t for t in labels_by_layer.get(tlayer, []) if point_in(pts, t.dxf.insert[0], t.dxf.insert[1])]
+        inside = labels_inside(tlayer, pts)
         for t in inside:
             seen_labels.add(t.dxf.handle)
         if len(inside) != 1:
@@ -531,25 +561,43 @@ def analyze(path, level_names=None, level_heights=None):
     for el in elements:
         by_level.setdefault(el["level"], []).append(el)
     for n, els in by_level.items():
-        walls = [w for w in els if w["kind"] == "wall"]
+        walls = [(w, bbox(w["poly"])) for w in els if w["kind"] == "wall"]
         for op in (x for x in els if x["kind"] in OPENING_KINDS):
             c = centroid(op["poly"])
-            host = next((w for w in walls if point_in(w["poly"], c[0], c[1])), None)
+            host = next((w for w, b in walls if b[0] <= c[0] <= b[2] and b[1] <= c[1] <= b[3] and point_in(w["poly"], c[0], c[1])), None)
             op["host"] = host
             if host is None and n == min(frames[op["frame"]]["levels"]):
                 _qa(qa, "warning", "no-host", "{} {} is not inside a wall: built without cutting an opening.".format(op["word"], op["mark"]), at=op["at"], layer=op["layer"], handle=op["handle"])
         solids = [x for x in els if x["kind"] not in OPENING_KINDS]
-        for i in range(len(solids)):
-            a = solids[i]
-            for j in range(i + 1, len(solids)):
-                b = solids[j]
-                if a["z1"] <= b["z0"] + TOUCH_MM or b["z1"] <= a["z0"] + TOUCH_MM:
-                    continue  # different heights, e.g. a wall under its beam
-                if {a["kind"], b["kind"]} <= FOUNDATION_KINDS:
+        # Overlaps are reported once per plan, on its frame's first level: repeated levels skip the work.
+        # Pairs (i < j, as listed) come from a sweep over boxes sorted by x: only boxes that meet in x are
+        # compared, and the report keeps the listed order of each pair.
+        reports = [n == min(frames[x["frame"]]["levels"]) for x in solids]
+        if not any(reports):
+            continue
+        boxes = [bbox(x["poly"]) for x in solids]
+        order = sorted(range(len(solids)), key=lambda k: boxes[k][0])
+        pairs = []
+        for oi, i in enumerate(order):
+            bi = boxes[i]
+            for j in order[oi + 1:]:
+                bj = boxes[j]
+                if bj[0] >= bi[2]:
+                    break  # sorted by x: nothing further meets this box
+                if bi[3] <= bj[1] or bj[3] <= bi[1]:
                     continue
-                w = overlap_width(a["poly"], b["poly"])
-                if w is not None and w > TOUCH_MM and n == min(frames[a["frame"]]["levels"]):
-                    _qa(qa, "warning", "overlap", "{} {} and {} {} overlap by {:.0f} mm in plan (volume counted twice).".format(a["word"], a["mark"], b["word"], b["mark"], w), at=a["at"], layer=a["layer"], handle=a["handle"])
+                pairs.append((i, j) if i < j else (j, i))
+        for i, j in sorted(pairs):
+            a, b = solids[i], solids[j]
+            if not reports[i]:
+                continue
+            if a["z1"] <= b["z0"] + TOUCH_MM or b["z1"] <= a["z0"] + TOUCH_MM:
+                continue  # different heights, e.g. a wall under its beam
+            if {a["kind"], b["kind"]} <= FOUNDATION_KINDS:
+                continue
+            w = overlap_width(a["poly"], b["poly"])
+            if w is not None and w > TOUCH_MM:
+                _qa(qa, "warning", "overlap", "{} {} and {} {} overlap by {:.0f} mm in plan (volume counted twice).".format(a["word"], a["mark"], b["word"], b["mark"], w), at=a["at"], layer=a["layer"], handle=a["handle"])
 
     # Level 1 (foundation) stays at ±0: its elements hang below it, as a storey's hang below its level.
     order = sorted(levels.values(), key=lambda l: (l["elevation"], l["number"]))

@@ -106,7 +106,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.45.0';
+const APP_VERSION = '0.46.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -1079,7 +1079,7 @@ export function App({ start }: { start?: AppStart } = {}) {
     setExportState({ phase: 'preparing', target: revit.document!.title });
     try {
       const exchange = await withTask('revit', 'Export to Revit', 'Reading the drawing for Revit…', () => pipeline.exportPlan());
-      const report = await withTask('revit', 'Export to Revit', 'Checking the plan in Revit (a dry run: nothing is kept)…', () => bridge.createModel(revit.document!.key, exchange, true));
+      const report = await withTask('revit', 'Export to Revit', 'Checking the plan in Revit: one element of each type is tried, then rolled back…', () => bridge.createModel(revit.document!.key, exchange, true));
       setExportState({ phase: 'review', exchange, report, target: revit.document!.title });
     } catch (e) {
       setExportState({ phase: 'error', message: (e as Error).message, target: revit.document?.title });
@@ -2023,6 +2023,14 @@ export function App({ start }: { start?: AppStart } = {}) {
         : `${fmtCount(sel.length)} elements`;
 
   const load = m.load;
+  // ---- Revit's own progress (Export to Revit): the rising frame fills in as Revit builds
+  useEffect(
+    () =>
+      bridge.onProgress((p) => {
+        if (p.total > 0) updateTask('revit', { phase: p.phase, fraction: Math.min(1, p.done / p.total), detail: p.task === 'create' ? `${fmtCount(p.done)} of ${fmtCount(p.total)} elements` : `${fmtCount(p.done)} of ${fmtCount(p.total)} types tried` });
+      }),
+    [bridge],
+  );
   // ---- Long operations report to the progress store (lib/progress → BuildProgress)
   useEffect(() => {
     if (load.status !== 'loading') return void endTask('open-ifc');
@@ -2439,8 +2447,8 @@ export function App({ start }: { start?: AppStart } = {}) {
             <StartPage onChooseIfc={openFromDisk} onChooseDxf={openDxfFromDisk} onSample={(smp) => void openSample(smp)} onGuide={() => openGuide()} busy={sampleBusy} />
           ) : null}
           {(() => {
-            // DXF → 3D shows its progress inside its own window when that is open
-            const shown = tasks.filter((t) => !(t.id === 'dxf-3d' && wins.pipeline));
+            // DXF → 3D and Export to Revit show their progress inside their own windows when those are open
+            const shown = tasks.filter((t) => !(t.id === 'dxf-3d' && wins.pipeline) && !(t.id === 'revit' && wins.exportRevit));
             const t = shown[shown.length - 1];
             return t ? <BuildProgress task={t} variant={m.model || activeDoc ? 'floating' : 'center'} /> : null;
           })()}
@@ -2506,6 +2514,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                 onCreate={() => void createInRevit()}
                 onLoad={() => void loadFromRevit().then(() => toggleWin('exportRevit', false))}
                 loading={revitLoading}
+                progress={tasks.find((t) => t.id === 'revit') ?? null}
               />
             ) : null}
           </FloatingWindow>

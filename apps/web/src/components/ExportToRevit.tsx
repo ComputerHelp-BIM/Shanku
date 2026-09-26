@@ -3,6 +3,8 @@ import { Button } from '@shanku/ui';
 import type { RevitExchange } from '@shanku/engine';
 import type { CreateReport } from '../lib/revitBridge';
 import { KIND_LABEL, exportSets } from '../lib/exportPlan';
+import { BuildProgress } from './BuildProgress';
+import type { Task } from '../lib/progress';
 
 /** Above this many elements, Create asks the user to confirm they reviewed the plan. */
 export const EXPORT_REVIEW_THRESHOLD = 500;
@@ -27,6 +29,8 @@ export interface ExportToRevitProps {
   onCreate: () => void;
   onLoad: () => void;
   loading: boolean;
+  /** Revit's work in progress (the 'revit' task), shown inside this window while it checks or builds. */
+  progress?: Task | null;
 }
 
 const ACTION: Record<string, string> = { exists: 'in Revit', 'same-elevation': 'same height in Revit', create: 'new' };
@@ -35,7 +39,7 @@ const ACTION: Record<string, string> = { exists: 'in Revit', 'same-elevation': '
  * Export to Revit: the drawing's model is checked by Revit first (a dry run: nothing is kept), shown
  * here for approval by level and kind, then created as one Revit undo; Shanku then loads it back.
  */
-export function ExportToRevit({ state, off, onToggle, onCheck, onCreate, onLoad, loading }: ExportToRevitProps) {
+export function ExportToRevit({ state, off, onToggle, onCheck, onCreate, onLoad, loading, progress }: ExportToRevitProps) {
   const [reviewed, setReviewed] = useState(false);
   const x = state.exchange;
   const r = state.report;
@@ -49,8 +53,9 @@ export function ExportToRevit({ state, off, onToggle, onCheck, onCreate, onLoad,
   if (state.phase === 'preparing' || state.phase === 'creating')
     return (
       <div className="app-export app-export--busy" role="status">
-        <p>{state.phase === 'preparing' ? 'Revit is checking the drawing’s model (nothing is kept)…' : 'Revit is creating the elements…'}</p>
-        <p className="app-export__hint">Large drawings take a while; close any dialog open in Revit.</p>
+        <p>{state.phase === 'preparing' ? 'Revit is checking the plan: levels, types, and one element of each type (nothing is kept)…' : 'Revit is creating the elements…'}</p>
+        <p className="app-export__hint">{state.phase === 'preparing' ? 'Usually a few seconds.' : 'Revit creates every element, then regenerates the model once.'} Close any dialog open in Revit.</p>
+        {progress ? <BuildProgress task={progress} variant="inline" /> : null}
       </div>
     );
   if (state.phase === 'error')

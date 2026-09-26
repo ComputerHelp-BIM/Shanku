@@ -56,6 +56,14 @@ export interface RevitSelection {
 }
 
 /** Elements Revit changed (by anyone, including Shanku's Apply), by GlobalId. */
+/** Progress of Revit's long work (add-in 0.8.0+): `done` of `total`, and the phase in plain words. */
+export interface RevitProgress {
+  task: 'check' | 'create';
+  done: number;
+  total: number;
+  phase: string;
+}
+
 export interface RevitChanges {
   key: string;
   modified: string[];
@@ -111,6 +119,7 @@ export class RevitBridge {
   private readonly listeners = new Set<(s: BridgeState) => void>();
   private readonly selectionListeners = new Set<(s: RevitSelection) => void>();
   private readonly changeListeners = new Set<(c: RevitChanges) => void>();
+  private readonly progressListeners = new Set<(p: RevitProgress) => void>();
   private events: EventSourceLike | null = null;
   private retry: unknown = null;
   private retryMs = 2000;
@@ -138,6 +147,12 @@ export class RevitBridge {
   }
 
   /** Revit changed elements (add-in 0.5.0+). */
+  /** Revit's progress on long work (Export to Revit: the check and the build). */
+  onProgress(fn: (p: RevitProgress) => void): () => void {
+    this.progressListeners.add(fn);
+    return () => this.progressListeners.delete(fn);
+  }
+
   onChanges(fn: (c: RevitChanges) => void): () => void {
     this.changeListeners.add(fn);
     return () => this.changeListeners.delete(fn);
@@ -336,6 +351,14 @@ export class RevitBridge {
     es.addEventListener('selection', (e) => {
       const s = JSON.parse((e as MessageEvent).data) as RevitSelection;
       for (const fn of this.selectionListeners) fn({ key: s.key, globalIds: s.globalIds ?? [], elementIds: s.elementIds ?? [] });
+    });
+    es.addEventListener('progress', (e) => {
+      try {
+        const p = JSON.parse((e as MessageEvent).data) as RevitProgress;
+        for (const fn of this.progressListeners) fn(p);
+      } catch {
+        /* a malformed event is skipped */
+      }
     });
     es.addEventListener('changes', (e) => {
       const c = JSON.parse((e as MessageEvent).data) as RevitChanges;
