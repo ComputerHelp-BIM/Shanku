@@ -13,8 +13,13 @@ All notable changes to this repository. Package-level detail lives in each packa
 ## 0.42.0 — 2026-09-26
 
 ### Added
-- Measure, in 3D views, plans, sections and elevations: Distance with Revit-style snaps and Tab cycling (ΔX ΔY ΔZ, perpendicular between parallel faces, edges and centrelines), Clear & C/C between two elements, Along a centreline, edge or chain of joined walls and beams, Face area, and Chain with a running total. ME, the ribbon and the Quick Access toolbar. Engine 0.32.0, web 0.42.0, brand 1.8.0 (`measure` icon), ui 0.15.2, playground 0.1.15.
+- Measure, in 3D views, plans, sections and elevations: Distance with Revit-style snaps and Tab cycling (ΔX ΔY ΔZ, perpendicular between parallel faces, edges and centrelines), Clear & C/C between two elements, Along a centreline, edge or chain of joined walls and beams, Face area, and Chain with a running total. ME, the ribbon and the Quick Access toolbar. Engine 0.33.0 (with Dimensions), web 0.42.0, brand 1.8.0 (`measure` icon), ui 0.15.2, playground 0.1.15.
 - Tab over the view steps through the elements under the cursor, then a chain of joined walls or beams, as in Revit; the element shown is outlined even when it is behind others. The browser's own Tab is off only while the pointer is over the view.
+
+## 0.41.1 — 2026-09-26
+
+### Fixed
+- Models loaded from Revit: columns and walls one level low, labels and height colours off by the building's height. Levels are calibrated against the geometry (engine 0.32.0).
 
 ## 0.41.0 — 2026-09-26
 

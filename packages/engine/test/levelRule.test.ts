@@ -62,4 +62,29 @@ describe('one level definition: the lowest level at or above the top', () => {
     const building = Array.from({ length: 10 }, () => els).flat(); // 40 elements, two storeys
     expect(conventionOf({ elements: [...building, el('Wall', 6.4, 7.4), el('Wall', 6.4, 7.4)] }, withRoof)).toBe('top'); // 2 parapets of 42
   });
+
+  it('the project ±0 comes from the geometry, whatever an exporter or web-ifc moved', async () => {
+    const { projectZeroY, levelHeightsOf } = await import('../src/model/levelRule');
+    // Revit-style filing (columns and walls by their base, beams and slabs by their level), with the
+    // whole model sitting 2.94 m off in the viewer and no attribute saying so
+    const dy = -2.94;
+    const on = (storey: string, cat: string, b: number, t: number) => el(cat, b + dy, t + dy, { storey, level: storey });
+    const model = {
+      info: { units: { length: 'mm' }, levels: [{ name: 'Level 1', elevation: 0, elementCount: 0 }, { name: 'Level 2', elevation: 3000, elementCount: 0 }, { name: 'Level 3', elevation: 6000, elementCount: 0 }] },
+      elements: [on('Level 1', 'Column', 0, 3), on('Level 1', 'Wall', 0, 2.4), on('Level 2', 'Beam', 2.4, 3), on('Level 2', 'Slab', 2.875, 3), on('Level 2', 'Column', 3, 6), on('Level 3', 'Beam', 5.4, 6), on('Level 3', 'Slab', 5.875, 6)],
+      coordination: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -11.82, 0, 1], // what web-ifc reports need not match
+    } as unknown as ParsedModel;
+    expect(projectZeroY(model)).toBeCloseTo(dy, 6);
+    expect(levelHeightsOf(model).map((l) => +l.y.toFixed(3))).toEqual([-2.94, 0.06, 3.06]);
+    assignLevels(model);
+    expect(model.elements.map((e) => `${e.category} ${e.storey}->${e.level}`)).toEqual([
+      'Column Level 1->Level 2',
+      'Wall Level 1->Level 2',
+      'Beam Level 2->Level 2',
+      'Slab Level 2->Level 2',
+      'Column Level 2->Level 3',
+      'Beam Level 3->Level 3',
+      'Slab Level 3->Level 3',
+    ]);
+  });
 });

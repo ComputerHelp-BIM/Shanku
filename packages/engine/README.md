@@ -55,12 +55,14 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 ## Changelog
 
 ### 0.33.0 — 2026-09-26
+Measure and Dimensions (web 0.42.0 and 0.43.0; the dev line's engine 0.32.0 was folded in here, since main released its own 0.32.0).
 - `render/dimensions.ts`: `PlacedDimension` (plain data, JSON), values (strings, angle quadrant, radius, diameter, arc length, spot elevation and coordinates from the file’s origin, slope), text overrides, circle and arc detection from an element’s facet edges (`arcFromEdge`), `followModel` for live updates, and `drawDimensions` (witness lines, ticks, arrows, readable text, grips).
 - `render/dimensionTool.ts` and `Viewer.startDimension(kind) / stopDimension()`, `setDimensions`, `setDimensionSelection`, `setDimensionOrigin`; events `onDimensionTool`, `onDimensionPlaced`, `onDimensionClick`, `onDimensionEdit`. Measure and Dimension share one tool slot.
-
-### 0.32.0 — 2026-09-26
 - `render/measure.ts`: geometry index by element, ray casting through every element (front to back, section box and hidden elements respected), flat faces (area, perimeter, centre, outline), centrelines fitted to columns, piles, beams, braces and walls, joined chains, clear distance between elements (vertex–face and edge–edge, 0 when overlapping), centre-to-centre, measure between references with Revit axes, and ranked snap candidates.
 - `render/measureTool.ts` and `Viewer.startMeasure(mode) / stopMeasure() / clearMeasurements()`: the Measure tool (distance, clear, along, face, chain) with Tab cycling, readout events (`onMeasure`) and an overlay layer. Tab while selecting (`onTabCycle`): stacked elements, then a joined chain; the current choice is outlined on top so an element behind others shows.
+
+### 0.32.0 — 2026-09-26
+- **Levels calibrated against the geometry** (`projectZeroY`): a level sits at its Elevation + Δ, the project's ±0 in the viewer, found as the most common offset of elements' bottoms and tops from their storey's Elevation. 0.31.0 used Elevation + the file's reported origin shift, which misses the building's own height in files from Revit (base point, survey offsets): columns and walls were read one level low. `levelHeightsOf` uses it; `projectZeroY` is exported for labels and colours.
 
 ### 0.31.0 — 2026-09-26
 - **One level definition** (`model/levelRule.ts`, `docs/design/levels.md`): an element's level is the lowest level at or above its top (beams, slabs and footings may rise `UPSTAND_TOLERANCE`, 600 mm; above the highest level: the highest). Applied when a model loads (`assignLevels`), from the storeys' declared elevations moved by the file's origin shift. Elements keep `storey` (the file's IfcBuildingStorey; Revit files columns and walls under their base level) and `chLevel` (CH-LEVEL). Level counts follow. A file whose levels are floors (more than `FLOOR_FILE_SHARE`, 15 %, of the elements finish above the highest level: many IFCs from other programs) keeps its own storeys; `info.levelConvention` says which reading applies.

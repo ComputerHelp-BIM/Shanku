@@ -34,6 +34,9 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 - Tab over the view steps through the elements under the cursor front to back, then a chain of joined walls or beams; click selects the one shown (the chain as a set). The browser's Tab is turned off only while the pointer is over the view.
 - Guide: Measuring; Keyboard: ME, Tab, Enter, Backspace.
 
+### 0.41.1 — 2026-09-26
+- **Fixed: models loaded from Revit put columns and walls one level low** (selecting Level 4 in the Project Browser picked the columns and walls of the storey above), and level labels, the level readout and colour by height were off by the building's own height. Levels are calibrated against the geometry (engine 0.32.0 `projectZeroY`); labels read Revit's numbers. Checked against a Revit-style file (columns and walls filed by their base, building placed at its own height): every element's level, the labels and the height range match the DXF → 3D model.
+
 ### 0.41.0 — 2026-09-26
 - **One definition of an element's level for Shanku and Revit** (engine 0.31.0): the lowest level at or above its top. A model loaded back from Revit, which files columns and walls under their base level, now shows every element on the same level as the DXF → 3D model: Project Browser, isolate by level, BOQ, colours and filters. Properties shows the file's **IFC storey** and **CH-LEVEL** beside **Level** when they differ; QA lists a CH-LEVEL that differs (e.g. after copying a floor in Revit). Written down in `docs/design/levels.md`. IFCs whose levels are floors (no level at the roof) keep their own storeys; Properties shows which reading applies (Levels: "Top of storey" or "As filed (floor levels)").
 

@@ -20,7 +20,31 @@ import {
   useShortcut,
   useTheme,
 } from '@shanku/ui';
-import { runChecks, CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, EXPLODE_MODES, boxState, MEASURE_MODES, DIMENSION_TOOLS, dimensionSummary, dimensionValues, followModel, type DimensionKind, type PlacedDimension, type Vec3, type MeasureMode, type ExplodeMode, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
+import {
+  runChecks,
+  CATEGORY_PLURAL,
+  DEFAULT_GRADE_RULES,
+  DEFAULT_MARK_RULES,
+  ENGINE_VERSION,
+  EXPLODE_MODES,
+  boxState,
+  type ExplodeMode,
+  type CameraState,
+  type Category,
+  type DisplayStyle,
+  type PipelineQa,
+  type SectionBoxState,
+  projectZeroY,
+  MEASURE_MODES,
+  DIMENSION_TOOLS,
+  dimensionSummary,
+  dimensionValues,
+  followModel,
+  type DimensionKind,
+  type PlacedDimension,
+  type Vec3,
+  type MeasureMode,
+} from '@shanku/engine';
 import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
@@ -39,7 +63,7 @@ import { useHistory } from './lib/useHistory';
 import { loadDrawings, loadGraphics, loadModel, loadViews, saveViews } from './lib/session';
 import { marksFor } from './lib/viewMarks';
 import { editSection } from './lib/views';
-import { DEFAULT_CUT, DEFAULT_DEPTH_OFFSET, KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, originY, nextSectionName, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection, type ModelView } from './lib/views';
+import { DEFAULT_CUT, DEFAULT_DEPTH_OFFSET, KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, nextSectionName, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection, type ModelView } from './lib/views';
 import { enterFullscreen } from './lib/fullscreen';
 import { QuickAccess } from './components/QuickAccess';
 import { ContextMenu, item, sep, type MenuItem } from './components/ContextMenu';
@@ -407,7 +431,7 @@ export function App({ start }: { start?: AppStart } = {}) {
     loadedView.current = '3d';
     setOpenViews(['3d']);
     const name = m.model?.info.fileName;
-    const defaults = m.model ? defaultViews(m.model.info.levels, levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length, originY(m.model.coordination))) : [];
+    const defaults = m.model ? defaultViews(m.model.info.levels, levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length, projectZeroY(m.model))) : [];
     setViews(defaults);
     viewport.current?.setViewMode({ nav2d: false, grips: true });
     if (name)
@@ -1118,11 +1142,12 @@ export function App({ start }: { start?: AppStart } = {}) {
   };
 
   // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
-  // Heights of levels in the viewer; zY turns one into the model's own elevation (the file's origin shift).
-  const zY = originY(m.model?.coordination);
-  // The file's origin in the viewer (web-ifc's shift): spot elevations and coordinates are the file's own.
+  // zY: the project's ±0 in the viewer, calibrated against the geometry (engine projectZeroY). Level
+  // lines sit at Elevation + zY; viewer height − zY = the elevation Revit shows.
+  const zY = useMemo(() => (m.model ? projectZeroY(m.model) : 0), [m.model]);
+  // Spot elevations read Revit's numbers (height − zY); spot coordinates are from the file's own origin.
   const coordination = m.model?.coordination;
-  const dimOrigin = useMemo<Vec3>(() => (coordination && coordination.length === 16 ? [coordination[12], coordination[13], coordination[14]] : [0, 0, 0]), [coordination]);
+  const dimOrigin = useMemo<Vec3>(() => [coordination && coordination.length === 16 ? coordination[12] : 0, zY, coordination && coordination.length === 16 ? coordination[14] : 0], [coordination, zY]);
   const heights = useMemo(() => (m.model ? levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length, zY) : new Map<string, number>()), [m.model?.info, zY]); // eslint-disable-line react-hooks/exhaustive-deps
   const bounds = useMemo(() => {
     const min: [number, number, number] = [Infinity, Infinity, Infinity], max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
@@ -1178,8 +1203,8 @@ export function App({ start }: { start?: AppStart } = {}) {
     return out;
   }, []);
   const colorResult = useMemo(
-    () => (m.model ? computeColors(m.model.elements, m.model.info.levels, colorSettings, categoryColors) : computeColors([], [], { ...colorSettings, mode: 'none' })),
-    [m.model, colorSettings, categoryColors],
+    () => (m.model ? computeColors(m.model.elements, m.model.info.levels, colorSettings, categoryColors, zY) : computeColors([], [], { ...colorSettings, mode: 'none' })),
+    [m.model, colorSettings, categoryColors, zY],
   );
   const viewOverrides = useMemo(() => mergeOverrides(colorResult.colors, resolved.overrides), [colorResult.colors, resolved.overrides]);
   const setColorMode = (mode: ColorMode) => {

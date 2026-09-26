@@ -74,8 +74,9 @@ export function groupKey(e: ElementRecord, mode: ColorMode): string {
 }
 
 /** The value an element has in a gradient mode (m, m or m³); null when it has none. */
-export function gradientValue(e: ElementRecord, mode: ColorMode): number | null {
-  if (mode === 'height') return (e.bounds[1] + e.bounds[4]) / 2;
+/** originY: the model's vertical origin shift, so heights read as the model's own elevations. */
+export function gradientValue(e: ElementRecord, mode: ColorMode, originY = 0): number | null {
+  if (mode === 'height') return (e.bounds[1] + e.bounds[4]) / 2 - originY;
   if (mode === 'length') return e.length;
   if (mode === 'volume') return e.volume > 0 ? e.volume : null;
   return null;
@@ -118,14 +119,14 @@ const EMPTY_KEYS = new Set(['(no grade)', '(no level)', '(no type)', '(no sectio
  * everything else (most common first), with the "(no …)" group last and grey so gaps stand out.
  * `categoryColors` supplies the design system's category colours for the Category mode.
  */
-export function computeColors(elements: readonly ElementRecord[], levels: readonly Level[], s: ColorSettings, categoryColors: Record<string, string> = {}): ColorResult {
+export function computeColors(elements: readonly ElementRecord[], levels: readonly Level[], s: ColorSettings, categoryColors: Record<string, string> = {}, originY = 0): ColorResult {
   const colors = new Map<number, [number, number, number]>();
   if (s.mode === 'none') return { colors, hidden: [], groups: [], range: null };
   const meta = COLOR_MODES.find((m) => m.id === s.mode);
   if (meta?.gradient) {
     let min = Infinity, max = -Infinity;
     for (const e of elements) {
-      const v = gradientValue(e, s.mode);
+      const v = gradientValue(e, s.mode, originY);
       if (v === null) continue;
       if (v < min) min = v;
       if (v > max) max = v;
@@ -133,7 +134,7 @@ export function computeColors(elements: readonly ElementRecord[], levels: readon
     if (!Number.isFinite(min)) return { colors, hidden: [], groups: [], range: null };
     const span = max - min || 1;
     for (const e of elements) {
-      const v = gradientValue(e, s.mode);
+      const v = gradientValue(e, s.mode, originY);
       colors.set(e.index, v === null ? NEUTRAL : ramp((v - min) / span));
     }
     return { colors, hidden: [], groups: [], range: { min, max, unit: s.mode === 'volume' ? 'm³' : 'm' } };

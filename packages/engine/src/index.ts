@@ -16,7 +16,7 @@ export { assessCompatibility, readViewDefinition, RECOMMENDED_EXPORT, type Compa
 export { boxState, type SectionBoxState } from './render/sectionBox';
 export type { CameraState } from './render/Viewer';
 export { alignPatch, mergeModels, type MergeResult } from './model/merge';
-export { FLOOR_FILE_SHARE, UPSTAND_TOLERANCE, assignLevels, conventionOf, levelHeightsOf, levelOf, type LevelHeight } from './model/levelRule';
+export { FLOOR_FILE_SHARE, UPSTAND_TOLERANCE, assignLevels, conventionOf, levelHeightsOf, levelOf, projectZeroY, type LevelHeight } from './model/levelRule';
 export type { Annotation } from './render/annotations';
 export { EXPLODE_MODES, explodeOffsets, explodedBounds, type ExplodeMode } from './render/explode';
 export type { PipelineSummary, PipelineLevel, PipelineQa, RevitExchange, RevitExchangeElement } from './pipeline/types';

@@ -20,6 +20,17 @@ A level is the **top** of its storey. The DXF frame labelled Level n holds the s
 Level 1 (the foundation frame) is ±0; Level n sits at the sum of the storey heights up to it (pipeline
 2.0.0).
 
+## Where a level is
+
+A level's number is its storey's **Elevation** (what Revit shows: Level 2 = +3000). Where it sits in
+Shanku's viewer is Elevation + Δ, the project's ±0 (`projectZeroY`). No attribute says Δ reliably:
+Revit places the building at its base point and survey offsets, sites and buildings may share
+placements, and web-ifc moves every file near the origin. So Δ is **calibrated against the geometry**:
+nearly every element touches its storey's level with its bottom (Revit files columns and walls by their
+base) or its top (beams and slabs; everything in Shanku's pipeline), and Δ is the most common value of
+(bottom − Elevation) and (top − Elevation). Level labels, the level readout and colour by height read
+viewer height − Δ, so they show Revit's numbers.
+
 ## Files whose levels are floors
 
 Many IFCs from other programs use the opposite reading: a storey's elevation is its floor, its contents
