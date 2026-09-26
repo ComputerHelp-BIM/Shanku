@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.46.1 — 2026-09-26
+
+### Changed
+- Progress display: bigger, with a tower crane lowering each member, captions and a topping-out flag.
+
 ## 0.46.0 — 2026-09-26
 
 ### Changed
