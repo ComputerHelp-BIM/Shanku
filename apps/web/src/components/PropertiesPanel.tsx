@@ -161,6 +161,7 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
         </PropertySection>
         <PropertySection title="Model">
           <PropertyRow label="Elements" value={fmtCount(i.elementCount)} />
+          <PropertyRow label="Levels" value={model.info.levelConvention === 'floor' ? 'As filed (floor levels)' : 'Top of storey'} hint={model.info.levelConvention === 'floor' ? 'This file’s levels are floors with no level at the roof: each element keeps the storey the file gives it.' : 'Each element’s level is the lowest level at or above its top (Shanku’s level definition).'} />
           <PropertyRow label="With a mark" value={fmtCount(model.elements.filter((e) => e.mark).length)} />
           <PropertyRow label="Levels" value={fmtCount(i.levels.length)} />
           <PropertyRow label="Triangles" value={fmtCount(i.triangleCount)} readOnly />
@@ -216,7 +217,9 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
         </div>
       </PropertySection>
       <PropertySection title="Constraints" persistKey="ifc:constraints">
-        <PropertyRow label="Level" value={el.level || null} />
+        <PropertyRow label="Level" value={el.level || null} hint="The lowest level at or above the element’s top (Shanku’s level definition)" />
+        {el.storey && el.storey !== el.level ? <PropertyRow label="IFC storey" value={el.storey} readOnly hint="Where the file puts it (Revit files columns and walls under their base level); for reference only" /> : null}
+        {el.chLevel && el.chLevel !== el.level ? <PropertyRow label="CH-LEVEL" value={el.chLevel} readOnly hint="The CH-LEVEL label differs from the level by the element’s top: see QA" /> : null}
       </PropertySection>
       <PropertySection title="Quantities (BOQ)" persistKey="ifc:quantities">
         <PropertyRow label="Grade / material" value={el.grade || '—'} />

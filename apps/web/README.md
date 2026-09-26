@@ -1,4 +1,4 @@
-# @shanku/web 0.41.0
+# @shanku/web 0.42.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -26,10 +26,13 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 
 ## Changelog
 
-### 0.41.0 — 2026-09-26
+### 0.42.0 — 2026-09-26
 - Measure (Model → Measure, the Quick Access toolbar, ME): Distance with Revit-style snaps (endpoint, midpoint, face centre, centreline end and midpoint, centreline, nearest on edge, face), ΔX ΔY ΔZ and the perpendicular distance between parallel references; Clear & C/C between two elements; Along a centreline, an edge or a chain of joined walls or beams; Face area; Chain with a running total. 3D views, plans, sections and elevations (2D views measure in the view plane). Results stay on the view, with Copy.
 - Tab over the view steps through the elements under the cursor front to back, then a chain of joined walls or beams; click selects the one shown (the chain as a set). The browser's Tab is turned off only while the pointer is over the view.
 - Guide: Measuring; Keyboard: ME, Tab, Enter, Backspace.
+
+### 0.41.0 — 2026-09-26
+- **One definition of an element's level for Shanku and Revit** (engine 0.31.0): the lowest level at or above its top. A model loaded back from Revit, which files columns and walls under their base level, now shows every element on the same level as the DXF → 3D model: Project Browser, isolate by level, BOQ, colours and filters. Properties shows the file's **IFC storey** and **CH-LEVEL** beside **Level** when they differ; QA lists a CH-LEVEL that differs (e.g. after copying a floor in Revit). Written down in `docs/design/levels.md`. IFCs whose levels are floors (no level at the roof) keep their own storeys; Properties shows which reading applies (Levels: "Top of storey" or "As filed (floor levels)").
 
 ### 0.40.0 — 2026-09-26
 - **A level is the top of its storey** (pipeline 2.0.0, engine 0.30.0): DXF → 3D level elevations, Shanku's level lines and the levels sent to Revit now agree, and match Revit's structural convention. Level 1 is ±0. The DXF → 3D table's column is now "Level (mm)".

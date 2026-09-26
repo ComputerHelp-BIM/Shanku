@@ -2,11 +2,16 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
-## 0.41.0 — 2026-09-26
+## 0.42.0 — 2026-09-26
 
 ### Added
-- Measure, in 3D views, plans, sections and elevations: Distance with Revit-style snaps and Tab cycling (ΔX ΔY ΔZ, perpendicular between parallel faces, edges and centrelines), Clear & C/C between two elements, Along a centreline, edge or chain of joined walls and beams, Face area, and Chain with a running total. ME, the ribbon and the Quick Access toolbar. Engine 0.31.0, web 0.41.0, brand 1.8.0 (`measure` icon), ui 0.15.2, playground 0.1.15.
+- Measure, in 3D views, plans, sections and elevations: Distance with Revit-style snaps and Tab cycling (ΔX ΔY ΔZ, perpendicular between parallel faces, edges and centrelines), Clear & C/C between two elements, Along a centreline, edge or chain of joined walls and beams, Face area, and Chain with a running total. ME, the ribbon and the Quick Access toolbar. Engine 0.32.0, web 0.42.0, brand 1.8.0 (`measure` icon), ui 0.15.2, playground 0.1.15.
 - Tab over the view steps through the elements under the cursor, then a chain of joined walls or beams, as in Revit; the element shown is outlined even when it is behind others. The browser's own Tab is off only while the pointer is over the view.
+
+## 0.41.0 — 2026-09-26
+
+### Changed
+- One level definition for every model: the lowest level at or above the element's top (docs/design/levels.md). Round trips DXF → Shanku → Revit → Shanku keep every element on its level; the IFC storey and CH-LEVEL stay visible; QA flags a CH-LEVEL that differs. Engine 0.31.0.
 
 ## Shanku Bridge for Revit 0.7.1 — 2026-09-26
 

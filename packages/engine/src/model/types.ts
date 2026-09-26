@@ -17,6 +17,13 @@ export interface ElementRecord {
   index: number;
   /** Which open IFC file the element's properties live in: 0 the model, 1+ merged updates. */
   source?: number;
+  /**
+   * The IfcBuildingStorey the file puts it in (Revit files columns and walls under their base level).
+   * For reference only: `level` follows Shanku's level definition (model/levelRule.ts).
+   */
+  storey?: string;
+  /** Its CH-LEVEL parameter, when it has one (a label; QA flags one that differs from `level`). */
+  chLevel?: string;
   /** STEP line number. Shown as the Element ID: short, readable, stable within one file. */
   expressId: number;
   /** IFC GlobalId (22 chars): the permanent identity across files and revisions. */
@@ -67,7 +74,17 @@ export interface ModelUnits {
   volume: string;
 }
 
+/**
+ * How a file's levels relate to its elements: 'top' — a level is the top of its storey (Revit's
+ * structural convention, Shanku's DXF → 3D, models built by Export to Revit): Shanku's level definition
+ * applies; 'floor' — levels are floors with no level at the roof (many other IFCs): the file's storeys
+ * are kept.
+ */
+export type LevelConvention = 'top' | 'floor';
+
 export interface ModelInfo {
+  /** Which reading of levels applies (model/levelRule.ts). */
+  levelConvention?: LevelConvention;
   fileName: string;
   fileSize: number;
   schema: string;
