@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## Shanku Bridge for Revit 0.7.1 — 2026-09-26
+
+### Fixed
+- Export to Revit: sunk beams got twice their z Offset Value (−3000 for −1500): the placement check trusted the beam's bounding box. Beams and slabs are now placed at offset 0, checked on their solid geometry against their level, then given the drawing's offset; afterwards only reported.
+
 ## 0.40.0 — 2026-09-26
 
 ### Changed (breaking for DXF → 3D level elevations)

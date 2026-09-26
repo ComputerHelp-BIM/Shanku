@@ -187,6 +187,7 @@ internal sealed class ModelCreator
         {
             st.Start();
             var notes = new List<string>();
+            _pendingNotes.Remove(e.Id);
             Element el = e.Kind switch
             {
                 "column" or "pedestal" => Column(e, levels, notes),
@@ -197,6 +198,7 @@ internal sealed class ModelCreator
             };
             WriteParams(el, e);
             _doc.Regenerate();
+            if (_pendingNotes.TryGetValue(e.Id, out var early)) notes.AddRange(early);
             Check(el, e, notes);
             st.Commit();
             return new CreateResult(e.Id, true, null, typeName, el.Id.Value, globalIdOf(_doc, el), notes.Count > 0 ? string.Join(" ", notes) : null);
@@ -231,12 +233,10 @@ internal sealed class ModelCreator
         var line = Line.CreateBound(At(e.Start!, lv.ProjectElevation), At(e.End!, lv.ProjectElevation));
         var inst = _doc.Create.NewFamilyInstance(line, Symbol(e), lv, StructuralType.Beam);
         // A beam's rise or sink goes in z Offset Value, top-justified; Start/End Level Offset stay 0.
-        // Every value is set: a family's own default offset (e.g. -1500) must not add to ours.
-        double off = Z(e.Z1) - lv.ProjectElevation;
         Set(inst, BuiltInParameter.STRUCTURAL_BEAM_END0_ELEVATION, 0.0);
         Set(inst, BuiltInParameter.STRUCTURAL_BEAM_END1_ELEVATION, 0.0);
         SetInt(inst, BuiltInParameter.Z_JUSTIFICATION, (int)ZJustification.Top);
-        Set(inst, BuiltInParameter.Z_OFFSET_VALUE, off);
+        OffsetFromLevel(inst, BuiltInParameter.Z_OFFSET_VALUE, lv, e, "z Offset Value");
         return inst;
     }
 
@@ -264,7 +264,7 @@ internal sealed class ModelCreator
         var loop = new CurveLoop();
         for (int i = 0; i < pts.Count; i++) loop.Append(Line.CreateBound(pts[i], pts[(i + 1) % pts.Count]));
         var floor = Floor.Create(_doc, new List<CurveLoop> { loop }, _types[ExportPlanner.TypeFor(e, _c).Type], lv.Id, true, null, 0);
-        Set(floor, BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM, Z(e.Z1) - lv.ProjectElevation);
+        OffsetFromLevel(floor, BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM, lv, e, "Height Offset From Level");
         return floor;
     }
 
@@ -278,6 +278,57 @@ internal sealed class ModelCreator
         if (p is { IsReadOnly: false }) p.Set(off);
         Turn(inst, e.Center!, e.Angle - 90);
         return inst;
+    }
+
+    private readonly Dictionary<string, List<string>> _pendingNotes = new();
+
+    /// <summary>
+    /// Two steps, so no family default can add to the drawing's offset: (1) the offset set to 0 and the
+    /// element's real top (its solid geometry, not the bounding box, which for some beam families
+    /// still reaches the level) measured against its level: a family that places it elsewhere gets a
+    /// baseline correction; (2) the drawing's rise or sink added to that baseline.
+    /// </summary>
+    private void OffsetFromLevel(Element el, BuiltInParameter bip, Level lv, ExchangeElement e, string paramName)
+    {
+        var p = el.get_Parameter(bip);
+        if (p is not { IsReadOnly: false }) return;
+        p.Set(0.0);
+        _doc.Regenerate();
+        double baseline = 0;
+        double? top = SolidTop(el);
+        if (top is { } t && Math.Abs(Mm(t - lv.ProjectElevation)) > _c.CheckToleranceMm)
+        {
+            baseline = lv.ProjectElevation - t; // what brings its top to the level
+            Note(e, $"Its family placed it {Mm(t - lv.ProjectElevation):+0;-0} mm from its level at offset 0; corrected in {paramName}.");
+        }
+        p.Set(baseline + (Z(e.Z1) - lv.ProjectElevation));
+    }
+
+    private void Note(ExchangeElement e, string text)
+    {
+        if (!_pendingNotes.TryGetValue(e.Id, out var list)) _pendingNotes[e.Id] = list = new List<string>();
+        list.Add(text);
+    }
+
+    /// <summary>The highest point of the element's solids (null when it has none to measure).</summary>
+    private static double? SolidTop(Element el)
+    {
+        var geo = el.get_Geometry(new Options { DetailLevel = ViewDetailLevel.Fine, ComputeReferences = false });
+        if (geo == null) return null;
+        double? max = null;
+        void Walk(GeometryElement g)
+        {
+            foreach (var o in g)
+            {
+                if (o is Solid s && s.Volume > 1e-9)
+                    foreach (Edge edge in s.Edges)
+                        foreach (var pt in edge.Tessellate())
+                            max = max is { } m ? Math.Max(m, pt.Z) : pt.Z;
+                else if (o is GeometryInstance gi) Walk(gi.GetInstanceGeometry());
+            }
+        }
+        Walk(geo);
+        return max;
     }
 
     private void Turn(Element el, double[] center, double degrees)
@@ -368,18 +419,9 @@ internal sealed class ModelCreator
                 bb = el.get_BoundingBox(null);
             }
         }
-        double top = Mm(bb.Max.Z - Z(e.Z1));
-        // Beams and slabs: a height that is off is corrected through their own offset parameter
-        // (z Offset Value; Height Offset From Level), so the element keeps its level and justification.
-        var fix = e.Kind == "beam" ? BuiltInParameter.Z_OFFSET_VALUE : e.Kind is "slab" or "chajja" ? BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM : (BuiltInParameter?)null;
-        if (Math.Abs(top) > tol && fix is { } bip && el.get_Parameter(bip) is { IsReadOnly: false } p)
-        {
-            p.Set(p.AsDouble() - Ft(top));
-            _doc.Regenerate();
-            notes.Add($"{(top > 0 ? "Lowered" : "Raised")} {Math.Abs(top):0} mm to the drawing's height ({(e.Kind == "beam" ? "z Offset Value" : "Height Offset From Level")}).");
-            bb = el.get_BoundingBox(null);
-            top = Mm(bb.Max.Z - Z(e.Z1));
-        }
+        // Beams and slabs were set in two steps (OffsetFromLevel): measured on their solids, only reported.
+        bool hanging = e.Kind is "beam" or "slab" or "chajja";
+        double top = hanging && SolidTop(el) is { } st ? Mm(st - Z(e.Z1)) : Mm(bb.Max.Z - Z(e.Z1));
         if (Math.Abs(top) > tol) notes.Add($"Check it: its top is {top:+0;-0} mm from the drawing.");
     }
 
