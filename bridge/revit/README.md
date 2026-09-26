@@ -1,4 +1,4 @@
-# Shanku Bridge for Revit 0.9.0
+# Shanku Bridge for Revit 0.10.0
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
 into Shanku, keep the selection in step both ways, edit Revit parameters from Shanku, and keep Shanku up
@@ -10,7 +10,7 @@ Revit). Protocol: `docs/bridge/protocol.md`.
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.9.0.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.10.0.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -28,7 +28,7 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.9.0)
+## What it does, and does not do (0.10.0)
 
 - Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
   changed. Selection sync only selects.
@@ -86,6 +86,20 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.10.0 — 2026-09-26
+- **Honest progress for Export to Revit.** The bar reached 100 % when the elements were created (about a
+  third of the time); Revit's regeneration, where it joins beams, columns, walls and slabs, and the commit
+  took the rest. `progress` now carries the overall `fraction` (each phase its share) and `busy` for the
+  phases Revit cannot measure; Shanku shows "Revit is working" there instead of a percentage.
+- **The Connect window in Shanku's design**, following Revit's light or dark theme (UIThemeManager):
+  Shanku's tokens, orange top edge, warm header strip (drag it to move the window), the code in digit
+  tiles (IBM Plex Mono, else Consolas), a countdown bar that drains over the code's 5 minutes, Shanku's
+  buttons; Esc closes it.
+- **Revit comes to the front maximised** after Export to Revit.
+- **Fixed: the last slabs Revit refused** (4 on adani.dxf): a vertex 0.2 mm from another edge (a sliver
+  Revit counts as touching). The cleaner puts a point there and splits the outline at it. All 892 slabs of
+  adani.dxf pass a strict check (near-touches included), area within 0.05 %.
 
 ### 0.9.0 — 2026-09-26
 - **Connect is a modeless window.** The pairing code used to show in a modal dialog, and while it was open

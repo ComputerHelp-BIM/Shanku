@@ -81,7 +81,7 @@ export function ExportToRevit({ state, off, onToggle, onCheck, onCreate, onLoad,
             Created {made} element{made === 1 ? '' : 's'} in {state.target}
           </strong>
           <span>
-            As one undo in Revit: <em>{r.undoName}</em>. Revit shows them selected and comes to the front (add-in 0.9.0 and later).
+            As one undo in Revit: <em>{r.undoName}</em>. Revit shows them selected and comes to the front, maximised (add-in 0.10.0 and later).
           </span>
         </div>
         {problems.length ? <Problems list={problems} title={`${problems.length} not created`} /> : null}

@@ -13,6 +13,8 @@ export interface Task {
   fraction: number | null;
   /** e.g. "2,340 of 4,780 elements". */
   detail?: string;
+  /** Work that cannot measure itself right now (Revit regenerating): the fraction holds, the display shows work. */
+  busy?: boolean;
   startedAt: number;
 }
 

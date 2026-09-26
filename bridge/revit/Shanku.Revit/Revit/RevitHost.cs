@@ -239,7 +239,7 @@ public sealed class RevitHost : IRevitHost
         var creator = new ModelCreator(doc, config)
         {
             // progress to Shanku as it builds (server-sent events: the browser's progress display fills in)
-            Progress = (done, total, phase) => Broadcast?.Invoke("progress", new { task = dryRun ? "check" : "create", done, total, phase }),
+            Progress = (fraction, busy, done, total, phase) => Broadcast?.Invoke("progress", new { task = dryRun ? "check" : "create", fraction, busy, done, total, phase }),
         };
         var report = creator.Run(exchange, dryRun, GlobalIdOf);
         if (!dryRun)

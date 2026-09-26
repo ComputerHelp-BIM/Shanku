@@ -267,12 +267,24 @@ def make_handler(st: State):
                 x, dry = b.get("exchange") or {}, bool(b.get("dryRun"))
                 if x.get("version") != 1:
                     return self.send_json(400, {"error": "This add-in reads exchange version 1; update the add-in or Shanku."})
-                # progress, as add-in 0.8.0 sends it (the dry run tries one element per type; the build creates all)
+                # progress, as add-in 0.10.0 sends it: the overall fraction per phase, busy where Revit cannot measure
                 n_el = len(x.get("elements", []))
-                steps = 4 if dry else 10
-                for k in range(1, steps + 1):
-                    time.sleep(0.25)
-                    st.broadcast("progress", {"task": "check" if dry else "create", "done": round(n_el * k / steps), "total": n_el, "phase": "Trying one element of each type" if dry else "Creating the elements"})
+                def say(fraction, busy, done, total, phase, pause=0.2):
+                    st.broadcast("progress", {"task": "check" if dry else "create", "fraction": fraction, "busy": busy, "done": done, "total": total, "phase": phase})
+                    time.sleep(pause)
+                if dry:
+                    for k in range(1, 5):
+                        say(0.05 + 0.85 * k / 4, False, k * 11, 44, "Trying one element of each type")
+                    say(0.9, True, n_el, n_el, "Finishing: Revit collects its warnings and keeps it as one undo", 0.6)
+                else:
+                    say(0, False, 0, n_el, "Preparing levels and types")
+                    for k in range(1, 9):
+                        say(0.02 + 0.38 * k / 8, False, round(n_el * k / 8), n_el, "Creating the elements")
+                    say(0.40, True, n_el, n_el, "Regenerating the model: Revit joins beams, columns, walls and slabs", 1.2)
+                    for k in range(1, 5):
+                        say(0.45 + 0.25 * k / 4, False, round(n_el * k / 4), n_el, "Checking each element's placement")
+                    say(0.70, True, n_el, n_el, "Applying the turns and moves", 0.6)
+                    say(0.75, True, n_el, n_el, "Finishing: Revit collects its warnings and keeps it as one undo", 0.8)
                 levels = []
                 for l in x.get("levels", []):
                     if l["name"] in st.revit_levels:

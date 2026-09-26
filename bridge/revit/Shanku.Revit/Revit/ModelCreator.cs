@@ -28,8 +28,15 @@ internal sealed class ModelCreator
     /// <summary>Per type: what brings its top to its level at offset 0 (a family default such as -1500), measured once.</summary>
     private readonly Dictionary<ElementId, double> _baseline = new();
 
-    /// <summary>Progress while building: (done, total, phase), called on Revit's thread every few dozen elements.</summary>
-    public Action<int, int, string>? Progress { get; init; }
+    /// <summary>
+    /// Progress while checking or building, on Revit's thread: the overall fraction (0..1, each phase its
+    /// share, so the bar never reaches the end before Revit does), busy (a phase Revit cannot measure — the
+    /// regeneration, the commit: the display shows work, not a percentage), done and total of the phase's
+    /// counted items, and the phase in plain words.
+    /// </summary>
+    public Action<double, bool, int, int, string>? Progress { get; init; }
+
+    private void Report(double fraction, bool busy, int done, int total, string phase) => Progress?.Invoke(Math.Clamp(fraction, 0, 1), busy, done, total, phase);
 
     public ModelCreator(Document doc, ExportConfig config)
     {
@@ -68,14 +75,14 @@ internal sealed class ModelCreator
             opts.SetFailuresPreprocessor(new Collector(_warnings));
             t.SetFailureHandlingOptions(opts);
             t.Start();
-            Progress?.Invoke(0, todo.Count, "Levels and types");
+            Report(0, false, 0, todo.Count, "Preparing levels and types");
             PrepareLevels(x.Levels);
             foreach (var e in todo) EnsureType(e);
             _doc.Regenerate();
             var levels = x.Levels.OrderBy(l => l.Elevation).ToList();
             if (dryRun) results.AddRange(Trial(todo, levels, globalIdOf));
             else results.AddRange(Build(todo, levels, globalIdOf));
-            Progress?.Invoke(todo.Count, todo.Count, "Finishing (Revit joins and checks the elements)");
+            Report(dryRun ? 0.9 : 0.75, true, todo.Count, todo.Count, "Finishing: Revit collects its warnings and keeps it as one undo");
             t.Commit();
         }
         if (dryRun) group.RollBack();
@@ -199,7 +206,7 @@ internal sealed class ModelCreator
         foreach (var g in byType)
         {
             outcome[g.Key] = CreateOne(g.First(), levels, globalIdOf);
-            if (++n % 5 == 0) Progress?.Invoke(n, byType.Count, "Trying one element of each type");
+            if (++n % 5 == 0) Report(0.05 + 0.85 * n / byType.Count, false, n, byType.Count, "Trying one element of each type");
         }
         foreach (var e in todo)
         {
@@ -237,11 +244,17 @@ internal sealed class ModelCreator
                 if (el != null) try { _doc.Delete(el.Id); } catch { /* already gone */ }
                 results.Add(new CreateResult(e.Id, false, ex.Message, typeName));
             }
-            if ((i + 1) % 50 == 0) Progress?.Invoke(i + 1, todo.Count, "Creating the elements");
+            if ((i + 1) % 50 == 0) Report(0.02 + 0.38 * (i + 1) / todo.Count, false, i + 1, todo.Count, "Creating the elements");
         }
-        Progress?.Invoke(todo.Count, todo.Count, "Regenerating the model");
+        Report(0.40, true, todo.Count, todo.Count, "Regenerating the model: Revit joins beams, columns, walls and slabs");
         _doc.Regenerate();
-        foreach (var (e, el, notes, _) in made) PlaceCheck(el, e, notes);
+        for (int k = 0; k < made.Count; k++)
+        {
+            var (e, el, notes, _) = made[k];
+            PlaceCheck(el, e, notes);
+            if ((k + 1) % 100 == 0) Report(0.45 + 0.25 * (k + 1) / made.Count, false, k + 1, made.Count, "Checking each element's placement");
+        }
+        Report(0.70, true, made.Count, made.Count, "Applying the turns and moves");
         _doc.Regenerate();
         foreach (var (e, el, notes, type) in made)
         {

@@ -797,7 +797,13 @@
 .app-build__meta > span:last-child { margin-left: auto; }
 .app-build__pct { color: var(--text); font-weight: 600; }
 .app-build__tip { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; }
+/* busy: Revit at work it cannot measure — the filled part shimmers and the hook bobs */
+.app-build__bar--working > span { background-image: linear-gradient(90deg, transparent 0%, var(--panel) 50%, transparent 100%); background-size: 40% 100%; background-repeat: no-repeat; animation: app-build-shimmer 1.4s linear infinite; }
+@keyframes app-build-shimmer { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+.app-build.is-busy .app-build__hook, .app-build.is-busy .app-build__cable { animation: app-build-bob 1.1s ease-in-out infinite alternate; }
+@keyframes app-build-bob { from { transform: translateY(0); } to { transform: translateY(8px); } }
 @media (prefers-reduced-motion: reduce) {
+  .app-build__bar--working > span, .app-build.is-busy .app-build__hook, .app-build.is-busy .app-build__cable { animation: none; }
   .app-build__m, .app-build__bar > span, .app-build__trolley { transition: none; }
   .app-build__m.is-new, .app-build__bar--busy > span, .app-build__flag path { animation: none; }
   .app-build__bar--busy > span { width: 100%; opacity: 0.4; }

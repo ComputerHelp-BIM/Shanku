@@ -66,9 +66,12 @@ echoed back.
 
 
 `progress` (add-in 0.8.0+): Revit's progress on long work, sent while `/model/create` runs:
-`{ "task": "check" | "create", "done": 1200, "total": 4444, "phase": "Creating the elements" }`.
-The check (`dryRun`) counts types tried (one element per type is built and rolled back); the build
-counts elements created, then reports "Regenerating the model" and "Finishing".
+`{ "task": "check" | "create", "fraction": 0.4, "busy": true, "done": 4444, "total": 4444, "phase": "Regenerating the model: …" }`.
+`fraction` (0.10.0+) is overall, each phase its share (create: levels and types 0–2 %, creating 2–40 %,
+regenerating at 40 %, checking placement 45–70 %, applying 70 %, finishing 75 %), so it never reaches the
+end before Revit does. `busy` (0.10.0+) marks a phase Revit cannot measure (regenerating, committing): show
+work, not a percentage. `done` / `total` count the phase's items (the check: types tried). Older add-ins
+send neither `fraction` nor `busy`: use `done / total`.
 
 ## Parameters (feature `params`, add-in 0.2.0; palette order and type parameters 0.3.0)
 

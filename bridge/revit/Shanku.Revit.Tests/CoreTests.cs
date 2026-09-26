@@ -493,6 +493,7 @@ public class OutlineTests
     // Slab outlines from a real drawing (adani.dxf) that Revit refused: 0.1 mm edges, doubled points, a self-touching notch.
     private static readonly Dictionary<string, double[][]> Refused = new()
     {
+        ["DXF:135B:L1"] = new double[][] { new[] {-65200.4, 16000.0}, new[] {-65200.4, 14649.9}, new[] {-62800.4, 14649.9}, new[] {-62800.4, 16000.1}, new[] {-62600.2, 16000.1}, new[] {-62600.2, 12400.1}, new[] {-60150.2, 12400.1}, new[] {-60150.4, 16000.1}, new[] {-59950.3, 16000.1}, new[] {-59950.4, 14649.9}, new[] {-57550.4, 14649.9}, new[] {-57550.4, 16000.0}, new[] {-57575.2, 16000.0}, new[] {-57575.2, 17000.2}, new[] {-59900.2, 17000.2}, new[] {-59900.2, 16000.3}, new[] {-60150.2, 16000.3}, new[] {-60150.2, 17000.2}, new[] {-62600.2, 17000.2}, new[] {-62600.2, 16000.3}, new[] {-62850.2, 16000.3}, new[] {-62850.2, 17000.2}, new[] {-65175.2, 17000.2}, new[] {-65175.2, 16000.0} }, // a sliver: a vertex 0.2 mm from another edge
         ["DXF:135E:L1"] = new double[][] { new[] {-47100.2, 17000.2}, new[] {-49550.2, 17000.2}, new[] {-49550.2, 16000.1}, new[] {-49800.2, 16000.1}, new[] {-49800.2, 17000.2}, new[] {-52125.2, 17000.2}, new[] {-52125.2, 16000.0}, new[] {-52150.4, 16000.0}, new[] {-52150.4, 14649.8}, new[] {-49750.4, 14649.8}, new[] {-49750.4, 16000.1}, new[] {-49550.3, 16000.1}, new[] {-49550.2, 12400.1}, new[] {-47100.2, 12400.1}, new[] {-47100.4, 16000.1}, new[] {-46900.3, 16000.1}, new[] {-46900.4, 14649.9}, new[] {-44500.4, 14649.9}, new[] {-44500.4, 16000.0}, new[] {-44525.2, 16000.0}, new[] {-44525.2, 17000.2}, new[] {-46850.2, 17000.2}, new[] {-46850.2, 16000.1}, new[] {-47100.2, 16000.1} },
         ["DXF:1379:L1"] = new double[][] { new[] {-62850.2, 13400.1}, new[] {-62850.2, 12450.1}, new[] {-63350.3, 12450.1}, new[] {-63350.4, 12450.1}, new[] {-63350.4, 14449.8}, new[] {-62800.4, 14449.8}, new[] {-62800.4, 13400.1} },
         ["DXF:137A:L1"] = new double[][] { new[] {-59900.2, 12450.1}, new[] {-59900.2, 13400.0}, new[] {-59950.4, 13400.0}, new[] {-59950.4, 14449.9}, new[] {-59400.5, 14449.9}, new[] {-59400.5, 13700.1}, new[] {-59400.5, 13699.9}, new[] {-59400.5, 13149.9}, new[] {-59400.5, 13150.1}, new[] {-59400.5, 12450.1} },
@@ -537,6 +538,15 @@ public class OutlineTests
                         if (!(i == 0 && j == n - 1)) Assert.False(Cross(a, b, lp[j], lp[(j + 1) % n]), $"{id}: crosses itself");
                     for (int j = 0; j < n; j++)
                         if (j != i) Assert.True(Math.Sqrt((a[0] - lp[j][0]) * (a[0] - lp[j][0]) + (a[1] - lp[j][1]) * (a[1] - lp[j][1])) >= ExportPlanner.OutlineMergeMm, $"{id}: touches itself");
+                    for (int j = 0; j < n; j++)
+                    {
+                        if (j == i || (j + 1) % n == i) continue;
+                        var p = lp[j]; var q = lp[(j + 1) % n];
+                        double dx = q[0] - p[0], dy = q[1] - p[1], l2 = dx * dx + dy * dy;
+                        double t = Math.Clamp(((a[0] - p[0]) * dx + (a[1] - p[1]) * dy) / l2, 0, 1);
+                        double ex = p[0] + t * dx - a[0], ey = p[1] + t * dy - a[1];
+                        Assert.True(Math.Sqrt(ex * ex + ey * ey) >= 0.8, $"{id}: a vertex within Revit's tolerance of another edge");
+                    }
                 }
             }
             double before = Area(outline.ToList()), after = loops.Sum(Area);

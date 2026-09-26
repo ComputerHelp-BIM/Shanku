@@ -106,7 +106,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.46.2';
+const APP_VERSION = '0.47.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -2027,7 +2027,15 @@ export function App({ start }: { start?: AppStart } = {}) {
   useEffect(
     () =>
       bridge.onProgress((p) => {
-        if (p.total > 0) updateTask('revit', { phase: p.phase, fraction: Math.min(1, p.done / p.total), detail: p.task === 'create' ? `${fmtCount(p.done)} of ${fmtCount(p.total)} elements` : `${fmtCount(p.done)} of ${fmtCount(p.total)} types tried` });
+        if (p.total <= 0) return;
+        const fraction = typeof p.fraction === 'number' ? p.fraction : Math.min(1, p.done / p.total);
+        const busy = !!p.busy;
+        updateTask('revit', {
+          phase: p.phase,
+          fraction,
+          busy,
+          detail: busy ? undefined : p.task === 'create' ? `${fmtCount(p.done)} of ${fmtCount(p.total)} elements` : `${fmtCount(p.done)} of ${fmtCount(p.total)} types tried`,
+        });
       }),
     [bridge],
   );

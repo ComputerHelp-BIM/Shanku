@@ -55,22 +55,24 @@ export function BuildProgress({ task, variant = 'center' }: { task: Task; varian
   }, []);
   const elapsed = now - task.startedAt;
   const known = task.fraction !== null && Number.isFinite(task.fraction);
+  // busy: a phase that cannot measure itself (Revit regenerating) — the frame holds, the display shows work
+  const busy = known && !!task.busy;
   // how many members stand: the fraction, or a loop that builds, holds (topped out) a moment, and starts again
   const cycle = all.length + 12;
   const loopAt = Math.floor(elapsed / STEP_MS) % cycle;
   const built = known ? Math.round(Math.min(1, Math.max(0, task.fraction as number)) * all.length) : reduce ? Math.round(all.length / 2) : Math.min(all.length, loopAt);
   const done = built >= all.length;
-  const pct = known ? Math.round((task.fraction as number) * 100) : null;
+  const pct = known && !busy ? Math.round((task.fraction as number) * 100) : null;
   const tip = WAITING_TIPS[Math.floor(elapsed / 5000) % WAITING_TIPS.length];
 
   // the member on the hook: the next one to place (the crane waits over the roof once topped out)
   const next = done ? null : all[built];
   const hookX = next ? next.x + next.w / 2 : X0 + (BAYS * BAY) / 2;
   const hookY = next ? Math.max(JIB_Y + 14, next.y - 12) : GROUND - STOREYS * STOREY - 26;
-  const caption = done ? 'Topped out' : next!.kind === 'footing' ? 'Footings' : `Storey ${next!.storey} · ${KIND_WORD[next!.kind]}`;
+  const caption = busy ? 'Revit is working on it' : done ? 'Topped out' : next!.kind === 'footing' ? 'Footings' : `Storey ${next!.storey} · ${KIND_WORD[next!.kind]}`;
 
   return (
-    <div className={`app-build app-build--${variant}${reduce ? ' is-still' : ''}`} role="status" aria-live="polite" aria-label={`${task.title}: ${task.phase}${pct !== null ? `, ${pct}%` : ''}`}>
+    <div className={`app-build app-build--${variant}${reduce ? ' is-still' : ''}${busy ? ' is-busy' : ''}`} role="status" aria-live="polite" aria-label={`${task.title}: ${task.phase}${pct !== null ? `, ${pct}%` : ''}`}>
       <figure className="app-build__scene">
         <svg className="app-build__frame" viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
           {/* ground */}
@@ -122,12 +124,12 @@ export function BuildProgress({ task, variant = 'center' }: { task: Task; varian
       <div className="app-build__text">
         <p className="app-build__title">{task.title}</p>
         <p className="app-build__phase">{task.phase}</p>
-        <div className={`app-build__bar${known ? '' : ' app-build__bar--busy'}`} aria-hidden="true">
-          <span style={known ? { width: `${pct}%` } : undefined} />
+        <div className={`app-build__bar${known ? '' : ' app-build__bar--busy'}${busy ? ' app-build__bar--working' : ''}`} aria-hidden="true">
+          <span style={known ? { width: `${Math.round((task.fraction as number) * 100)}%` } : undefined} />
         </div>
         <p className="app-build__meta">
           {task.detail ? <span>{task.detail}</span> : null}
-          {pct !== null ? <span className="app-build__pct">{pct}%</span> : null}
+          {pct !== null ? <span className="app-build__pct">{pct}%</span> : busy ? <span className="app-build__pct">Revit is working</span> : null}
           <span>{clock(elapsed)}</span>
         </p>
         {elapsed > 1500 ? <p className="app-build__tip">{tip}</p> : null}

@@ -72,8 +72,9 @@ public static class ExportPlanner
     /// A drawn outline as loops Revit accepts for a floor: vertices closer than 1.5 mm merged (drawings
     /// carry 0.1 mm jogs and doubled points), collinear points and spikes (out and straight back)
     /// dropped, and an outline that touches itself (a notch whose sides meet) split into simple loops at
-    /// that point. Checked on a 4,444-element drawing: 192 of 892 slab outlines were invalid for Revit,
-    /// none after, area within 0.05 %. Empty when nothing with area is left.
+    /// that point — also where a vertex lies within 1.5 mm of another edge (a sliver Revit counts as
+    /// touching). Checked on a 4,444-element drawing: 192 of 892 slab outlines were invalid for Revit,
+    /// none after (near-touches included), area within 0.05 %. Empty when nothing with area is left.
     /// </summary>
     public static List<List<double[]>> CleanOutline(IReadOnlyList<double[]> outline)
     {
@@ -109,21 +110,52 @@ public static class ExportPlanner
             }
         }
         if (pts.Count < 3) return result;
-        // an outline that touches itself: split it into two at the shared point
         int n = pts.Count;
+        // an outline that touches itself: split it into two at the shared point
         for (int i = 0; i < n; i++)
             for (int j = i + 2; j < n; j++)
             {
                 if (i == 0 && j == n - 1) continue;
-                if (Dist(pts[i], pts[j]) < OutlineMergeMm)
+                if (Dist(pts[i], pts[j]) < OutlineMergeMm) return Split(pts, i, j, depth);
+            }
+        // a vertex lying on another edge's inside (a sliver: two edges 0.2 mm apart, which Revit counts as
+        // touching): a point put there, and the loop split at it in the same step (on its own, the new point
+        // would be dropped again as collinear)
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < n; j++)
+            {
+                if (i == j || i == (j + 1) % n) continue;
+                var a = pts[j];
+                var b = pts[(j + 1) % n];
+                var q = Nearest(pts[i], a, b);
+                if (Dist(pts[i], q) < OutlineMergeMm && Dist(q, a) >= OutlineMergeMm && Dist(q, b) >= OutlineMergeMm)
                 {
-                    result.AddRange(Loops(pts.GetRange(i, j - i), depth + 1));
-                    result.AddRange(Loops(pts.Skip(j).Concat(pts.Take(i)).ToList(), depth + 1));
-                    return result;
+                    int k = j + 1; // the copy of vertex i goes between j and j + 1
+                    var withPoint = new List<double[]>(pts);
+                    withPoint.Insert(k, pts[i]);
+                    int ii = i < k ? i : i + 1;
+                    return Split(withPoint, Math.Min(ii, k), Math.Max(ii, k), depth);
                 }
             }
         if (Math.Abs(SignedArea(pts)) > 1.0) result.Add(pts);
         return result;
+    }
+
+    /// <summary>A loop that meets itself at vertices i and j (i &lt; j): the two loops either side.</summary>
+    private static List<List<double[]>> Split(List<double[]> pts, int i, int j, int depth)
+    {
+        var result = Loops(pts.GetRange(i, j - i), depth + 1);
+        result.AddRange(Loops(pts.Skip(j).Concat(pts.Take(i)).ToList(), depth + 1));
+        return result;
+    }
+
+    /// <summary>The point of segment a–b nearest to p.</summary>
+    private static double[] Nearest(double[] p, double[] a, double[] b)
+    {
+        double dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+        if (l2 == 0) return a;
+        double t = Math.Clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2, 0, 1);
+        return new[] { a[0] + t * dx, a[1] + t * dy };
     }
 
     private static double Dist(double[] a, double[] b) => Math.Sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]));

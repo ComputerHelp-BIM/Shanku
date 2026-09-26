@@ -2,6 +2,15 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.47.0 — 2026-09-26
+
+### Changed
+- Export to Revit progress: weighted phases, "Revit is working" for Revit's own work; the bar ends when Revit does (Shanku Bridge for Revit 0.10.0).
+- Revit: Connect window in Shanku's design (light and dark), Revit maximised after a build.
+
+### Fixed
+- The last slabs Revit refused (slivers: a vertex 0.2 mm from another edge).
+
 ## 0.46.2 — 2026-09-26
 
 ### Fixed

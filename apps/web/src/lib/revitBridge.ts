@@ -62,6 +62,10 @@ export interface RevitProgress {
   done: number;
   total: number;
   phase: string;
+  /** Overall 0..1, each phase its share (add-in 0.10.0+; older add-ins: done / total). */
+  fraction?: number;
+  /** A phase Revit cannot measure (regenerating, committing): show work, not a percentage. */
+  busy?: boolean;
 }
 
 export interface RevitChanges {
