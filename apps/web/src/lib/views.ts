@@ -3,6 +3,7 @@
  * building elevations and user sections. Each view keeps its own graphics, visual style, edges and
  * temporary hides; plans and sections also carry a view range (a clip box without grips).
  */
+import type { PlacedDimension } from '@shanku/engine';
 import type { DisplayStyle } from '@shanku/engine';
 import { EMPTY_GRAPHICS, type ViewGraphics } from './visibility';
 
@@ -31,6 +32,8 @@ export interface ModelView {
   graphics: ViewGraphics;
   displayStyle: DisplayStyle;
   edges: boolean;
+  /** Dimensions placed in this view (Annotate → Dimension), as in Revit: view-specific. */
+  dims?: PlacedDimension[];
 }
 
 export const DEFAULT_CUT = 1.2;

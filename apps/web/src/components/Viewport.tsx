@@ -1,8 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ViewCube, type Orientation } from './ViewCube';
 import { MeasureBar } from './MeasureBar';
+import { DimensionBar } from './DimensionBar';
 import { Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName } from '@shanku/engine';
-import type { Annotation, CameraState, ExplodeMode, MeasureMode, MeasureReadout, SectionBoxState } from '@shanku/engine';
+import type { Annotation, CameraState, DimensionKind, DimensionReadout, ExplodeMode, MeasureMode, MeasureReadout, PlacedDimension, SectionBoxState, Vec3 } from '@shanku/engine';
 
 export interface ViewportHandle {
   fit: (indices?: number[]) => void;
@@ -83,6 +84,17 @@ export interface ViewportProps {
   measure?: MeasureMode | null;
   /** The tool changed mode or closed from inside the view (its bar, or Esc). */
   onMeasureChange?: (mode: MeasureMode | null) => void;
+  /** Placed dimensions of the active view, and the selected ones. */
+  dimensions?: PlacedDimension[];
+  dimensionSelection?: string[];
+  /** The file's origin in the viewer, for spot elevations and coordinates. */
+  dimensionOrigin?: Vec3;
+  /** The Dimension tool (Annotate), or null. */
+  dimensionTool?: DimensionKind | null;
+  onDimensionToolChange?: (kind: DimensionKind | null) => void;
+  onDimensionPlaced?: (d: PlacedDimension) => void;
+  onDimensionClick?: (id: string, mode: SelectMode) => void;
+  onDimensionEdit?: (id: string, before: Vec3, after: Vec3) => void;
 }
 
 /** Hosts the engine's Viewer and keeps it in sync with React state. */
@@ -103,6 +115,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   handlers.current = props;
   const [failed, setFailed] = useState<string | null>(null);
   const [readout, setReadout] = useState<MeasureReadout | null>(null);
+  const [dimReadout, setDimReadout] = useState<DimensionReadout | null>(null);
   const [tabInfo, setTabInfo] = useState<{ label: string; position: number; total: number; chain: boolean; count: number } | null>(null);
 
   useEffect(() => {
@@ -122,6 +135,13 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
           if (!r && handlers.current.measure) handlers.current.onMeasureChange?.(null);
         },
         onTabCycle: (info) => setTabInfo(info),
+        onDimensionTool: (r) => {
+          setDimReadout(r);
+          if (!r && handlers.current.dimensionTool) handlers.current.onDimensionToolChange?.(null);
+        },
+        onDimensionPlaced: (d) => handlers.current.onDimensionPlaced?.(d),
+        onDimensionClick: (id, mode) => handlers.current.onDimensionClick?.(id, mode),
+        onDimensionEdit: (id, a, b) => handlers.current.onDimensionEdit?.(id, a, b),
         onNavigate: (active) => {
           setNavActive(active);
           if (active) setTip(null);
@@ -214,6 +234,21 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     if (props.measure && model) v.startMeasure(props.measure);
     else v.stopMeasure();
   }, [props.measure, model]);
+  useEffect(() => {
+    const v = viewer.current;
+    if (!v) return;
+    if (props.dimensionTool && model) v.startDimension(props.dimensionTool);
+    else v.stopDimension();
+  }, [props.dimensionTool, model]);
+  useEffect(() => {
+    viewer.current?.setDimensions(props.dimensions ?? []);
+  }, [props.dimensions, model]);
+  useEffect(() => {
+    viewer.current?.setDimensionSelection(props.dimensionSelection ?? []);
+  }, [props.dimensionSelection, model]);
+  useEffect(() => {
+    viewer.current?.setDimensionOrigin(props.dimensionOrigin ?? [0, 0, 0]);
+  }, [props.dimensionOrigin, model]);
 
   useImperativeHandle(ref, () => ({
     fit: (indices) => viewer.current?.fit(indices),
@@ -275,6 +310,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
           onClose={() => handlers.current.onMeasureChange?.(null)}
         />
       ) : null}
+      {dimReadout && props.dimensionTool ? <DimensionBar readout={dimReadout} onClose={() => handlers.current.onDimensionToolChange?.(null)} /> : null}
       {tabInfo ? (
         <div className="app-tabcycle" role="status" aria-live="polite">
           <strong>{tabInfo.label}</strong>

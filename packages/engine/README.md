@@ -1,4 +1,4 @@
-# @shanku/engine 0.32.0
+# @shanku/engine 0.33.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.33.0 — 2026-09-26
+- `render/dimensions.ts`: `PlacedDimension` (plain data, JSON), values (strings, angle quadrant, radius, diameter, arc length, spot elevation and coordinates from the file’s origin, slope), text overrides, circle and arc detection from an element’s facet edges (`arcFromEdge`), `followModel` for live updates, and `drawDimensions` (witness lines, ticks, arrows, readable text, grips).
+- `render/dimensionTool.ts` and `Viewer.startDimension(kind) / stopDimension()`, `setDimensions`, `setDimensionSelection`, `setDimensionOrigin`; events `onDimensionTool`, `onDimensionPlaced`, `onDimensionClick`, `onDimensionEdit`. Measure and Dimension share one tool slot.
 
 ### 0.32.0 — 2026-09-26
 - `render/measure.ts`: geometry index by element, ray casting through every element (front to back, section box and hidden elements respected), flat faces (area, perimeter, centre, outline), centrelines fitted to columns, piles, beams, braces and walls, joined chains, clear distance between elements (vertex–face and edge–edge, 0 when overlapping), centre-to-centre, measure between references with Revit axes, and ranked snap candidates.

@@ -60,6 +60,8 @@ import { explodeOffsets, explodedBounds, type ExplodeMode } from './explode';
 import { decodePickId } from './pickId';
 import { buildGeometryIndex, memberAxis, planarFace, raycastAll, type GeometryIndex, type MeasureScene, type MemberAxis, type PlanarFace } from './measure';
 import { MeasureTool, tabOptions, type MeasureMode, type MeasureReadout } from './measureTool';
+import { DimensionTool, type DimensionReadout } from './dimensionTool';
+import { drawDimensions, type DimensionKind, type Origin, type PlacedDimension, type Vec3 } from './dimensions';
 import { SectionGizmo, aabbOf, axesOf, cloneState, metresPerPixel, moveFace, planesOf, snapDelta, type GripData, type SectionBoxState } from './sectionBox';
 
 export type ViewName = 'iso' | 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
@@ -98,6 +100,14 @@ export interface ViewerEvents {
   onMeasure?: (readout: MeasureReadout | null) => void;
   /** Tab while selecting: what a click would select now, and its place in the cycle (null: cycle over). */
   onTabCycle?: (info: { label: string; position: number; total: number; chain: boolean; count: number } | null) => void;
+  /** A Dimension tool's prompt and current snap (null: the tool closed). */
+  onDimensionTool?: (readout: DimensionReadout | null) => void;
+  /** A dimension was placed: keep it (the viewer shows what `setDimensions` gives it). */
+  onDimensionPlaced?: (d: PlacedDimension) => void;
+  /** A placed dimension was clicked (select; Ctrl adds, Shift removes). */
+  onDimensionClick?: (id: string, mode: SelectMode) => void;
+  /** A selected dimension's line was dragged to a new place (record it as one undoable change). */
+  onDimensionEdit?: (id: string, before: Vec3, after: Vec3) => void;
 }
 
 export interface CameraState {
@@ -255,6 +265,15 @@ export class Viewer {
   private faceCache = new Map<string, PlanarFace>();
   private measure: MeasureTool | null = null;
   private measEl: SVGSVGElement;
+  /** Placed dimensions of this view, their selection, and the Dimension tool. */
+  private dimensions: PlacedDimension[] = [];
+  private dimSelected = new Set<string>();
+  private dimHot: string | null = null;
+  private dimDrag: { id: string; at: Vec3 } | null = null;
+  private dimTool: DimensionTool | null = null;
+  private dimsEl: SVGSVGElement;
+  private dimOrigin: Origin = [0, 0, 0];
+  private dimSeq = 0;
   /** Elements glowing as the current Tab / measure choice (preselect colour). */
   private glowed: number[] = [];
   /** Tab while selecting: the choices under the cursor and the current one. */
@@ -309,6 +328,11 @@ export class Viewer {
     this.annEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     Object.assign(this.annEl.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' });
     container.appendChild(this.annEl);
+    // Placed dimensions: their lines and text take clicks (select, drag the grip).
+    this.dimsEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    Object.assign(this.dimsEl.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' });
+    container.appendChild(this.dimsEl);
+    this.bindDimensionLayer();
     this.measEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     Object.assign(this.measEl.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' });
     container.appendChild(this.measEl);
@@ -529,6 +553,7 @@ export class Viewer {
     this.faceCache.clear();
     this.glowed = [];
     this.endTab();
+    this.dimTool?.cancelPending();
     // Measurements refer to the old geometry; the tool stays open.
     if (this.measure) {
       this.measure.cancelPending();
@@ -700,6 +725,7 @@ export class Viewer {
    */
   startMeasure(mode: MeasureMode = 'distance'): void {
     this.endTab();
+    this.stopDimension();
     if (this.measure) {
       this.measure.setMode(mode);
       return;
@@ -742,6 +768,169 @@ export class Viewer {
     this.setGlow([]);
     this.canvas.style.cursor = '';
     this.requestRender();
+  }
+
+  /** The live tool (Measure or a Dimension tool): it takes clicks, hover, Tab and keys. */
+  private get tool(): MeasureTool | DimensionTool | null {
+    return this.measure ?? this.dimTool;
+  }
+
+  // ------------------------------------------------------------ dimensions
+
+  /** The active view's dimensions (the app keeps them with the view). */
+  setDimensions(list: readonly PlacedDimension[]): void {
+    this.dimensions = [...list];
+    this.requestRender();
+  }
+
+  setDimensionSelection(ids: Iterable<string>): void {
+    this.dimSelected = new Set(ids);
+    this.requestRender();
+  }
+
+  /** The file's origin in the viewer (web-ifc's shift), so spot values are the file's own. */
+  setDimensionOrigin(o: Origin): void {
+    this.dimOrigin = o;
+    this.requestRender();
+  }
+
+  get dimensionKind(): DimensionKind | null {
+    return this.dimTool?.kind ?? null;
+  }
+
+  /** Opens a Dimension tool (Revit Annotate → Dimension), or switches to another one. */
+  startDimension(kind: DimensionKind): void {
+    this.endTab();
+    this.stopMeasure();
+    if (this.dimTool) {
+      this.dimTool.setKind(kind);
+      return;
+    }
+    const container = this.container;
+    this.dimTool = new DimensionTool(
+      {
+        scene: () => this.measureScene(),
+        ray: (x, y) => (this.model ? this.pickRay(x, y) : null),
+        project: (p) => this.projectLocal(p),
+        toLocal: (x, y) => {
+          const r = this.canvas.getBoundingClientRect();
+          return [x - r.left, y - r.top];
+        },
+        pixel: () => worldPerPixel(this.frameHeight, this.camera.zoom, container.getBoundingClientRect().height || 1),
+        viewDir: () => (this.nav2d ? this.camera.getWorldDirection(new Vector3()) : null),
+        cameraDir: () => this.camera.getWorldDirection(new Vector3()),
+        axisOf: this.axisOf,
+        faceOf: this.faceOf,
+        highlight: (els) => this.setGlow(els),
+        newId: () => `dim-${Date.now().toString(36)}-${(this.dimSeq++).toString(36)}`,
+        origin: () => this.dimOrigin,
+        place: (d) => this.events.onDimensionPlaced?.(d),
+        emit: (r) => this.events.onDimensionTool?.(r),
+        render: () => this.requestRender(),
+      },
+      kind,
+    );
+    this.setHover(null);
+    this.canvas.style.cursor = 'crosshair';
+  }
+
+  stopDimension(): void {
+    if (!this.dimTool) return;
+    const t = this.dimTool;
+    this.dimTool = null;
+    t.dispose();
+    this.setGlow([]);
+    this.canvas.style.cursor = '';
+    this.requestRender();
+  }
+
+  /** World → container pixels (null behind the camera). */
+  private projectLocal(p: Vector3): [number, number] | null {
+    const r = this.canvas.getBoundingClientRect();
+    const v = p.clone().project(this.camera);
+    if (v.z < -1 || v.z > 1) return null;
+    return [((v.x + 1) / 2) * r.width, ((1 - v.y) / 2) * r.height];
+  }
+
+  /** Hover, click and grip-drag on placed dimensions. */
+  private bindDimensionLayer(): void {
+    const svg = this.dimsEl;
+    const idOf = (t: EventTarget | null) => (t as Element | null)?.closest?.('[data-dim]')?.getAttribute('data-dim') ?? null;
+    svg.addEventListener('pointerover', (e) => {
+      const id = idOf(e.target);
+      if (id !== this.dimHot) {
+        this.dimHot = id;
+        this.requestRender();
+      }
+    });
+    svg.addEventListener('pointerout', () => {
+      if (this.dimHot === null) return;
+      this.dimHot = null;
+      this.requestRender();
+    });
+    svg.addEventListener('click', (e) => {
+      if ((e.target as Element | null)?.closest?.('[data-dim-grip]')) return;
+      const id = idOf(e.target);
+      if (id) this.events.onDimensionClick?.(id, modeOf(e));
+    });
+    svg.addEventListener('pointerdown', (e) => {
+      const g = (e.target as Element | null)?.closest?.('[data-dim-grip]');
+      if (!g || e.button !== 0) return;
+      const id = g.getAttribute('data-dim-grip')!;
+      const d = this.dimensions.find((x) => x.id === id);
+      if (!d) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const n = new Vector3(...d.normal);
+      const plane = new Plane().setFromNormalAndCoplanarPoint(n, new Vector3(...d.at));
+      const before: Vec3 = [...d.at];
+      let moved = false;
+      const at = (cx: number, cy: number): Vec3 | null => {
+        const r = this.canvas.getBoundingClientRect();
+        this.raycaster.setFromCamera(new Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), this.camera);
+        const p = this.raycaster.ray.intersectPlane(plane, new Vector3());
+        return p ? [p.x, p.y, p.z] : null;
+      };
+      const move = (ev: PointerEvent) => {
+        const p = at(ev.clientX, ev.clientY);
+        if (!p) return;
+        moved = true;
+        this.dimDrag = { id, at: p };
+        this.requestRender();
+      };
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        const after = this.dimDrag?.at;
+        this.dimDrag = null;
+        if (moved && after) this.events.onDimensionEdit?.(id, before, after);
+        this.requestRender();
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    });
+  }
+
+  private drawDimensionLayer(): void {
+    const svg = this.dimsEl;
+    while (svg.firstChild) svg.firstChild.remove();
+    if (!this.dimensions.length) return;
+    const cs = getComputedStyle(this.container);
+    const list = this.dimDrag ? this.dimensions.map((d) => (d.id === this.dimDrag!.id ? { ...d, at: this.dimDrag!.at } : d)) : this.dimensions;
+    drawDimensions(
+      svg,
+      list,
+      (p) => this.projectLocal(p),
+      {
+        line: cs.getPropertyValue('--text').trim() || '#222',
+        text: cs.getPropertyValue('--text').trim() || '#222',
+        plate: cs.getPropertyValue('--viewport').trim() || '#fff',
+        hot: cs.getPropertyValue('--select-window').trim() || '#2F7FD8',
+        font: cs.getPropertyValue('--font-sans').trim() || 'sans-serif',
+      },
+      { selected: this.dimSelected, hot: this.dimHot, interactive: !this.tool && !this.linePick && !this.pointPick },
+      this.dimOrigin,
+    );
   }
 
   get measureMode(): MeasureMode | null {
@@ -1635,7 +1824,15 @@ export class Viewer {
   private drawMeasureLayer(): void {
     const svg = this.measEl;
     const cs = getComputedStyle(this.container);
-    if (this.measure) {
+    if (this.dimTool) {
+      this.dimTool.draw(svg, {
+        line: cs.getPropertyValue('--text').trim() || '#222',
+        text: cs.getPropertyValue('--text').trim() || '#222',
+        plate: cs.getPropertyValue('--viewport').trim() || '#fff',
+        hot: cs.getPropertyValue('--select-window').trim() || '#2F7FD8',
+        font: cs.getPropertyValue('--font-sans').trim() || 'sans-serif',
+      });
+    } else if (this.measure) {
       this.measure.draw(svg, {
       line: cs.getPropertyValue('--accent').trim() || '#D9761E',
       text: cs.getPropertyValue('--text').trim() || '#222',
@@ -1821,7 +2018,7 @@ export class Viewer {
       if (this.nav2d && mode === 'orbit') mode = 'pan'; // plan, elevation, section: no orbit
       e.preventDefault();
       c.setPointerCapture(e.pointerId);
-      drag = { mode, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pivot: this.orbitPivot(), moved: false, recorded: false, tool: mode === 'select' && !!this.measure };
+      drag = { mode, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pivot: this.orbitPivot(), moved: false, recorded: false, tool: mode === 'select' && !!this.tool };
       if (mode === 'orbit') c.style.cursor = this.cur.orbit;
       else if (mode === 'pan') c.style.cursor = this.cur.pan;
     };
@@ -1893,8 +2090,8 @@ export class Viewer {
       requestAnimationFrame(() => {
         hoverQueued = false;
         if (!lastHover || drag) return;
-        if (this.measure) {
-          this.measure.hover(lastHover.clientX, lastHover.clientY);
+        if (this.tool) {
+          this.tool.hover(lastHover.clientX, lastHover.clientY);
           return;
         }
         if (this.tab) return; // the Tab choice stays highlighted until the pointer moves away
@@ -1915,7 +2112,7 @@ export class Viewer {
       if (c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
       this.rectEl.style.display = 'none';
       this.showPivot(null);
-      c.style.cursor = this.measure ? 'crosshair' : this.idleCursor(e);
+      c.style.cursor = this.tool ? 'crosshair' : this.idleCursor(e);
       if (d.mode === 'grip') {
         if (d.moved && d.start && this.sbox) this.events.onSectionBoxEdit?.(d.start, cloneState(this.sbox));
         return;
@@ -1926,13 +2123,13 @@ export class Viewer {
       } else if (d.mode === 'select') {
         const mode = modeOf(e);
         if (d.tool) {
-          if (!d.moved && this.measure) {
+          if (!d.moved && this.tool) {
             const now = performance.now();
             const double = now - lastToolClick.t < 350 && Math.hypot(e.clientX - lastToolClick.x, e.clientY - lastToolClick.y) < 6;
             lastToolClick = double ? { t: 0, x: 0, y: 0 } : { t: now, x: e.clientX, y: e.clientY };
-            this.measure.click(e.clientX, e.clientY, double);
+            this.tool.click(e.clientX, e.clientY, double);
           }
-          c.style.cursor = this.measure ? 'crosshair' : '';
+          c.style.cursor = this.tool ? 'crosshair' : '';
           return;
         }
         if (!d.moved && this.tab) {
@@ -1979,7 +2176,7 @@ export class Viewer {
     };
     const onLeave = () => {
       this.setHover(null);
-      this.measure?.leave();
+      this.tool?.leave();
       this.endTab();
     };
     const noMenu = (e: Event) => e.preventDefault();
@@ -1987,7 +2184,7 @@ export class Viewer {
 
     let over = false;
     const onKeyMod = (e: KeyboardEvent) => {
-      if (over && !drag && !this.measure && (e.key === 'Control' || e.key === 'Shift' || e.key === 'Meta')) c.style.cursor = this.idleCursor(e);
+      if (over && !drag && !this.tool && (e.key === 'Control' || e.key === 'Shift' || e.key === 'Meta')) c.style.cursor = this.idleCursor(e);
     };
     const onEnter = () => (over = true);
     const onOut = () => (over = false);
@@ -2006,7 +2203,7 @@ export class Viewer {
         e.preventDefault();
         e.stopPropagation();
         if (document.activeElement !== c) c.focus({ preventScroll: true });
-        if (this.measure) this.measure.step(e.shiftKey ? -1 : 1);
+        if (this.tool) this.tool.step(e.shiftKey ? -1 : 1);
         else this.stepTab(e.shiftKey ? -1 : 1);
         return;
       }
@@ -2016,13 +2213,18 @@ export class Viewer {
         this.endTab();
         return;
       }
-      if (!this.measure || editable(e.target) || modalOpen()) return;
+      const tool = this.tool;
+      if (!tool || editable(e.target) || modalOpen()) return;
       if (e.key === 'Escape' || e.key === 'Enter' || e.key === 'Backspace') {
-        const used = this.measure.key(e.key);
+        const used = tool.key(e.key);
         if (!used && e.key !== 'Escape') return;
         e.preventDefault();
         e.stopImmediatePropagation();
-        if (!used) this.stopMeasure(); // Esc with nothing pending closes the tool (Revit: Esc twice)
+        // Esc with nothing pending closes the tool (Revit: Esc twice)
+        if (!used) {
+          if (tool === this.measure) this.stopMeasure();
+          else this.stopDimension();
+        }
       }
     };
     window.addEventListener('keydown', onViewKey, true);
@@ -2159,6 +2361,7 @@ export class Viewer {
       this.lastFrameMs = performance.now() - t0;
       this.drawTempDims();
       this.drawAnnotationLayer();
+      this.drawDimensionLayer();
       this.drawMeasureLayer();
       this.events.onCamera?.(this.camera.quaternion);
     });
@@ -2176,7 +2379,9 @@ export class Viewer {
     this.dimEl.remove();
     this.annEl.remove();
     this.measure?.dispose();
+    this.dimTool?.dispose();
     this.measEl.remove();
+    this.dimsEl.remove();
     clearTimeout(this.navTimer);
     this.animToken++;
   }

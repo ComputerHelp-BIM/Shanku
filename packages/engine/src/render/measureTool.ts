@@ -526,32 +526,36 @@ export class MeasureTool {
     }
   }
 
-  /** Revit-style snap marks: square endpoint, triangle midpoint, circle centre, X on an edge. */
-  private glyph(el: (tag: string, attrs: Record<string, string | number>) => Element, [x, y]: [number, number], kind: SnapCandidate['kind'], stroke: string, fill: string): void {
-    const common = { fill: 'none', stroke, 'stroke-width': 2 };
-    const r = 6;
-    switch (kind) {
-      case 'endpoint':
-        el('rect', { x: x - r, y: y - r, width: r * 2, height: r * 2, ...common });
-        break;
-      case 'midpoint':
-      case 'axisMid':
-        el('polygon', { points: `${x},${y - r - 1} ${x + r + 1},${y + r} ${x - r - 1},${y + r}`, ...common });
-        break;
-      case 'centre':
-      case 'axisEnd':
-        el('circle', { cx: x, cy: y, r, ...common });
-        el('circle', { cx: x, cy: y, r: 1.6, fill: stroke });
-        break;
-      case 'axis':
-        el('polygon', { points: `${x},${y - r} ${x + r},${y} ${x},${y + r} ${x - r},${y}`, ...common });
-        break;
-      case 'edge':
-        el('path', { d: `M${x - r} ${y - r}L${x + r} ${y + r}M${x + r} ${y - r}L${x - r} ${y + r}`, ...common });
-        break;
-      default:
-        el('circle', { cx: x, cy: y, r: 3.5, fill, stroke, 'stroke-width': 1.6 });
-    }
+  private glyph(el: (tag: string, attrs: Record<string, string | number>) => Element, at: [number, number], kind: SnapCandidate['kind'], stroke: string, fill: string): void {
+    drawSnapGlyph(el, at, kind, stroke, fill);
+  }
+}
+
+/** Revit-style snap marks: square endpoint, triangle midpoint, circle centre, diamond centreline, X on an edge. */
+export function drawSnapGlyph(el: (tag: string, attrs: Record<string, string | number>) => Element, [x, y]: [number, number], kind: SnapCandidate['kind'], stroke: string, fill: string): void {
+  const common = { fill: 'none', stroke, 'stroke-width': 2 };
+  const r = 6;
+  switch (kind) {
+    case 'endpoint':
+      el('rect', { x: x - r, y: y - r, width: r * 2, height: r * 2, ...common });
+      break;
+    case 'midpoint':
+    case 'axisMid':
+      el('polygon', { points: `${x},${y - r - 1} ${x + r + 1},${y + r} ${x - r - 1},${y + r}`, ...common });
+      break;
+    case 'centre':
+    case 'axisEnd':
+      el('circle', { cx: x, cy: y, r, ...common });
+      el('circle', { cx: x, cy: y, r: 1.6, fill: stroke });
+      break;
+    case 'axis':
+      el('polygon', { points: `${x},${y - r} ${x + r},${y} ${x},${y + r} ${x - r},${y}`, ...common });
+      break;
+    case 'edge':
+      el('path', { d: `M${x - r} ${y - r}L${x + r} ${y + r}M${x + r} ${y - r}L${x - r} ${y + r}`, ...common });
+      break;
+    default:
+      el('circle', { cx: x, cy: y, r: 3.5, fill, stroke, 'stroke-width': 1.6 });
   }
 }
 

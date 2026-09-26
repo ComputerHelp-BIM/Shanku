@@ -1,4 +1,4 @@
-# @shanku/web 0.42.0
+# @shanku/web 0.43.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.43.0 — 2026-09-26
+- Annotate tab with Revit’s Dimension panel: Aligned (strings; square to parallel references), Linear, Angular, Radial, Diameter, Arc Length, Spot Elevation, Spot Coordinate, Spot Slope. Placed in plans, sections, elevations and 3D views; kept with their view (saved with the views); place, move (grip), text edits (Prefix, Suffix, Below, Replace With Text in Properties) and Delete are each one undo step; they follow their elements on live Revit updates and go with deleted ones. DI (aligned) and EL (spot elevation); palette commands; Guide “Dimensions”.
 
 ### 0.42.0 — 2026-09-26
 - Measure (Model → Measure, the Quick Access toolbar, ME): Distance with Revit-style snaps (endpoint, midpoint, face centre, centreline end and midpoint, centreline, nearest on edge, face), ΔX ΔY ΔZ and the perpendicular distance between parallel references; Clear & C/C between two elements; Along a centreline, an edge or a chain of joined walls or beams; Face area; Chain with a running total. 3D views, plans, sections and elevations (2D views measure in the view plane). Results stay on the view, with Copy.

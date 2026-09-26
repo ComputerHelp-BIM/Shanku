@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.43.0 — 2026-09-26
+
+### Added
+- Annotate → Dimension, as in Revit: Aligned, Linear, Angular, Radial, Diameter, Arc Length, Spot Elevation, Spot Coordinate and Spot Slope, placed in plans, sections, elevations and 3D views, kept with their view, undoable, text overrides in Properties, a grip to move, following the model on live Revit updates. Engine 0.33.0, web 0.43.0, brand 1.9.0 (nine icons), ui 0.15.3, playground 0.1.16.
+
+### Changed
+- Measure and the Dimension tools show a one-line strip over the top of the view (like Revit's Options Bar); measurement results moved to a card in the lower right, so the model under the old bar stays clickable.
+
 ## 0.42.0 — 2026-09-26
 
 ### Added

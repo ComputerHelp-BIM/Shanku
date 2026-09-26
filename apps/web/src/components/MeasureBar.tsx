@@ -26,31 +26,33 @@ export function MeasureBar({ readout: r, onMode, onClear, onClose }: MeasureBarP
     }
   };
   return (
-    <section className="app-measure" aria-label="Measure">
-      <div className="app-measure__head">
-        <strong>Measure</strong>
-        <div className="app-segmented" role="radiogroup" aria-label="What to measure">
-          {MEASURE_MODES.map((m) => (
-            <button key={m.id} type="button" role="radio" aria-checked={r.mode === m.id} className={r.mode === m.id ? 'is-active' : undefined} title={m.tip} onClick={() => onMode(m.id)}>
-              {m.label}
-            </button>
-          ))}
-        </div>
-        <button type="button" className="app-measure__close" aria-label="Close Measure (Esc)" title="Close Measure (Esc)" onClick={onClose}>
-          ×
-        </button>
+    <>
+    <section className="app-toolstrip" aria-label="Measure">
+      <strong>Measure</strong>
+      <div className="app-segmented" role="radiogroup" aria-label="What to measure">
+        {MEASURE_MODES.map((m) => (
+          <button key={m.id} type="button" role="radio" aria-checked={r.mode === m.id} className={r.mode === m.id ? 'is-active' : undefined} title={m.tip} onClick={() => onMode(m.id)}>
+            {m.label}
+          </button>
+        ))}
       </div>
-      <p className="app-measure__prompt" aria-live="polite">
-        {r.prompt}
-      </p>
-      {r.hover ? (
-        <p className="app-measure__hover">
-          <span>{r.hover.label}</span>
-          {r.hover.total > 1 ? <em>{r.hover.position} of {r.hover.total} · Tab</em> : null}
-          {r.live ? <b>{r.live}</b> : null}
-        </p>
-      ) : null}
-      {latest ? (
+      <span className="app-toolstrip__prompt" aria-live="polite" title={r.prompt}>
+        {r.hover ? (
+          <>
+            <span className="app-toolstrip__hover">{r.hover.label}</span>
+            {r.hover.total > 1 ? <em>{r.hover.position} of {r.hover.total} · Tab</em> : null}
+            {r.live ? <b>{r.live}</b> : null}
+          </>
+        ) : (
+          r.prompt
+        )}
+      </span>
+      <button type="button" className="app-toolstrip__close" aria-label="Close Measure (Esc)" title="Close Measure (Esc)" onClick={onClose}>
+        ×
+      </button>
+    </section>
+    {latest ? (
+    <section className="app-measure" aria-label="Measurements">
         <div className="app-measure__result">
           <div className="app-measure__title">
             <span>{latest.title}</span>
@@ -73,7 +75,6 @@ export function MeasureBar({ readout: r, onMode, onClear, onClose }: MeasureBarP
             </button>
           </div>
         </div>
-      ) : null}
       {older.length ? (
         <ul className="app-measure__older" aria-label="Earlier measurements">
           {older.slice(0, 5).map((m) => (
@@ -87,5 +88,7 @@ export function MeasureBar({ readout: r, onMode, onClear, onClose }: MeasureBarP
         </ul>
       ) : null}
     </section>
+    ) : null}
+    </>
   );
 }

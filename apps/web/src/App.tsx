@@ -20,7 +20,7 @@ import {
   useShortcut,
   useTheme,
 } from '@shanku/ui';
-import { runChecks, CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, EXPLODE_MODES, boxState, MEASURE_MODES, type MeasureMode, type ExplodeMode, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
+import { runChecks, CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, EXPLODE_MODES, boxState, MEASURE_MODES, DIMENSION_TOOLS, dimensionSummary, dimensionValues, followModel, type DimensionKind, type PlacedDimension, type Vec3, type MeasureMode, type ExplodeMode, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
 import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
@@ -77,7 +77,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.42.0';
+const APP_VERSION = '0.43.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -86,7 +86,7 @@ const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'realistic', label: 'Realistic', keys: '' },
 ];
 // Revit comes last, where Revit puts add-in tabs.
-const RIBBON_TABS = ['Model', 'View', 'Manage', 'Revit'].map((label) => ({ id: label.toLowerCase(), label }));
+const RIBBON_TABS = ['Model', 'Annotate', 'View', 'Manage', 'Revit'].map((label) => ({ id: label.toLowerCase(), label }));
 
 
 /** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
@@ -114,7 +114,21 @@ export function App({ start }: { start?: AppStart } = {}) {
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>('shaded');
   const [sectionBox, setSectionBox] = useState(false);
   /** Measure tool mode (null: closed). 3D views, plans, sections and elevations. */
-  const [measure, setMeasure] = useState<MeasureMode | null>(null);
+  const [measure, setMeasureState] = useState<MeasureMode | null>(null);
+  /** Dimension tool (Annotate → Dimension), and the selected placed dimensions of the active view. */
+  const [dimTool, setDimToolState] = useState<DimensionKind | null>(null);
+  const [dimSel, setDimSel] = useState<string[]>([]);
+  // One tool at a time: Measure and the Dimension tools close each other.
+  const setMeasure = (next: MeasureMode | null | ((cur: MeasureMode | null) => MeasureMode | null)) =>
+    setMeasureState((cur) => {
+      const v = typeof next === 'function' ? next(cur) : next;
+      if (v) setDimToolState(null);
+      return v;
+    });
+  const setDimTool = (next: DimensionKind | null) => {
+    if (next) setMeasureState(null);
+    setDimToolState(next);
+  };
   /** Revit's Shadows On/Off (view control bar), remembered on this device. */
   const [shadows, setShadowsState] = useState<boolean>(() => {
     try {
@@ -610,6 +624,10 @@ export function App({ start }: { start?: AppStart } = {}) {
         case 'measure':
           if (!model) return setNotice('Open a model to measure it.');
           return setMeasure((cur) => (cur ? null : 'distance'));
+        case 'dimAligned':
+        case 'spotElevation':
+          if (!model) return setNotice('Open a model to dimension it.');
+          return setDimTool(cmd === 'dimAligned' ? 'aligned' : 'spotElevation');
         case 'sectionBox': {
           if (isTwoD(activeModelView ?? undefined)) return setNotice('Section boxes are for 3D views; plans and sections have a view range (Properties).');
           if (!sectionBox && !sel.length) return void needSelection();
@@ -642,6 +660,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   useShortcut({ code: 'Escape' }, () => {
     if (sectionTool) return cancelSection();
     if (annSel.length) setAnnSel([]);
+    if (dimSel.length) setDimSel([]);
     if (activeDoc) dx.select(activeDoc.id, null);
     else if (zoomRegion) viewport.current?.cancelZoomRegion();
     else m.setSelection([]);
@@ -653,6 +672,10 @@ export function App({ start }: { start?: AppStart } = {}) {
 
   // Delete: selected sections go with their views (Revit), as one undoable step.
   useShortcut({ code: 'Delete' }, () => {
+    if (dimSel.length && activeView) {
+      deleteDimensions(dimSel);
+      return;
+    }
     const ids = annSel.filter((id) => id.startsWith('section:'));
     if (!ids.length) return;
     const before = viewsRef.current, after = before.filter((v) => !ids.includes(v.id));
@@ -1097,6 +1120,9 @@ export function App({ start }: { start?: AppStart } = {}) {
   // Undo / redo, as in Revit: Ctrl + Z, Ctrl + Y (and Ctrl + Shift + Z)
   // Heights of levels in the viewer; zY turns one into the model's own elevation (the file's origin shift).
   const zY = originY(m.model?.coordination);
+  // The file's origin in the viewer (web-ifc's shift): spot elevations and coordinates are the file's own.
+  const coordination = m.model?.coordination;
+  const dimOrigin = useMemo<Vec3>(() => (coordination && coordination.length === 16 ? [coordination[12], coordination[13], coordination[14]] : [0, 0, 0]), [coordination]);
   const heights = useMemo(() => (m.model ? levelHeights(m.model.info.levels, m.model.elements, m.model.info.units.length, zY) : new Map<string, number>()), [m.model?.info, zY]); // eslint-disable-line react-hooks/exhaustive-deps
   const bounds = useMemo(() => {
     const min: [number, number, number] = [Infinity, Infinity, Infinity], max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
@@ -1107,6 +1133,32 @@ export function App({ start }: { start?: AppStart } = {}) {
     return { min, max };
   }, [m.model?.info]); // eslint-disable-line react-hooks/exhaustive-deps
   const activeModelView = views.find((v) => v.id === activeView) ?? null;
+  // Dimensions belong to their view: switching views drops the dimension selection.
+  useEffect(() => {
+    setDimSel([]);
+  }, [activeView]);
+  // A live update from Revit moves dimension references with their elements; deleted elements take theirs away (Revit).
+  const lastRevision = useRef(m.model?.revision ?? 0);
+  useEffect(() => {
+    const rev = m.model?.revision ?? 0;
+    if (!m.model || rev === lastRevision.current) {
+      lastRevision.current = rev;
+      return;
+    }
+    lastRevision.current = rev;
+    let dropped = 0;
+    let changed = false;
+    const next = viewsRef.current.map((v) => {
+      if (!v.dims?.length) return v;
+      const r = followModel(v.dims, m.model!.elements);
+      dropped += r.dropped;
+      if (!r.moved && !r.dropped) return v;
+      changed = true;
+      return { ...v, dims: r.dims };
+    });
+    if (changed) setViews(next);
+    if (dropped) setNotice(`${dropped} dimension${dropped === 1 ? '' : 's'} removed with the elements Revit deleted.`);
+  }, [m.model?.revision]); // eslint-disable-line react-hooks/exhaustive-deps
   // View symbols for the active view (section / elevation marks in plans, levels in elevations).
   const marks = useMemo(() => marksFor(activeModelView, views, heights, bounds, zY), [activeModelView, views, heights, bounds, zY]);
   const resolved = useMemo(() => (m.model ? resolveGraphics(m.model.elements, graphics) : { hidden: [], overrides: [] }), [m.model, graphics]);
@@ -1252,6 +1304,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   /** Revit's Section tool: two clicks in a plan, section or elevation (not in 3D views). */
   const startSection = () => {
     setMeasure(null); // one tool at a time
+    setDimTool(null);
     const v = activeModelView;
     if (!v || !isTwoD(v)) return setNotice('Draw sections in a plan, section or elevation view.');
     const create = (a: [number, number], b: [number, number]) => {
@@ -1288,6 +1341,44 @@ export function App({ start }: { start?: AppStart } = {}) {
   };
 
   /** Properties of a selected view symbol (Revit shows a level's or section's properties when picked). */
+  // ---- Dimensions (Annotate → Dimension): kept with their view, every change one undo step
+  const setViewDims = (label: string, viewId: string, change: (dims: PlacedDimension[]) => PlacedDimension[]) => {
+    const before = viewsRef.current;
+    const after = before.map((v) => (v.id === viewId ? { ...v, dims: change(v.dims ?? []) } : v));
+    history.run(label, (tx) => tx.change('views', before, after, setViews));
+  };
+  const dimName = (k: DimensionKind) => DIMENSION_TOOLS.find((t) => t.id === k)?.label ?? 'Dimension';
+  const placeDimension = (d: PlacedDimension) => {
+    if (!activeView) return;
+    setViewDims(`Place ${dimName(d.kind).toLowerCase()}${d.kind.startsWith('spot') ? '' : ' dimension'}`, activeView, (ds) => [...ds, d]);
+    setNotice(dimensionSummary(d, dimOrigin));
+  };
+  const deleteDimensions = (ids: string[]) => {
+    if (!activeView) return;
+    setViewDims(ids.length > 1 ? `Delete ${ids.length} dimensions` : 'Delete dimension', activeView, (ds) => ds.filter((d) => !ids.includes(d.id)));
+    setDimSel([]);
+  };
+  const dimPropsFor = (sel: number[]) => {
+    if (!dimSel.length || sel.length || annSel.length) return undefined;
+    const dims = (activeModelView?.dims ?? []).filter((d) => dimSel.includes(d.id));
+    if (!dims.length) return undefined;
+    if (dims.length > 1) return { kind: 'Dimensions', name: `${dims.length} selected`, rows: [{ section: 'Dimensions', label: 'Delete', value: 'Press Delete' }] };
+    const d = dims[0];
+    const edit = (field: 'prefix' | 'suffix' | 'below' | 'replace') => (txt: string) =>
+      activeView && setViewDims('Edit dimension text', activeView, (ds) => ds.map((x) => (x.id === d.id ? { ...x, text: { ...x.text, [field]: txt.trim() || undefined } } : x)));
+    return {
+      kind: d.kind.startsWith('spot') ? 'Spot Dimension' : 'Dimension',
+      name: dimName(d.kind),
+      rows: [
+        { section: 'Value', label: d.kind === 'spotCoordinate' ? 'Coordinates' : 'Value', value: dimensionValues(d, dimOrigin).join(d.kind === 'spotCoordinate' ? ', ' : ' + ') },
+        ...(d.kind === 'aligned' || d.kind === 'linear' ? [{ section: 'Value', label: 'Segments', value: Math.max(1, d.points.length - 1) }] : []),
+        { section: 'Dimension Text', label: 'Prefix', value: d.text?.prefix ?? '', onCommit: edit('prefix') },
+        { section: 'Dimension Text', label: 'Suffix', value: d.text?.suffix ?? '', onCommit: edit('suffix') },
+        { section: 'Dimension Text', label: 'Below', value: d.text?.below ?? '', onCommit: edit('below') },
+        { section: 'Dimension Text', label: 'Replace With Text', value: d.text?.replace ?? '', onCommit: edit('replace') },
+      ],
+    };
+  };
   const symbolPropsFor = (sel: number[]) => {
     if (!annSel.length || sel.length) return undefined;
     if (annSel.length > 1) return { kind: 'View symbols', name: `${annSel.length} selected`, rows: [] };
@@ -1768,6 +1859,20 @@ export function App({ start }: { start?: AppStart } = {}) {
         why: needModel,
         run: () => setColorMode(cm.id),
       })),
+      ...DIMENSION_TOOLS.map((t) => ({
+        id: `annotate.${t.id}`,
+        title: `${t.label}${t.id.startsWith('spot') ? '' : ' dimension'}`,
+        group: 'View' as const,
+        keys: t.keys,
+        keywords: `dimension annotate revit ${t.tip}`,
+        checked: dimTool === t.id,
+        enabled: hasModel && !activeDoc,
+        why: activeDoc ? 'Dimensions work in 3D views, plans, sections and elevations.' : needModel,
+        run: () => {
+          if (sectionTool) cancelSection();
+          setDimTool(t.id);
+        },
+      })),
       ...MEASURE_MODES.map((mm) => ({
         id: `measure.${mm.id}`,
         title: `Measure: ${mm.label}`,
@@ -1910,6 +2015,25 @@ export function App({ start }: { start?: AppStart } = {}) {
               onClick={() => toggleWin('boq')}
               shortcutHint="bill of quantities with rates and Excel export"
             />
+          </RibbonGroup>
+            </>
+          ) : ribbonTab === 'annotate' ? (
+            <>
+          <RibbonGroup label="Dimension">
+            {DIMENSION_TOOLS.map((t) => (
+              <RibbonButton
+                key={t.id}
+                icon={t.icon as 'dimAligned'}
+                label={t.label}
+                active={dimTool === t.id}
+                disabled={!m.model || !!activeDoc}
+                onClick={() => setDimTool(dimTool === t.id ? null : t.id)}
+                shortcutHint={`${t.keys ? `${t.keys} · ` : ''}${t.tip}`}
+              />
+            ))}
+          </RibbonGroup>
+          <RibbonGroup label="Measure">
+            <RibbonButton icon="measure" label="Measure" active={!!measure} disabled={!m.model} onClick={() => runCommand('measure')} shortcutHint="ME · temporary, not placed" />
           </RibbonGroup>
             </>
           ) : ribbonTab === 'view' ? (
@@ -2166,9 +2290,23 @@ export function App({ start }: { start?: AppStart } = {}) {
               if (JSON.stringify(next) === JSON.stringify(base.section)) return setViews(base.views); // a click, not a drag
               history.run(`${label}: ${v.name}`, (tx) => tx.change('views', base.views, withSection(base.views, next), setViews));
             }}
-            toolActive={sectionTool || !!measure}
+            toolActive={sectionTool || !!measure || !!dimTool}
             measure={activeDoc ? null : measure}
             onMeasureChange={setMeasure}
+            dimensions={activeModelView?.dims}
+            dimensionSelection={dimSel}
+            dimensionOrigin={dimOrigin}
+            dimensionTool={activeDoc ? null : dimTool}
+            onDimensionToolChange={setDimTool}
+            onDimensionPlaced={placeDimension}
+            onDimensionClick={(id, mode) => {
+              setDimSel((cur) => applyMode(cur, [id], mode));
+              if (mode === 'replace') {
+                m.setSelection([]);
+                setAnnSel([]);
+              }
+            }}
+            onDimensionEdit={(id, _before, after) => activeView && setViewDims('Move dimension', activeView, (ds) => ds.map((d) => (d.id === id ? { ...d, at: after } : d)))}
             onBoxSelect={(ids, mode, anns) => {
               setAnnSel((cur) => applyMode(mode === 'replace' ? [] : cur, anns ?? [], mode === 'replace' ? 'add' : mode));
               m.boxSelect(ids, mode);
@@ -2631,6 +2769,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                     onEditMarkRules={() => setMarkDialog(true)}
                     revit={revitProps}
                     view={
+                      dimPropsFor(sel) ??
                       symbolPropsFor(sel) ??
                       (activeModelView
                         ? {

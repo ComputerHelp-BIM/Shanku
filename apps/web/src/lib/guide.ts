@@ -226,6 +226,25 @@ export const GUIDE: GuideSection[] = [
     ],
   },
   {
+    id: 'dimensions',
+    group: 'Guide',
+    title: 'Dimensions',
+    blocks: [
+      { p: '**Annotate → Dimension** has Revit’s nine tools. Dimensions stay in the view they were placed in (like Revit, they are view-specific), are saved with the views, and every placement, move, edit and delete is one undo step. They work in plans, sections, elevations and 3D views (in 3D on the plan or elevation plane facing you).' },
+      { list: [
+        '**Aligned** (DI): pick references (edges, faces, points, centrelines; Tab cycles), keep picking for a string, then click an empty spot to place. Between parallel edges or faces it measures square to them.',
+        '**Linear**: two points, measured horizontally or vertically in the view; move the cursor up/down or sideways to choose.',
+        '**Angular**: two edges or centrelines; the quadrant follows where you place the arc.',
+        '**Radial**, **Diameter**, **Arc Length**: point at a circular edge (round column, pile, curved beam). Shanku rebuilds the circle from the model’s facets, within about a millimetre.',
+        '**Spot Elevation** (EL): a point’s elevation in metres, from the file’s own origin (top of slab, beam soffit, founding level).',
+        '**Spot Coordinate**: north and east of a point, from the file’s origin.',
+        '**Spot Slope**: a face’s slope in percent with an arrow pointing downhill; level and vertical faces say so.',
+      ] },
+      { p: 'Click a dimension to select it: **Properties** shows its value and Revit’s Dimension Text (Prefix, Suffix, Below, Replace With Text). Drag its square grip to move the line; **Delete** removes it. When Revit sends changes, dimensions move with their elements, and ones on deleted elements go, as in Revit.' },
+      { note: 'Measure (Model → Measure) is still there for quick readings that are not kept, as in Revit.' },
+    ],
+  },
+  {
     id: 'marks',
     group: 'Guide',
     title: 'Selecting by marks',
@@ -361,6 +380,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.43.0', date: '2026-09-26', items: ['Annotate → Dimension, as in Revit: Aligned (strings), Linear, Angular, Radial, Diameter, Arc Length, Spot Elevation, Spot Coordinate and Spot Slope, placed in plans, sections, elevations and 3D views. Kept with the view, undoable, text overrides in Properties, a grip to move them, and they follow the model when Revit sends changes. DI and EL.'] },
           { version: '0.42.0', date: '2026-09-26', items: ['Measure (Model → Measure, ME): distance with Revit-style snaps and Tab, clear distance and centre to centre, along an element or a chain of joined walls and beams, face area, and chain measure, in 3D views, plans, sections and elevations.', 'Tab over the view steps through the elements under the cursor, then a chain of joined walls or beams, as in Revit; the browser no longer jumps between fields there.'] },
           { version: '0.41.0', date: '2026-09-26', items: ['One definition of an element’s level, for every model: the lowest level at or above its top. Models loaded back from Revit now show columns and walls on the same levels as the drawing; the IFC storey stays visible in Properties, and QA lists a CH-LEVEL that differs.'] },
           { version: '0.40.0', date: '2026-09-26', items: ['DXF → 3D: a level is now the top of its storey (Revit’s convention); Level 1 is ±0. Export to Revit hosts every element on its own level, walls top-constrained, and writes marks to CH-ScheduleMark instead of Mark.', 'Fixed: level heights in elevations and sections now show the model’s own elevations (they could be off by the file’s origin shift).'] },

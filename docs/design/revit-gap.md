@@ -10,9 +10,9 @@ Views (plans, 3D, sections and elevations, each with its own settings), the Proj
 
 | # | Feature | Revit name / key | Why modellers use it daily | How in Shanku |
 |---|---|---|---|---|
-| 1 | Measure | Measure Between Two References | Checking a clear span or a cover without placing a dimension | **Built in 0.41.0 (3D, plans, sections, elevations):** distance with snaps and Tab, clear & C/C, along, face area, chain. DXF view next. |
+| 1 | Measure | Measure Between Two References | Checking a clear span or a cover without placing a dimension | **Built in 0.42.0 (3D, plans, sections, elevations):** distance with snaps and Tab, clear & C/C, along, face area, chain. DXF view next. |
 | 2 | Filter selection | Modify → Filter | Box-select a floor, then keep only beams | A dialog of category counts with checkboxes, like the Quick Select panel. It needs the selection plus a category set. |
-| 3 | Tab cycling | Tab | Picking the beam under a slab edge | **Built in 0.41.0:** elements under the cursor front to back, then a chain of joined walls or beams; "2 of 3" shown over the view; the choice is outlined through what is in front. |
+| 3 | Tab cycling | Tab | Picking the beam under a slab edge | **Built in 0.42.0:** elements under the cursor front to back, then a chain of joined walls or beams; "2 of 3" shown over the view; the choice is outlined through what is in front. |
 | 4 | Selection sets | Manage → Save / Load Selection | Coming back to "Level 3 transfer beams" | Named sets saved with the session. They show in the Project Browser and the palette, and Python can read them. |
 | 5 | Thin lines | TL | Reading dense plans | One uniform in the edge material and a toggle in the view bar. |
 | 6 | Selection toggles | Select links / pinned / by face | Stopping accidental picks | Pick filters by category (for example, never pick slabs) in the status bar. |
@@ -26,7 +26,7 @@ Views (plans, 3D, sections and elevations, each with its own settings), the Proj
 |---|---|---|---|---|
 | 10 | Schedules | View → Schedules | Every take-off and every check | Table views per category with chosen fields, sorting, grouping, totals and filters. Clicking a row selects the element. Export to CSV or Excel. The BOQ grid is the starting point. |
 | 11 | Tags | Tag by Category, Tag All (TG) | Marks on plans for site drawings | Display-only tags from the mark rules, placed automatically and kept apart by leader rules. They are saved per view. |
-| 12 | Saved dimensions and text | DI, TX | Marking up clear spans and notes | Persistent annotations per view, undoable. Temporary dimensions can be made permanent with one click, as in Revit. |
+| 12 | Saved dimensions and text | DI, TX | Marking up clear spans and notes | **Dimensions built in 0.43.0:** the nine Annotate → Dimension tools, per view, undoable, text overrides, following live updates. Still to do: text notes (TX), making a temporary dimension permanent, sending dimensions to Revit. |
 | 13 | Revision clouds and markup | Revision Cloud | Review comments | Markup per view, exported as BCF. This links to revision-timeline.md. |
 | 14 | CAD underlay | Link CAD | Checking the model against the architect's plan | Draw a DXF inside a plan view at its level with a halftone option. Both viewers exist; this joins them. |
 | 15 | Linked models | Manage Links | Architecture and structure together | Several IFCs in one scene, each with an offset and its own visibility. Element ids become (model, index). |
