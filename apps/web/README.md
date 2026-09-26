@@ -1,4 +1,4 @@
-# @shanku/web 0.40.0
+# @shanku/web 0.41.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.41.0 — 2026-09-26
+- **One definition of an element's level for Shanku and Revit** (engine 0.31.0): the lowest level at or above its top. A model loaded back from Revit, which files columns and walls under their base level, now shows every element on the same level as the DXF → 3D model: Project Browser, isolate by level, BOQ, colours and filters. Properties shows the file's **IFC storey** and **CH-LEVEL** beside **Level** when they differ; QA lists a CH-LEVEL that differs (e.g. after copying a floor in Revit). Written down in `docs/design/levels.md`. IFCs whose levels are floors (no level at the roof) keep their own storeys; Properties shows which reading applies (Levels: "Top of storey" or "As filed (floor levels)").
 
 ### 0.40.0 — 2026-09-26
 - **A level is the top of its storey** (pipeline 2.0.0, engine 0.30.0): DXF → 3D level elevations, Shanku's level lines and the levels sent to Revit now agree, and match Revit's structural convention. Level 1 is ±0. The DXF → 3D table's column is now "Level (mm)".

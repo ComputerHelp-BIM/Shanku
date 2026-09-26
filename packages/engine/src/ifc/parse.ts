@@ -15,6 +15,7 @@ import { GrowableF32, GrowableU32 } from './buffers';
 import { featureEdges } from './edges';
 import { assessCompatibility, readViewDefinition } from './compat';
 import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, detectMarks } from './marks';
+import { assignLevels } from '../model/levelRule';
 import { readMaterials, readQuantities } from './quantities';
 
 export interface ParseOptions {
@@ -145,6 +146,8 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
   const marks = detectMarks(api, modelID, options.markRules ?? DEFAULT_MARK_RULES);
   const quantitySets = api.GetLineIDsWithType(modelID, WebIFC.IFCELEMENTQUANTITY).size();
   const grades = detectMarks(api, modelID, options.gradeRules ?? DEFAULT_GRADE_RULES);
+  // CH-LEVEL (a label written by Export to Revit): kept to check against the level by definition
+  const chLevels = detectMarks(api, modelID, ['CH-LEVEL']);
   const qtys = readQuantities(api, modelID, units);
   const materials = readMaterials(api, modelID, typeIdOf);
   const viewDefinition = readViewDefinition(new TextDecoder().decode(bytes.subarray(0, 4096)));
@@ -185,6 +188,7 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
         tag: str(line.Tag),
         typeName: typeOf.get(expressId) ?? '',
         level: levelOf.get(expressId) ?? '',
+        chLevel: chLevels.byExpressId.get(expressId)?.[0] || undefined,
         mark: marks.byExpressId.get(expressId)?.[0] ?? '',
         markSource: marks.byExpressId.get(expressId)?.[1] ?? '',
         grade: grades.byExpressId.get(expressId)?.[0] ?? materials.get(expressId) ?? '',
@@ -329,6 +333,7 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
     // web-ifc's shift to the origin (COORDINATE_TO_ORIGIN): patches are mapped into this space
     coordination: coordinationOf(api, modelID),
   };
+  assignLevels(model); // Shanku's one level definition (model/levelRule.ts); the file's storey kept
   return { modelID, model };
 }
 

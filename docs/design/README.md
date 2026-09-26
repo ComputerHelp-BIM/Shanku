@@ -11,4 +11,5 @@ Proposals for features that are not built yet. Each one says what exists today, 
 | [revit-gap.md](revit-gap.md) | Analysis | Revit features BIM modellers use daily that Shanku lacks, easy to advanced (25 items), with how each fits Shanku and the recommended next three. |
 | [quick-wins.md](quick-wins.md) | Analysis | Easy features: A1–A9 exist in Revit or only through add-ons; B1–B10 are not in Revit even with add-ons. Each one reuses existing Shanku code. |
 | [revit-parity.md](revit-parity.md) | Living | Revit 2025 patterns in Shanku's panels (Properties, Project Browser, Type Properties, docking, scrollbars): what, why, where in code, and the design review log. |
+| [levels.md](levels.md) | Living | The one definition of an element's level (lowest level at or above its top) for Shanku, the pipeline and Export to Revit. |
 

@@ -1,4 +1,4 @@
-# @shanku/engine 0.30.0
+# @shanku/engine 0.31.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -49,6 +49,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.31.0 — 2026-09-26
+- **One level definition** (`model/levelRule.ts`, `docs/design/levels.md`): an element's level is the lowest level at or above its top (beams, slabs and footings may rise `UPSTAND_TOLERANCE`, 600 mm; above the highest level: the highest). Applied when a model loads (`assignLevels`), from the storeys' declared elevations moved by the file's origin shift. Elements keep `storey` (the file's IfcBuildingStorey; Revit files columns and walls under their base level) and `chLevel` (CH-LEVEL). Level counts follow. A file whose levels are floors (more than `FLOOR_FILE_SHARE`, 15 %, of the elements finish above the highest level: many IFCs from other programs) keeps its own storeys; `info.levelConvention` says which reading applies.
+- QA **`level-label`**: CH-LEVEL differs from the level (grouped per mismatch). `no-level` explains its measure.
 
 ### 0.30.0 — 2026-09-26
 - **DXF → 3D pipeline 2.0.0 (breaking: what a level's elevation means).** A level is the top of its storey, Revit's structural convention: the frame labelled Level n holds the structure below Level n; Level 1 (foundation) is ±0 with the foundations below it (was: the lowest footing bottom); storey Level n sits at the sum of the heights of levels 2..n (was: the storey's floor). Element geometry is unchanged: IFC placements are relative to the storey. Levels carry `bottom` (the storey's floor).

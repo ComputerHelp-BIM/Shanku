@@ -1,6 +1,6 @@
 {
   "name": "@shanku/engine",
-  "version": "0.30.0",
+  "version": "0.31.0",
   "description": "Shanku model engine: IFC loading (web-ifc, in a worker), element model, and the three.js viewer with Revit-style navigation and ID-buffer picking.",
   "license": "UNLICENSED",
   "type": "module",

@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.41.0 — 2026-09-26
+
+### Changed
+- One level definition for every model: the lowest level at or above the element's top (docs/design/levels.md). Round trips DXF → Shanku → Revit → Shanku keep every element on its level; the IFC storey and CH-LEVEL stay visible; QA flags a CH-LEVEL that differs. Engine 0.31.0.
+
 ## Shanku Bridge for Revit 0.7.1 — 2026-09-26
 
 ### Fixed

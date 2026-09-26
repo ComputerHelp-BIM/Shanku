@@ -344,10 +344,34 @@ const noLevel: QaCheck = {
       finding(this, 'warning', els, {
         title: `${cap(noun(c, els.length))} without a level`,
         detail: `${count(els.length)} ${noun(c, els.length)} ${verb(els.length, 'is', 'are')} not on any level (${examples(els)}). Plans, the Project Browser and the BOQ by level leave them out.`,
-        measured: 'The IFC spatial containment (IfcBuildingStorey) of each element.',
-        limits: 'Does not check that the level is the right one.',
+        measured: 'Each element’s level by Shanku’s definition (the lowest level at or above its top), else the IFC storey it is filed under.',
+        limits: 'An element without geometry or levels to judge by keeps the storey its file gives it.',
       }),
     );
+  },
+};
+
+/** CH-LEVEL is a label: after copying floors in Revit it can go stale. Shanku's level follows the top. */
+const levelLabel: QaCheck = {
+  id: 'level-label',
+  group: 'model',
+  title: 'CH-LEVEL differs from the level',
+  run({ elements }) {
+    const groups = new Map<string, ElementRecord[]>();
+    for (const e of elements) {
+      if (!e.chLevel || !e.level || e.chLevel === e.level) continue;
+      const k = `${e.chLevel}\u0001${e.level}`;
+      groups.set(k, [...(groups.get(k) ?? []), e]);
+    }
+    return [...groups.entries()].map(([k, els]) => {
+      const [label, level] = k.split('\u0001');
+      return finding(this, 'warning', els, {
+        title: `CH-LEVEL says ${label}, the top is at ${level}`,
+        detail: `${count(els.length)} element${els.length === 1 ? '' : 's'} (${examples(els)}) carry CH-LEVEL “${label}” but finish at ${level}. Shanku puts ${els.length === 1 ? 'it' : 'them'} on ${level}; update CH-LEVEL in Revit if the label is stale (for example after copying a floor).`,
+        measured: 'CH-LEVEL against the level by Shanku’s definition: the lowest level at or above the element’s top (beams, slabs and footings may rise 600 mm above it).',
+        limits: 'Only elements that have a CH-LEVEL parameter.',
+      });
+    });
   },
 };
 
@@ -489,7 +513,7 @@ const markConflicts: QaCheck = {
 };
 
 /** The first set of checks (actionable-QA phase 1): model health and marks. */
-export const DEFAULT_CHECKS: readonly QaCheck[] = [duplicates, overlappingColumns, discontinuousColumns, tinyElements, unusualLength, noLevel, noGrade, lateralGap, missingMark, markConflicts];
+export const DEFAULT_CHECKS: readonly QaCheck[] = [duplicates, overlappingColumns, discontinuousColumns, tinyElements, unusualLength, noLevel, levelLabel, noGrade, lateralGap, missingMark, markConflicts];
 
 const RANK: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
 
