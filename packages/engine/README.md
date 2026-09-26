@@ -1,4 +1,4 @@
-# @shanku/engine 0.30.0
+# @shanku/engine 0.31.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -25,6 +25,10 @@ Requires `three` 0.186 and `web-ifc` 0.0.77. The app must serve `web-ifc.wasm` a
 
 Methods: `fit(indices?)` (ZF/ZE/ZX/ZA), `home()`, `setView(view)`, `previousView()` (ZP/ZC), `startZoomRegion()` (ZR/ZZ), `setHidden(indices)` (HH/HI/IC/HR), `setSectionBox(indices | null)` (BX), `setDisplayStyle('shaded' | 'consistent' | 'hiddenLine' | 'wireframe')` (SD/CO/HL/WF).
 
+## Measure and Tab
+
+`startMeasure('distance' | 'clear' | 'along' | 'face' | 'chain')` turns clicks into measurements; `onMeasure` reports the prompt, the current choice (Tab / Shift+Tab cycle it), the rubber band length and the results. Esc drops a half-made measurement, then closes the tool. With the pointer over the view, Tab steps through the elements under the cursor and then a chain joined end to end (`onTabCycle`); a click takes the current one. Centrelines are fitted to the geometry (IFC has no analytical lines): exact for straight prisms.
+
 ## DXF 2D view
 
 `src/dxf/extract.py` uses ezdxf's own drawing front end, so blocks, dimensions, leaders, hatches and BYLAYER/BYBLOCK colours resolve as ezdxf renders them. Linetypes are drawn solid for speed. Text is placed by insertion point, height, rotation and alignment in the app's UI font (not the drawing's SHX font). Coordinates are rebased to the drawing's lower-left corner for float precision; the cursor readout adds the origin back.
@@ -49,6 +53,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.31.0 — 2026-09-26
+- `render/measure.ts`: geometry index by element, ray casting through every element (front to back, section box and hidden elements respected), flat faces (area, perimeter, centre, outline), centrelines fitted to columns, piles, beams, braces and walls, joined chains, clear distance between elements (vertex–face and edge–edge, 0 when overlapping), centre-to-centre, measure between references with Revit axes, and ranked snap candidates.
+- `render/measureTool.ts` and `Viewer.startMeasure(mode) / stopMeasure() / clearMeasurements()`: the Measure tool (distance, clear, along, face, chain) with Tab cycling, readout events (`onMeasure`) and an overlay layer. Tab while selecting (`onTabCycle`): stacked elements, then a joined chain; the current choice is outlined on top so an element behind others shows.
 
 ### 0.30.0 — 2026-09-26
 - **DXF → 3D pipeline 2.0.0 (breaking: what a level's elevation means).** A level is the top of its storey, Revit's structural convention: the frame labelled Level n holds the structure below Level n; Level 1 (foundation) is ±0 with the foundations below it (was: the lowest footing bottom); storey Level n sits at the sum of the heights of levels 2..n (was: the storey's floor). Element geometry is unchanged: IFC placements are relative to the storey. Levels carry `bottom` (the storey's floor).

@@ -58,6 +58,8 @@ import {
 } from './materials';
 import { explodeOffsets, explodedBounds, type ExplodeMode } from './explode';
 import { decodePickId } from './pickId';
+import { buildGeometryIndex, memberAxis, planarFace, raycastAll, type GeometryIndex, type MeasureScene, type MemberAxis, type PlanarFace } from './measure';
+import { MeasureTool, tabOptions, type MeasureMode, type MeasureReadout } from './measureTool';
 import { SectionGizmo, aabbOf, axesOf, cloneState, metresPerPixel, moveFace, planesOf, snapDelta, type GripData, type SectionBoxState } from './sectionBox';
 
 export type ViewName = 'iso' | 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
@@ -92,6 +94,10 @@ export interface ViewerEvents {
   onCamera?: (orientation: Quaternion) => void;
   /** A grip drag or rotation finished: record it as one undoable change (the viewer keeps no undo stack). */
   onSectionBoxEdit?: (before: SectionBoxState, after: SectionBoxState) => void;
+  /** The Measure tool's readout changed (null: the tool closed, e.g. Esc with nothing pending). */
+  onMeasure?: (readout: MeasureReadout | null) => void;
+  /** Tab while selecting: what a click would select now, and its place in the cycle (null: cycle over). */
+  onTabCycle?: (info: { label: string; position: number; total: number; chain: boolean; count: number } | null) => void;
 }
 
 export interface CameraState {
@@ -243,6 +249,16 @@ export class Viewer {
   private explodeTex: DataTexture | null = null;
   private explodeToken = 0;
   private rectEl: HTMLDivElement;
+  /** Measure: triangles and edges by element (built on first use), centrelines and faces cached. */
+  private geoIndex: GeometryIndex | null = null;
+  private axisCache = new Map<number, MemberAxis | null>();
+  private faceCache = new Map<string, PlanarFace>();
+  private measure: MeasureTool | null = null;
+  private measEl: SVGSVGElement;
+  /** Elements glowing as the current Tab / measure choice (preselect colour). */
+  private glowed: number[] = [];
+  /** Tab while selecting: the choices under the cursor and the current one. */
+  private tab: { anchor: [number, number]; options: Array<{ label: string; elements: number[]; chain: boolean }>; i: number } | null = null;
   lastFrameMs = 0;
 
   constructor(private container: HTMLElement, private events: ViewerEvents = {}) {
@@ -293,6 +309,9 @@ export class Viewer {
     this.annEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     Object.assign(this.annEl.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' });
     container.appendChild(this.annEl);
+    this.measEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    Object.assign(this.measEl.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' });
+    container.appendChild(this.measEl);
     // Heads: hover highlights, double-click opens the view (Revit).
     const headOf = (t: EventTarget | null) => (t as Element | null)?.closest?.('[data-view]')?.getAttribute('data-view') ?? null;
     this.annEl.addEventListener('pointerover', (e) => {
@@ -505,6 +524,17 @@ export class Viewer {
     this.selection.clear();
     this.hidden.clear();
     this.hovered = null;
+    this.geoIndex = null;
+    this.axisCache.clear();
+    this.faceCache.clear();
+    this.glowed = [];
+    this.endTab();
+    // Measurements refer to the old geometry; the tool stays open.
+    if (this.measure) {
+      this.measure.cancelPending();
+      this.measure.clearResults();
+      this.measure.leave();
+    }
     this.setSectionBox(null);
   }
 
@@ -601,6 +631,160 @@ export class Viewer {
       if (inside) out.push(el.index);
     }
     return out;
+  }
+
+  // ------------------------------------------------------ measure and Tab
+
+  /** The model as the measure functions see it: drawn positions, hidden elements, the section box. */
+  private measureScene(): MeasureScene | null {
+    const m = this.model;
+    if (!m) return null;
+    this.geoIndex ??= buildGeometryIndex(m.mesh, m.edges, m.elements.length);
+    const data = this.explodeData, k = this.explodeAmount;
+    const planes = this.clipPlanes;
+    return {
+      mesh: m.mesh,
+      edges: m.edges,
+      index: this.geoIndex,
+      elements: m.elements,
+      hidden: this.hidden,
+      offset: (i) => (data && k ? [data[i * 3] * k, data[i * 3 + 1] * k, data[i * 3 + 2] * k] : null),
+      bounds: (i) => this.boundsOf(i),
+      // three.js keeps the side of each clipping plane where the distance is positive.
+      inside: (p) => planes.every((pl) => pl.distanceToPoint(p) >= -1e-4),
+    };
+  }
+
+  private axisOf = (i: number): MemberAxis | null => {
+    if (!this.axisCache.has(i)) {
+      const s = this.measureScene();
+      this.axisCache.set(i, s ? memberAxis(s, i) : null);
+    }
+    return this.axisCache.get(i) ?? null;
+  };
+
+  private faceOf = (i: number, tri: number): PlanarFace => {
+    const key = `${i}:${tri}`;
+    let f = this.faceCache.get(key);
+    if (!f) {
+      f = planarFace(this.measureScene()!, i, tri);
+      if (this.faceCache.size > 2000) this.faceCache.clear();
+      this.faceCache.set(key, f);
+    }
+    return f;
+  };
+
+  /** Orthographic pick ray through a client point, starting behind everything. */
+  private pickRay(clientX: number, clientY: number): { origin: Vector3; dir: Vector3 } {
+    const r = this.canvas.getBoundingClientRect();
+    this.raycaster.setFromCamera(new Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), this.camera);
+    const dir = this.raycaster.ray.direction.clone().normalize();
+    // Back off far enough that nothing in the model is behind the start (the camera is orthographic).
+    const origin = this.raycaster.ray.origin.clone().addScaledVector(dir, -(this.modelSphere.radius * 4 + 100));
+    return { origin, dir };
+  }
+
+  /** Elements glowing in the preselect colour (the current Tab or measure choice). */
+  private setGlow(indices: readonly number[]): void {
+    if (!this.stateData || !this.state) return;
+    for (const i of this.glowed) this.stateData[i * 4] &= ~STATE_PRESELECT;
+    this.glowed = [...indices];
+    for (const i of this.glowed) this.stateData[i * 4] |= STATE_PRESELECT;
+    this.state.needsUpdate = true;
+    this.requestRender();
+  }
+
+  /**
+   * Opens the Measure tool (or switches its mode). Clicks measure instead of selecting; Tab cycles
+   * the choices under the cursor; Esc drops a half-made measurement, then closes the tool.
+   */
+  startMeasure(mode: MeasureMode = 'distance'): void {
+    this.endTab();
+    if (this.measure) {
+      this.measure.setMode(mode);
+      return;
+    }
+    const container = this.container;
+    this.measure = new MeasureTool(
+      {
+        scene: () => this.measureScene(),
+        ray: (x, y) => (this.model ? this.pickRay(x, y) : null),
+        project: (p) => {
+          const r = this.canvas.getBoundingClientRect();
+          const v = p.clone().project(this.camera);
+          if (v.z < -1 || v.z > 1) return null;
+          return [((v.x + 1) / 2) * r.width, ((1 - v.y) / 2) * r.height];
+        },
+        toLocal: (x, y) => {
+          const r = this.canvas.getBoundingClientRect();
+          return [x - r.left, y - r.top];
+        },
+        pixel: () => worldPerPixel(this.frameHeight, this.camera.zoom, container.getBoundingClientRect().height || 1),
+        viewDir: () => (this.nav2d ? this.camera.getWorldDirection(new Vector3()) : null),
+        axisOf: this.axisOf,
+        faceOf: this.faceOf,
+        highlight: (els) => this.setGlow(els),
+        emit: (r) => this.events.onMeasure?.(r),
+        render: () => this.requestRender(),
+      },
+      mode,
+    );
+    this.setHover(null);
+    this.canvas.style.cursor = 'crosshair';
+  }
+
+  /** Closes the Measure tool and removes its measurements from the view. */
+  stopMeasure(): void {
+    if (!this.measure) return;
+    const m = this.measure;
+    this.measure = null;
+    m.dispose();
+    this.setGlow([]);
+    this.canvas.style.cursor = '';
+    this.requestRender();
+  }
+
+  get measureMode(): MeasureMode | null {
+    return this.measure?.mode ?? null;
+  }
+
+  clearMeasurements(): void {
+    this.measure?.cancelPending();
+    this.measure?.clearResults();
+  }
+
+  /** Tab / Shift+Tab while selecting: step through the elements under the cursor, then the joined chain. */
+  private stepTab(dir: 1 | -1): void {
+    const s = this.measureScene();
+    if (!s) return;
+    const [x, y] = this.lastPointer;
+    const r = this.canvas.getBoundingClientRect();
+    const local: [number, number] = [x - r.left, y - r.top];
+    if (!this.tab) {
+      const { origin, dir: d } = this.pickRay(x, y);
+      const options = tabOptions(s, raycastAll(s, origin, d), this.axisOf);
+      if (!options.length) return;
+      // The first Tab moves on from what the plain hover already shows.
+      this.tab = { anchor: local, options, i: 0 };
+    }
+    const t = this.tab;
+    t.i = (t.i + dir + t.options.length) % t.options.length;
+    const o = t.options[t.i];
+    if (o.chain) {
+      this.setHover(null);
+      this.setGlow(o.elements);
+    } else {
+      this.setGlow([]);
+      this.setHover(o.elements[0]);
+    }
+    this.events.onTabCycle?.({ label: o.label, position: t.i + 1, total: t.options.length, chain: o.chain, count: o.elements.length });
+  }
+
+  private endTab(): void {
+    if (!this.tab) return;
+    this.tab = null;
+    this.setGlow([]);
+    this.events.onTabCycle?.(null);
   }
 
   // -------------------------------------------------------- display styles
@@ -1082,6 +1266,9 @@ export class Viewer {
 
   private applyExplodeAmount(amount: number): void {
     this.explodeAmount = amount;
+    // Centrelines and faces are cached where they are drawn.
+    this.axisCache.clear();
+    this.faceCache.clear();
     for (const mat of [this.meshMat, this.glassMat, this.edgeMat, this.hiddenEdgeMat, this.pickMat, this.shadowMat]) if (mat) mat.uniforms.uExplode.value = amount;
     this.modelBox()?.getBoundingSphere(this.modelSphere);
     this.requestRender();
@@ -1445,6 +1632,50 @@ export class Viewer {
     );
   }
 
+  private drawMeasureLayer(): void {
+    const svg = this.measEl;
+    const cs = getComputedStyle(this.container);
+    if (this.measure) {
+      this.measure.draw(svg, {
+      line: cs.getPropertyValue('--accent').trim() || '#D9761E',
+      text: cs.getPropertyValue('--text').trim() || '#222',
+      plate: cs.getPropertyValue('--viewport').trim() || '#fff',
+        guide: cs.getPropertyValue('--select-window').trim() || '#2F7FD8',
+        font: cs.getPropertyValue('--font-sans').trim() || 'sans-serif',
+      });
+    } else while (svg.firstChild) svg.firstChild.remove();
+    // The current Tab / measure choice drawn on top, so an element behind others is seen (Revit's pre-highlight).
+    const els = this.glowed.length ? this.glowed : this.tab && this.hovered !== null ? [this.hovered] : [];
+    const m = this.model;
+    if (!els.length || !m) return;
+    this.geoIndex ??= buildGeometryIndex(m.mesh, m.edges, m.elements.length);
+    const idx = this.geoIndex;
+    const r = this.canvas.getBoundingClientRect();
+    const E = m.edges.positions;
+    const v = new Vector3();
+    const data = this.explodeData, k = this.explodeAmount;
+    let d = '';
+    let n = 0;
+    for (const i of els) {
+      const ox = data && k ? data[i * 3] * k : 0, oy = data && k ? data[i * 3 + 1] * k : 0, oz = data && k ? data[i * 3 + 2] * k : 0;
+      for (let q = idx.edgeStart[i]; q < idx.edgeStart[i + 1] && n < 20000; q++, n++) {
+        const s = idx.edges[q] * 6;
+        v.set(E[s] + ox, E[s + 1] + oy, E[s + 2] + oz).project(this.camera);
+        const ax = ((v.x + 1) / 2) * r.width, ay = ((1 - v.y) / 2) * r.height;
+        v.set(E[s + 3] + ox, E[s + 4] + oy, E[s + 5] + oz).project(this.camera);
+        d += `M${ax.toFixed(1)} ${ay.toFixed(1)}L${(((v.x + 1) / 2) * r.width).toFixed(1)} ${(((1 - v.y) / 2) * r.height).toFixed(1)}`;
+      }
+    }
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', cs.getPropertyValue('--select-window').trim() || '#2F7FD8');
+    path.setAttribute('stroke-width', '1.6');
+    path.setAttribute('stroke-opacity', '0.9');
+    path.setAttribute('stroke-linejoin', 'round');
+    svg.insertBefore(path, svg.firstChild);
+  }
+
   /** Shows or hides the orbit centre marker at a world point. */
   private showPivot(p: Vector3 | null): void {
     if (!p) {
@@ -1534,6 +1765,8 @@ export class Viewer {
     type Drag = {
       mode: DragMode; x: number; y: number; sx: number; sy: number; pivot: Vector3; moved: boolean; recorded: boolean;
       grip?: GripData; start?: SectionBoxState; screenDir?: Vector2; startAngle?: number;
+      /** A measure click: no selection box. */
+      tool?: boolean;
     };
     let drag: Drag | null = null;
     let lastMiddleDown = 0;
@@ -1542,6 +1775,7 @@ export class Viewer {
     let previewQueued = false;
     let lastMove: { clientX: number; clientY: number } = { clientX: 0, clientY: 0 };
     let wheelTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastToolClick = { t: 0, x: 0, y: 0 };
 
     const onDown = (e: PointerEvent) => {
       c.focus({ preventScroll: true });
@@ -1587,7 +1821,7 @@ export class Viewer {
       if (this.nav2d && mode === 'orbit') mode = 'pan'; // plan, elevation, section: no orbit
       e.preventDefault();
       c.setPointerCapture(e.pointerId);
-      drag = { mode, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pivot: this.orbitPivot(), moved: false, recorded: false };
+      drag = { mode, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, pivot: this.orbitPivot(), moved: false, recorded: false, tool: mode === 'select' && !!this.measure };
       if (mode === 'orbit') c.style.cursor = this.cur.orbit;
       else if (mode === 'pan') c.style.cursor = this.cur.pan;
     };
@@ -1631,7 +1865,7 @@ export class Viewer {
             this.showPivot(drag.pivot);
           }
           this.navigating();
-        } else {
+        } else if (!drag.tool) {
           // Revit: left→right is a window (solid), right→left a crossing (dashed).
           this.showRect(drag.sx, drag.sy, e.clientX, e.clientY, drag.mode === 'select' && e.clientX < drag.sx);
           // Revit previews what the box will pick while you drag (once per frame).
@@ -1653,11 +1887,17 @@ export class Viewer {
       }
       lastHover = e;
       this.lastPointer = [e.clientX, e.clientY];
+      if (this.tab && Math.hypot(e.clientX - c.getBoundingClientRect().left - this.tab.anchor[0], e.clientY - c.getBoundingClientRect().top - this.tab.anchor[1]) > CLICK_TOLERANCE_PX) this.endTab();
       if (hoverQueued) return;
       hoverQueued = true;
       requestAnimationFrame(() => {
         hoverQueued = false;
         if (!lastHover || drag) return;
+        if (this.measure) {
+          this.measure.hover(lastHover.clientX, lastHover.clientY);
+          return;
+        }
+        if (this.tab) return; // the Tab choice stays highlighted until the pointer moves away
         const grip = this.gripAt(lastHover.clientX, lastHover.clientY);
         if (grip !== this.hotGrip) {
           this.hotGrip = grip;
@@ -1675,7 +1915,7 @@ export class Viewer {
       if (c.hasPointerCapture(e.pointerId)) c.releasePointerCapture(e.pointerId);
       this.rectEl.style.display = 'none';
       this.showPivot(null);
-      c.style.cursor = this.idleCursor(e);
+      c.style.cursor = this.measure ? 'crosshair' : this.idleCursor(e);
       if (d.mode === 'grip') {
         if (d.moved && d.start && this.sbox) this.events.onSectionBoxEdit?.(d.start, cloneState(this.sbox));
         return;
@@ -1685,6 +1925,24 @@ export class Viewer {
         this.cancelZoomRegion();
       } else if (d.mode === 'select') {
         const mode = modeOf(e);
+        if (d.tool) {
+          if (!d.moved && this.measure) {
+            const now = performance.now();
+            const double = now - lastToolClick.t < 350 && Math.hypot(e.clientX - lastToolClick.x, e.clientY - lastToolClick.y) < 6;
+            lastToolClick = double ? { t: 0, x: 0, y: 0 } : { t: now, x: e.clientX, y: e.clientY };
+            this.measure.click(e.clientX, e.clientY, double);
+          }
+          c.style.cursor = this.measure ? 'crosshair' : '';
+          return;
+        }
+        if (!d.moved && this.tab) {
+          // A click while Tab is cycling takes the current choice (the chain as a set).
+          const o = this.tab.options[this.tab.i];
+          this.endTab();
+          if (o.chain) this.events.onBoxSelect?.(o.elements, mode, false, []);
+          else this.events.onPick?.(o.elements[0], mode);
+          return;
+        }
         if (!d.moved && this.linePick) {
           const p = this.linePoint(e.clientX, e.clientY);
           const lp = this.linePick;
@@ -1719,16 +1977,56 @@ export class Viewer {
       wheelTimer = setTimeout(() => (wheelTimer = null), 400);
       this.zoomAt(e.clientX, e.clientY, wheelZoomFactor(e.deltaY, e.deltaMode));
     };
-    const onLeave = () => this.setHover(null);
+    const onLeave = () => {
+      this.setHover(null);
+      this.measure?.leave();
+      this.endTab();
+    };
     const noMenu = (e: Event) => e.preventDefault();
     const noAutoscroll = (e: MouseEvent) => e.button === 1 && e.preventDefault();
 
     let over = false;
     const onKeyMod = (e: KeyboardEvent) => {
-      if (over && !drag && (e.key === 'Control' || e.key === 'Shift' || e.key === 'Meta')) c.style.cursor = this.idleCursor(e);
+      if (over && !drag && !this.measure && (e.key === 'Control' || e.key === 'Shift' || e.key === 'Meta')) c.style.cursor = this.idleCursor(e);
     };
     const onEnter = () => (over = true);
     const onOut = () => (over = false);
+    const editable = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+    };
+    const modalOpen = () => !!document.querySelector('[aria-modal="true"], dialog[open]');
+    /**
+     * Tab belongs to the view while the pointer is over it (Revit's Tab cycles what is under the
+     * cursor): the browser's move-to-the-next-field is turned off there. Elsewhere Tab works as usual,
+     * so keyboard users are never trapped in the canvas.
+     */
+    const onViewKey = (e: KeyboardEvent) => {
+      if (e.key === 'Tab' && over && !drag && this.model && !e.ctrlKey && !e.metaKey && !e.altKey && !modalOpen()) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (document.activeElement !== c) c.focus({ preventScroll: true });
+        if (this.measure) this.measure.step(e.shiftKey ? -1 : 1);
+        else this.stepTab(e.shiftKey ? -1 : 1);
+        return;
+      }
+      if (this.tab && e.key === 'Escape') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.endTab();
+        return;
+      }
+      if (!this.measure || editable(e.target) || modalOpen()) return;
+      if (e.key === 'Escape' || e.key === 'Enter' || e.key === 'Backspace') {
+        const used = this.measure.key(e.key);
+        if (!used && e.key !== 'Escape') return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (!used) this.stopMeasure(); // Esc with nothing pending closes the tool (Revit: Esc twice)
+      }
+    };
+    window.addEventListener('keydown', onViewKey, true);
+    this.disposers.push(() => window.removeEventListener('keydown', onViewKey, true));
     window.addEventListener('keydown', onKeyMod);
     window.addEventListener('keyup', onKeyMod);
     c.addEventListener('pointerenter', onEnter);
@@ -1861,6 +2159,7 @@ export class Viewer {
       this.lastFrameMs = performance.now() - t0;
       this.drawTempDims();
       this.drawAnnotationLayer();
+      this.drawMeasureLayer();
       this.events.onCamera?.(this.camera.quaternion);
     });
   }
@@ -1876,6 +2175,8 @@ export class Viewer {
     this.pivotEl.remove();
     this.dimEl.remove();
     this.annEl.remove();
+    this.measure?.dispose();
+    this.measEl.remove();
     clearTimeout(this.navTimer);
     this.animToken++;
   }

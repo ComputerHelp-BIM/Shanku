@@ -20,7 +20,7 @@ import {
   useShortcut,
   useTheme,
 } from '@shanku/ui';
-import { runChecks, CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, EXPLODE_MODES, boxState, type ExplodeMode, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
+import { runChecks, CATEGORY_PLURAL, DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, ENGINE_VERSION, EXPLODE_MODES, boxState, MEASURE_MODES, type MeasureMode, type ExplodeMode, type CameraState, type Category, type DisplayStyle, type PipelineQa, type SectionBoxState } from '@shanku/engine';
 import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
@@ -77,7 +77,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.40.0';
+const APP_VERSION = '0.41.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -113,6 +113,8 @@ export function App({ start }: { start?: AppStart } = {}) {
   const openedInfo = openedInfoRef.current;
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>('shaded');
   const [sectionBox, setSectionBox] = useState(false);
+  /** Measure tool mode (null: closed). 3D views, plans, sections and elevations. */
+  const [measure, setMeasure] = useState<MeasureMode | null>(null);
   /** Revit's Shadows On/Off (view control bar), remembered on this device. */
   const [shadows, setShadowsState] = useState<boolean>(() => {
     try {
@@ -605,6 +607,9 @@ export function App({ start }: { start?: AppStart } = {}) {
         }
         case 'resetHidden':
           return setHidden([]);
+        case 'measure':
+          if (!model) return setNotice('Open a model to measure it.');
+          return setMeasure((cur) => (cur ? null : 'distance'));
         case 'sectionBox': {
           if (isTwoD(activeModelView ?? undefined)) return setNotice('Section boxes are for 3D views; plans and sections have a view range (Properties).');
           if (!sectionBox && !sel.length) return void needSelection();
@@ -1246,6 +1251,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   };
   /** Revit's Section tool: two clicks in a plan, section or elevation (not in 3D views). */
   const startSection = () => {
+    setMeasure(null); // one tool at a time
     const v = activeModelView;
     if (!v || !isTwoD(v)) return setNotice('Draw sections in a plan, section or elevation view.');
     const create = (a: [number, number], b: [number, number]) => {
@@ -1762,6 +1768,19 @@ export function App({ start }: { start?: AppStart } = {}) {
         why: needModel,
         run: () => setColorMode(cm.id),
       })),
+      ...MEASURE_MODES.map((mm) => ({
+        id: `measure.${mm.id}`,
+        title: `Measure: ${mm.label}`,
+        group: 'View' as const,
+        keywords: `measure dimension distance tape ${mm.tip}`,
+        checked: measure === mm.id,
+        enabled: hasModel && !activeDoc,
+        why: activeDoc ? 'Measure works in 3D views, plans, sections and elevations; the DXF view gets it next.' : needModel,
+        run: () => {
+          if (sectionTool) cancelSection();
+          setMeasure(mm.id);
+        },
+      })),
       { id: 'view.shadows', title: 'Shadows', group: 'View', keywords: 'sun shadow render realistic presentation', checked: shadows, enabled: hasModel, why: needModel, run: () => setShadows((v) => !v) },
       { id: 'view.realistic', title: 'Visual style: Realistic', group: 'View', keywords: 'render sun sky concrete presentation', checked: displayStyle === 'realistic', enabled: hasModel, why: needModel, run: () => setDisplayStyle('realistic') },
       { id: 'select.byMarks', title: 'Select by marks…', group: 'Select', keywords: 'paste whatsapp list marks c1 b12 find', enabled: hasModel, why: needModel, run: () => setMarksDialog(true) },
@@ -1836,7 +1855,7 @@ export function App({ start }: { start?: AppStart } = {}) {
         <TitleBar
           fileName={info?.fileName ?? 'No model open'}
           brandHref={import.meta.env.BASE_URL}
-          quickAccess={<QuickAccess history={history} onOpen={openFromDisk} onHome={() => viewport.current?.home()} canHome={!!m.model} />}
+          quickAccess={<QuickAccess history={history} onOpen={openFromDisk} onHome={() => viewport.current?.home()} canHome={!!m.model} onMeasure={() => runCommand('measure')} measuring={!!measure} />}
           saveState={info ? 'Opened from this device' : undefined}
           search={<CommandPalette inputRef={search} getCommands={getCommands} findElement={findElement} appVersion={APP_VERSION} />}
           actions={
@@ -1878,6 +1897,9 @@ export function App({ start }: { start?: AppStart } = {}) {
           <RibbonGroup label="Select">
             <RibbonButton icon="byid" label="By ID" onClick={() => search.current?.focus({ preventScroll: true })} shortcutHint="Ctrl + K" />
             <RibbonButton icon="byid" label="By marks" disabled={!m.model} onClick={() => setMarksDialog(true)} shortcutHint="paste C1, C4, B12 (or Ctrl + V on the model)" />
+          </RibbonGroup>
+          <RibbonGroup label="Measure">
+            <RibbonButton icon="measure" label="Measure" active={!!measure} disabled={!m.model} onClick={() => runCommand('measure')} shortcutHint="ME · distance, clear and C/C, along, face area, chain · Tab cycles snaps" />
           </RibbonGroup>
           <RibbonGroup label="Quantities">
             <RibbonButton
@@ -2144,7 +2166,9 @@ export function App({ start }: { start?: AppStart } = {}) {
               if (JSON.stringify(next) === JSON.stringify(base.section)) return setViews(base.views); // a click, not a drag
               history.run(`${label}: ${v.name}`, (tx) => tx.change('views', base.views, withSection(base.views, next), setViews));
             }}
-            toolActive={sectionTool}
+            toolActive={sectionTool || !!measure}
+            measure={activeDoc ? null : measure}
+            onMeasureChange={setMeasure}
             onBoxSelect={(ids, mode, anns) => {
               setAnnSel((cur) => applyMode(mode === 'replace' ? [] : cur, anns ?? [], mode === 'replace' ? 'add' : mode));
               m.boxSelect(ids, mode);

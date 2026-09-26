@@ -1,7 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ViewCube, type Orientation } from './ViewCube';
+import { MeasureBar } from './MeasureBar';
 import { Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName } from '@shanku/engine';
-import type { Annotation, CameraState, ExplodeMode, SectionBoxState } from '@shanku/engine';
+import type { Annotation, CameraState, ExplodeMode, MeasureMode, MeasureReadout, SectionBoxState } from '@shanku/engine';
 
 export interface ViewportHandle {
   fit: (indices?: number[]) => void;
@@ -78,6 +79,10 @@ export interface ViewportProps {
   explode?: { modes: ExplodeMode[]; amount: number } | null;
   /** Canvas (3D background) theme, independent of the interface theme. */
   canvasTheme?: 'follow' | 'paper' | 'ink';
+  /** The Measure tool's mode, or null when it is closed. */
+  measure?: MeasureMode | null;
+  /** The tool changed mode or closed from inside the view (its bar, or Esc). */
+  onMeasureChange?: (mode: MeasureMode | null) => void;
 }
 
 /** Hosts the engine's Viewer and keeps it in sync with React state. */
@@ -97,6 +102,8 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   const handlers = useRef(props);
   handlers.current = props;
   const [failed, setFailed] = useState<string | null>(null);
+  const [readout, setReadout] = useState<MeasureReadout | null>(null);
+  const [tabInfo, setTabInfo] = useState<{ label: string; position: number; total: number; chain: boolean; count: number } | null>(null);
 
   useEffect(() => {
     if (!host.current) return undefined;
@@ -109,6 +116,12 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
         onOpenView: (id) => handlers.current.onOpenView?.(id),
         onAnnotationClick: (id, mode) => handlers.current.onAnnotationClick?.(id, mode),
         onSymbolGrip: (e) => handlers.current.onSymbolGrip?.(e),
+        onMeasure: (r) => {
+          setReadout(r);
+          // Closed from inside the view (Esc with nothing pending): tell the app.
+          if (!r && handlers.current.measure) handlers.current.onMeasureChange?.(null);
+        },
+        onTabCycle: (info) => setTabInfo(info),
         onNavigate: (active) => {
           setNavActive(active);
           if (active) setTip(null);
@@ -195,6 +208,12 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
   useEffect(() => {
     viewer.current?.refreshTheme();
   }, [props.canvasTheme]);
+  useEffect(() => {
+    const v = viewer.current;
+    if (!v) return;
+    if (props.measure && model) v.startMeasure(props.measure);
+    else v.stopMeasure();
+  }, [props.measure, model]);
 
   useImperativeHandle(ref, () => ({
     fit: (indices) => viewer.current?.fit(indices),
@@ -248,6 +267,20 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
       ) : null}
       {props.reveal ? <div className="app-reveal-frame" aria-hidden="true"><span>Reveal Hidden Elements</span></div> : null}
       {!props.reveal && props.temporary ? <div className="app-temp-frame" aria-hidden="true"><span>Temporary Hide/Isolate</span></div> : null}
+      {readout && props.measure ? (
+        <MeasureBar
+          readout={readout}
+          onMode={(m) => handlers.current.onMeasureChange?.(m)}
+          onClear={() => viewer.current?.clearMeasurements()}
+          onClose={() => handlers.current.onMeasureChange?.(null)}
+        />
+      ) : null}
+      {tabInfo ? (
+        <div className="app-tabcycle" role="status" aria-live="polite">
+          <strong>{tabInfo.label}</strong>
+          <span>{tabInfo.position} of {tabInfo.total} · Tab next · Shift+Tab back · click selects{tabInfo.chain ? ` all ${tabInfo.count}` : ''}</span>
+        </div>
+      ) : null}
       {tip && model?.elements[tip.index] ? (() => {
         const e = model.elements[tip.index];
         const r = host.current?.getBoundingClientRect();

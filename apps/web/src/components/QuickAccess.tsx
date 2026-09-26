@@ -7,10 +7,13 @@ export interface QuickAccessProps {
   onOpen: () => void;
   onHome: () => void;
   canHome: boolean;
+  /** Measure (Revit keeps it on the Quick Access Toolbar too). */
+  onMeasure?: () => void;
+  measuring?: boolean;
 }
 
-/** Revit's Quick Access Toolbar: Open · Undo ▾ · Redo ▾ · Default 3D View. The ▾ lists named transactions. */
-export function QuickAccess({ history, onOpen, onHome, canHome }: QuickAccessProps) {
+/** Revit's Quick Access Toolbar: Open · Undo ▾ · Redo ▾ · Measure · Default 3D View. The ▾ lists named transactions. */
+export function QuickAccess({ history, onOpen, onHome, canHome, onMeasure, measuring }: QuickAccessProps) {
   const [menu, setMenu] = useState<'undo' | 'redo' | null>(null);
   const root = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -39,6 +42,11 @@ export function QuickAccess({ history, onOpen, onHome, canHome }: QuickAccessPro
         {btn('Redo', 'redo', () => history.redo(), !history.canRedo, history.canRedo ? `Redo ${history.redoList[0]} (Ctrl + Y)` : 'Nothing to redo')}
         <button type="button" className="qat-drop" aria-label="Redo list" aria-expanded={menu === 'redo'} disabled={!history.canRedo} onClick={() => setMenu((m) => (m === 'redo' ? null : 'redo'))}>▾</button>
       </span>
+      {onMeasure ? (
+        <button type="button" className="qat-btn" aria-label="Measure" aria-pressed={!!measuring} title="Measure (ME)" disabled={!canHome} onClick={onMeasure}>
+          <Icon name="measure" size={16} />
+        </button>
+      ) : null}
       {btn('Default 3D View', 'view3d', onHome, !canHome)}
       {menu && list.length ? (
         <span className="qat-menu" role="menu" aria-label={menu === 'undo' ? 'Undo history' : 'Redo history'}>

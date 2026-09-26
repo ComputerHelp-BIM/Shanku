@@ -207,6 +207,24 @@ export const GUIDE: GuideSection[] = [
     ],
   },
   {
+    id: 'measure',
+    group: 'Guide',
+    title: 'Measuring',
+    blocks: [
+      { p: '**Model → Measure**, the Quick Access toolbar, or type **ME**. It works in 3D views, plans, sections and elevations; in 2D views distances are measured in the view plane, as Revit does. The bar over the view picks what to measure:' },
+      { list: [
+        '**Distance**: two points. The cursor snaps to endpoints (square), midpoints (triangle), face centres and centreline ends (circle), centrelines (diamond), any point on an edge (X) or on a face. You get the total and ΔX ΔY ΔZ (east, north, up), and the perpendicular distance when both picks are parallel faces, parallel edges or centrelines (centre to centre).',
+        '**Clear & C/C**: two elements. The clear gap between their surfaces (0 when they touch or overlap) and, for columns, beams and walls, centre to centre. Clear height from a slab to a beam soffit is two clicks.',
+        '**Along**: an element’s centreline, the edge under the cursor, or a chain of joined walls or beams.',
+        '**Face area**: one flat face, with its perimeter and which way it faces (top, soffit, side facing NE…).',
+        '**Chain**: point after point with a running total. **Enter** or double-click finishes, **Backspace** removes the last point.',
+      ] },
+      { p: '**Tab** steps through the other choices under the cursor (a face, then its edge, then the corner, then the centreline); **Shift + Tab** steps back. **Esc** drops a half-made measurement; Esc again closes the tool. **Copy** puts the values on the clipboard.' },
+      { note: 'Centrelines are worked out from each element’s shape, because IFC exports do not carry Revit’s analytical lines. Straight columns, beams and walls are exact; a sloped or tapered member is a close fit and says so.' },
+      { p: '**Tab while selecting**: over the view, Tab steps through every element under the cursor, front to back (a beam behind a slab, a column behind a wall), then the chain of walls or beams joined end to end with the first one. Click takes the one shown. Tab only belongs to the view while the pointer is over it; elsewhere it moves between fields as usual.' },
+    ],
+  },
+  {
     id: 'marks',
     group: 'Guide',
     title: 'Selecting by marks',
@@ -342,6 +360,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.41.0', date: '2026-09-26', items: ['Measure (Model → Measure, ME): distance with Revit-style snaps and Tab, clear distance and centre to centre, along an element or a chain of joined walls and beams, face area, and chain measure, in 3D views, plans, sections and elevations.', 'Tab over the view steps through the elements under the cursor, then a chain of joined walls or beams, as in Revit; the browser no longer jumps between fields there.'] },
           { version: '0.40.0', date: '2026-09-26', items: ['DXF → 3D: a level is now the top of its storey (Revit’s convention); Level 1 is ±0. Export to Revit hosts every element on its own level, walls top-constrained, and writes marks to CH-ScheduleMark instead of Mark.', 'Fixed: level heights in elevations and sections now show the model’s own elevations (they could be off by the file’s origin shift).'] },
           { version: '0.39.2', date: '2026-09-26', items: ['Export to Revit: beams now land at their drawn height (with Shanku Bridge for Revit 0.6.1).'] },
           { version: '0.39.1', date: '2026-09-25', items: ['About Shanku in the Guide, with the trademark notice; wording on the homepage and in the Guide says what Shanku does today.'] },

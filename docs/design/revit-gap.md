@@ -10,9 +10,9 @@ Views (plans, 3D, sections and elevations, each with its own settings), the Proj
 
 | # | Feature | Revit name / key | Why modellers use it daily | How in Shanku |
 |---|---|---|---|---|
-| 1 | Measure | Measure Between Two References | Checking a clear span or a cover without placing a dimension | Two picks snapped to vertices and edges (the temporary-dimension code already finds edges); a chained total; also for DXF. |
+| 1 | Measure | Measure Between Two References | Checking a clear span or a cover without placing a dimension | **Built in 0.41.0 (3D, plans, sections, elevations):** distance with snaps and Tab, clear & C/C, along, face area, chain. DXF view next. |
 | 2 | Filter selection | Modify → Filter | Box-select a floor, then keep only beams | A dialog of category counts with checkboxes, like the Quick Select panel. It needs the selection plus a category set. |
-| 3 | Tab cycling | Tab | Picking the beam under a slab edge | Keep the depth-ordered pick list from the GPU pick and cycle it on Tab. The status bar says "2 of 4". |
+| 3 | Tab cycling | Tab | Picking the beam under a slab edge | **Built in 0.41.0:** elements under the cursor front to back, then a chain of joined walls or beams; "2 of 3" shown over the view; the choice is outlined through what is in front. |
 | 4 | Selection sets | Manage → Save / Load Selection | Coming back to "Level 3 transfer beams" | Named sets saved with the session. They show in the Project Browser and the palette, and Python can read them. |
 | 5 | Thin lines | TL | Reading dense plans | One uniform in the edge material and a toggle in the view bar. |
 | 6 | Selection toggles | Select links / pinned / by face | Stopping accidental picks | Pick filters by category (for example, never pick slabs) in the status bar. |
