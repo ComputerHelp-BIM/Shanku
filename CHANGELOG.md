@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.41.1 — 2026-09-26
+
+### Fixed
+- Models loaded from Revit: columns and walls one level low, labels and height colours off by the building's height. Levels are calibrated against the geometry (engine 0.32.0).
+
 ## 0.41.0 — 2026-09-26
 
 ### Changed

@@ -343,6 +343,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.41.1', date: '2026-09-26', items: ['Fixed: in models loaded from Revit, columns and walls could land one level low (selecting Level 4 picked the storey above it), and level labels and height colours were off by the building’s own height. Levels are now calibrated against the geometry.'] },
           { version: '0.41.0', date: '2026-09-26', items: ['One definition of an element’s level, for every model: the lowest level at or above its top. Models loaded back from Revit now show columns and walls on the same levels as the drawing; the IFC storey stays visible in Properties, and QA lists a CH-LEVEL that differs.'] },
           { version: '0.40.0', date: '2026-09-26', items: ['DXF → 3D: a level is now the top of its storey (Revit’s convention); Level 1 is ±0. Export to Revit hosts every element on its own level, walls top-constrained, and writes marks to CH-ScheduleMark instead of Mark.', 'Fixed: level heights in elevations and sections now show the model’s own elevations (they could be off by the file’s origin shift).'] },
           { version: '0.39.2', date: '2026-09-26', items: ['Export to Revit: beams now land at their drawn height (with Shanku Bridge for Revit 0.6.1).'] },

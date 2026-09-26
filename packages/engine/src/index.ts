@@ -16,7 +16,7 @@ export { assessCompatibility, readViewDefinition, RECOMMENDED_EXPORT, type Compa
 export { boxState, type SectionBoxState } from './render/sectionBox';
 export type { CameraState } from './render/Viewer';
 export { alignPatch, mergeModels, type MergeResult } from './model/merge';
-export { FLOOR_FILE_SHARE, UPSTAND_TOLERANCE, assignLevels, conventionOf, levelHeightsOf, levelOf, type LevelHeight } from './model/levelRule';
+export { FLOOR_FILE_SHARE, UPSTAND_TOLERANCE, assignLevels, conventionOf, levelHeightsOf, levelOf, projectZeroY, type LevelHeight } from './model/levelRule';
 export type { Annotation } from './render/annotations';
 export { EXPLODE_MODES, explodeOffsets, explodedBounds, type ExplodeMode } from './render/explode';
 export type { PipelineSummary, PipelineLevel, PipelineQa, RevitExchange, RevitExchangeElement } from './pipeline/types';
@@ -25,6 +25,6 @@ export { PYODIDE_VERSION, PYODIDE_INDEX_URL } from './pyodide';
 export { History, Transaction, TransactionError, type Change, type CommittedTransaction } from './doc/transactions';
 export { tempDims, type Dim2 } from './render/tempDims';
 export { CURSOR, cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './render/cursors';
-export const ENGINE_VERSION = '0.31.0';
+export const ENGINE_VERSION = '0.32.0';
 export { DEFAULT_CHECKS, QA_TOLERANCE, duplicatePairs, elementLabel, findingId, runChecks } from './qa/checks';
 export type { Finding, QaCheck, QaContext, QaGroup, QaReport, Severity } from './qa/types';

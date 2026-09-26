@@ -63,7 +63,7 @@ export interface ElementRecord {
 
 export interface Level {
   name: string;
-  /** Project length units, as written in the file. */
+  /** Project length units, as written in the file (IfcBuildingStorey.Elevation: the number Revit shows). */
   elevation: number | null;
   elementCount: number;
 }

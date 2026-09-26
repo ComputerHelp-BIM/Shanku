@@ -76,7 +76,7 @@ export function levelHeights(
   levels: ReadonlyArray<{ name: string; elevation?: number | null }>,
   elements: ReadonlyArray<ElementLike>,
   lengthUnit?: string,
-  /** originY of the model: a storey's declared elevation is compared in viewer heights. */
+  /** The project's ±0 in the viewer (engine projectZeroY): a storey's Elevation is compared in viewer heights. */
   offsetY = 0,
 ): Map<string, number> {
   const out = new Map<string, number>();
@@ -92,7 +92,7 @@ export function levelHeights(
   for (const l of levels) {
     const on = elements.filter((e) => e.level === l.name);
     if (l.elevation !== null && l.elevation !== undefined && scale !== null) {
-      const z = l.elevation * scale + offsetY;
+      const z = l.elevation * scale + offsetY; // offsetY: the project's ±0 in the viewer (engine projectZeroY)
       if (on.some((e) => Math.abs(e.bounds[1] - z) < 0.05 || Math.abs(e.bounds[4] - z) < 0.05)) {
         out.set(l.name, z);
         continue;

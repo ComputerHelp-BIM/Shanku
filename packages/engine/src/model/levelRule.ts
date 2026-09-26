@@ -12,8 +12,12 @@
  * The IFC storey an exporter files the element under is kept as `storey` (Revit files columns and
  * walls under their base level); CH-LEVEL, a label, is kept as `chLevel` and checked by QA.
  *
- * Files whose levels are floors (no level at the roof: many IFCs from other programs) cannot be read
- * this way — their top storey would rise above every level and merge into the one below. They are
+ * Where a level is: its Elevation (the number Revit shows) moved to the project's ±0 in the viewer,
+ * which is calibrated against the geometry (projectZeroY) — no attribute or placement says reliably
+ * where exporters and web-ifc put things.
+ *
+ * Files whose levels are floors (no level at the roof: many IFCs from other programs) cannot be read by
+ * tops — their top storey would rise above every level and merge into the one below. They are
  * recognised (more than FLOOR_FILE_SHARE of the elements finish above the highest level) and keep
  * their own storeys.
  */
@@ -29,31 +33,65 @@ const TO_M: Record<string, number> = { mm: 0.001, millimetre: 0.001, millimeter:
 
 export interface LevelHeight {
   name: string;
-  /** In the viewer's space (the file's origin shift included), metres. */
+  /** In the viewer, metres. */
   y: number;
 }
 
+type LevelModel = Pick<ParsedModel, 'info' | 'elements' | 'coordination'>;
+
+const scaleOf = (model: Pick<ParsedModel, 'info'>) => TO_M[(model.info.units?.length ?? '').toLowerCase()] ?? 1;
+
+function hasGeometry(e: ElementRecord): boolean {
+  return Number.isFinite(e.bounds[4]) && Number.isFinite(e.bounds[1]) && e.bounds[4] >= e.bounds[1];
+}
+
 /**
- * The levels' heights in the viewer: each storey's declared elevation, scaled to metres and moved by
- * the file's origin shift (web-ifc COORDINATE_TO_ORIGIN); a storey without one: the lowest bottom of
- * what the file puts in it.
+ * The project's ±0 in the viewer (metres), calibrated against the geometry: Δ such that a storey's
+ * Elevation sits at Elevation + Δ. Nearly every element touches its storey's level with its bottom
+ * (Revit files columns and walls by their base) or its top (beams and slabs; everything in Shanku's
+ * pipeline), so Δ is the most common value of (bottom − Elevation) and (top − Elevation), in 5 mm steps.
+ * Without elevations or geometry: the file's origin shift alone.
  */
-export function levelHeightsOf(model: Pick<ParsedModel, 'info' | 'elements' | 'coordination'>): LevelHeight[] {
-  const scale = TO_M[(model.info.units?.length ?? '').toLowerCase()] ?? 1;
-  const oy = model.coordination && model.coordination.length === 16 ? model.coordination[13] : 0;
+export function projectZeroY(model: LevelModel): number {
+  const scale = scaleOf(model);
+  const elev = new Map<string, number>();
+  for (const l of model.info.levels) if (l.elevation !== null && l.elevation !== undefined && Number.isFinite(l.elevation)) elev.set(l.name, l.elevation * scale);
+  const bins = new Map<number, { n: number; sum: number }>();
+  const add = (v: number) => {
+    const k = Math.round(v / 0.005);
+    const b = bins.get(k) ?? { n: 0, sum: 0 };
+    b.n++;
+    b.sum += v;
+    bins.set(k, b);
+  };
+  for (const e of model.elements) {
+    const z = elev.get(e.storey ?? e.level);
+    if (z === undefined || !hasGeometry(e)) continue;
+    add(e.bounds[1] - z);
+    add(e.bounds[4] - z);
+  }
+  let best: { n: number; sum: number } | null = null;
+  for (const b of bins.values()) if (!best || b.n > best.n) best = b;
+  if (best) return best.sum / best.n;
+  return model.coordination && model.coordination.length === 16 ? model.coordination[13] : 0;
+}
+
+/**
+ * The levels' heights in the viewer: each storey's Elevation moved to the project's ±0; a storey
+ * without one: the lowest bottom of what the file puts in it.
+ */
+export function levelHeightsOf(model: LevelModel): LevelHeight[] {
+  const scale = scaleOf(model);
+  const zero = projectZeroY(model);
   const out: LevelHeight[] = [];
   for (const l of model.info.levels) {
-    if (l.elevation !== null && l.elevation !== undefined && Number.isFinite(l.elevation)) out.push({ name: l.name, y: l.elevation * scale + oy });
+    if (l.elevation !== null && l.elevation !== undefined && Number.isFinite(l.elevation)) out.push({ name: l.name, y: l.elevation * scale + zero });
     else {
       const on = model.elements.filter((e) => (e.storey ?? e.level) === l.name && hasGeometry(e));
       if (on.length) out.push({ name: l.name, y: Math.min(...on.map((e) => e.bounds[1])) });
     }
   }
   return out.sort((a, b) => a.y - b.y);
-}
-
-function hasGeometry(e: ElementRecord): boolean {
-  return Number.isFinite(e.bounds[4]) && Number.isFinite(e.bounds[1]) && e.bounds[4] >= e.bounds[1];
 }
 
 /** The level of one element by the definition (null: no levels, or no geometry to judge by). */
@@ -76,7 +114,8 @@ export function conventionOf(model: Pick<ParsedModel, 'elements'>, levels: reado
 
 /**
  * Applies the definition to a model in place: `storey` keeps the file's filing, `level` becomes the
- * level by the definition, and the levels' element counts follow.
+ * level by the definition, and the levels' element counts follow. A file whose levels are floors keeps
+ * its storeys (`info.levelConvention` says which reading applied).
  */
 export function assignLevels(model: ParsedModel, upstand = UPSTAND_TOLERANCE): void {
   for (const e of model.elements) if (e.storey === undefined) e.storey = e.level;
