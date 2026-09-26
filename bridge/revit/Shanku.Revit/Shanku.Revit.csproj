@@ -10,7 +10,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>Shanku.Revit</AssemblyName>
     <RootNamespace>Shanku.Revit</RootNamespace>
-    <Version>0.8.0</Version>
+    <Version>0.9.0</Version>
     <Product>Shanku Bridge for Revit</Product>
     <Company>ComputerHelp-BIM</Company>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>

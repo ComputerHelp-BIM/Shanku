@@ -487,3 +487,96 @@ public class ServerTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, none.StatusCode);
     }
 }
+
+public class OutlineTests
+{
+    // Slab outlines from a real drawing (adani.dxf) that Revit refused: 0.1 mm edges, doubled points, a self-touching notch.
+    private static readonly Dictionary<string, double[][]> Refused = new()
+    {
+        ["DXF:135E:L1"] = new double[][] { new[] {-47100.2, 17000.2}, new[] {-49550.2, 17000.2}, new[] {-49550.2, 16000.1}, new[] {-49800.2, 16000.1}, new[] {-49800.2, 17000.2}, new[] {-52125.2, 17000.2}, new[] {-52125.2, 16000.0}, new[] {-52150.4, 16000.0}, new[] {-52150.4, 14649.8}, new[] {-49750.4, 14649.8}, new[] {-49750.4, 16000.1}, new[] {-49550.3, 16000.1}, new[] {-49550.2, 12400.1}, new[] {-47100.2, 12400.1}, new[] {-47100.4, 16000.1}, new[] {-46900.3, 16000.1}, new[] {-46900.4, 14649.9}, new[] {-44500.4, 14649.9}, new[] {-44500.4, 16000.0}, new[] {-44525.2, 16000.0}, new[] {-44525.2, 17000.2}, new[] {-46850.2, 17000.2}, new[] {-46850.2, 16000.1}, new[] {-47100.2, 16000.1} },
+        ["DXF:1379:L1"] = new double[][] { new[] {-62850.2, 13400.1}, new[] {-62850.2, 12450.1}, new[] {-63350.3, 12450.1}, new[] {-63350.4, 12450.1}, new[] {-63350.4, 14449.8}, new[] {-62800.4, 14449.8}, new[] {-62800.4, 13400.1} },
+        ["DXF:137A:L1"] = new double[][] { new[] {-59900.2, 12450.1}, new[] {-59900.2, 13400.0}, new[] {-59950.4, 13400.0}, new[] {-59950.4, 14449.9}, new[] {-59400.5, 14449.9}, new[] {-59400.5, 13700.1}, new[] {-59400.5, 13699.9}, new[] {-59400.5, 13149.9}, new[] {-59400.5, 13150.1}, new[] {-59400.5, 12450.1} },
+        ["DXF:13E9:L1"] = new double[][] { new[] {-36500.2, 6100.1}, new[] {-36500.3, 2500.1}, new[] {-36700.4, 2500.1}, new[] {-36700.4, 3850.3}, new[] {-39100.4, 3850.3}, new[] {-39100.4, 2500.1}, new[] {-39075.2, 2500.1}, new[] {-39075.2, 1500.1}, new[] {-36750.2, 1500.1}, new[] {-36750.2, 2500.1}, new[] {-36500.2, 2500.1}, new[] {-36500.2, 1500.1}, new[] {-34050.2, 1500.1}, new[] {-34050.2, 2500.1}, new[] {-33800.2, 2500.1}, new[] {-33800.2, 1500.1}, new[] {-31475.2, 1500.1}, new[] {-31475.2, 2500.1}, new[] {-31450.4, 2500.1}, new[] {-31450.4, 3850.2}, new[] {-33850.4, 3850.2}, new[] {-33850.3, 2500.1}, new[] {-34050.4, 2500.1}, new[] {-34050.4, 6100.1} },
+        ["DXF:38A2:L2"] = new double[][] { new[] {-62850.2, 13400.1}, new[] {-62850.2, 12450.1}, new[] {-63350.3, 12450.1}, new[] {-63350.4, 12450.1}, new[] {-63350.4, 14449.8}, new[] {-62800.4, 14449.8}, new[] {-62800.4, 13400.1} },
+        ["DXF:38A2:L3"] = new double[][] { new[] {-62850.2, 13400.1}, new[] {-62850.2, 12450.1}, new[] {-63350.3, 12450.1}, new[] {-63350.4, 12450.1}, new[] {-63350.4, 14449.8}, new[] {-62800.4, 14449.8}, new[] {-62800.4, 13400.1} },
+        ["DXF:38A2:L4"] = new double[][] { new[] {-62850.2, 13400.1}, new[] {-62850.2, 12450.1}, new[] {-63350.3, 12450.1}, new[] {-63350.4, 12450.1}, new[] {-63350.4, 14449.8}, new[] {-62800.4, 14449.8}, new[] {-62800.4, 13400.1} },
+        ["DXF:390C:L2"] = new double[][] { new[] {-33800.2, 6050.0}, new[] {-33300.4, 6050.0}, new[] {-33300.3, 6050.0}, new[] {-33300.3, 5350.1}, new[] {-33300.3, 5350.1}, new[] {-33300.3, 4800.1}, new[] {-33300.3, 4800.1}, new[] {-33300.3, 4050.2}, new[] {-33300.4, 4050.2}, new[] {-33850.4, 4050.2}, new[] {-33850.4, 5100.1}, new[] {-33800.2, 5100.1} },
+        ["DXF:390C:L3"] = new double[][] { new[] {-33800.2, 6050.0}, new[] {-33300.4, 6050.0}, new[] {-33300.3, 6050.0}, new[] {-33300.3, 5350.1}, new[] {-33300.3, 5350.1}, new[] {-33300.3, 4800.1}, new[] {-33300.3, 4800.1}, new[] {-33300.3, 4050.2}, new[] {-33300.4, 4050.2}, new[] {-33850.4, 4050.2}, new[] {-33850.4, 5100.1}, new[] {-33800.2, 5100.1} },
+        ["DXF:390C:L4"] = new double[][] { new[] {-33800.2, 6050.0}, new[] {-33300.4, 6050.0}, new[] {-33300.3, 6050.0}, new[] {-33300.3, 5350.1}, new[] {-33300.3, 5350.1}, new[] {-33300.3, 4800.1}, new[] {-33300.3, 4800.1}, new[] {-33300.3, 4050.2}, new[] {-33300.4, 4050.2}, new[] {-33850.4, 4050.2}, new[] {-33850.4, 5100.1}, new[] {-33800.2, 5100.1} },
+    };
+
+    private static double Area(List<double[]> p)
+    {
+        double s = 0;
+        for (int i = 0; i < p.Count; i++) s += p[i][0] * p[(i + 1) % p.Count][1] - p[(i + 1) % p.Count][0] * p[i][1];
+        return Math.Abs(s / 2);
+    }
+
+    private static bool Cross(double[] a, double[] b, double[] c, double[] d)
+    {
+        double O(double[] p, double[] q, double[] r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+        return O(a, b, c) * O(a, b, d) < 0 && O(c, d, a) * O(c, d, b) < 0;
+    }
+
+    [Fact]
+    public void Refused_outlines_become_loops_Revit_accepts()
+    {
+        foreach (var (id, outline) in Refused)
+        {
+            var loops = ExportPlanner.CleanOutline(outline);
+            Assert.NotEmpty(loops);
+            foreach (var lp in loops)
+            {
+                int n = lp.Count;
+                Assert.True(n >= 3, id);
+                for (int i = 0; i < n; i++)
+                {
+                    var a = lp[i]; var b = lp[(i + 1) % n];
+                    Assert.True(Math.Sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1])) >= 0.8, $"{id}: an edge under Revit's tolerance");
+                    for (int j = i + 2; j < n; j++)
+                        if (!(i == 0 && j == n - 1)) Assert.False(Cross(a, b, lp[j], lp[(j + 1) % n]), $"{id}: crosses itself");
+                    for (int j = 0; j < n; j++)
+                        if (j != i) Assert.True(Math.Sqrt((a[0] - lp[j][0]) * (a[0] - lp[j][0]) + (a[1] - lp[j][1]) * (a[1] - lp[j][1])) >= ExportPlanner.OutlineMergeMm, $"{id}: touches itself");
+                }
+            }
+            double before = Area(outline.ToList()), after = loops.Sum(Area);
+            Assert.True(Math.Abs(after - before) / before < 0.001, $"{id}: area {before} -> {after}");
+        }
+    }
+
+    [Fact]
+    public void A_self_touching_notch_splits_into_simple_loops()
+    {
+        var loops = ExportPlanner.CleanOutline(Refused["DXF:135E:L1"]);
+        Assert.True(loops.Count >= 2);
+    }
+
+    [Fact]
+    public void A_clean_rectangle_is_left_alone()
+    {
+        var rect = new[] { new[] { 0.0, 0.0 }, new[] { 4000.0, 0.0 }, new[] { 4000.0, 3000.0 }, new[] { 0.0, 3000.0 } };
+        var loops = ExportPlanner.CleanOutline(rect);
+        Assert.Single(loops);
+        Assert.Equal(4, loops[0].Count);
+    }
+}
+
+public class PairedEventTests
+{
+    [Fact]
+    public void Paired_fires_once_on_a_correct_code_and_never_on_a_wrong_one()
+    {
+        var p = new Pairing(null);
+        int fired = 0;
+        p.Paired += () => fired++;
+        string code = p.NewCode();
+        Assert.Null(p.TryPair(code == "000000" ? "111111" : "000000"));
+        Assert.Equal(0, fired);
+        Assert.NotNull(p.CodeExpiresUtc);
+        Assert.NotNull(p.TryPair(code));
+        Assert.Equal(1, fired);
+        Assert.Null(p.CodeExpiresUtc); // one use
+        Assert.Null(p.TryPair(code));
+        Assert.Equal(1, fired);
+    }
+}

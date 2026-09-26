@@ -46,6 +46,12 @@ public sealed class Pairing
         }
     }
 
+    /// <summary>When the showing code stops working (UTC); null when none is showing.</summary>
+    public DateTime? CodeExpiresUtc
+    {
+        get { lock (_gate) return _code != null ? _codeExpires : null; }
+    }
+
     public bool PairingOpen
     {
         get { lock (_gate) return _code != null && _now() < _codeExpires; }
@@ -57,7 +63,17 @@ public sealed class Pairing
     }
 
     /// <summary>Exchanges a correct, unexpired code for a new token; null otherwise.</summary>
+    /// <summary>Raised after a browser pairs (on the server's thread): the Connect window closes itself.</summary>
+    public event Action? Paired;
+
     public string? TryPair(string? code)
+    {
+        string? token = TryPairLocked(code);
+        if (token != null) Paired?.Invoke();
+        return token;
+    }
+
+    private string? TryPairLocked(string? code)
     {
         lock (_gate)
         {

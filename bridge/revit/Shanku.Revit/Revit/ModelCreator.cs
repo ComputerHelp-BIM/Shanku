@@ -334,12 +334,18 @@ internal sealed class ModelCreator
     private Element FloorOf(ExchangeElement e, IReadOnlyList<ExchangeLevel> levels)
     {
         var lv = LevelOf(ExportPlanner.OwnLevel(levels, e)); // a slab hangs from its own level
-        var pts = e.Outline!.Select(p => At(p, lv.ProjectElevation)).ToList();
-        pts = pts.Where((p, i) => i == 0 || p.DistanceTo(pts[i - 1]) > 1e-6).ToList(); // no zero-length edges
-        if (pts.Count > 1 && pts[0].DistanceTo(pts[^1]) < 1e-6) pts.RemoveAt(pts.Count - 1);
-        var loop = new CurveLoop();
-        for (int i = 0; i < pts.Count; i++) loop.Append(Line.CreateBound(pts[i], pts[(i + 1) % pts.Count]));
-        var floor = Floor.Create(_doc, new List<CurveLoop> { loop }, _types[ExportPlanner.TypeFor(e, _c).Type], lv.Id, true, null, 0);
+        // The outline as loops Revit accepts: tiny edges merged, spikes dropped, a self-touching outline split.
+        var clean = ExportPlanner.CleanOutline(e.Outline!);
+        if (clean.Count == 0) throw new InvalidOperationException("Its outline has no area left once edges shorter than Revit allows are merged.");
+        var loops = new List<CurveLoop>();
+        foreach (var lp in clean)
+        {
+            var pts = lp.Select(p => At(p, lv.ProjectElevation)).ToList();
+            var loop = new CurveLoop();
+            for (int i = 0; i < pts.Count; i++) loop.Append(Line.CreateBound(pts[i], pts[(i + 1) % pts.Count]));
+            loops.Add(loop);
+        }
+        var floor = Floor.Create(_doc, loops, _types[ExportPlanner.TypeFor(e, _c).Type], lv.Id, true, null, 0);
         OffsetFromLevel(floor, BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM, lv, e, "Height Offset From Level");
         return floor;
     }

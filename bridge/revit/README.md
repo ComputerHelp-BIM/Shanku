@@ -1,4 +1,4 @@
-# Shanku Bridge for Revit 0.8.0
+# Shanku Bridge for Revit 0.9.0
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
 into Shanku, keep the selection in step both ways, edit Revit parameters from Shanku, and keep Shanku up
@@ -10,7 +10,7 @@ Revit). Protocol: `docs/bridge/protocol.md`.
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.8.0.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.9.0.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -28,7 +28,7 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.8.0)
+## What it does, and does not do (0.9.0)
 
 - Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
   changed. Selection sync only selects.
@@ -86,6 +86,19 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.9.0 — 2026-09-26
+- **Connect is a modeless window.** The pairing code used to show in a modal dialog, and while it was open
+  Revit ran none of Shanku's requests: pairing worked, but loading waited until the dialog was closed. The
+  new window (owned by Revit, above it) lets Revit keep working, shows the code large with a countdown,
+  offers New code and Open Shanku, and closes itself a moment after Shanku pairs.
+- **Revit comes to the front after Export to Revit**, with the created elements selected. When Windows
+  refuses to hand over the foreground, Revit's taskbar button flashes instead.
+- **Fixed: slabs Revit refused** ("Curve length is too small…", "cannot compose a valid boundary"). Drawn
+  outlines carry 0.1 mm jogs, doubled points and notches whose sides touch; Revit refuses edges under
+  ~0.8 mm and self-touching loops. Outlines are cleaned first (`ExportPlanner.CleanOutline`): vertices
+  within 1.5 mm merged, collinear points and spikes dropped, a self-touching outline split into simple
+  loops. On adani.dxf: 192 of 892 slab outlines invalid for Revit before, none after; area within 0.05 %.
 
 ### 0.8.0 — 2026-09-26
 - **Export to Revit is fast on large drawings.** Each element used to get its own sub-transaction and one

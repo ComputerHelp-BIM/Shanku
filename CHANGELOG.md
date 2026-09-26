@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.46.2 — 2026-09-26
+
+### Fixed
+- Export to Revit: 152 slabs Revit refused (0.1 mm edges, self-touching outlines) are now built; outlines are cleaned for Revit (Shanku Bridge for Revit 0.9.0).
+
+### Changed
+- Revit's Connect window is modeless (pair and load without closing it); Revit comes to the front with the new elements selected after Export to Revit.
+
 ## 0.46.1 — 2026-09-26
 
 ### Changed

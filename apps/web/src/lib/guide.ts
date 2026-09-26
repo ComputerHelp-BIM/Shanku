@@ -381,6 +381,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.46.2', date: '2026-09-26', items: ['With Shanku Bridge for Revit 0.9.0: Connect in Revit no longer blocks Revit (pair and load at once), Revit comes to the front with the new elements selected after Export to Revit, and slabs Revit refused are built.'] },
           { version: '0.46.1', date: '2026-09-26', items: ['The progress display is bigger and livelier: a tower crane lowers each member into place, a caption says what is going up, and a flag goes up when it tops out.'] },
           { version: '0.46.0', date: '2026-09-26', items: ['DXF → 3D reads large drawings much faster (a 4,444-element drawing: about 2 s instead of half a minute).', 'Export to Revit: the check takes seconds, the build regenerates Revit once, and Revit’s progress shows in the Export window (with Shanku Bridge for Revit 0.8.0).'] },
           { version: '0.45.0', date: '2026-09-26', items: ['Progress you can watch: a frame builds itself while files open, DXF → 3D runs and Revit works, with a timer and tips.', 'Download IFC: the model as a file; from Revit, a fresh export with every change.', 'Models open faster, and Revit answers at once without moving the mouse over it.'] },

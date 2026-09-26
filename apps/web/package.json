@@ -1,6 +1,6 @@
 {
   "name": "@shanku/web",
-  "version": "0.46.1",
+  "version": "0.46.2",
   "private": true,
   "description": "Shanku \u2014 the web app. Open IFC, navigate like Revit, select, isolate, section, inspect.",
   "license": "UNLICENSED",

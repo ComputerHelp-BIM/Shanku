@@ -242,7 +242,14 @@ public sealed class RevitHost : IRevitHost
             Progress = (done, total, phase) => Broadcast?.Invoke("progress", new { task = dryRun ? "check" : "create", done, total, phase }),
         };
         var report = creator.Run(exchange, dryRun, GlobalIdOf);
-        if (!dryRun) BuildMap(doc); // the new elements, for selection and live updates
+        if (!dryRun)
+        {
+            BuildMap(doc); // the new elements, for selection and live updates
+            // Show the result in Revit: the created elements selected (highlighted), Revit brought forward.
+            var made = report.Results.Where(r => r.Ok && r.ElementId > 0).Select(r => new ElementId(r.ElementId)).ToList();
+            try { if (made.Count > 0) ui.ActiveUIDocument?.Selection.SetElementIds(made); } catch { /* selection is a courtesy */ }
+            WindowFocus.BringToFront(ui.MainWindowHandle);
+        }
         return report;
     }, Export);
 

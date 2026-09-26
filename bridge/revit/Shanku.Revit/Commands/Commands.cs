@@ -15,20 +15,8 @@ public sealed class ConnectCommand : IExternalCommand
             TaskDialog.Show("Shanku", App.StartError ?? "The Shanku bridge did not start. See %APPDATA%\\Shanku\\bridge.log.");
             return Result.Failed;
         }
-        string code = App.Pairing.NewCode();
-        var dlg = new TaskDialog("Connect to Shanku")
-        {
-            MainInstruction = $"Pairing code:  {code[..3]} {code[3..]}",
-            MainContent =
-                "In Shanku, click Revit in the status bar (or search \"Connect to Revit\") and enter this code. " +
-                "It works once, for 5 minutes.\n\n" +
-                (App.Pairing.HasTokens ? "A browser is already paired on this computer; a code is only needed for a new one.\n\n" : "") +
-                "Shanku waits for this dialog to close before it loads the model.",
-            FooterText = $"Bridge on http://localhost:{App.Server.Port} · Revit {App.Host?.RevitVersion} · add-in {App.Host?.AddinVersion}",
-            CommonButtons = TaskDialogCommonButtons.Close,
-        };
-        dlg.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "Open Shanku in the browser");
-        if (dlg.Show() == TaskDialogResult.CommandLink1) App.OpenShanku();
+        // modeless: Revit keeps working while the code shows, so Shanku can pair and load at once
+        ConnectWindow.ShowFor(data.Application.MainWindowHandle);
         return Result.Succeeded;
     }
 }

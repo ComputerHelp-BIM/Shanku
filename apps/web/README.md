@@ -1,4 +1,4 @@
-# @shanku/web 0.46.1
+# @shanku/web 0.46.2
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.46.2 — 2026-09-26
+- Export to Revit results say Revit shows the new elements selected and comes to the front. Pairs with Shanku Bridge for Revit 0.9.0 (modeless Connect window, Revit to the front after a build, slab outlines cleaned for Revit).
 
 ### 0.46.1 — 2026-09-26
 - **Progress display, bigger and livelier:** a 6-storey frame at up to 340 px (was 200) beside a tower crane whose trolley travels to the next member and lowers it on its cable; each new member settles into place; a caption says what is going up ("Storey 3 · beams"); a flag waves on the roof when it tops out; larger text and bar. Reduced motion: no animation, the frame shows the state.
