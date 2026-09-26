@@ -76,6 +76,19 @@ describe('circles and arcs on elements', () => {
     expect(dimensionValues({ id: 'a', kind: 'arcLength', points: [], refs: [], at: [0, 0, 0], normal: [0, 1, 0], arc: { centre: [0, 3, 0], radius: arc.radius, start: [0, 0, 0], end: [0, 0, 0], sweep: arc.sweep, closed: false } })).toEqual(['⌒ 1,571']);
   });
 
+  it('finds the circle of a round column cut by a plan (its cut outline)', async () => {
+    const { cutSegments } = await import('../src/render/measure');
+    const s = roundColumn(0.3, 32, 1, 1);
+    s.cuts = [{ normal: new Vector3(0, -1, 0), constant: 1.2 }];
+    s.inside = (p) => p.y <= 1.2 + 1e-4;
+    const segs = cutSegments(s, 0);
+    expect(segs).toHaveLength(32);
+    const arc = arcFromEdge(s, 0, segs[3][0], segs[3][1])!;
+    expect(arc.closed).toBe(true);
+    expect(Math.abs(arc.radius - 0.3)).toBeLessThan(0.0005);
+    expect(arc.centre.y).toBeCloseTo(1.2);
+  });
+
   it('says a straight edge is not an arc', () => {
     // a square "column" made with 4 sides: corners turn 90°, not an arc
     expect(arcFromEdge(roundColumn(0.3, 4), 0, new Vector3(0.3, 3, 0), new Vector3(0, 3, 0.3))).toBeNull();

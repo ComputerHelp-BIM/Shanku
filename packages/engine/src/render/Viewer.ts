@@ -58,7 +58,7 @@ import {
 } from './materials';
 import { explodeOffsets, explodedBounds, type ExplodeMode } from './explode';
 import { decodePickId } from './pickId';
-import { buildGeometryIndex, memberAxis, planarFace, raycastAll, type GeometryIndex, type MeasureScene, type MemberAxis, type PlanarFace } from './measure';
+import { buildGeometryIndex, cutSegments, memberAxis, planarFace, raycastAll, type CutPlane, type GeometryIndex, type MeasureScene, type MemberAxis, type PlanarFace } from './measure';
 import { MeasureTool, tabOptions, type MeasureMode, type MeasureReadout } from './measureTool';
 import { DimensionTool, type DimensionReadout } from './dimensionTool';
 import { drawDimensions, type DimensionKind, type Origin, type PlacedDimension, type Vec3 } from './dimensions';
@@ -263,6 +263,8 @@ export class Viewer {
   private geoIndex: GeometryIndex | null = null;
   private axisCache = new Map<number, MemberAxis | null>();
   private faceCache = new Map<string, PlanarFace>();
+  /** Cut outlines by element and cut (plans, sections, section box faces towards the camera). */
+  private cutCache = new Map<string, Array<[Vector3, Vector3]>>();
   private measure: MeasureTool | null = null;
   private measEl: SVGSVGElement;
   /** Placed dimensions of this view, their selection, and the Dimension tool. */
@@ -551,6 +553,7 @@ export class Viewer {
     this.geoIndex = null;
     this.axisCache.clear();
     this.faceCache.clear();
+    this.cutCache.clear();
     this.glowed = [];
     this.endTab();
     this.dimTool?.cancelPending();
@@ -677,8 +680,35 @@ export class Viewer {
       bounds: (i) => this.boundsOf(i),
       // three.js keeps the side of each clipping plane where the distance is positive.
       inside: (p) => planes.every((pl) => pl.distanceToPoint(p) >= -1e-4),
+      cuts: this.visibleCuts(),
+      boxVisible: planes.length
+        ? (b) => planes.every((pl) => {
+            // The box corner furthest along the kept side: if even that is outside, the whole box is.
+            const n = pl.normal;
+            return n.x * (n.x >= 0 ? b[3] : b[0]) + n.y * (n.y >= 0 ? b[4] : b[1]) + n.z * (n.z >= 0 ? b[5] : b[2]) + pl.constant >= -1e-4;
+          })
+        : undefined,
     };
   }
+
+  /** Clip planes whose cut face the camera looks at (the removed side is towards the viewer). */
+  private visibleCuts(): CutPlane[] {
+    const d = this.camera.getWorldDirection(new Vector3());
+    return this.clipPlanes.filter((pl) => pl.normal.dot(d) > 1e-3).map((pl) => ({ normal: pl.normal.clone(), constant: pl.constant }));
+  }
+
+  private cutsOf = (i: number): Array<[Vector3, Vector3]> => {
+    const s = this.measureScene();
+    if (!s?.cuts?.length) return [];
+    const key = `${i}|${s.cuts.map((c) => `${c.normal.x.toFixed(4)},${c.normal.y.toFixed(4)},${c.normal.z.toFixed(4)},${c.constant.toFixed(4)}`).join(';')}|${this.explodeAmount}|${this.clipPlanes.map((pl) => pl.constant.toFixed(4)).join(',')}`;
+    let v = this.cutCache.get(key);
+    if (!v) {
+      v = cutSegments(s, i);
+      if (this.cutCache.size > 4000) this.cutCache.clear();
+      this.cutCache.set(key, v);
+    }
+    return v;
+  };
 
   private axisOf = (i: number): MemberAxis | null => {
     if (!this.axisCache.has(i)) {
@@ -749,6 +779,7 @@ export class Viewer {
         viewDir: () => (this.nav2d ? this.camera.getWorldDirection(new Vector3()) : null),
         axisOf: this.axisOf,
         faceOf: this.faceOf,
+        cutsOf: this.cutsOf,
         highlight: (els) => this.setGlow(els),
         emit: (r) => this.events.onMeasure?.(r),
         render: () => this.requestRender(),
@@ -821,6 +852,7 @@ export class Viewer {
         cameraDir: () => this.camera.getWorldDirection(new Vector3()),
         axisOf: this.axisOf,
         faceOf: this.faceOf,
+        cutsOf: this.cutsOf,
         highlight: (els) => this.setGlow(els),
         newId: () => `dim-${Date.now().toString(36)}-${(this.dimSeq++).toString(36)}`,
         origin: () => this.dimOrigin,

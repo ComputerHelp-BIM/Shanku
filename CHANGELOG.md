@@ -2,6 +2,15 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.44.0 — 2026-09-26
+
+### Added
+- Start page with sample buildings: G+1 frame, G+14 residential tower (1,235 elements) and G+24 twin towers on a G+3 podium (4,780 elements), made by `tools/fixtures/make_showcase_ifc.py` (`npm run fixtures:showcase`), served gzipped; `.ifc.gz` files open directly.
+- Snapping to the plan cut outline (and section box cuts): cut corners, cut edges, the cut face and column centres, for Measure and every Dimension tool. Engine 0.34.0, web 0.44.0.
+
+### Fixed
+- In plans of tall buildings, snaps could find nothing: the floors above the cut crowded the one being cut out of the candidates.
+
 ## 0.43.0 — 2026-09-26
 
 ### Added

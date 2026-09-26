@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import type { ElementRecord } from '../model/types';
-import type { MeasureScene } from './measure';
+import { cutSegments, type MeasureScene } from './measure';
 
 /**
  * Revit's Annotate → Dimension panel as permanent view annotations: Aligned, Linear, Angular,
@@ -221,6 +221,11 @@ const key = (p: Vector3) => `${Math.round(p.x * 1e5)},${Math.round(p.y * 1e5)},$
  * tessellated circle). Checked against the fitted circle within 1.5 % of its radius.
  */
 export function arcFromEdge(s: MeasureScene, index: number, a: Vector3, b: Vector3): FoundArc | null {
+  return arcFromSegments(elementEdges(s, index), a, b) ?? (s.cuts?.length ? arcFromSegments(cutSegments(s, index), a, b) : null);
+}
+
+/** An element's feature edges where drawn (exploded offset applied). */
+function elementEdges(s: MeasureScene, index: number): Array<[Vector3, Vector3]> {
   const off = s.offset(index);
   const E = s.edges.positions;
   const segs: Array<[Vector3, Vector3]> = [];
@@ -233,6 +238,11 @@ export function arcFromEdge(s: MeasureScene, index: number, a: Vector3, b: Vecto
     }
     if (p.distanceToSquared(r) > 1e-12) segs.push([p, r]);
   }
+  return segs;
+}
+
+/** The arc (or circle) segment a–b belongs to, among the given segments (see `arcFromEdge`). */
+export function arcFromSegments(segs: Array<[Vector3, Vector3]>, a: Vector3, b: Vector3): FoundArc | null {
   const start = segs.findIndex(([p, r]) => (p.distanceTo(a) < 1e-4 && r.distanceTo(b) < 1e-4) || (p.distanceTo(b) < 1e-4 && r.distanceTo(a) < 1e-4));
   if (start < 0) return null;
   const byPoint = new Map<string, number[]>();

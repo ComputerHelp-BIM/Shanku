@@ -33,6 +33,19 @@ export interface MeasureScene {
   bounds: (i: number) => Bounds;
   /** Inside the section box / view range (true when there is none). */
   inside: (p: Vector3) => boolean;
+  /**
+   * Clip planes whose cut face the camera sees (a plan's cut plane, the section box faces towards
+   * you): elements are cut there, and the cut outline can be snapped to, as in Revit.
+   */
+  cuts?: CutPlane[];
+  /** False when a box lies wholly outside the section box / view range (skipped before anything else). */
+  boxVisible?: (b: Bounds) => boolean;
+}
+
+/** A clip plane: points with normal · p + constant ≥ 0 are kept (three.js convention). */
+export interface CutPlane {
+  normal: Vector3;
+  constant: number;
 }
 
 export function buildGeometryIndex(mesh: MeshBuffers, edges: EdgeBuffers, elementCount: number): GeometryIndex {
@@ -163,7 +176,10 @@ export function elementsOnRay(s: MeasureScene, o: Vector3, d: Vector3, pad = 0):
   const out: Array<{ index: number; t: number }> = [];
   for (let i = 0; i < s.elements.length; i++) {
     if (s.hidden.has(i) || s.index.triStart[i] === s.index.triStart[i + 1]) continue;
-    const t = rayBox(o, d, s.bounds(i), pad);
+    const b = s.bounds(i);
+    // Cut away by the view range (upper floors in a plan): never a candidate, and must not crowd out those that are.
+    if (s.boxVisible && !s.boxVisible(b)) continue;
+    const t = rayBox(o, d, b, pad);
     if (t !== null) out.push({ index: i, t });
   }
   return out.sort((a, b) => a.t - b.t);
@@ -197,6 +213,135 @@ export function raycastAll(s: MeasureScene, o: Vector3, d: Vector3, candidates?:
     if (h) hits.push(h);
   }
   return hits.sort((a, b) => a.t - b.t);
+}
+
+// ------------------------------------------------------------------ cut outlines
+
+/** Joins pieces of one straight edge (a face split into triangles is cut into several collinear pieces). */
+export function mergeCollinear(segs: Array<[Vector3, Vector3]>): Array<[Vector3, Vector3]> {
+  // Drop duplicates and points.
+  const seen = new Set<string>();
+  let list: Array<[Vector3, Vector3]> = [];
+  for (const [a, b] of segs) {
+    if (a.distanceToSquared(b) < 1e-12) continue;
+    const ka = keyOf(a), kb = keyOf(b);
+    const k = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    list.push([a, b]);
+  }
+  for (let pass = 0; pass < 8; pass++) {
+    const at = new Map<string, number[]>();
+    list.forEach(([a, b], i) => {
+      for (const p of [a, b]) {
+        const k = keyOf(p);
+        const l = at.get(k);
+        if (l) l.push(i);
+        else at.set(k, [i]);
+      }
+    });
+    const gone = new Set<number>();
+    const added: Array<[Vector3, Vector3]> = [];
+    for (const [k, ids] of at) {
+      if (ids.length !== 2 || ids.some((i) => gone.has(i))) continue;
+      const [s1, s2] = [list[ids[0]], list[ids[1]]];
+      const far1 = keyOf(s1[0]) === k ? s1[1] : s1[0];
+      const far2 = keyOf(s2[0]) === k ? s2[1] : s2[0];
+      const mid = keyOf(s1[0]) === k ? s1[0] : s1[1];
+      const d1 = new Vector3().subVectors(mid, far1).normalize(), d2 = new Vector3().subVectors(far2, mid).normalize();
+      if (d1.dot(d2) < 0.99999) continue; // a corner, not the middle of a straight edge
+      gone.add(ids[0]);
+      gone.add(ids[1]);
+      added.push([far1, far2]);
+    }
+    if (!gone.size) break;
+    list = [...list.filter((_, i) => !gone.has(i)), ...added];
+  }
+  return list;
+}
+
+/**
+ * Where the visible cut planes slice an element: its cut outline (Revit's cut lines in a plan or
+ * section), straight edges joined, clipped to the rest of the section box / view range.
+ */
+export function cutSegments(s: MeasureScene, i: number): Array<[Vector3, Vector3]> {
+  if (!s.cuts?.length) return [];
+  const I = s.mesh.indices, P = s.mesh.positions;
+  const off = s.offset(i);
+  const ox = off?.[0] ?? 0, oy = off?.[1] ?? 0, oz = off?.[2] ?? 0;
+  const out: Array<[Vector3, Vector3]> = [];
+  for (const cut of s.cuts) {
+    const n = cut.normal, c = cut.constant;
+    const b = s.bounds(i);
+    // Skip elements the plane does not cross.
+    let lo = Infinity, hi = -Infinity;
+    for (let k = 0; k < 8; k++) {
+      const d = n.x * (k & 1 ? b[3] : b[0]) + n.y * (k & 2 ? b[4] : b[1]) + n.z * (k & 4 ? b[5] : b[2]) + c;
+      lo = Math.min(lo, d);
+      hi = Math.max(hi, d);
+    }
+    if (lo > 0 || hi < 0) continue;
+    const segs: Array<[Vector3, Vector3]> = [];
+    const dist = (v: number) => n.x * (P[v * 3] + ox) + n.y * (P[v * 3 + 1] + oy) + n.z * (P[v * 3 + 2] + oz) + c;
+    const at = (u: number, v: number): Vector3 => {
+      // Same numbers from both triangles sharing an edge: always from the lower vertex index.
+      if (u > v) [u, v] = [v, u];
+      const du = dist(u), dv = dist(v), t = du / (du - dv);
+      return new Vector3(P[u * 3] + ox + (P[v * 3] - P[u * 3]) * t, P[u * 3 + 1] + oy + (P[v * 3 + 1] - P[u * 3 + 1]) * t, P[u * 3 + 2] + oz + (P[v * 3 + 2] - P[u * 3 + 2]) * t);
+    };
+    for (let k = s.index.triStart[i]; k < s.index.triStart[i + 1]; k++) {
+      const t = s.index.tris[k];
+      const v = [I[t * 3], I[t * 3 + 1], I[t * 3 + 2]];
+      const d = v.map(dist);
+      if ((d[0] > 0 && d[1] > 0 && d[2] > 0) || (d[0] < 0 && d[1] < 0 && d[2] < 0)) continue;
+      const pts: Vector3[] = [];
+      for (let e = 0; e < 3; e++) {
+        const u = v[e], w = v[(e + 1) % 3], du = d[e], dw = d[(e + 1) % 3];
+        if ((du > 0) !== (dw > 0) && du !== dw) pts.push(at(u, w));
+      }
+      if (pts.length >= 2) segs.push([pts[0], pts[1]]);
+    }
+    // Keep the parts inside the rest of the box (binary search to the boundary).
+    for (const [a0, b0] of mergeCollinear(segs)) {
+      let a = a0, bb = b0;
+      const ia = s.inside(a), ib = s.inside(bb);
+      if (!ia && !ib) continue;
+      const edge = (inside: Vector3, outside: Vector3) => {
+        let lo2 = inside.clone(), hi2 = outside.clone();
+        for (let it = 0; it < 24; it++) {
+          const m = lo2.clone().lerp(hi2, 0.5);
+          if (s.inside(m)) lo2 = m;
+          else hi2 = m;
+        }
+        return lo2;
+      };
+      if (!ia) a = edge(bb, a);
+      if (!ib) bb = edge(a, bb);
+      out.push([a, bb]);
+    }
+  }
+  return out;
+}
+
+/** Where the ray meets a cut face (the solid surface a cut shows), nearest first, or null. */
+export function cutFaceHit(s: MeasureScene, o: Vector3, d: Vector3, candidates: Array<{ index: number }>): { index: number; t: number; point: Vector3; normal: Vector3 } | null {
+  let best: { index: number; t: number; point: Vector3; normal: Vector3 } | null = null;
+  for (const cut of s.cuts ?? []) {
+    const den = cut.normal.dot(d);
+    if (Math.abs(den) < 1e-9) continue;
+    const t = -(cut.normal.dot(o) + cut.constant) / den;
+    if (best && t >= best.t) continue;
+    const p = o.clone().addScaledVector(d, t);
+    // On the plane itself `inside` is borderline: test a hair inside the kept side.
+    if (!s.inside(p.clone().addScaledVector(cut.normal, 1e-5))) continue;
+    for (const { index } of candidates) {
+      if (insideElement(s, index, p)) {
+        best = { index, t, point: p, normal: cut.normal.clone().negate() };
+        break;
+      }
+    }
+  }
+  return best;
 }
 
 // ------------------------------------------------------------------ faces
@@ -718,7 +863,11 @@ export interface SnapQuery {
   pixel: number;
   axisOf: (i: number) => MemberAxis | null;
   faceOf: (i: number, tri: number) => PlanarFace;
+  /** Cut outline of an element (cached by the caller); default: worked out each time. */
+  cutsOf?: (i: number) => Array<[Vector3, Vector3]>;
 }
+
+const CUT_LABEL: Partial<Record<SnapKind, string>> = { endpoint: 'Cut corner', midpoint: 'Midpoint of cut edge', edge: 'Cut edge', face: 'Cut face', axisEnd: 'Centreline at the cut' };
 
 /**
  * What the cursor can snap to, best first (endpoint, face centre and centreline ends, midpoints,
@@ -729,13 +878,17 @@ export function snapCandidates(s: MeasureScene, q: SnapQuery): { candidates: Sna
   const pad = q.radius * q.pixel;
   const near = elementsOnRay(s, q.origin, q.dir, pad).slice(0, 40);
   const hits = raycastAll(s, q.origin, q.dir, near);
+  // A cut face in front of every surface hit is what the cursor is on (a column cut in a plan).
+  const cap = s.cuts?.length ? cutFaceHit(s, q.origin, q.dir, near) : null;
+  const capFront = cap && (!hits[0] || cap.t < hits[0].t - 1e-6) ? cap : null;
   const front = hits[0] ?? null;
-  const limit = front ? front.t + pad + 0.002 : Infinity;
+  const frontT = capFront ? capFront.t : front ? front.t : null;
+  const limit = frontT !== null ? frontT + pad + 0.002 : Infinity;
   const depth = (p: Vector3) => new Vector3().subVectors(p, q.origin).dot(q.dir);
   const out: SnapCandidate[] = [];
-  const add = (c: Omit<SnapCandidate, 'label' | 'dist'>, dist: number) => {
+  const add = (c: Omit<SnapCandidate, 'label' | 'dist'>, dist: number, cut = false) => {
     if (dist > q.radius) return;
-    out.push({ ...c, label: SNAP_LABEL[c.kind], dist });
+    out.push({ ...c, label: (cut && CUT_LABEL[c.kind]) || SNAP_LABEL[c.kind], dist });
   };
   const sd = (p: Vector3) => {
     const s2 = q.project(p);
@@ -759,6 +912,23 @@ export function snapCandidates(s: MeasureScene, q: SnapQuery): { candidates: Sna
         if (visible(p)) add({ point: p, kind: 'edge', ref: { kind: 'edge', a, b }, index, on: [a, b] }, sd(p));
       }
     }
+    // The cut outline (plans, sections, section box faces towards you): corners, midpoints, along.
+    if (s.cuts?.length) {
+      for (const [a, b] of q.cutsOf ? q.cutsOf(index) : cutSegments(s, index)) {
+        const ref: Reference = { kind: 'edge', a, b };
+        add({ point: a, kind: 'endpoint', ref, index }, sd(a), true);
+        add({ point: b, kind: 'endpoint', ref, index }, sd(b), true);
+        const m = a.clone().add(b).multiplyScalar(0.5);
+        add({ point: m, kind: 'midpoint', ref, index, on: [a, b] }, sd(m), true);
+        const sa = q.project(a), sb = q.project(b);
+        const ex = sb[0] - sa[0], ey = sb[1] - sa[1], l2 = ex * ex + ey * ey;
+        if (l2 > 1) {
+          const u = Math.min(1, Math.max(0, ((q.cursor[0] - sa[0]) * ex + (q.cursor[1] - sa[1]) * ey) / l2));
+          const p = a.clone().lerp(b, u);
+          add({ point: p, kind: 'edge', ref, index, on: [a, b] }, sd(p), true);
+        }
+      }
+    }
     // Centrelines run inside the element: offered when the element itself is what the cursor is on (or at its outline).
     const ax = q.axisOf(index);
     if (ax) {
@@ -774,9 +944,20 @@ export function snapCandidates(s: MeasureScene, q: SnapQuery): { candidates: Sna
         const p = ax.a.clone().lerp(ax.b, u);
         if (s.inside(p)) add({ point: p, kind: 'axis', ref, index, on: [ax.a, ax.b] }, sd(p));
       }
+      // Where the centreline crosses a cut: a column's centre in a plan.
+      for (const cut of s.cuts ?? []) {
+        const den = cut.normal.dot(ax.dir);
+        if (Math.abs(den) < 1e-6) continue;
+        const t = -(cut.normal.dot(ax.a) + cut.constant) / den;
+        if (t < -1e-6 || t > ax.length + 1e-6) continue;
+        const p = ax.a.clone().addScaledVector(ax.dir, t);
+        if (s.inside(p.clone().addScaledVector(cut.normal, 1e-5))) add({ point: p, kind: 'axisEnd', ref, index, on: [ax.a, ax.b] }, sd(p), true);
+      }
     }
   }
-  if (front) {
+  if (capFront) {
+    out.push({ point: capFront.point.clone(), kind: 'face', ref: { kind: 'face', normal: capFront.normal, point: capFront.point.clone() }, index: capFront.index, label: CUT_LABEL.face!, dist: 0 });
+  } else if (front) {
     const face = q.faceOf(front.index, front.tri);
     const ref: Reference = { kind: 'face', normal: face.normal, point: face.point };
     if (s.inside(face.centroid)) add({ point: face.centroid.clone(), kind: 'centre', ref, index: front.index }, sd(face.centroid));

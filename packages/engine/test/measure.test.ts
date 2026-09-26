@@ -246,3 +246,63 @@ describe('snapping', () => {
     expect(snapCandidates(s, query(60, 3)).candidates[0].kind).toBe('edge');
   });
 });
+
+describe('snapping to the plan cut outline', () => {
+  // A 400 × 600 column 3 m tall, cut by a plan at 1.2 m (kept: y ≤ 1.2), looking straight down.
+  const setup = () => {
+    const s = scene([{ min: [0, 0, 0], max: [0.4, 3, 0.6], category: 'Column' }]);
+    const n = new Vector3(0, -1, 0);
+    s.cuts = [{ normal: n, constant: 1.2 }];
+    s.inside = (p) => p.y <= 1.2 + 1e-4;
+    const project = (p: Vector3): [number, number] => [p.x * 100, p.z * 100];
+    const query = (cx: number, cz: number) => ({
+      origin: new Vector3(cx / 100, 50, cz / 100), dir: down, cursor: [cx, cz] as [number, number], project, radius: 10, pixel: 0.01,
+      axisOf: (i: number) => memberAxis(s, i), faceOf: (i: number, t: number) => planarFace(s, i, t),
+    });
+    return { s, query };
+  };
+
+  it('works out the cut outline: four straight edges at the cut height', async () => {
+    const { cutSegments } = await import('../src/render/measure');
+    const { s } = setup();
+    const segs = cutSegments(s, 0);
+    expect(segs).toHaveLength(4); // the triangle diagonals do not split the sides
+    expect(segs.every(([a, b]) => Math.abs(a.y - 1.2) < 1e-6 && Math.abs(b.y - 1.2) < 1e-6)).toBe(true);
+    expect(segs.map(([a, b]) => Math.round(a.distanceTo(b) * 1000)).sort((x, y) => x - y)).toEqual([400, 400, 600, 600]);
+  });
+
+  it('snaps to cut corners, the cut face and the column centre at the cut', () => {
+    const { s, query } = setup();
+    const corner = snapCandidates(s, query(39, 2)).candidates[0];
+    expect(corner.label).toBe('Cut corner');
+    expect(corner.point.y).toBeCloseTo(1.2);
+    expect(corner.point.x).toBeCloseTo(0.4);
+    const mid = snapCandidates(s, query(20, 30)).candidates;
+    expect(mid.map((c) => c.label)).toContain('Centreline at the cut');
+    expect(mid.map((c) => c.label)).toContain('Cut face');
+    const centre = mid.find((c) => c.label === 'Centreline at the cut')!;
+    expect(centre.point.x).toBeCloseTo(0.2);
+    expect(centre.point.z).toBeCloseTo(0.3);
+    // The bottom corners behind the cut face are hidden now.
+    expect(snapCandidates(s, query(39, 2)).candidates.every((c) => c.point.y > 1)).toBe(true);
+  });
+});
+
+describe('tall models in a plan', () => {
+  it('finds the cut column under 60 storeys of cut-away elements (they must not crowd it out)', () => {
+    const boxes: Array<{ min: [number, number, number]; max: [number, number, number]; category?: 'Column' }> = [];
+    for (let k = 60; k >= 1; k--) boxes.push({ min: [0, k * 3, 0], max: [0.4, k * 3 + 2.85, 0.4], category: 'Column' });
+    boxes.push({ min: [0, 0, 0], max: [0.4, 2.85, 0.4], category: 'Column' }); // the ground column, cut at 1.2
+    const s = scene(boxes);
+    s.cuts = [{ normal: new Vector3(0, -1, 0), constant: 1.2 }];
+    s.inside = (p) => p.y <= 1.2 + 1e-4 && p.y >= -1.2;
+    s.boxVisible = (b) => b[1] <= 1.2 + 1e-4 && b[4] >= -1.2;
+    const project = (p: Vector3): [number, number] => [p.x * 100, p.z * 100];
+    const { candidates } = snapCandidates(s, {
+      origin: new Vector3(0.39, 500, 0.02), dir: down, cursor: [39, 2], project, radius: 10, pixel: 0.01,
+      axisOf: (i) => memberAxis(s, i), faceOf: (i, t) => planarFace(s, i, t),
+    });
+    expect(candidates[0]?.label).toBe('Cut corner');
+    expect(candidates[0].index).toBe(60);
+  });
+});

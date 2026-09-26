@@ -49,7 +49,7 @@ import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
 import { fmtCount } from './lib/format';
-import { fileFromDrop, pickFile, pickIfcFile } from './lib/openFile';
+import { fileFromDrop, pickFile, pickIfcFile, unpack } from './lib/openFile';
 import { useDrawings } from './lib/useDrawings';
 import { nextDocColor } from './lib/documents';
 import { DrawingView, type DrawingViewHandle } from './components/DrawingView';
@@ -66,6 +66,8 @@ import { editSection } from './lib/views';
 import { DEFAULT_CUT, DEFAULT_DEPTH_OFFSET, KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, nextSectionName, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection, type ModelView } from './lib/views';
 import { enterFullscreen } from './lib/fullscreen';
 import { QuickAccess } from './components/QuickAccess';
+import { StartPage } from './components/StartPage';
+import { SAMPLES, sampleUrl, type SampleBuilding } from './lib/samples';
 import { ContextMenu, item, sep, type MenuItem } from './components/ContextMenu';
 import { ElementGraphicsDialog, VisibilityGraphicsDialog } from './components/VisibilityGraphics';
 import { FiltersManager } from './components/Filters';
@@ -101,7 +103,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.43.0';
+const APP_VERSION = '0.44.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -573,15 +575,26 @@ export function App({ start }: { start?: AppStart } = {}) {
     started.current = true;
     const f = start.file;
     if (f && /\.dxf$/i.test(f.name)) void openDrawing(f);
-    else if (f) void openModelFile(f);
+    else if (f) void unpack(f).then(openModelFile); // an .ifc.gz dropped on the homepage opens too
     else if (start.sample) void openSampleRef.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [start]);
 
-  const openSample = useCallback(async () => {
-    const res = await fetch(`${import.meta.env.BASE_URL}samples/sample-frame.ifc`);
-    if (!res.ok) return m.log('The sample model could not be loaded.', 'error');
-    await m.open({ name: 'sample-frame.ifc', bytes: await res.arrayBuffer() });
+  /** Opens a sample building (the small frame by default); large ones are served gzipped and unpacked here. */
+  const [sampleBusy, setSampleBusy] = useState<string | null>(null);
+  const openSample = useCallback(async (sample: SampleBuilding = SAMPLES[0]) => {
+    setSampleBusy(sample.id);
+    try {
+      const res = await fetch(sampleUrl(sample));
+      if (!res.ok) return m.log(`The sample ${sample.title} could not be loaded.`, 'error');
+      const file = await unpack({ name: sample.file, bytes: await res.arrayBuffer() });
+      diagnosedFor.current = '';
+      await m.open(file);
+    } catch (e) {
+      m.log(`The sample ${sample.title} could not be opened: ${e instanceof Error ? e.message : String(e)}`, 'error');
+    } finally {
+      setSampleBusy(null);
+    }
   }, [m]);
   const openSampleRef = useRef(openSample);
   openSampleRef.current = openSample;
@@ -1802,6 +1815,7 @@ export function App({ start }: { start?: AppStart } = {}) {
       { id: 'file.openDxf', title: 'Open DXF drawing', group: 'File', keywords: 'cad 2d autocad', run: () => void openDxfFromDisk() },
       { id: 'file.dxfTo3d', title: 'DXF → 3D: build an IFC model from a drawing', group: 'File', keywords: 'pipeline convert computer help', run: () => (pipe ? toggleWin('pipeline', true) : void pipeline.start()) },
       { id: 'file.sample', title: 'Open the sample model', group: 'File', keywords: 'demo example frame', run: () => void openSample() },
+      ...SAMPLES.slice(1).map((smp) => ({ id: `file.sample.${smp.id}`, title: `Open sample: ${smp.title}`, group: 'File' as const, keywords: `demo example large tower ${smp.detail}`, run: () => void openSample(smp) })),
       // Edit
       { id: 'edit.undo', title: history.canUndo ? `Undo ${history.undoList[0] ?? ''}`.trim() : 'Undo', group: 'Edit', keys: 'Ctrl + Z', enabled: history.canUndo, why: history.canUndo ? undefined : 'nothing to undo', run: undo },
       { id: 'edit.redo', title: history.canRedo ? `Redo ${history.redoList[0] ?? ''}`.trim() : 'Redo', group: 'Edit', keys: 'Ctrl + Y', enabled: history.canRedo, why: history.canRedo ? undefined : 'nothing to redo', run: redo },
@@ -2360,17 +2374,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             </div>
           ) : null}
           {load.status === 'idle' && !m.model && !activeDoc && !dx.loading ? (
-            <div className="app-overlay">
-              <p className="app-overlay__title">Open an IFC model or a DXF drawing</p>
-              <p className="app-overlay__text">Drop an .ifc or .dxf file here, or choose one. Files are read on this device and never uploaded.</p>
-              <div className="app-overlay__actions">
-                <Button variant="primary" onClick={openFromDisk}>
-                  Open IFC file
-                </Button>
-                <Button onClick={openDxfFromDisk}>Open DXF drawing</Button>
-                <Button onClick={openSample}>Try the sample frame</Button>
-              </div>
-            </div>
+            <StartPage onChooseIfc={openFromDisk} onChooseDxf={openDxfFromDisk} onSample={(smp) => void openSample(smp)} onGuide={() => openGuide()} busy={sampleBusy} />
           ) : null}
           {load.status === 'loading' ? (
             <div className="app-overlay" role="status" aria-live="polite">

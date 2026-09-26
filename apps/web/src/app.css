@@ -721,3 +721,26 @@
 .app-toolstrip__prompt b { margin-left: var(--space-sm); font-family: var(--font-mono); color: var(--text); }
 .app-toolstrip__close { width: 24px; height: 24px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font: 16px/1 var(--font-sans); cursor: pointer; }
 .app-toolstrip__close:hover { background: var(--row-hover); color: var(--text); }
+/* Start page (0.44): shown until a file is open */
+.app-start { position: absolute; inset: 0; z-index: var(--z-view-overlay); overflow: auto; display: flex; background: var(--viewport); color: var(--text); }
+.app-start__inner { margin: auto; width: min(760px, 100%); padding: var(--space-lg) var(--space-md); display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-md); }
+.app-start__title { margin: 0; font: 600 26px/32px var(--font-sans); letter-spacing: -0.01em; }
+.app-start__lead { margin: 0; max-width: 520px; color: var(--text-secondary); font-size: 14px; line-height: 21px; }
+.app-start__formats { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 560px; }
+.app-start__formats li { padding: 2px 9px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--panel); font: 12px/20px var(--font-mono); color: var(--text); }
+.app-start__formats li.is-guided { color: var(--text-faint); }
+.app-start__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-sm); margin-top: var(--space-xs); }
+.app-start__actions .sk-icon { margin-right: 6px; vertical-align: -4px; }
+.app-start__or { margin: var(--space-sm) 0 0; color: var(--text-faint); font-size: 12px; }
+.app-start__samples { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--space-sm); width: 100%; }
+.app-start__sample { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--panel); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.app-start__sample:hover:not(:disabled) { border-color: var(--accent); }
+.app-start__sample:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.app-start__sample:disabled { cursor: progress; opacity: 0.7; }
+.app-start__sample strong { font-size: 14px; line-height: 20px; font-weight: 600; }
+.app-start__sample span { color: var(--text-secondary); font-size: 12px; line-height: 17px; }
+.app-start__sample em { margin-top: auto; padding-top: 4px; color: var(--accent-text); font-style: normal; font-size: 11px; line-height: 16px; }
+.app-start__foot { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-md); margin: var(--space-sm) 0 0; color: var(--text-faint); font-size: 12px; }
+.app-start__downloads { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.app-start__downloads li { display: flex; gap: var(--space-sm); justify-content: center; color: var(--text-secondary); }
+.app-start__downloads a { font-family: var(--font-mono); }

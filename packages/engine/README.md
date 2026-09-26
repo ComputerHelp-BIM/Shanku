@@ -1,4 +1,4 @@
-# @shanku/engine 0.33.0
+# @shanku/engine 0.34.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.34.0 — 2026-09-26
+- Snapping to the cut outline: where a plan's cut plane (or a section box face towards the camera) slices an element, `cutSegments` works out its outline (triangle pieces joined into straight edges, clipped to the view range) and `snapCandidates` offers cut corners, midpoints of cut edges, cut edges, the cut face (`cutFaceHit`), and the centreline where it crosses the cut (a column's centre in plan). Circles on the cut work for Radial, Diameter and Arc Length (`arcFromSegments`).
+- Elements wholly outside the view range are skipped before the nearest 40 are chosen (`MeasureScene.boxVisible`): in a plan of a tall building the floors above no longer crowd out the one cut.
 
 ### 0.33.0 — 2026-09-26
 Measure and Dimensions (web 0.42.0 and 0.43.0; the dev line's engine 0.32.0 was folded in here, since main released its own 0.32.0).

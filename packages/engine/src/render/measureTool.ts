@@ -81,6 +81,8 @@ export interface MeasureContext {
   viewDir: () => Vector3 | null;
   axisOf: (i: number) => MemberAxis | null;
   faceOf: (i: number, tri: number) => PlanarFace;
+  /** Cut outline of an element (cached). */
+  cutsOf?: (i: number) => Array<[Vector3, Vector3]>;
   /** Highlights elements (hover glow) while choosing. */
   highlight: (elements: readonly number[]) => void;
   emit: (r: MeasureReadout | null) => void;
@@ -209,7 +211,7 @@ export class MeasureTool {
     if (this.mode === 'distance' || this.mode === 'chain') {
       const { candidates } = snapCandidates(s, {
         origin: ray.origin, dir: ray.dir, cursor: local, radius: 12, pixel: this.ctx.pixel(),
-        project: (p) => this.ctx.project(p) ?? [1e9, 1e9], axisOf: this.ctx.axisOf, faceOf: this.ctx.faceOf,
+        project: (p) => this.ctx.project(p) ?? [1e9, 1e9], axisOf: this.ctx.axisOf, faceOf: this.ctx.faceOf, cutsOf: this.ctx.cutsOf,
       });
       return candidates.map((c) => ({ label: `${c.label}${c.index !== null && els[c.index] ? ` · ${elementLabel(els[c.index])}` : ''}`, pick: c, glow: c.index !== null ? [c.index] : [] }));
     }
@@ -230,7 +232,7 @@ export class MeasureTool {
     const front = hits[0];
     const { candidates } = snapCandidates(s, {
       origin: ray.origin, dir: ray.dir, cursor: local, radius: 10, pixel: this.ctx.pixel(),
-      project: (p) => this.ctx.project(p) ?? [1e9, 1e9], axisOf: () => null, faceOf: this.ctx.faceOf,
+      project: (p) => this.ctx.project(p) ?? [1e9, 1e9], axisOf: () => null, faceOf: this.ctx.faceOf, cutsOf: this.ctx.cutsOf,
     });
     const edge = candidates.find((c) => c.ref.kind === 'edge');
     const el = front ? s.elements[front.index] : null;

@@ -1,4 +1,4 @@
-# @shanku/web 0.43.0
+# @shanku/web 0.44.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.44.0 — 2026-09-26
+- Start page: “Open any IFC model in your browser”, the formats, one button to choose a model file, and three sample buildings to open: the G+1 frame, a **G+14 residential tower** (1,235 elements: stepped columns, shear-wall core and stairs, raft on piles, round canopy columns, ramp) and **G+24 twin towers on a G+3 podium** (4,780 elements: parking ramps, round atrium columns, transfer beams). Samples also in Ctrl + K; Download the sample files.
+- `.ifc.gz` opens directly (picked, dropped, or from the homepage): unpacked in the browser.
+- Measure and the Dimension tools snap to the plan cut outline (cut corners and edges, the cut face, a column’s centre), also on section box cuts in 3D.
 
 ### 0.43.0 — 2026-09-26
 - Annotate tab with Revit’s Dimension panel: Aligned (strings; square to parallel references), Linear, Angular, Radial, Diameter, Arc Length, Spot Elevation, Spot Coordinate, Spot Slope. Placed in plans, sections, elevations and 3D views; kept with their view (saved with the views); place, move (grip), text edits (Prefix, Suffix, Below, Replace With Text in Properties) and Delete are each one undo step; they follow their elements on live Revit updates and go with deleted ones. DI (aligned) and EL (spot elevation); palette commands; Guide “Dimensions”.

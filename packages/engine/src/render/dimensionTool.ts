@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import { elementLabel } from '../qa/checks';
-import { snapCandidates, SNAP_LABEL, type MeasureScene, type MemberAxis, type PlanarFace, type SnapCandidate } from './measure';
+import { snapCandidates, type MeasureScene, type MemberAxis, type PlanarFace, type SnapCandidate } from './measure';
 import { drawSnapGlyph } from './measureTool';
 import { arcFromEdge, DIMENSION_TOOLS, drawDimensions, planeBasis, projectOnPlane, type DimensionKind, type DimensionStyle, type FoundArc, type Origin, type PlacedDimension, type Vec3 } from './dimensions';
 
@@ -28,6 +28,8 @@ export interface DimensionContext {
   cameraDir: () => Vector3;
   axisOf: (i: number) => MemberAxis | null;
   faceOf: (i: number, tri: number) => PlanarFace;
+  /** Cut outline of an element (cached). */
+  cutsOf?: (i: number) => Array<[Vector3, Vector3]>;
   highlight: (elements: readonly number[]) => void;
   newId: () => string;
   origin: () => Origin;
@@ -161,10 +163,10 @@ export class DimensionTool {
     if (this.placing && this.kind !== 'aligned' && this.kind !== 'linear') return [];
     const { candidates } = snapCandidates(s, {
       origin: ray.origin, dir: ray.dir, cursor: local, radius: 12, pixel: this.ctx.pixel(),
-      project: (p) => this.ctx.project(p) ?? [1e9, 1e9], axisOf: this.ctx.axisOf, faceOf: this.ctx.faceOf,
+      project: (p) => this.ctx.project(p) ?? [1e9, 1e9], axisOf: this.ctx.axisOf, faceOf: this.ctx.faceOf, cutsOf: this.ctx.cutsOf,
     });
     const els = s.elements;
-    const name = (c: SnapCandidate) => `${SNAP_LABEL[c.kind]}${c.index !== null && els[c.index] ? ` · ${elementLabel(els[c.index])}` : ''}`;
+    const name = (c: SnapCandidate) => `${c.label}${c.index !== null && els[c.index] ? ` · ${elementLabel(els[c.index])}` : ''}`;
     switch (this.kind) {
       case 'aligned':
       case 'linear':

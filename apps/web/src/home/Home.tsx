@@ -71,7 +71,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
     setOver(false);
     const f = e.dataTransfer.files?.[0];
     if (!f) return;
-    if (!/\.(ifc|dxf)$/i.test(f.name)) return setNote(`${f.name} is not an .ifc or .dxf file.`);
+    if (!/\.(ifc|dxf)(\.gz)?$/i.test(f.name)) return setNote(`${f.name} is not an .ifc or .dxf file.`);
     onOpen({ file: { name: f.name, bytes: await f.arrayBuffer() } });
   };
 

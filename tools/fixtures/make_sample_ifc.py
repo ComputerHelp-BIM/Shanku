@@ -5,6 +5,8 @@ Usage:
     python tools/fixtures/make_sample_ifc.py small  apps/web/public/samples/sample-frame.ifc
     python tools/fixtures/make_sample_ifc.py large  /tmp/large-frame.ifc   # ~50k elements, not committed
 
+The start page's larger sample buildings come from make_showcase_ifc.py.
+
 Requires IfcOpenShell (pip install ifcopenshell). Dev-only tool: nothing here ships in the app.
 Version 1.2.0 — ground-storey columns start on the footings (top at -900 mm), as built; they
 used to stop 900 mm above them, which Shanku's QA rightly flags as discontinuous columns.
