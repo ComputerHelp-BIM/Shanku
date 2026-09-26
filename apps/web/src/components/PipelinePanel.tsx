@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { useTasks } from '../lib/progress';
+import { BuildProgress } from './BuildProgress';
 import { Button } from '@shanku/ui';
 import type { PipelineQa, PipelineSummary } from '@shanku/engine';
 
@@ -29,6 +31,7 @@ const ICON = { error: '●', warning: '▲', info: 'i' } as const;
 
 /** Review screen for DXF -> 3D: level table (editable names and heights), counts, QA, build. */
 export function PipelinePanel({ state, onPick, onName, onHeight, onBuild, onDownload, onShow, onExportRevit, exportRevit }: PipelinePanelProps) {
+  const task = useTasks().find((t) => t.id === 'dxf-3d'); // the Rising frame, while it works
   const s = state?.summary ?? null;
   // Levels follow edited heights live. A level is the top of its storey (pipeline 2.0.0): storeys stack
   // from ±0 in level order, so Level n sits at the sum of the heights up to it; the foundation is ±0.
@@ -62,7 +65,7 @@ export function PipelinePanel({ state, onPick, onName, onHeight, onBuild, onDown
         <span className="app-spacer" />
         <Button size="sm" onClick={onPick}>Other file…</Button>
       </div>
-      {state.phase ? <p className="pl-phase">{state.phase}</p> : null}
+      {state.phase ? (task ? <BuildProgress task={task} variant="inline" /> : <p className="pl-phase">{state.phase}</p>) : null}
       {state.error ? <p className="pl-error">{state.error}</p> : null}
       {s ? (
         <>

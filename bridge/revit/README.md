@@ -1,4 +1,4 @@
-# Shanku Bridge for Revit 0.7.1
+# Shanku Bridge for Revit 0.7.2
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
 into Shanku, keep the selection in step both ways, edit Revit parameters from Shanku, and keep Shanku up
@@ -10,7 +10,7 @@ Revit). Protocol: `docs/bridge/protocol.md`.
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.7.1.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.7.2.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -28,7 +28,7 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.7.1)
+## What it does, and does not do (0.7.2)
 
 - Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
   changed. Selection sync only selects.
@@ -86,6 +86,11 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.7.2 — 2026-09-26
+- Requests from Shanku run at once. Revit runs external events when its window processes messages,
+  so with Revit idle in the background a request could wait until the mouse moved over Revit. After
+  raising the event the add-in posts an empty message (WM_NULL) to Revit's main window to wake it.
 
 ### 0.7.1 — 2026-09-26
 - Fixed: a sunk beam (drawing −1500) got z Offset Value −3000. The placement check measured the beam's

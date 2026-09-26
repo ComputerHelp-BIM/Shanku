@@ -14,7 +14,7 @@ import type {
 import { GrowableF32, GrowableU32 } from './buffers';
 import { featureEdges } from './edges';
 import { assessCompatibility, readViewDefinition } from './compat';
-import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, detectMarks } from './marks';
+import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, detectMany } from './marks';
 import { assignLevels } from '../model/levelRule';
 import { readMaterials, readQuantities } from './quantities';
 
@@ -143,11 +143,10 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
     projectName = str(p.LongName) || str(p.Name);
   });
   const units = readUnits(api, modelID);
-  const marks = detectMarks(api, modelID, options.markRules ?? DEFAULT_MARK_RULES);
+  // Marks, grades and CH-LEVEL (a label written by Export to Revit) in ONE pass over the property sets:
+  // reading them is most of the load time, and each extra pass cost a full re-read.
+  const [marks, grades, chLevels] = detectMany(api, modelID, [options.markRules ?? DEFAULT_MARK_RULES, options.gradeRules ?? DEFAULT_GRADE_RULES, ['CH-LEVEL']]);
   const quantitySets = api.GetLineIDsWithType(modelID, WebIFC.IFCELEMENTQUANTITY).size();
-  const grades = detectMarks(api, modelID, options.gradeRules ?? DEFAULT_GRADE_RULES);
-  // CH-LEVEL (a label written by Export to Revit): kept to check against the level by definition
-  const chLevels = detectMarks(api, modelID, ['CH-LEVEL']);
   const qtys = readQuantities(api, modelID, units);
   const materials = readMaterials(api, modelID, typeIdOf);
   const viewDefinition = readViewDefinition(new TextDecoder().decode(bytes.subarray(0, 4096)));

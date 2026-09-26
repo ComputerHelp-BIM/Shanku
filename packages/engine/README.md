@@ -1,4 +1,4 @@
-# @shanku/engine 0.34.0
+# @shanku/engine 0.35.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,11 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.35.0 — 2026-09-26
+- **Faster loading:** marks, grades and CH-LEVEL are read in ONE pass over the property sets (`detectMany`; `detectMarks` wraps it). 0.31.0 had added a third full pass. The G+24 sample: relations 1.45 → 0.75 s, the whole load 1.8 → 1.1 s.
+
+- Measured on a 1,015-element IFC (1.8 MB): property sets read in 83 ms instead of 406 ms; repeated loads in one session get faster (744 → 233 ms), no slow-down.
 
 ### 0.34.0 — 2026-09-26
 - Snapping to the cut outline: where a plan's cut plane (or a section box face towards the camera) slices an element, `cutSegments` works out its outline (triangle pieces joined into straight edges, clipped to the view range) and `snapCandidates` offers cut corners, midpoints of cut edges, cut edges, the cut face (`cutFaceHit`), and the centreline where it crosses the cut (a column's centre in plan). Circles on the cut work for Radial, Diameter and Arc Length (`arcFromSegments`).

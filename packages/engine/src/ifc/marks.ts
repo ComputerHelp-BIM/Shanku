@@ -52,10 +52,19 @@ const ref = (v: any): number | null => (v && typeof v === 'object' && 'value' in
 
 /** One pass over IfcRelDefinesByProperties. Cost grows with the number of property sets, not elements × rules. */
 export function detectMarks(api: IfcAPI, modelID: number, rules: readonly string[]): MarkResult {
-  const parsed = parseRules(rules);
-  const best = new Map<number, [string, string, number]>();
+  return detectMany(api, modelID, [rules])[0];
+}
+
+/**
+ * Several rule lists in ONE pass over the file's property sets (marks, grades, CH-LEVEL…). Reading
+ * the sets is most of a model's load time; each extra list used to cost a full extra pass.
+ */
+export function detectMany(api: IfcAPI, modelID: number, ruleLists: ReadonlyArray<readonly string[]>): MarkResult[] {
+  const parsed = ruleLists.map((r) => parseRules(r));
+  const best = parsed.map(() => new Map<number, [string, string, number]>());
   const psetNames = new Set<string>();
   const propCache = new Map<number, { name: string; value: string }>();
+  const anyRules = parsed.some((p) => p.length);
   const ids = api.GetLineIDsWithType(modelID, WebIFC.IFCRELDEFINESBYPROPERTIES);
   for (let i = 0; i < ids.size(); i++) {
     const rel = api.GetLine(modelID, ids.get(i));
@@ -65,8 +74,8 @@ export function detectMarks(api: IfcAPI, modelID: number, rules: readonly string
     if (!ps || ps.type !== WebIFC.IFCPROPERTYSET) continue;
     const psName = val(ps.Name);
     psetNames.add(psName);
-    if (!parsed.length) continue;
-    let hit: [string, string, number] | null = null;
+    if (!anyRules) continue;
+    const hits: Array<[string, string, number] | null> = parsed.map(() => null);
     for (const p of ps.HasProperties ?? []) {
       const pid = ref(p);
       if (pid === null) continue;
@@ -77,18 +86,27 @@ export function detectMarks(api: IfcAPI, modelID: number, rules: readonly string
         propCache.set(pid, prop);
       }
       if (!prop.value) continue;
-      const pri = rulePriority(parsed, psName, prop.name);
-      if (pri >= 0 && (!hit || pri < hit[2])) hit = [prop.value, `${psName}.${prop.name}`, pri];
+      for (let k = 0; k < parsed.length; k++) {
+        const pri = rulePriority(parsed[k], psName, prop.name);
+        const h = hits[k];
+        if (pri >= 0 && (!h || pri < h[2])) hits[k] = [prop.value, `${psName}.${prop.name}`, pri];
+      }
     }
-    if (!hit) continue;
+    if (hits.every((h) => !h)) continue;
     for (const o of rel.RelatedObjects ?? []) {
       const id = ref(o);
       if (id === null) continue;
-      const cur = best.get(id);
-      if (!cur || hit[2] < cur[2]) best.set(id, hit);
+      for (let k = 0; k < parsed.length; k++) {
+        const h = hits[k];
+        if (!h) continue;
+        const cur = best[k].get(id);
+        if (!cur || h[2] < cur[2]) best[k].set(id, h);
+      }
     }
   }
-  const byExpressId = new Map<number, [string, string]>();
-  for (const [id, [v, src]] of best) byExpressId.set(id, [v, src]);
-  return { byExpressId, psetNames };
+  return best.map((m) => {
+    const byExpressId = new Map<number, [string, string]>();
+    for (const [id, [v, src]] of m) byExpressId.set(id, [v, src]);
+    return { byExpressId, psetNames };
+  });
 }

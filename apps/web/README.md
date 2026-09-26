@@ -1,4 +1,4 @@
-# @shanku/web 0.44.0
+# @shanku/web 0.45.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.45.0 — 2026-09-26
+- **Rising frame progress** (`components/BuildProgress.tsx`, `lib/progress.ts`) for every long operation: opening IFC and DXF files, DXF → 3D, and the Revit bridge (load, update, Export to Revit's check and build, Download IFC). A structural frame builds itself in construction order — footings, then storey by storey columns, beams and the slab — exactly as far as the work has gone, or in a loop with a running timer while Revit works; a tip rotates underneath. Centred over an empty viewport, floating over an open model, inside the DXF → 3D window. Design tokens and category colours; reduced motion respected.
+- **Download IFC** (Model → Open, Revit → Model, command palette): a model linked to the open Revit document is exported fresh (every change since loading); otherwise the file as opened. A model with merged Revit updates and no connection says what the file lacks.
+- **Faster loading** (engine 0.35.0): one pass over the property sets instead of three.
+- Revit requests no longer wait for the mouse to move over Revit (Shanku Bridge for Revit 0.7.2).
 
 ### 0.44.0 — 2026-09-26
 - Start page: “Open any IFC model in your browser”, the formats, one button to choose a model file, and three sample buildings to open: the G+1 frame, a **G+14 residential tower** (1,235 elements: stepped columns, shear-wall core and stairs, raft on piles, round canopy columns, ramp) and **G+24 twin towers on a G+3 podium** (4,780 elements: parking ramps, round atrium columns, transfer beams). Samples also in Ctrl + K; Download the sample files.

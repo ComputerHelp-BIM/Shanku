@@ -1,232 +1,236 @@
 {
- "version": "1.7.0",
- "grid": 24,
- "strokeWidth": 1.5,
- "icons": {
-  "column": {
-   "label": "Column",
-   "outline": "<path d=\"M12.00 3.30 L15.81 5.50 L15.81 19.50 L12.00 21.70 L8.19 19.50 L8.19 5.50 Z\"></path><path d=\"M15.81 5.50 L12.00 7.70 L8.19 5.50 M12.00 7.70 L12.00 21.70\"></path>",
-   "twoTone": "<path d=\"M8.19 19.50 L12.00 21.70 L12.00 7.70 L8.19 5.50 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M15.81 19.50 L12.00 21.70 L12.00 7.70 L15.81 5.50 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M12.00 3.30 L15.81 5.50 L12.00 7.70 L8.19 5.50 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M12.00 3.30 L15.81 5.50 L15.81 19.50 L12.00 21.70 L8.19 19.50 L8.19 5.50 Z\"></path><path d=\"M15.81 5.50 L12.00 7.70 L8.19 5.50 M12.00 7.70 L12.00 21.70\"></path>"
-  },
-  "beam": {
-   "label": "Beam",
-   "outline": "<path d=\"M6.50 5.00 L20.36 13.00 L20.36 17.60 L17.41 19.30 L3.56 11.30 L3.56 6.70 Z\"></path><path d=\"M20.36 13.00 L17.41 14.70 L3.56 6.70 M17.41 14.70 L17.41 19.30\"></path>",
-   "twoTone": "<path d=\"M3.56 11.30 L17.41 19.30 L17.41 14.70 L3.56 6.70 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M20.36 17.60 L17.41 19.30 L17.41 14.70 L20.36 13.00 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M6.50 5.00 L20.36 13.00 L17.41 14.70 L3.56 6.70 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M6.50 5.00 L20.36 13.00 L20.36 17.60 L17.41 19.30 L3.56 11.30 L3.56 6.70 Z\"></path><path d=\"M20.36 13.00 L17.41 14.70 L3.56 6.70 M17.41 14.70 L17.41 19.30\"></path>"
-  },
-  "slab": {
-   "label": "Slab",
-   "outline": "<path d=\"M12.00 2.70 L22.39 8.70 L22.39 10.50 L12.00 16.50 L1.61 10.50 L1.61 8.70 Z\"></path><path d=\"M22.39 8.70 L12.00 14.70 L1.61 8.70 M12.00 14.70 L12.00 16.50\"></path>",
-   "twoTone": "<path d=\"M1.61 10.50 L12.00 16.50 L12.00 14.70 L1.61 8.70 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M22.39 10.50 L12.00 16.50 L12.00 14.70 L22.39 8.70 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M12.00 2.70 L22.39 8.70 L12.00 14.70 L1.61 8.70 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M12.00 2.70 L22.39 8.70 L22.39 10.50 L12.00 16.50 L1.61 10.50 L1.61 8.70 Z\"></path><path d=\"M22.39 8.70 L12.00 14.70 L1.61 8.70 M12.00 14.70 L12.00 16.50\"></path>"
-  },
-  "wall": {
-   "label": "Wall / core",
-   "outline": "<path d=\"M8.00 7.50 L18.39 13.50 L18.39 22.50 L16.49 23.60 L6.09 17.60 L6.09 8.60 Z\"></path><path d=\"M18.39 13.50 L16.49 14.60 L6.09 8.60 M16.49 14.60 L16.49 23.60\"></path>",
-   "twoTone": "<path d=\"M6.09 17.60 L16.49 23.60 L16.49 14.60 L6.09 8.60 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M18.39 22.50 L16.49 23.60 L16.49 14.60 L18.39 13.50 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M8.00 7.50 L18.39 13.50 L16.49 14.60 L6.09 8.60 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M8.00 7.50 L18.39 13.50 L18.39 22.50 L16.49 23.60 L6.09 17.60 L6.09 8.60 Z\"></path><path d=\"M18.39 13.50 L16.49 14.60 L6.09 8.60 M16.49 14.60 L16.49 23.60\"></path>"
-  },
-  "footing": {
-   "label": "Footing",
-   "outline": "<path d=\"M12.00 9.40 L21.53 14.90 L21.53 17.50 L12.00 23.00 L2.47 17.50 L2.47 14.90 Z\"></path><path d=\"M21.53 14.90 L12.00 20.40 L2.47 14.90 M12.00 20.40 L12.00 23.00\"></path><path d=\"M12.00 4.70 L15.12 6.50 L15.12 14.90 L12.00 16.70 L8.88 14.90 L8.88 6.50 Z\"></path><path d=\"M15.12 6.50 L12.00 8.30 L8.88 6.50 M12.00 8.30 L12.00 16.70\"></path>",
-   "twoTone": "<path d=\"M2.47 17.50 L12.00 23.00 L12.00 20.40 L2.47 14.90 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M21.53 17.50 L12.00 23.00 L12.00 20.40 L21.53 14.90 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M12.00 9.40 L21.53 14.90 L12.00 20.40 L2.47 14.90 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M8.88 14.90 L12.00 16.70 L12.00 8.30 L8.88 6.50 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M15.12 14.90 L12.00 16.70 L12.00 8.30 L15.12 6.50 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M12.00 4.70 L15.12 6.50 L12.00 8.30 L8.88 6.50 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M12.00 9.40 L21.53 14.90 L21.53 17.50 L12.00 23.00 L2.47 17.50 L2.47 14.90 Z\"></path><path d=\"M21.53 14.90 L12.00 20.40 L2.47 14.90 M12.00 20.40 L12.00 23.00\"></path><path d=\"M12.00 4.70 L15.12 6.50 L15.12 14.90 L12.00 16.70 L8.88 14.90 L8.88 6.50 Z\"></path><path d=\"M15.12 6.50 L12.00 8.30 L8.88 6.50 M12.00 8.30 L12.00 16.70\"></path>"
-  },
-  "opening": {
-   "label": "Opening",
-   "outline": "<path d=\"M4 6h16v12H4z\"></path><path d=\"M9 9h6v6H9z\" stroke-dasharray=\"2 1.6\"></path>"
-  },
-  "rebar": {
-   "label": "Rebar",
-   "outline": "<path d=\"M7 6.5v13\"></path><path d=\"M17 6.5v13\"></path><path d=\"M12 9.4v13\" stroke-opacity=\"1\"></path><path d=\"M7 8l5-2.9 5 2.9-5 2.9z\"></path><path d=\"M7 13l5-2.9 5 2.9-5 2.9z\"></path><path d=\"M7 18l5-2.9 5 2.9-5 2.9z\"></path>"
-  },
-  "grid": {
-   "label": "Grid",
-   "outline": "<circle cx=\"7.5\" cy=\"5\" r=\"2.5\"></circle><path d=\"M7.5 7.5V21\"></path><circle cx=\"5\" cy=\"15\" r=\"2.5\"></circle><path d=\"M7.5 15H21\"></path>"
-  },
-  "level": {
-   "label": "Level",
-   "outline": "<path d=\"M3 16h18\"></path><path d=\"M15.5 16l2-3.5 2 3.5z\"></path><path d=\"M3 10h7\"></path>"
-  },
-  "dxf": {
-   "label": "Import DXF",
-   "outline": "<path d=\"M6 3h8l4 4v14H6z\"></path><path d=\"M14 3v4h4\"></path><path d=\"M9 12h6\"></path><path d=\"M9 16h6\"></path><path d=\"M12 10v8\"></path>"
-  },
-  "ifc": {
-   "label": "Import IFC",
-   "outline": "<path d=\"M12.00 8.00 L18.93 12.00 L18.93 20.00 L12.00 24.00 L5.07 20.00 L5.07 12.00 Z\"></path><path d=\"M18.93 12.00 L12.00 16.00 L5.07 12.00 M12.00 16.00 L12.00 24.00\"></path><path d=\"M12 2v7\"></path><path d=\"M9.5 6.5L12 9l2.5-2.5\"></path>"
-  },
-  "boq": {
-   "label": "BOQ",
-   "outline": "<path d=\"M4 4h16v16H4z\"></path><path d=\"M4 9h16\"></path><path d=\"M10 9v11\"></path><path d=\"M13 16.5h5\"></path>"
-  },
-  "bbs": {
-   "label": "BBS",
-   "outline": "<path d=\"M4 8h9a3 3 0 0 1 3 3v2\"></path><path d=\"M4 8v3\"></path><path d=\"M4 16h16\"></path><path d=\"M4 20h16\"></path><path d=\"M16 13l2.5 1\"></path>"
-  },
-  "qa": {
-   "label": "QA check",
-   "outline": "<path d=\"M9.00 6.00 L12.46 8.00 L12.46 20.00 L9.00 22.00 L5.54 20.00 L5.54 8.00 Z\"></path><path d=\"M12.46 8.00 L9.00 10.00 L5.54 8.00 M9.00 10.00 L9.00 22.00\"></path><circle cx=\"17\" cy=\"15.5\" r=\"4.5\"></circle><path d=\"M15 15.5l1.5 1.5 2.5-2.8\"></path>"
-  },
-  "diff": {
-   "label": "Revision diff",
-   "outline": "<path d=\"M10.00 9.00 L15.20 12.00 L15.20 19.00 L10.00 22.00 L4.80 19.00 L4.80 12.00 Z\" stroke-dasharray=\"2 2\"></path><path d=\"M15.20 12.00 L10.00 15.00 L4.80 12.00 M10.00 15.00 L10.00 22.00\" stroke-dasharray=\"2 2\"></path><path d=\"M14.00 5.00 L19.20 8.00 L19.20 15.00 L14.00 18.00 L8.80 15.00 L8.80 8.00 Z\"></path><path d=\"M19.20 8.00 L14.00 11.00 L8.80 8.00 M14.00 11.00 L14.00 18.00\"></path>"
-  },
-  "section": {
-   "label": "Section box",
-   "outline": "<path d=\"M12.00 4.00 L19.79 8.50 L19.79 17.50 L12.00 22.00 L4.21 17.50 L4.21 8.50 Z\" stroke-dasharray=\"2 2\"></path><path d=\"M19.79 8.50 L12.00 13.00 L4.21 8.50 M12.00 13.00 L12.00 22.00\" stroke-dasharray=\"2 2\"></path><path d=\"M4 6.5h2.5M4 6.5V9\"></path><path d=\"M20 19h-2.5M20 19v-2.5\"></path>"
-  },
-  "view3d": {
-   "label": "3D view",
-   "outline": "<path d=\"M12.00 3.50 L19.79 8.00 L19.79 17.00 L12.00 21.50 L4.21 17.00 L4.21 8.00 Z\"></path><path d=\"M19.79 8.00 L12.00 12.50 L4.21 8.00 M12.00 12.50 L12.00 21.50\"></path>"
-  },
-  "plan": {
-   "label": "Plan view",
-   "outline": "<path d=\"M4 4h16v16H4z\"></path><path d=\"M4 11h16\"></path><path d=\"M11 4v16\"></path><path d=\"M7 7h1M14.5 7h1M7 14.5h1M14.5 14.5h1\"></path>"
-  },
-  "elevation": {
-   "label": "Elevation",
-   "outline": "<path d=\"M5 21V6h14v15\"></path><path d=\"M3 21h18\"></path><path d=\"M5 11h14\"></path><path d=\"M5 16h14\"></path><path d=\"M3 6h2\"></path>"
-  },
-  "byid": {
-   "label": "Select by ID",
-   "outline": "<path d=\"M10 4L8 20\"></path><path d=\"M16 4l-2 16\"></path><path d=\"M5 9h15\"></path><path d=\"M4 15h15\"></path>"
-  },
-  "properties": {
-   "label": "Properties",
-   "outline": "<path d=\"M4 4h16v16H4z\"></path><path d=\"M4 9h16\"></path><path d=\"M8 13h8\"></path><path d=\"M8 16.5h5\"></path>"
-  },
-  "browser": {
-   "label": "Project browser",
-   "outline": "<path d=\"M5 4v16\"></path><path d=\"M5 7h4\"></path><path d=\"M5 12h4\"></path><path d=\"M5 17h4\"></path><path d=\"M11 5.5h8v3h-8z\"></path><path d=\"M11 10.5h8v3h-8z\"></path><path d=\"M11 15.5h8v3h-8z\"></path>"
-  },
-  "activity": {
-   "label": "Activity",
-   "outline": "<path d=\"M3 12h4l2.5-6 5 12 2.5-6H21\"></path>"
-  },
-  "keyboard": {
-   "label": "Keyboard",
-   "outline": "<path d=\"M3 7h18v10H3z\"></path><path d=\"M6.5 10h1M10 10h1M13.5 10h1M17 10h.5\"></path><path d=\"M7 14h10\"></path>"
-  },
-  "console": {
-   "label": "Console",
-   "outline": "<path d=\"M3 5h18v14H3z\"></path><path d=\"M7 10l3 2-3 2\"></path><path d=\"M12 15h5\"></path>"
-  },
-  "layout": {
-   "label": "Reset layout",
-   "outline": "<path d=\"M4 4h16v16H4z\"></path><path d=\"M9 4v16\"></path><path d=\"M15 4v16\"></path><path d=\"M9 14h11\"></path>"
-  },
-  "edges": {
-   "label": "Edges",
-   "outline": "<path d=\"M4 8l8-4 8 4v8l-8 4-8-4z\"></path><path d=\"M4 8l8 4 8-4\"></path><path d=\"M12 12v8\"></path>"
-  },
-  "reveal": {
-   "label": "Reveal hidden",
-   "outline": "<path d=\"M9 18h6\"></path><path d=\"M10 21h4\"></path><path d=\"M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z\"></path>"
-  },
-  "undo": {
-   "label": "Undo",
-   "outline": "<path d=\"M9 14L4 9l5-5\"></path><path d=\"M4 9h10a6 6 0 0 1 0 12h-3\"></path>"
-  },
-  "redo": {
-   "label": "Redo",
-   "outline": "<path d=\"M15 14l5-5-5-5\"></path><path d=\"M20 9H10a6 6 0 0 0 0 12h3\"></path>"
-  },
-  "isolate": {
-   "label": "Temporary hide/isolate",
-   "outline": "<circle cx=\"7\" cy=\"13\" r=\"3.5\"></circle><circle cx=\"17\" cy=\"13\" r=\"3.5\"></circle><path d=\"M10.5 13h3\"></path><path d=\"M3.5 13L2 9\"></path><path d=\"M20.5 13L22 9\"></path>"
-  },
-  "visibility": {
-   "label": "Visibility/Graphics",
-   "outline": "<path d=\"M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z\"></path><circle cx=\"12\" cy=\"12\" r=\"2.8\"></circle>"
-  },
-  "template": {
-   "label": "View templates",
-   "outline": "<rect x=\"7\" y=\"3.5\" width=\"13\" height=\"13\" rx=\"1.5\"></rect><path d=\"M4 7.5v11a2 2 0 0 0 2 2h11\"></path><path d=\"M10 8h7M10 11h7M10 14h4\"></path>"
-  },
-  "explodeStoreys": {
-   "label": "Explode storeys",
-   "outline": "<path d=\"M7 3.5h13.5l-3 3.5H4z\"></path><path d=\"M7 10.25h13.5l-3 3.5H4z\"></path><path d=\"M7 17h13.5l-3 3.5H4z\"></path>"
-  },
-  "explodeRadial": {
-   "label": "Explode radially",
-   "outline": "<path d=\"M10 10h4v4h-4z\"></path><path d=\"M3 3h4.5v4.5H3z\"></path><path d=\"M16.5 3H21v4.5h-4.5z\"></path><path d=\"M3 16.5h4.5V21H3z\"></path><path d=\"M16.5 16.5H21V21h-4.5z\"></path><path d=\"M8.5 8.5l1 1M15.5 8.5l-1 1M8.5 15.5l1-1M15.5 15.5l-1-1\"></path>"
-  },
-  "explodeCategories": {
-   "label": "Explode by category",
-   "outline": "<path d=\"M3 4h3.5v16H3z\"></path><path d=\"M9 9.5h6.5V13H9z\"></path><path d=\"M18 15.5h3.5V20H18z\"></path><path d=\"M2 20.5h20\"></path>"
-  },
-  "guide": {
-   "label": "Guide and FAQ",
-   "outline": "<path d=\"M3 5.5c3-1.2 6-1 9 1v13c-3-2-6-2.2-9-1z\"></path><path d=\"M21 5.5c-3-1.2-6-1-9 1v13c3-2 6-2.2 9-1z\"></path>"
-  },
-  "link": {
-   "label": "Connect (bridge)",
-   "outline": "<path d=\"M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1\"></path><path d=\"M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1\"></path>"
-  },
-  "unlink": {
-   "label": "Disconnect (bridge)",
-   "outline": "<path d=\"M15.5 13.5l3-3a4 4 0 0 0-5.66-5.66l-1 1\"></path><path d=\"M8.5 10.5l-3 3a4 4 0 0 0 5.66 5.66l1-1\"></path><path d=\"M4 4l16 16\"></path>"
-  },
-  "importModel": {
-   "label": "Load model from another program",
-   "outline": "<path d=\"M12 2.5v8.5\"></path><path d=\"M8.5 7.5L12 11l3.5-3.5\"></path><path d=\"M4 12.5l8 4 8-4\"></path><path d=\"M4 12.5v4.5l8 4 8-4v-4.5\"></path><path d=\"M12 16.5v4.5\"></path>"
-  },
-  "sync": {
-   "label": "Keep in sync",
-   "outline": "<path d=\"M4 11a8 8 0 0 1 14-4.5\"></path><path d=\"M18.5 3v4h-4\"></path><path d=\"M20 13a8 8 0 0 1-14 4.5\"></path><path d=\"M5.5 21v-4h4\"></path>"
-  },
-  "selectSend": {
-   "label": "Send the selection",
-   "outline": "<path d=\"M4 3.5l6 14 1.8-5.7 5.7-1.8z\"></path><path d=\"M14 18.5h7\"></path><path d=\"M18.5 16L21 18.5l-2.5 2.5\"></path>"
-  },
-  "selectGet": {
-   "label": "Get the selection",
-   "outline": "<path d=\"M4 3.5l6 14 1.8-5.7 5.7-1.8z\"></path><path d=\"M21 18.5h-7\"></path><path d=\"M16.5 16L14 18.5l2.5 2.5\"></path>"
-  },
-  "colour": {
-   "label": "Colour by parameter",
-   "outline": "<path d=\"M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 1.9-1 1.4-2.1-.5-1.2.2-2.4 1.6-2.4h1.8a3.7 3.7 0 0 0 3.7-3.7C20.5 7.3 16.7 3.5 12 3.5z\"></path><circle cx=\"7.6\" cy=\"11\" r=\"1.2\"></circle><circle cx=\"10\" cy=\"7.3\" r=\"1.2\"></circle><circle cx=\"14.4\" cy=\"7.3\" r=\"1.2\"></circle>"
-  },
-  "sun": {
-   "label": "Sun and shadows",
-   "outline": "<circle cx=\"12\" cy=\"12\" r=\"4\"></circle><path d=\"M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6\"></path>"
-  },
-  "measure": {
-   "label": "Measure",
-   "outline": "<path d=\"M3 16L16 3l5 5L8 21z\"></path><path d=\"M5.6 13.4l1.8 1.8M8.2 10.8l1.1 1.1M10.8 8.2l1.8 1.8M13.4 5.6l1.1 1.1\"></path>"
-  },
-  "dimAligned": {
-   "label": "Aligned dimension",
-   "outline": "<path d=\"M4 14L14 4\"></path><path d=\"M4 12.3v3.4M14 2.3v3.4\"></path><path d=\"M5.5 15.5l4.5 4.5M15.5 5.5l4.5 4.5\"></path><path d=\"M10 20L20 10\"></path>"
-  },
-  "dimLinear": {
-   "label": "Linear dimension",
-   "outline": "<path d=\"M4 4v13M20 4v7\"></path><path d=\"M4 7h16\"></path><path d=\"M2.8 8.2l2.4-2.4M18.8 8.2l2.4-2.4\"></path><path d=\"M4 19l16-6\"></path>"
-  },
-  "dimAngular": {
-   "label": "Angular dimension",
-   "outline": "<path d=\"M4 20h16M4 20L15 6\"></path><path d=\"M14 20a10 10 0 0 0-3.8-7.9\"></path>"
-  },
-  "dimRadial": {
-   "label": "Radial dimension",
-   "outline": "<circle cx=\"12\" cy=\"12\" r=\"8\"></circle><path d=\"M12 12l5.2-5.2\"></path><path d=\"M17.7 6.3l-3.4.8 2.6 2.6z\"></path><circle cx=\"12\" cy=\"12\" r=\"0.8\"></circle>"
-  },
-  "dimDiameter": {
-   "label": "Diameter dimension",
-   "outline": "<circle cx=\"12\" cy=\"12\" r=\"8\"></circle><path d=\"M6.3 17.7L17.7 6.3\"></path><path d=\"M17.7 6.3l-3.4.8 2.6 2.6zM6.3 17.7l3.4-.8-2.6-2.6z\"></path>"
-  },
-  "dimArc": {
-   "label": "Arc length dimension",
-   "outline": "<path d=\"M7 20A13 13 0 0 1 20 7\"></path><path d=\"M3.5 20A16.5 16.5 0 0 1 20 3.5\"></path><path d=\"M3.5 20h3.5M20 3.5V7\"></path>"
-  },
-  "spotElevation": {
-   "label": "Spot elevation",
-   "outline": "<circle cx=\"7\" cy=\"16\" r=\"3.5\"></circle><path d=\"M7 16h3.5A3.5 3.5 0 0 0 7 12.5zM7 16H3.5A3.5 3.5 0 0 0 7 19.5z\"></path><path d=\"M9.5 13.5L14 8h7\"></path>"
-  },
-  "spotCoordinate": {
-   "label": "Spot coordinate",
-   "outline": "<path d=\"M6 13v8M2 17h8\"></path><path d=\"M6 17l6-8h9\"></path><path d=\"M13 5.5h7M13 12.5h6\"></path>"
-  },
-  "spotSlope": {
-   "label": "Spot slope",
-   "outline": "<path d=\"M3 18L21 10\"></path><path d=\"M5 13l11.5-5.1\"></path><path d=\"M16.5 7.9l-3.6-.3 1.4 3.2z\"></path>"
+  "version": "1.7.0",
+  "grid": 24,
+  "strokeWidth": 1.5,
+  "icons": {
+    "column": {
+      "label": "Column",
+      "outline": "<path d=\"M12.00 3.30 L15.81 5.50 L15.81 19.50 L12.00 21.70 L8.19 19.50 L8.19 5.50 Z\"></path><path d=\"M15.81 5.50 L12.00 7.70 L8.19 5.50 M12.00 7.70 L12.00 21.70\"></path>",
+      "twoTone": "<path d=\"M8.19 19.50 L12.00 21.70 L12.00 7.70 L8.19 5.50 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M15.81 19.50 L12.00 21.70 L12.00 7.70 L15.81 5.50 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M12.00 3.30 L15.81 5.50 L12.00 7.70 L8.19 5.50 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M12.00 3.30 L15.81 5.50 L15.81 19.50 L12.00 21.70 L8.19 19.50 L8.19 5.50 Z\"></path><path d=\"M15.81 5.50 L12.00 7.70 L8.19 5.50 M12.00 7.70 L12.00 21.70\"></path>"
+    },
+    "beam": {
+      "label": "Beam",
+      "outline": "<path d=\"M6.50 5.00 L20.36 13.00 L20.36 17.60 L17.41 19.30 L3.56 11.30 L3.56 6.70 Z\"></path><path d=\"M20.36 13.00 L17.41 14.70 L3.56 6.70 M17.41 14.70 L17.41 19.30\"></path>",
+      "twoTone": "<path d=\"M3.56 11.30 L17.41 19.30 L17.41 14.70 L3.56 6.70 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M20.36 17.60 L17.41 19.30 L17.41 14.70 L20.36 13.00 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M6.50 5.00 L20.36 13.00 L17.41 14.70 L3.56 6.70 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M6.50 5.00 L20.36 13.00 L20.36 17.60 L17.41 19.30 L3.56 11.30 L3.56 6.70 Z\"></path><path d=\"M20.36 13.00 L17.41 14.70 L3.56 6.70 M17.41 14.70 L17.41 19.30\"></path>"
+    },
+    "slab": {
+      "label": "Slab",
+      "outline": "<path d=\"M12.00 2.70 L22.39 8.70 L22.39 10.50 L12.00 16.50 L1.61 10.50 L1.61 8.70 Z\"></path><path d=\"M22.39 8.70 L12.00 14.70 L1.61 8.70 M12.00 14.70 L12.00 16.50\"></path>",
+      "twoTone": "<path d=\"M1.61 10.50 L12.00 16.50 L12.00 14.70 L1.61 8.70 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M22.39 10.50 L12.00 16.50 L12.00 14.70 L22.39 8.70 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M12.00 2.70 L22.39 8.70 L12.00 14.70 L1.61 8.70 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M12.00 2.70 L22.39 8.70 L22.39 10.50 L12.00 16.50 L1.61 10.50 L1.61 8.70 Z\"></path><path d=\"M22.39 8.70 L12.00 14.70 L1.61 8.70 M12.00 14.70 L12.00 16.50\"></path>"
+    },
+    "wall": {
+      "label": "Wall / core",
+      "outline": "<path d=\"M8.00 7.50 L18.39 13.50 L18.39 22.50 L16.49 23.60 L6.09 17.60 L6.09 8.60 Z\"></path><path d=\"M18.39 13.50 L16.49 14.60 L6.09 8.60 M16.49 14.60 L16.49 23.60\"></path>",
+      "twoTone": "<path d=\"M6.09 17.60 L16.49 23.60 L16.49 14.60 L6.09 8.60 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M18.39 22.50 L16.49 23.60 L16.49 14.60 L18.39 13.50 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M8.00 7.50 L18.39 13.50 L16.49 14.60 L6.09 8.60 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M8.00 7.50 L18.39 13.50 L18.39 22.50 L16.49 23.60 L6.09 17.60 L6.09 8.60 Z\"></path><path d=\"M18.39 13.50 L16.49 14.60 L6.09 8.60 M16.49 14.60 L16.49 23.60\"></path>"
+    },
+    "footing": {
+      "label": "Footing",
+      "outline": "<path d=\"M12.00 9.40 L21.53 14.90 L21.53 17.50 L12.00 23.00 L2.47 17.50 L2.47 14.90 Z\"></path><path d=\"M21.53 14.90 L12.00 20.40 L2.47 14.90 M12.00 20.40 L12.00 23.00\"></path><path d=\"M12.00 4.70 L15.12 6.50 L15.12 14.90 L12.00 16.70 L8.88 14.90 L8.88 6.50 Z\"></path><path d=\"M15.12 6.50 L12.00 8.30 L8.88 6.50 M12.00 8.30 L12.00 16.70\"></path>",
+      "twoTone": "<path d=\"M2.47 17.50 L12.00 23.00 L12.00 20.40 L2.47 14.90 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M21.53 17.50 L12.00 23.00 L12.00 20.40 L21.53 14.90 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M12.00 9.40 L21.53 14.90 L12.00 20.40 L2.47 14.90 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M8.88 14.90 L12.00 16.70 L12.00 8.30 L8.88 6.50 Z\" fill=\"currentColor\" fill-opacity=\"0.95\" stroke=\"none\"></path><path d=\"M15.12 14.90 L12.00 16.70 L12.00 8.30 L15.12 6.50 Z\" fill=\"currentColor\" fill-opacity=\"0.6\" stroke=\"none\"></path><path d=\"M12.00 4.70 L15.12 6.50 L12.00 8.30 L8.88 6.50 Z\" fill=\"currentColor\" fill-opacity=\"0.28\" stroke=\"none\"></path><path d=\"M12.00 9.40 L21.53 14.90 L21.53 17.50 L12.00 23.00 L2.47 17.50 L2.47 14.90 Z\"></path><path d=\"M21.53 14.90 L12.00 20.40 L2.47 14.90 M12.00 20.40 L12.00 23.00\"></path><path d=\"M12.00 4.70 L15.12 6.50 L15.12 14.90 L12.00 16.70 L8.88 14.90 L8.88 6.50 Z\"></path><path d=\"M15.12 6.50 L12.00 8.30 L8.88 6.50 M12.00 8.30 L12.00 16.70\"></path>"
+    },
+    "opening": {
+      "label": "Opening",
+      "outline": "<path d=\"M4 6h16v12H4z\"></path><path d=\"M9 9h6v6H9z\" stroke-dasharray=\"2 1.6\"></path>"
+    },
+    "rebar": {
+      "label": "Rebar",
+      "outline": "<path d=\"M7 6.5v13\"></path><path d=\"M17 6.5v13\"></path><path d=\"M12 9.4v13\" stroke-opacity=\"1\"></path><path d=\"M7 8l5-2.9 5 2.9-5 2.9z\"></path><path d=\"M7 13l5-2.9 5 2.9-5 2.9z\"></path><path d=\"M7 18l5-2.9 5 2.9-5 2.9z\"></path>"
+    },
+    "grid": {
+      "label": "Grid",
+      "outline": "<circle cx=\"7.5\" cy=\"5\" r=\"2.5\"></circle><path d=\"M7.5 7.5V21\"></path><circle cx=\"5\" cy=\"15\" r=\"2.5\"></circle><path d=\"M7.5 15H21\"></path>"
+    },
+    "level": {
+      "label": "Level",
+      "outline": "<path d=\"M3 16h18\"></path><path d=\"M15.5 16l2-3.5 2 3.5z\"></path><path d=\"M3 10h7\"></path>"
+    },
+    "dxf": {
+      "label": "Import DXF",
+      "outline": "<path d=\"M6 3h8l4 4v14H6z\"></path><path d=\"M14 3v4h4\"></path><path d=\"M9 12h6\"></path><path d=\"M9 16h6\"></path><path d=\"M12 10v8\"></path>"
+    },
+    "ifc": {
+      "label": "Import IFC",
+      "outline": "<path d=\"M12.00 8.00 L18.93 12.00 L18.93 20.00 L12.00 24.00 L5.07 20.00 L5.07 12.00 Z\"></path><path d=\"M18.93 12.00 L12.00 16.00 L5.07 12.00 M12.00 16.00 L12.00 24.00\"></path><path d=\"M12 2v7\"></path><path d=\"M9.5 6.5L12 9l2.5-2.5\"></path>"
+    },
+    "boq": {
+      "label": "BOQ",
+      "outline": "<path d=\"M4 4h16v16H4z\"></path><path d=\"M4 9h16\"></path><path d=\"M10 9v11\"></path><path d=\"M13 16.5h5\"></path>"
+    },
+    "bbs": {
+      "label": "BBS",
+      "outline": "<path d=\"M4 8h9a3 3 0 0 1 3 3v2\"></path><path d=\"M4 8v3\"></path><path d=\"M4 16h16\"></path><path d=\"M4 20h16\"></path><path d=\"M16 13l2.5 1\"></path>"
+    },
+    "qa": {
+      "label": "QA check",
+      "outline": "<path d=\"M9.00 6.00 L12.46 8.00 L12.46 20.00 L9.00 22.00 L5.54 20.00 L5.54 8.00 Z\"></path><path d=\"M12.46 8.00 L9.00 10.00 L5.54 8.00 M9.00 10.00 L9.00 22.00\"></path><circle cx=\"17\" cy=\"15.5\" r=\"4.5\"></circle><path d=\"M15 15.5l1.5 1.5 2.5-2.8\"></path>"
+    },
+    "diff": {
+      "label": "Revision diff",
+      "outline": "<path d=\"M10.00 9.00 L15.20 12.00 L15.20 19.00 L10.00 22.00 L4.80 19.00 L4.80 12.00 Z\" stroke-dasharray=\"2 2\"></path><path d=\"M15.20 12.00 L10.00 15.00 L4.80 12.00 M10.00 15.00 L10.00 22.00\" stroke-dasharray=\"2 2\"></path><path d=\"M14.00 5.00 L19.20 8.00 L19.20 15.00 L14.00 18.00 L8.80 15.00 L8.80 8.00 Z\"></path><path d=\"M19.20 8.00 L14.00 11.00 L8.80 8.00 M14.00 11.00 L14.00 18.00\"></path>"
+    },
+    "section": {
+      "label": "Section box",
+      "outline": "<path d=\"M12.00 4.00 L19.79 8.50 L19.79 17.50 L12.00 22.00 L4.21 17.50 L4.21 8.50 Z\" stroke-dasharray=\"2 2\"></path><path d=\"M19.79 8.50 L12.00 13.00 L4.21 8.50 M12.00 13.00 L12.00 22.00\" stroke-dasharray=\"2 2\"></path><path d=\"M4 6.5h2.5M4 6.5V9\"></path><path d=\"M20 19h-2.5M20 19v-2.5\"></path>"
+    },
+    "view3d": {
+      "label": "3D view",
+      "outline": "<path d=\"M12.00 3.50 L19.79 8.00 L19.79 17.00 L12.00 21.50 L4.21 17.00 L4.21 8.00 Z\"></path><path d=\"M19.79 8.00 L12.00 12.50 L4.21 8.00 M12.00 12.50 L12.00 21.50\"></path>"
+    },
+    "plan": {
+      "label": "Plan view",
+      "outline": "<path d=\"M4 4h16v16H4z\"></path><path d=\"M4 11h16\"></path><path d=\"M11 4v16\"></path><path d=\"M7 7h1M14.5 7h1M7 14.5h1M14.5 14.5h1\"></path>"
+    },
+    "elevation": {
+      "label": "Elevation",
+      "outline": "<path d=\"M5 21V6h14v15\"></path><path d=\"M3 21h18\"></path><path d=\"M5 11h14\"></path><path d=\"M5 16h14\"></path><path d=\"M3 6h2\"></path>"
+    },
+    "byid": {
+      "label": "Select by ID",
+      "outline": "<path d=\"M10 4L8 20\"></path><path d=\"M16 4l-2 16\"></path><path d=\"M5 9h15\"></path><path d=\"M4 15h15\"></path>"
+    },
+    "properties": {
+      "label": "Properties",
+      "outline": "<path d=\"M4 4h16v16H4z\"></path><path d=\"M4 9h16\"></path><path d=\"M8 13h8\"></path><path d=\"M8 16.5h5\"></path>"
+    },
+    "browser": {
+      "label": "Project browser",
+      "outline": "<path d=\"M5 4v16\"></path><path d=\"M5 7h4\"></path><path d=\"M5 12h4\"></path><path d=\"M5 17h4\"></path><path d=\"M11 5.5h8v3h-8z\"></path><path d=\"M11 10.5h8v3h-8z\"></path><path d=\"M11 15.5h8v3h-8z\"></path>"
+    },
+    "activity": {
+      "label": "Activity",
+      "outline": "<path d=\"M3 12h4l2.5-6 5 12 2.5-6H21\"></path>"
+    },
+    "keyboard": {
+      "label": "Keyboard",
+      "outline": "<path d=\"M3 7h18v10H3z\"></path><path d=\"M6.5 10h1M10 10h1M13.5 10h1M17 10h.5\"></path><path d=\"M7 14h10\"></path>"
+    },
+    "console": {
+      "label": "Console",
+      "outline": "<path d=\"M3 5h18v14H3z\"></path><path d=\"M7 10l3 2-3 2\"></path><path d=\"M12 15h5\"></path>"
+    },
+    "layout": {
+      "label": "Reset layout",
+      "outline": "<path d=\"M4 4h16v16H4z\"></path><path d=\"M9 4v16\"></path><path d=\"M15 4v16\"></path><path d=\"M9 14h11\"></path>"
+    },
+    "edges": {
+      "label": "Edges",
+      "outline": "<path d=\"M4 8l8-4 8 4v8l-8 4-8-4z\"></path><path d=\"M4 8l8 4 8-4\"></path><path d=\"M12 12v8\"></path>"
+    },
+    "reveal": {
+      "label": "Reveal hidden",
+      "outline": "<path d=\"M9 18h6\"></path><path d=\"M10 21h4\"></path><path d=\"M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z\"></path>"
+    },
+    "undo": {
+      "label": "Undo",
+      "outline": "<path d=\"M9 14L4 9l5-5\"></path><path d=\"M4 9h10a6 6 0 0 1 0 12h-3\"></path>"
+    },
+    "redo": {
+      "label": "Redo",
+      "outline": "<path d=\"M15 14l5-5-5-5\"></path><path d=\"M20 9H10a6 6 0 0 0 0 12h3\"></path>"
+    },
+    "isolate": {
+      "label": "Temporary hide/isolate",
+      "outline": "<circle cx=\"7\" cy=\"13\" r=\"3.5\"></circle><circle cx=\"17\" cy=\"13\" r=\"3.5\"></circle><path d=\"M10.5 13h3\"></path><path d=\"M3.5 13L2 9\"></path><path d=\"M20.5 13L22 9\"></path>"
+    },
+    "visibility": {
+      "label": "Visibility/Graphics",
+      "outline": "<path d=\"M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z\"></path><circle cx=\"12\" cy=\"12\" r=\"2.8\"></circle>"
+    },
+    "template": {
+      "label": "View templates",
+      "outline": "<rect x=\"7\" y=\"3.5\" width=\"13\" height=\"13\" rx=\"1.5\"></rect><path d=\"M4 7.5v11a2 2 0 0 0 2 2h11\"></path><path d=\"M10 8h7M10 11h7M10 14h4\"></path>"
+    },
+    "explodeStoreys": {
+      "label": "Explode storeys",
+      "outline": "<path d=\"M7 3.5h13.5l-3 3.5H4z\"></path><path d=\"M7 10.25h13.5l-3 3.5H4z\"></path><path d=\"M7 17h13.5l-3 3.5H4z\"></path>"
+    },
+    "explodeRadial": {
+      "label": "Explode radially",
+      "outline": "<path d=\"M10 10h4v4h-4z\"></path><path d=\"M3 3h4.5v4.5H3z\"></path><path d=\"M16.5 3H21v4.5h-4.5z\"></path><path d=\"M3 16.5h4.5V21H3z\"></path><path d=\"M16.5 16.5H21V21h-4.5z\"></path><path d=\"M8.5 8.5l1 1M15.5 8.5l-1 1M8.5 15.5l1-1M15.5 15.5l-1-1\"></path>"
+    },
+    "explodeCategories": {
+      "label": "Explode by category",
+      "outline": "<path d=\"M3 4h3.5v16H3z\"></path><path d=\"M9 9.5h6.5V13H9z\"></path><path d=\"M18 15.5h3.5V20H18z\"></path><path d=\"M2 20.5h20\"></path>"
+    },
+    "guide": {
+      "label": "Guide and FAQ",
+      "outline": "<path d=\"M3 5.5c3-1.2 6-1 9 1v13c-3-2-6-2.2-9-1z\"></path><path d=\"M21 5.5c-3-1.2-6-1-9 1v13c3-2 6-2.2 9-1z\"></path>"
+    },
+    "link": {
+      "label": "Connect (bridge)",
+      "outline": "<path d=\"M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1\"></path><path d=\"M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1\"></path>"
+    },
+    "unlink": {
+      "label": "Disconnect (bridge)",
+      "outline": "<path d=\"M15.5 13.5l3-3a4 4 0 0 0-5.66-5.66l-1 1\"></path><path d=\"M8.5 10.5l-3 3a4 4 0 0 0 5.66 5.66l1-1\"></path><path d=\"M4 4l16 16\"></path>"
+    },
+    "importModel": {
+      "label": "Load model from another program",
+      "outline": "<path d=\"M12 2.5v8.5\"></path><path d=\"M8.5 7.5L12 11l3.5-3.5\"></path><path d=\"M4 12.5l8 4 8-4\"></path><path d=\"M4 12.5v4.5l8 4 8-4v-4.5\"></path><path d=\"M12 16.5v4.5\"></path>"
+    },
+    "sync": {
+      "label": "Keep in sync",
+      "outline": "<path d=\"M4 11a8 8 0 0 1 14-4.5\"></path><path d=\"M18.5 3v4h-4\"></path><path d=\"M20 13a8 8 0 0 1-14 4.5\"></path><path d=\"M5.5 21v-4h4\"></path>"
+    },
+    "selectSend": {
+      "label": "Send the selection",
+      "outline": "<path d=\"M4 3.5l6 14 1.8-5.7 5.7-1.8z\"></path><path d=\"M14 18.5h7\"></path><path d=\"M18.5 16L21 18.5l-2.5 2.5\"></path>"
+    },
+    "selectGet": {
+      "label": "Get the selection",
+      "outline": "<path d=\"M4 3.5l6 14 1.8-5.7 5.7-1.8z\"></path><path d=\"M21 18.5h-7\"></path><path d=\"M16.5 16L14 18.5l2.5 2.5\"></path>"
+    },
+    "colour": {
+      "label": "Colour by parameter",
+      "outline": "<path d=\"M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 1.9-1 1.4-2.1-.5-1.2.2-2.4 1.6-2.4h1.8a3.7 3.7 0 0 0 3.7-3.7C20.5 7.3 16.7 3.5 12 3.5z\"></path><circle cx=\"7.6\" cy=\"11\" r=\"1.2\"></circle><circle cx=\"10\" cy=\"7.3\" r=\"1.2\"></circle><circle cx=\"14.4\" cy=\"7.3\" r=\"1.2\"></circle>"
+    },
+    "sun": {
+      "label": "Sun and shadows",
+      "outline": "<circle cx=\"12\" cy=\"12\" r=\"4\"></circle><path d=\"M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6\"></path>"
+    },
+    "measure": {
+      "label": "Measure",
+      "outline": "<path d=\"M3 16L16 3l5 5L8 21z\"></path><path d=\"M5.6 13.4l1.8 1.8M8.2 10.8l1.1 1.1M10.8 8.2l1.8 1.8M13.4 5.6l1.1 1.1\"></path>"
+    },
+    "dimAligned": {
+      "label": "Aligned dimension",
+      "outline": "<path d=\"M4 14L14 4\"></path><path d=\"M4 12.3v3.4M14 2.3v3.4\"></path><path d=\"M5.5 15.5l4.5 4.5M15.5 5.5l4.5 4.5\"></path><path d=\"M10 20L20 10\"></path>"
+    },
+    "dimLinear": {
+      "label": "Linear dimension",
+      "outline": "<path d=\"M4 4v13M20 4v7\"></path><path d=\"M4 7h16\"></path><path d=\"M2.8 8.2l2.4-2.4M18.8 8.2l2.4-2.4\"></path><path d=\"M4 19l16-6\"></path>"
+    },
+    "dimAngular": {
+      "label": "Angular dimension",
+      "outline": "<path d=\"M4 20h16M4 20L15 6\"></path><path d=\"M14 20a10 10 0 0 0-3.8-7.9\"></path>"
+    },
+    "dimRadial": {
+      "label": "Radial dimension",
+      "outline": "<circle cx=\"12\" cy=\"12\" r=\"8\"></circle><path d=\"M12 12l5.2-5.2\"></path><path d=\"M17.7 6.3l-3.4.8 2.6 2.6z\"></path><circle cx=\"12\" cy=\"12\" r=\"0.8\"></circle>"
+    },
+    "dimDiameter": {
+      "label": "Diameter dimension",
+      "outline": "<circle cx=\"12\" cy=\"12\" r=\"8\"></circle><path d=\"M6.3 17.7L17.7 6.3\"></path><path d=\"M17.7 6.3l-3.4.8 2.6 2.6zM6.3 17.7l3.4-.8-2.6-2.6z\"></path>"
+    },
+    "dimArc": {
+      "label": "Arc length dimension",
+      "outline": "<path d=\"M7 20A13 13 0 0 1 20 7\"></path><path d=\"M3.5 20A16.5 16.5 0 0 1 20 3.5\"></path><path d=\"M3.5 20h3.5M20 3.5V7\"></path>"
+    },
+    "spotElevation": {
+      "label": "Spot elevation",
+      "outline": "<circle cx=\"7\" cy=\"16\" r=\"3.5\"></circle><path d=\"M7 16h3.5A3.5 3.5 0 0 0 7 12.5zM7 16H3.5A3.5 3.5 0 0 0 7 19.5z\"></path><path d=\"M9.5 13.5L14 8h7\"></path>"
+    },
+    "spotCoordinate": {
+      "label": "Spot coordinate",
+      "outline": "<path d=\"M6 13v8M2 17h8\"></path><path d=\"M6 17l6-8h9\"></path><path d=\"M13 5.5h7M13 12.5h6\"></path>"
+    },
+    "spotSlope": {
+      "label": "Spot slope",
+      "outline": "<path d=\"M3 18L21 10\"></path><path d=\"M5 13l11.5-5.1\"></path><path d=\"M16.5 7.9l-3.6-.3 1.4 3.2z\"></path>"
+    },
+    "downloadIfc": {
+      "label": "Download the model as an IFC file",
+      "outline": "<path d=\"M12 3v11\"></path><path d=\"M8 10.5l4 4 4-4\"></path><path d=\"M4 15.5v3.5a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5v-3.5\"></path>"
+    }
   }
- }
 }

@@ -744,3 +744,38 @@
 .app-start__downloads { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .app-start__downloads li { display: flex; gap: var(--space-sm); justify-content: center; color: var(--text-secondary); }
 .app-start__downloads a { font-family: var(--font-mono); }
+
+/* ---- Rising frame: progress for long operations (components/BuildProgress.tsx) ---- */
+.app-build { position: absolute; inset: 0; margin: auto; z-index: var(--z-view-overlay); display: flex; gap: 18px; align-items: center; width: min(560px, calc(100% - 32px)); height: fit-content; padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--panel); box-shadow: var(--shadow-window); color: var(--text); }
+.app-build--floating { inset: auto 0 56px 0; }
+.app-build--inline { position: static; inset: auto; margin: 8px 0; width: auto; box-shadow: none; }
+.app-build__frame { flex: none; width: 200px; height: auto; }
+.app-build__ground { stroke: var(--border-strong); stroke-width: 1.5; }
+/* not yet built: the drawing (a dashed blueprint outline); built: the member, in its category colour */
+/* the building-to-be: scaffold outlines, clearly visible from the first moment, filled in as the work proceeds */
+.app-build__m { fill-opacity: 0; stroke: var(--text-secondary); stroke-opacity: 0.55; stroke-width: 1.2; stroke-dasharray: 3 2; transition: fill-opacity 180ms ease; }
+.app-build__m.is-up { fill-opacity: 1; stroke: var(--text); stroke-opacity: 0.35; stroke-dasharray: none; stroke-width: 0.8; }
+.app-build__m--footing { fill: var(--cat-footing); }
+.app-build__m--column { fill: var(--cat-column); transform-box: fill-box; transform-origin: 50% 100%; }
+.app-build__m--beam { fill: var(--cat-beam); transform-box: fill-box; transform-origin: 0 50%; }
+.app-build__m--slab { fill: var(--cat-slab); }
+.app-build__m--slab.is-up { fill-opacity: 0.55; }
+.app-build__m--column.is-new { animation: app-build-rise 140ms ease-out; }
+.app-build__m--beam.is-new { animation: app-build-span 140ms ease-out; }
+@keyframes app-build-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes app-build-span { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.app-build__text { flex: 1; min-width: 0; }
+.app-build__title { margin: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-build__phase { margin: 4px 0 10px; color: var(--text-secondary); font-size: 13px; }
+.app-build__bar { position: relative; height: 4px; border-radius: 2px; background: var(--field); overflow: hidden; }
+.app-build__bar > span { display: block; height: 100%; background: var(--accent); transition: width 200ms ease; }
+.app-build__bar--busy > span { width: 30%; animation: app-build-busy 1.2s ease-in-out infinite; }
+@keyframes app-build-busy { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+.app-build__meta { display: flex; gap: 12px; margin: 8px 0 0; color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.app-build__meta > span:last-child { margin-left: auto; }
+.app-build__tip { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; }
+@media (prefers-reduced-motion: reduce) {
+  .app-build__m, .app-build__bar > span { transition: none; }
+  .app-build__m.is-new, .app-build__bar--busy > span { animation: none; }
+  .app-build__bar--busy > span { width: 100%; opacity: 0.4; }
+}

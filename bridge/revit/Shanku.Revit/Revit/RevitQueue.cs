@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Autodesk.Revit.UI;
 using Shanku.Revit.Core;
@@ -15,9 +16,27 @@ public sealed class RevitQueue : IExternalEventHandler
 {
     private readonly ConcurrentQueue<Action<UIApplication>> _jobs = new();
     private readonly ExternalEvent _event;
+    private readonly IntPtr _mainWindow;
 
-    /// <summary>Create in a valid Revit API context (OnStartup).</summary>
-    public RevitQueue() => _event = ExternalEvent.Create(this);
+    /// <summary>Create in a valid Revit API context (OnStartup), with Revit's main window handle.</summary>
+    public RevitQueue(IntPtr mainWindow)
+    {
+        _event = ExternalEvent.Create(this);
+        _mainWindow = mainWindow;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+    private const uint WM_NULL = 0x0000;
+
+    /// <summary>
+    /// Revit runs external events when its window processes messages: an idle Revit in the background
+    /// can leave a request waiting until the mouse moves over it. An empty message wakes it at once.
+    /// </summary>
+    private void Wake()
+    {
+        if (_mainWindow != IntPtr.Zero) PostMessage(_mainWindow, WM_NULL, IntPtr.Zero, IntPtr.Zero);
+    }
 
     public Task<T> Run<T>(Func<UIApplication, T> job, TimeSpan timeout)
     {
@@ -28,6 +47,7 @@ public sealed class RevitQueue : IExternalEventHandler
             catch (Exception ex) { tcs.TrySetException(ex); }
         });
         var r = _event.Raise(); // Pending means already raised: our job runs with the others
+        Wake();
         if (r == ExternalEventRequest.Denied)
             tcs.TrySetException(new BridgeException(503, "Revit refused the request. Try again in a moment."));
         return WithTimeout(tcs.Task, timeout);

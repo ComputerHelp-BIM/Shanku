@@ -61,6 +61,9 @@ import { PipelinePanel } from './components/PipelinePanel';
 import { qaFocus, usePipeline } from './lib/usePipeline';
 import { useHistory } from './lib/useHistory';
 import { loadDrawings, loadGraphics, loadModel, loadViews, saveViews } from './lib/session';
+import { endTask, startTask, updateTask, useTasks, withTask } from './lib/progress';
+import { BuildProgress } from './components/BuildProgress';
+import { downloadFile } from './lib/excel';
 import { marksFor } from './lib/viewMarks';
 import { editSection } from './lib/views';
 import { DEFAULT_CUT, DEFAULT_DEPTH_OFFSET, KIND_LABEL, defaultViews, duplicateView, isTwoD, levelHeights, nextSectionName, normalizeView, sectionFromVerticalView, validRange, viewClip, viewDirection, type ModelView } from './lib/views';
@@ -103,7 +106,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.44.0';
+const APP_VERSION = '0.45.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -359,7 +362,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   const loadFromRevit = async () => {
     setRevitLoading(true);
     try {
-      const r = await bridge.loadModel();
+      const r = await withTask('revit', 'Loading from Revit', 'Revit is exporting the model as IFC4 (the Revit model is not changed)…', () => bridge.loadModel());
       const size = r.bytes.byteLength; // read before the loader takes the buffer (it is transferred to a worker)
       await m.open({ name: r.name, bytes: r.bytes });
       setRevitLink({ key: r.key, fileName: r.name });
@@ -1032,7 +1035,7 @@ export function App({ start }: { start?: AppStart } = {}) {
     setLiveBusy(true);
     const t0 = performance.now();
     try {
-      const part = ids.length ? await bridge.exportElements(ids) : null;
+      const part = ids.length ? await withTask('revit', 'Updating from Revit', `Revit is exporting ${ids.length} changed element${ids.length === 1 ? '' : 's'}…`, () => bridge.exportElements(ids)) : null;
       const r = await m.applyUpdate(`${revitLink.fileName} (update)`, part?.bytes ?? null, batch.deleted);
       if (!r) return;
       // per-element state held by position follows the elements to their new positions
@@ -1075,8 +1078,8 @@ export function App({ start }: { start?: AppStart } = {}) {
     setExportOff(new Set());
     setExportState({ phase: 'preparing', target: revit.document!.title });
     try {
-      const exchange = await pipeline.exportPlan();
-      const report = await bridge.createModel(revit.document!.key, exchange, true);
+      const exchange = await withTask('revit', 'Export to Revit', 'Reading the drawing for Revit…', () => pipeline.exportPlan());
+      const report = await withTask('revit', 'Export to Revit', 'Checking the plan in Revit (a dry run: nothing is kept)…', () => bridge.createModel(revit.document!.key, exchange, true));
       setExportState({ phase: 'review', exchange, report, target: revit.document!.title });
     } catch (e) {
       setExportState({ phase: 'error', message: (e as Error).message, target: revit.document?.title });
@@ -1089,7 +1092,7 @@ export function App({ start }: { start?: AppStart } = {}) {
     const approved = approvedOnly(ex, exportOff);
     setExportState({ ...exportState!, phase: 'creating' });
     try {
-      const report = await bridge.createModel(revit.document.key, approved, false);
+      const report = await withTask('revit', 'Building in Revit', 'Revit is creating the levels, types and elements (one undo)…', () => bridge.createModel(revit.document!.key, approved, false));
       setExportState({ phase: 'done', exchange: approved, report, target: revit.document.title });
       const made = report.results.filter((r) => r.ok).length;
       m.log(`Export to Revit: ${made} created in ${revit.document.title} (${report.undoName})${report.results.length - made ? `, ${report.results.length - made} not created` : ''}${report.existing.length ? `, ${report.existing.length} already there` : ''}.`);
@@ -1105,6 +1108,32 @@ export function App({ start }: { start?: AppStart } = {}) {
       setNotice('Shanku restored this model as it was first loaded from Revit; changes merged since then are not in it. Revit tab → Reload brings it up to date.');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openedInfo]);
+  // ---- Download IFC: the model as a file. A model linked to the open Revit document is exported fresh
+  // (it includes every change since loading); otherwise the file as opened (kept in this device's session).
+  const downloadIfc = async () => {
+    if (!m.model) return;
+    const base = m.model.info.fileName.replace(/\.ifc$/i, '');
+    try {
+      if (revitLinked) {
+        const r = await withTask('download', 'Download IFC', 'Revit is exporting the current model…', () => bridge.loadModel());
+        downloadFile(r.bytes, `${base}.ifc`, 'application/x-step');
+        m.log(`Downloaded ${base}.ifc, exported fresh from Revit (${(r.bytes.byteLength / 1e6).toFixed(1)} MB).`);
+        return;
+      }
+      const saved = await loadModel();
+      if (!saved || saved.name !== m.model.info.fileName) {
+        setNotice('The file is not kept on this device any more: open it again to download it.');
+        return;
+      }
+      downloadFile(saved.bytes, `${base}.ifc`, 'application/x-step');
+      const merged = m.model.revision ?? 0;
+      m.log(`Downloaded ${base}.ifc (${(saved.bytes.byteLength / 1e6).toFixed(1)} MB).`);
+      if (merged > 0) setNotice(`This is the file as loaded: ${merged} update${merged === 1 ? '' : 's'} from Revit since then are not in it. Connect to Revit to download a fresh export.`);
+    } catch (e) {
+      setNotice(`Could not download the IFC: ${(e as Error).message}`);
+    }
+  };
+
   const updateRef = useRef(updateFromRevit);
   updateRef.current = updateFromRevit;
   useEffect(() => {
@@ -1813,6 +1842,7 @@ export function App({ start }: { start?: AppStart } = {}) {
       // File
       { id: 'file.openIfc', title: 'Open IFC model', group: 'File', keywords: 'load import revit', run: () => void openFromDisk() },
       { id: 'file.openDxf', title: 'Open DXF drawing', group: 'File', keywords: 'cad 2d autocad', run: () => void openDxfFromDisk() },
+      { id: 'file.downloadIfc', title: 'Download IFC', group: 'File', keywords: 'save export ifc file revit', run: () => void downloadIfc() },
       { id: 'file.dxfTo3d', title: 'DXF → 3D: build an IFC model from a drawing', group: 'File', keywords: 'pipeline convert computer help', run: () => (pipe ? toggleWin('pipeline', true) : void pipeline.start()) },
       { id: 'file.sample', title: 'Open the sample model', group: 'File', keywords: 'demo example frame', run: () => void openSample() },
       ...SAMPLES.slice(1).map((smp) => ({ id: `file.sample.${smp.id}`, title: `Open sample: ${smp.title}`, group: 'File' as const, keywords: `demo example large tower ${smp.detail}`, run: () => void openSample(smp) })),
@@ -1993,6 +2023,36 @@ export function App({ start }: { start?: AppStart } = {}) {
         : `${fmtCount(sel.length)} elements`;
 
   const load = m.load;
+  // ---- Long operations report to the progress store (lib/progress → BuildProgress)
+  useEffect(() => {
+    if (load.status !== 'loading') return void endTask('open-ifc');
+    const known = load.total > 0;
+    const patch = {
+      title: `Opening ${load.fileName}`,
+      phase: known ? 'Building the 3D geometry' : 'Reading the file and its properties',
+      fraction: known ? load.done / load.total : null,
+      detail: known ? `${fmtCount(load.done)} of ${fmtCount(load.total)} elements` : undefined,
+    };
+    if (!tasksNow().some((t) => t.id === 'open-ifc')) startTask('open-ifc', patch.title, patch.phase, patch.fraction);
+    updateTask('open-ifc', patch);
+  }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!dx.loading) return void endTask('open-dxf');
+    if (!tasksNow().some((t) => t.id === 'open-dxf')) startTask('open-dxf', `Opening ${dx.loading.name}`, dx.loading.phase);
+    else updateTask('open-dxf', { phase: dx.loading.phase });
+  }, [dx.loading]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const phase = pipeline.state?.phase;
+    if (!phase) return void endTask('dxf-3d');
+    const title = `DXF → 3D${pipeline.state?.fileName ? `: ${pipeline.state.fileName}` : ''}`;
+    if (!tasksNow().some((t) => t.id === 'dxf-3d')) startTask('dxf-3d', title, phase);
+    else updateTask('dxf-3d', { title, phase });
+  }, [pipeline.state?.phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tasks = useTasks();
+  const tasksNow = () => tasksRef.current;
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+
   return (
     <AppShell
       titleBar={
@@ -2032,6 +2092,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             <RibbonButton icon="ifc" label="IFC" onClick={openFromDisk} shortcutHint="opens from this device" />
             <RibbonButton icon="dxf" label="DXF" onClick={openDxfFromDisk} shortcutHint="2D view, opens from this device" />
             <RibbonButton icon="column" label="DXF → 3D" active={wins.pipeline} onClick={() => (pipe ? toggleWin('pipeline') : void pipeline.start())} shortcutHint="build an IFC model from a CH-format drawing" />
+            <RibbonButton icon="downloadIfc" label="Download IFC" disabled={!m.model} onClick={() => void downloadIfc()} shortcutHint={!m.model ? 'open a model first' : revitLinked ? 'a fresh export from Revit, with every change since loading' : 'the model as an IFC file'} />
           </RibbonGroup>
           <RibbonGroup label="Structure">
             {(['column', 'beam', 'wall', 'slab', 'footing'] as const).map((k) => (
@@ -2183,6 +2244,7 @@ export function App({ start }: { start?: AppStart } = {}) {
               shortcutHint={!revitLinked ? 'load the model from Revit first' : !bridge.canLiveUpdate ? 'needs Shanku Bridge for Revit 0.5.0' : liveCount ? `bring in the ${liveCount} element${liveCount === 1 ? '' : 's'} changed in Revit` : 'nothing changed in Revit'}
             />
             <RibbonButton icon="importModel" label="Auto-update" active={autoUpdate} disabled={!canLive} onClick={() => setAutoUpdate((v) => !v)} shortcutHint="bring in Revit's changes as they happen (Revit exports them in the background)" />
+            <RibbonButton icon="downloadIfc" label="Download IFC" disabled={!revitLinked} onClick={() => void downloadIfc()} shortcutHint={revitLinked ? 'a fresh IFC export of the Revit model, with every change since loading' : 'load the model from Revit first'} />
           </RibbonGroup>
           <RibbonGroup label="Selection">
             <RibbonButton icon="sync" label="Sync" active={revitSync} onClick={() => setRevitSync((v) => !v)} shortcutHint={revitLinked ? 'selection follows Revit both ways' : 'follows Revit once the model is loaded from Revit'} />
@@ -2376,26 +2438,12 @@ export function App({ start }: { start?: AppStart } = {}) {
           {load.status === 'idle' && !m.model && !activeDoc && !dx.loading ? (
             <StartPage onChooseIfc={openFromDisk} onChooseDxf={openDxfFromDisk} onSample={(smp) => void openSample(smp)} onGuide={() => openGuide()} busy={sampleBusy} />
           ) : null}
-          {load.status === 'loading' ? (
-            <div className="app-overlay" role="status" aria-live="polite">
-              <p className="app-overlay__title">Opening {load.fileName}</p>
-              <p className="app-overlay__text">
-                {load.total ? `${fmtCount(load.done)} of ${fmtCount(load.total)} elements` : 'Reading the file…'}
-              </p>
-              <div className="app-progress" aria-hidden="true">
-                <div className="app-progress__bar" style={{ width: `${load.total ? (100 * load.done) / load.total : 5}%` }} />
-              </div>
-            </div>
-          ) : null}
-          {dx.loading ? (
-            <div className="app-overlay" role="status" aria-live="polite">
-              <p className="app-overlay__title">Opening {dx.loading.name}</p>
-              <p className="app-overlay__text">{dx.loading.phase}</p>
-              <div className="app-progress app-progress--busy" aria-hidden="true">
-                <div className="app-progress__bar" />
-              </div>
-            </div>
-          ) : null}
+          {(() => {
+            // DXF → 3D shows its progress inside its own window when that is open
+            const shown = tasks.filter((t) => !(t.id === 'dxf-3d' && wins.pipeline));
+            const t = shown[shown.length - 1];
+            return t ? <BuildProgress task={t} variant={m.model || activeDoc ? 'floating' : 'center'} /> : null;
+          })()}
           {load.status === 'error' && !activeDoc ? (
             <div className="app-overlay" role="alert">
               <p className="app-overlay__title">That file didn’t open</p>

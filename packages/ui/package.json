@@ -25,7 +25,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@shanku/brand": "1.9.0",
+    "@shanku/brand": "1.10.0",
     "@shanku/tokens": "2.1.0"
   },
   "peerDependencies": {

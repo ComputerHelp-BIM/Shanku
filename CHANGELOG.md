@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.45.0 — 2026-09-26
+
+### Added
+- Rising frame progress for opening files, DXF → 3D and the Revit bridge; Download IFC (fresh from Revit when linked).
+
+### Changed
+- Faster loading: one pass over the property sets (engine 0.35.0). Revit bridge requests run at once (Shanku Bridge for Revit 0.7.2).
+
 ## 0.44.0 — 2026-09-26
 
 ### Added

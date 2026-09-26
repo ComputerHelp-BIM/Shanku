@@ -34,7 +34,7 @@ public sealed class App : IExternalApplication
             string here = Path.GetDirectoryName(typeof(App).Assembly.Location)!;
             Config = BridgeConfig.Load(Path.Combine(here, "shanku_bridge_config.json"));
             Pairing = new Pairing(Path.Combine(DataDir, "bridge-tokens.json"));
-            Host = new RevitHost(new RevitQueue(), app.ControlledApplication.VersionNumber);
+            Host = new RevitHost(new RevitQueue(app.MainWindowHandle), app.ControlledApplication.VersionNumber);
             Server = new BridgeServer(Host, Pairing, Config, Log);
             Host.Broadcast = Server.Broadcast;
             try
