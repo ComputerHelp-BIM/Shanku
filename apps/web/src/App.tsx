@@ -106,7 +106,7 @@ import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
 
-const APP_VERSION = '0.47.0';
+const APP_VERSION = '0.48.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -1565,6 +1565,8 @@ export function App({ start }: { start?: AppStart } = {}) {
   const [linkDialog, setLinkDialog] = useState<{ mode: 'copy' | 'open'; link: string } | null>(null);
   /** A link opened before its model: applied once that model loads. */
   const pendingLink = useRef<ViewToken | null>(null);
+  /** A view link waiting for its model, shown on the start page (models are never in a link). */
+  const [linkFor, setLinkFor] = useState<ViewToken | null>(null);
 
   /** The current view as a link token: view, camera, section box, style, selection, temporary hide/isolate, explode. */
   const currentViewToken = (): ViewToken | null => {
@@ -1611,6 +1613,7 @@ export function App({ start }: { start?: AppStart } = {}) {
       return setNotice(`This link shows a view of ${t.file}. Open that file to see it.`);
     }
     pendingLink.current = null;
+    setLinkFor(null);
     const byId = new Map(model.elements.map((e) => [e.globalId, e.index]));
     const indices = (ids: readonly string[] = []) => ids.map((g) => byId.get(g)).filter((i): i is number => i !== undefined);
     const wanted = [...(t.select ?? []), ...(t.hide?.ids ?? [])];
@@ -1652,7 +1655,12 @@ export function App({ start }: { start?: AppStart } = {}) {
     if (!t) return;
     window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#app`); // the link is used; keep the address clean
     pendingLink.current = t;
-    setNotice(`This link shows a view of ${t.file}. Open that file to see it.`);
+    setLinkFor(t);
+    // A sample building's link opens the sample itself (anyone can load it); any other model has to be
+    // opened by the reader: models stay on each device and are never in a link.
+    const bare = (n: string) => n.toLowerCase().replace(/\.gz$/, '');
+    const sample = SAMPLES.find((smp) => bare(smp.file) === bare(t.file));
+    if (sample && !m.model) void openSample(sample);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
@@ -2452,7 +2460,18 @@ export function App({ start }: { start?: AppStart } = {}) {
             </div>
           ) : null}
           {load.status === 'idle' && !m.model && !activeDoc && !dx.loading ? (
-            <StartPage onChooseIfc={openFromDisk} onChooseDxf={openDxfFromDisk} onSample={(smp) => void openSample(smp)} onGuide={() => openGuide()} busy={sampleBusy} />
+            <StartPage
+              onChooseIfc={openFromDisk}
+              onChooseDxf={openDxfFromDisk}
+              onSample={(smp) => void openSample(smp)}
+              onGuide={() => openGuide()}
+              busy={sampleBusy}
+              sharedView={linkFor ? { file: linkFor.file } : null}
+              onDismissShared={() => {
+                pendingLink.current = null;
+                setLinkFor(null);
+              }}
+            />
           ) : null}
           {(() => {
             // DXF → 3D and Export to Revit show their progress inside their own windows when those are open

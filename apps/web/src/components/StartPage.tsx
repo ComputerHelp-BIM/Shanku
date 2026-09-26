@@ -10,6 +10,9 @@ export interface StartPageProps {
   onGuide: () => void;
   /** A sample is downloading or opening. */
   busy?: string | null;
+  /** A view link arrived without its model: which file it needs. */
+  sharedView?: { file: string } | null;
+  onDismissShared?: () => void;
 }
 
 const FORMATS: ReadonlyArray<{ ext: string; note?: string }> = [
@@ -24,11 +27,31 @@ const FORMATS: ReadonlyArray<{ ext: string; note?: string }> = [
  * What the app shows before a file is open: what it opens, one button to choose a file, and sample
  * buildings to try (small, a G+14 tower and a large twin-tower podium), all read on this device.
  */
-export function StartPage({ onChooseIfc, onChooseDxf, onSample, onGuide, busy }: StartPageProps) {
+export function StartPage({ onChooseIfc, onChooseDxf, onSample, onGuide, busy, sharedView, onDismissShared }: StartPageProps) {
   const [downloads, setDownloads] = useState(false);
   return (
     <div className="app-start">
       <div className="app-start__inner">
+        {sharedView ? (
+          <section className="app-start__shared" aria-label="Shared view">
+            <Icon name="link" size={18} />
+            <div>
+              <h2>A shared view of {sharedView.file}</h2>
+              <p>
+                The link holds the view: camera, section box, selection and what is hidden. Models stay on each device and are never uploaded, so open <strong>{sharedView.file}</strong> (or the
+                same model under another name) and the view applies by itself.
+              </p>
+              <div className="app-start__shared-actions">
+                <Button variant="primary" onClick={onChooseIfc}>
+                  Open {sharedView.file}…
+                </Button>
+                <Button variant="ghost" onClick={onDismissShared}>
+                  Not now
+                </Button>
+              </div>
+            </div>
+          </section>
+        ) : null}
         <h1 className="app-start__title">Open any IFC model in your browser</h1>
         <p className="app-start__lead">
           Drop a file here or choose one. It is read entirely on this device: nothing is uploaded, and no Revit or other licence is needed to look at it, measure it or

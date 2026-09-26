@@ -381,6 +381,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.48.0', date: '2026-09-26', items: ['A view link opened in another browser, a new profile or incognito says which model it needs, with a button to open it; the view applies once it is open. Links to the sample buildings open the sample by themselves.'] },
           { version: '0.47.0', date: '2026-09-26', items: ['Export to Revit’s progress tells the truth: counted phases show a percentage, Revit’s own work (joining the elements, finishing) shows “Revit is working”, and the bar reaches the end only when Revit does.', 'With Shanku Bridge for Revit 0.10.0: the Connect window in Shanku’s look, Revit maximised after a build, and the last refused slabs built.'] },
           { version: '0.46.2', date: '2026-09-26', items: ['With Shanku Bridge for Revit 0.9.0: Connect in Revit no longer blocks Revit (pair and load at once), Revit comes to the front with the new elements selected after Export to Revit, and slabs Revit refused are built.'] },
           { version: '0.46.1', date: '2026-09-26', items: ['The progress display is bigger and livelier: a tower crane lowers each member into place, a caption says what is going up, and a flag goes up when it tops out.'] },

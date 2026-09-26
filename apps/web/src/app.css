@@ -808,3 +808,7 @@
   .app-build__m.is-new, .app-build__bar--busy > span, .app-build__flag path { animation: none; }
   .app-build__bar--busy > span { width: 100%; opacity: 0.4; }
 }
+.app-start__shared { display: flex; gap: 12px; align-items: flex-start; width: 100%; box-sizing: border-box; margin: 0 0 var(--space-sm); text-align: left; padding: 14px 16px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-lg); background: var(--panel); color: var(--text); }
+.app-start__shared h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.app-start__shared p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.app-start__shared-actions { display: flex; gap: 8px; margin-top: 12px; }

@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.48.0 — 2026-09-26
+
+### Added
+- Shared view links opened where the model is not: a start-page banner to open the file; sample links open the sample.
+- Revit Connect window: Copy for the pairing code (Shanku Bridge for Revit 0.11.0).
+
 ## 0.47.0 — 2026-09-26
 
 ### Changed

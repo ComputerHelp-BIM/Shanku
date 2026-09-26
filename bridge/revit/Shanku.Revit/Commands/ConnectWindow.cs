@@ -37,6 +37,8 @@ internal sealed class ConnectWindow : Window
     private readonly Rectangle _drain = new();
     private readonly Grid _drainTrack = new();
     private readonly DispatcherTimer _tick;
+    private readonly Button _copy;
+    private string _code = "";
 
     public static void ShowFor(IntPtr revitWindow)
     {
@@ -60,7 +62,7 @@ internal sealed class ConnectWindow : Window
         _p = dark ? Dark : Light;
 
         Title = "Connect to Shanku";
-        Width = 440;
+        Width = 480; // six digit tiles and Copy in one row
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -131,8 +133,17 @@ internal sealed class ConnectWindow : Window
         // body: the code in digit tiles, the countdown, the instructions
         var body = new StackPanel { Margin = new Thickness(16, 14, 16, 10) };
         body.Children.Add(new TextBlock { Text = "PAIRING CODE", Foreground = B(_p.TextSecondary), FontSize = 11, FontWeight = FontWeights.SemiBold });
-        _digits.Margin = new Thickness(0, 8, 0, 0);
-        body.Children.Add(_digits);
+        // the digit tiles, and Copy beside them (the six digits, for pasting into Shanku)
+        var codeRow = new DockPanel { Margin = new Thickness(0, 8, 0, 0), LastChildFill = false };
+        _copy = FlatButton("Copy", false);
+        _copy.Height = 54;
+        _copy.Padding = new Thickness(14, 0, 14, 0);
+        _copy.ToolTip = "Copy the code, to paste into Shanku";
+        _copy.Click += (_, _) => CopyCode();
+        DockPanel.SetDock(_copy, Dock.Right);
+        codeRow.Children.Add(_copy);
+        codeRow.Children.Add(_digits);
+        body.Children.Add(codeRow);
         _paired.Visibility = Visibility.Collapsed;
         _paired.FontSize = 22;
         _paired.FontWeight = FontWeights.SemiBold;
@@ -239,10 +250,30 @@ internal sealed class ConnectWindow : Window
         }
     }
 
+    private void CopyCode()
+    {
+        if (string.IsNullOrEmpty(_code)) return;
+        try
+        {
+            Clipboard.SetText(_code);
+            _copy.Content = "Copied ✓";
+            var back = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.6) };
+            back.Tick += (_, _) => { back.Stop(); _copy.Content = "Copy"; };
+            back.Start();
+        }
+        catch (Exception)
+        {
+            _copy.Content = "Try again"; // the clipboard can be busy for a moment (another program holds it)
+        }
+    }
+
     private void NewCode()
     {
         string code = App.Pairing!.NewCode();
+        _code = code;
         _digits.Visibility = Visibility.Visible;
+        _copy.Visibility = Visibility.Visible;
+        _copy.Content = "Copy";
         _drainTrack.Visibility = Visibility.Visible;
         _paired.Visibility = Visibility.Collapsed;
         ShowDigits(code, true);
@@ -271,6 +302,7 @@ internal sealed class ConnectWindow : Window
     {
         _tick.Stop();
         _digits.Visibility = Visibility.Collapsed;
+        _copy.Visibility = Visibility.Collapsed;
         _drainTrack.Visibility = Visibility.Collapsed;
         _paired.Text = "✓  Connected to Shanku";
         _paired.Visibility = Visibility.Visible;

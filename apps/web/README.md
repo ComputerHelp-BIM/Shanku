@@ -1,4 +1,4 @@
-# @shanku/web 0.47.0
+# @shanku/web 0.48.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.48.0 — 2026-09-26
+- **Shared view links in another browser.** A link holds the view, never the model (models stay on each device). Opened where the model is not (another browser, profile, incognito), it used to show only a passing notice; the start page now shows a banner naming the file with **Open <file>…**, and the view applies once a model is open (elements matched by GlobalId, so a renamed file works; the notice says when none match). A link to a sample building opens the sample by itself. The View link dialog says the model is not in the link.
 
 ### 0.47.0 — 2026-09-26
 - **Honest Export to Revit progress:** the add-in's overall `fraction` per phase and `busy` for Revit's unmeasurable work (regenerating, finishing). The display holds the frame there, shimmers the bar, bobs the crane's hook and says "Revit is working" instead of a percentage; it no longer shows 100 % a minute before Revit finishes. Older add-ins still work (done / total).

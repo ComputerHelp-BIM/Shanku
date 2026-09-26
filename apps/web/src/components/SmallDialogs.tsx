@@ -90,7 +90,10 @@ export function ViewLinkDialog({ mode, link, onApply, onClose }: { mode: 'copy' 
       {mode === 'copy' ? (
         <>
           <h2 className="app-dialog__title">View link</h2>
-          <p className="app-dialog__text">Anyone who opens this link and the same model file sees this view: camera, section box, style, selection and what is hidden. The model itself is not in the link.</p>
+          <p className="app-dialog__text">
+            The link holds this view (camera, section box, style, selection and what is hidden), not the model: models stay on each device and are never uploaded. Whoever opens it is asked for the
+            same file and sees this view once it is open. Links to the sample buildings open the sample by themselves.
+          </p>
           <textarea className="app-link-box" readOnly value={link} rows={4} aria-label="View link" onFocus={(e) => e.currentTarget.select()} />
           <div className="app-dialog__actions">
             <Button onClick={onClose}>Close</Button>
