@@ -1,4 +1,4 @@
-# Shanku Bridge for Revit 0.11.0
+# Shanku Bridge for Revit 0.12.0
 
 Connects **Revit 2025** to **Shanku** in your browser on the same computer: load the open Revit model
 into Shanku, keep the selection in step both ways, edit Revit parameters from Shanku, and keep Shanku up
@@ -10,7 +10,7 @@ Revit). Protocol: `docs/bridge/protocol.md`.
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.11.0.zip`, open PowerShell in the folder, then:
+2. Unzip `Shanku.Revit-0.12.0.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -28,7 +28,7 @@ Remove it with `install.ps1 -Uninstall`.
 
 A browser stays paired across restarts; **Shanku → Disconnect** unpairs every browser.
 
-## What it does, and does not do (0.11.0)
+## What it does, and does not do (0.12.0)
 
 - Loading exports IFC4 Reference View inside a transaction that is rolled back, so the model is never
   changed. Selection sync only selects.
@@ -86,6 +86,16 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.12.0 — 2026-09-30
+- **Editing from Shanku** (`POST /elements/edit`, feature `edit`): moves (mm) and rotations (degrees, about
+  each element's or the group's centre), another type for elements, a duplicated type given to elements, type
+  parameters (every instance) and instance parameters, in one transaction (one undo), each on its own. Refused
+  per edit: pinned elements, elements borrowed by someone else, taken or invalid type names, values changed in
+  Revit since Shanku read them. `EditPlanner` validates and names the undo (unit-tested).
+- **The IFC export uses Revit's internal axes** (`SitePlacement = Internal`, confirmed in the revit-ifc
+  source: `SiteTransformBasis.Internal`), so a distance typed in Shanku is the same along Revit's X, Y, Z.
+- `/params/read`: the type's id, how many instances it has, the category's types; type parameters editable.
 
 ### 0.11.0 — 2026-09-26
 - **Copy** beside the pairing code in the Connect window: copies the six digits to paste into Shanku (Shanku keeps only the digits of whatever is pasted). The window is 480 px wide to fit the tiles and the button.

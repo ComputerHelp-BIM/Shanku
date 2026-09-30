@@ -2,6 +2,13 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.49.0 — 2026-09-30
+
+### Added
+- Revit-linked editing: Move and Rotate (MV / RO), Change type, editable Type Properties with Duplicate; one undo in Revit (Shanku Bridge for Revit 0.12.0, which exports IFC on Revit's internal axes).
+- Share with the model: encrypted on the device, kept 1 hour to until deleted, opens links with no file (docs/sharing.md; needs a Vercel Blob store connected).
+- Icons move and rotate (brand 1.11.0).
+
 ## 0.48.0 — 2026-09-26
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "shanku",
-  "version": "0.48.0",
+  "version": "0.49.0",
   "private": true,
   "description": "Shanku: open, IFC-native structural modelling in the browser.",
   "license": "UNLICENSED",
@@ -18,7 +18,7 @@
     "dev": "npm run build -w @shanku/tokens && npm run dev -w @shanku/web",
     "dev:playground": "npm run build -w @shanku/tokens && npm run dev -w @shanku/playground",
     "test": "npm run build -w @shanku/tokens && npm run test -w @shanku/ui && npm run test -w @shanku/engine && npm run test -w @shanku/web",
-    "typecheck": "npm run build -w @shanku/tokens && npm run typecheck -w @shanku/ui && npm run typecheck -w @shanku/engine && npm run typecheck -w @shanku/playground && npm run typecheck -w @shanku/web",
+    "typecheck": "npm run build -w @shanku/tokens && npm run typecheck -w @shanku/ui && npm run typecheck -w @shanku/engine && npm run typecheck -w @shanku/playground && npm run typecheck -w @shanku/web && tsc -p api/tsconfig.json",
     "fixtures:large": "python tools/fixtures/make_sample_ifc.py large large-frame.ifc",
     "fixtures:showcase": "python tools/fixtures/make_showcase_ifc.py tower apps/web/public/samples/g14-tower.ifc.gz && python tools/fixtures/make_showcase_ifc.py twin apps/web/public/samples/g24-twin-towers.ifc.gz",
     "lint:css": "stylelint \"packages/ui/src/**/*.css\" \"apps/*/src/**/*.css\""

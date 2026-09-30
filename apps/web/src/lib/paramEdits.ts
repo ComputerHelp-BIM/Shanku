@@ -29,9 +29,26 @@ export interface RevitElementParams {
   /** Instance parameters, in the Properties palette's order (add-in 0.3.0+). */
   params: RevitParam[];
   familyName?: string;
-  /** Type parameters, read-only for now (add-in 0.3.0+). */
+  /** Type parameters (add-in 0.3.0+; editable where Revit allows from 0.12.0). */
   typeParams?: RevitParam[];
+  /** The type's element id, how many instances it has, and the types it can switch to (add-in 0.12.0+). */
+  typeId?: number;
+  typeInstances?: number;
+  types?: TypeChoice[];
 }
+
+/** A type an element can switch to (its category's). */
+export interface TypeChoice {
+  id: number;
+  family: string;
+  name: string;
+}
+
+/**
+ * What a pending change does in Revit (add-in 0.12.0, POST /elements/edit): an instance parameter, a type
+ * parameter (every instance of the type), another type for elements, a duplicated type, a move or a rotation.
+ */
+export type EditKind = 'param' | 'typeParam' | 'setType' | 'duplicateType' | 'move' | 'rotate';
 
 export interface PendingChange {
   globalId: string;
@@ -42,7 +59,78 @@ export interface PendingChange {
   value: string;
   /** For the Changes window: "Structural Columns C1". */
   element: string;
+  /** Default 'param'. For the others, globalId is a key ("type:…", "op:…") and the fields below say what to do. */
+  kind?: EditKind;
+  /** The elements a setType, duplicateType, move or rotate acts on. */
+  globalIds?: string[];
+  typeId?: number;
+  familyName?: string;
+  typeName?: string;
+  newName?: string;
+  /** Move, mm along the model's axes (Revit's internal axes). */
+  dx?: number;
+  dy?: number;
+  dz?: number;
+  /** Rotate, degrees counter-clockwise seen from above, about each element's centre or the group's. */
+  angle?: number;
+  about?: 'each' | 'group';
 }
+
+/** The add-in's edit (POST /elements/edit). */
+export interface EditOp {
+  kind: EditKind;
+  globalIds: string[];
+  paramId?: number;
+  name?: string;
+  oldDisplay?: string | null;
+  value?: string;
+  typeId?: number;
+  familyName?: string;
+  typeName?: string;
+  newName?: string;
+  dx?: number;
+  dy?: number;
+  dz?: number;
+  angle?: number;
+  about?: 'each' | 'group';
+}
+
+/** Which type a type-parameter edit is for: an existing type by id, or one duplicated in the same apply. */
+export interface TypeRef {
+  typeId?: number;
+  familyName: string;
+  typeName: string;
+}
+
+/** The key type-parameter edits of a type share (its "globalId" in the pending list). */
+export const typeKey = (t: TypeRef): string => (t.typeId ? `type:${t.typeId}` : `type:${t.familyName}/${t.typeName}`);
+
+let opSerial = 0;
+/** Adds a move, rotation, type switch or duplicated type as its own row. */
+export function stageOp(pending: readonly PendingChange[], change: Omit<PendingChange, 'globalId' | 'paramId' | 'oldDisplay'>): PendingChange[] {
+  opSerial += 1;
+  return [...pending, { ...change, globalId: `op:${Date.now().toString(36)}${opSerial}`, paramId: 0, oldDisplay: null }];
+}
+
+/** Stages a type parameter: one row per type and parameter (a new value replaces the earlier one). */
+export function stageTypeEdit(pending: readonly PendingChange[], type: TypeRef, p: Pick<RevitParam, 'id' | 'name' | 'display'>, value: string, label: string): PendingChange[] {
+  const key = typeKey(type);
+  const rest = pending.filter((c) => !(c.globalId === key && c.paramId === p.id && c.name === p.name));
+  if (value === (p.display ?? '')) return rest; // back to Revit's value: nothing to change
+  return [...rest, { kind: 'typeParam', globalId: key, paramId: p.id, name: p.name, oldDisplay: p.display, value, element: label, typeId: type.typeId, familyName: type.familyName, typeName: type.typeName }];
+}
+
+/** A pending change as the add-in's edit. */
+export function toEditOp(c: PendingChange): EditOp {
+  const kind = c.kind ?? 'param';
+  if (kind === 'param') return { kind, globalIds: [c.globalId], paramId: c.paramId, name: c.name, oldDisplay: c.oldDisplay, value: c.value };
+  if (kind === 'typeParam') return { kind, globalIds: [], paramId: c.paramId, name: c.name, oldDisplay: c.typeId ? c.oldDisplay : null, value: c.value, typeId: c.typeId, familyName: c.familyName, typeName: c.typeName };
+  const { globalIds = [], typeId, familyName, typeName, newName, dx, dy, dz, angle, about } = c;
+  return { kind, globalIds, typeId, familyName, typeName, newName, dx, dy, dz, angle, about };
+}
+
+/** Changes that move, turn or retype elements: Shanku reloads their geometry from Revit after applying. */
+export const changesGeometry = (c: PendingChange): boolean => c.kind === 'move' || c.kind === 'rotate' || c.kind === 'setType' || c.kind === 'duplicateType' || c.kind === 'typeParam';
 
 /** The outcome of checking or applying a change in Revit. */
 export interface ChangeOutcome {

@@ -1,4 +1,4 @@
-# @shanku/web 0.48.0
+# @shanku/web 0.49.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,10 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.49.0 — 2026-09-30
+- **Geometry and type editing for Revit-linked models** (Shanku Bridge for Revit 0.12.0): **Move** (MV) and **Rotate** (RO) with typed values (Revit ribbon → Modify, command search); **Change type** in Properties (the category's types by family; a staged switch shows as modified); **Type Properties** editable — OK / Cancel / Apply, a warning with the instance count, **Duplicate…** (Revit's naming rules) so edits touch only the selection. Everything is staged in Changes for Revit with parameters, checked, and applied as one undo; after geometry or type changes Shanku updates from Revit by itself. `lib/paramEdits` (kinds, `stageOp`, `stageTypeEdit`, `toEditOp`), `components/EditGeometry`, `components/TypeProperties`.
+- **Share with the model** (opt-in, `docs/sharing.md`): the View link dialog uploads the open model, gzipped and encrypted on this device (AES-GCM 256, key only in the link's `#` fragment), kept 1 hour, 1 day, 3 days or until deleted, deletable from My shared models. A link carrying a model opens it with no file at hand, then applies the view. `/api/share` (Vercel Blob; the same rules served locally by the dev and preview servers), daily cleanup cron. Copy view link now opens the dialog.
 
 ### 0.48.0 — 2026-09-26
 - **Shared view links in another browser.** A link holds the view, never the model (models stay on each device). Opened where the model is not (another browser, profile, incognito), it used to show only a passing notice; the start page now shows a banner naming the file with **Open <file>…**, and the view applies once a model is open (elements matched by GlobalId, so a renamed file works; the notice says when none match). A link to a sample building opens the sample by itself. The View link dialog says the model is not in the link.

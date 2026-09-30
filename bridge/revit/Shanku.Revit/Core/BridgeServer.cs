@@ -20,7 +20,8 @@ public sealed record SelectResult(int Selected, int Missing);
 /// <remarks>Unit: the project's display unit symbol for numbers ("mm", "m³"…), when it has one (0.4.0).</remarks>
 public sealed record ParamInfo(long Id, string Name, string Group, string Kind, string? Display, bool ReadOnly, string? Why, string? Unit = null);
 /// <summary>Params: instance parameters in the Properties palette's order. TypeParams: the type's (read-only for now).</summary>
-public sealed record ElementParams(string GlobalId, long ElementId, string Category, string TypeName, IReadOnlyList<ParamInfo> Params, string FamilyName = "", IReadOnlyList<ParamInfo>? TypeParams = null);
+/// <remarks>0.12.0: TypeParams editable where Revit allows; TypeId, how many instances the type has, and the types of the same category it can switch to.</remarks>
+public sealed record ElementParams(string GlobalId, long ElementId, string Category, string TypeName, IReadOnlyList<ParamInfo> Params, string FamilyName = "", IReadOnlyList<ParamInfo>? TypeParams = null, long TypeId = 0, int TypeInstances = 0, IReadOnlyList<TypeChoice>? Types = null);
 /// <summary>A change to apply. OldDisplay is what Shanku read; a different current value is a conflict.</summary>
 public sealed record ParamChange(string GlobalId, long ParamId, string Name, string? OldDisplay, string Value);
 public sealed record ChangeResult(int Index, bool Ok, string? Error, string? NewDisplay);
@@ -45,6 +46,8 @@ public interface IRevitHost
     Task<WriteResult> WriteParamsAsync(string key, IReadOnlyList<ParamChange> changes, bool dryRun);
     /// <summary>Export to Revit: builds native elements from the exchange (dryRun: tried, then rolled back).</summary>
     Task<CreateReport> CreateModelAsync(string key, ExchangeModel exchange, bool dryRun);
+    /// <summary>Edits (EditOp) in one Revit transaction (one undo), each on its own; dryRun rolls everything back.</summary>
+    Task<WriteResult> EditAsync(string key, IReadOnlyList<EditOp> ops, bool dryRun);
 }
 
 /// <summary>A request the host could not serve, with the status and message to send back.</summary>
@@ -63,7 +66,7 @@ public sealed class BridgeServer : IDisposable
 {
     public const int Protocol = 1;
     /// <summary>What this add-in can do beyond protocol 1's basics (Shanku checks before offering it).</summary>
-    public static readonly string[] Features = { "params", "changes", "partial-export", "create" };
+    public static readonly string[] Features = { "params", "changes", "partial-export", "create", "edit" };
     public const int MaxCreateElements = 20000;
     public const int MaxReadElements = 500;
     public const int MaxChanges = 5000;
@@ -302,6 +305,22 @@ public sealed class BridgeServer : IDisposable
                     await Send(res, 200, new { elements = r });
                     return;
                 }
+                case ("POST", "/elements/edit"):
+                {
+                    var body = await ReadJson(req);
+                    string key = body.TryGetProperty("key", out var k) ? k.GetString() ?? "" : "";
+                    bool dry = body.TryGetProperty("dryRun", out var d) && d.ValueKind == JsonValueKind.True;
+                    if (!body.TryGetProperty("ops", out var arr) || arr.ValueKind != JsonValueKind.Array) throw new BridgeException(400, "No edits were sent.");
+                    var ops = new List<EditOp>();
+                    foreach (var o in arr.EnumerateArray()) ops.Add(ParseOp(o));
+                    if (ops.Count == 0) throw new BridgeException(400, "No edits were sent.");
+                    if (ops.Count > MaxEditOps) throw new BridgeException(400, $"Send {MaxEditOps} or fewer edits at a time.");
+                    for (int i = 0; i < ops.Count; i++)
+                        if (EditPlanner.Problem(ops[i]) is { } why) throw new BridgeException(400, $"Edit {i + 1}: {why}");
+                    var r = await _host.EditAsync(key, ops, dry);
+                    await Send(res, 200, r);
+                    return;
+                }
                 case ("POST", "/params/write"):
                 {
                     var body = await ReadJson(req);
@@ -364,6 +383,20 @@ public sealed class BridgeServer : IDisposable
             _log($"Error: {ex}");
             if (!keepOpen) await Send(res, 500, new { error = ex.Message });
         }
+    }
+
+    /// <summary>Most edits in one request.</summary>
+    public const int MaxEditOps = 2000;
+
+    private static EditOp ParseOp(JsonElement o)
+    {
+        string S(string n) => o.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+        string? SN(string n) => o.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        double D(string n) => o.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetDouble(out var x) ? x : 0;
+        long L(string n) => o.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var x) ? x : 0;
+        var gids = o.TryGetProperty("globalIds", out var g) && g.ValueKind == JsonValueKind.Array ? g.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).Distinct().ToArray() : Array.Empty<string>();
+        string value = o.TryGetProperty("value", out var val) ? (val.ValueKind == JsonValueKind.String ? val.GetString() ?? "" : val.ToString()) : "";
+        return new EditOp(S("kind"), gids, L("paramId"), SN("name"), SN("oldDisplay"), value, L("typeId"), SN("familyName"), SN("typeName"), SN("newName"), D("dx"), D("dy"), D("dz"), D("angle"), SN("about") ?? "each");
     }
 
     private static async Task<JsonElement> ReadJson(HttpListenerRequest req)

@@ -20,6 +20,9 @@ Round 1: 20 icons on a 24 px grid, 1.5 px round strokes, `currentColor`. `icons.
 
 ## Changelog
 
+### 1.11.0 — 2026-09-30
+- Icons `move` (four-way arrows) and `rotate` (a turn arrow), from Lucide (ISC), for the Move and Rotate tools.
+
 ### 1.10.0 — 2026-09-26
 - Icon `downloadIfc` (arrow into a tray): Download IFC.
 

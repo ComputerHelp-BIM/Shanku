@@ -80,6 +80,9 @@ public sealed class RevitHost : IRevitHost
             options.AddOption("ExportInternalRevitPropertySets", "true");
             options.AddOption("ExportIFCCommonPropertySets", "true");
             options.AddOption("ExportRoomsInView", "false");
+            // On Revit's internal axes (revit-ifc SiteTransformBasis.Internal): a distance typed in Shanku
+            // (Move) is then the same along Revit's X, Y and Z, whatever the project's true north.
+            options.AddOption("SitePlacement", "Internal");
             // IFC export needs an open transaction; rolling it back leaves the model untouched.
             using (var t = new Transaction(doc, "Shanku: export IFC"))
             {
@@ -147,7 +150,12 @@ public sealed class RevitHost : IRevitHost
         {
             if (!_byGlobalId.TryGetValue(gid, out var id) || doc.GetElement(id) is not { } e) continue;
             var type = doc.GetElement(e.GetTypeId()) as ElementType;
-            list.Add(new ElementParams(gid, e.Id.Value, e.Category?.Name ?? "", type?.Name ?? "", PaletteParams(e, forceReadOnly: false), type?.FamilyName ?? "", type != null ? PaletteParams(type, forceReadOnly: true) : Array.Empty<ParamInfo>()));
+            list.Add(new ElementParams(
+                gid, e.Id.Value, e.Category?.Name ?? "", type?.Name ?? "", PaletteParams(e, forceReadOnly: false), type?.FamilyName ?? "",
+                type != null ? PaletteParams(type, forceReadOnly: false) : Array.Empty<ParamInfo>(),
+                type?.Id.Value ?? 0,
+                type != null ? InstancesOf(doc, type.Id) : 0,
+                TypesFor(doc, e)));
         }
         return list;
     }, Export);
@@ -204,6 +212,192 @@ public sealed class RevitHost : IRevitHost
         group?.RollBack(); // dry run: always undone
         return new WriteResult(dryRun, undoName, results, warnings.Distinct().ToList());
     }, Export);
+
+    /// <summary>Bumped on every change in Revit (and every edit applied): cached counts and type lists expire.</summary>
+    private long _changeSerial;
+    private readonly Dictionary<long, int> _instanceCounts = new();
+    private readonly Dictionary<long, IReadOnlyList<TypeChoice>> _typeChoices = new();
+    private string? _countsKey;
+
+    /// <summary>How many instances a type has (cached per model state; cleared on any edit).</summary>
+    private int InstancesOf(Document doc, ElementId typeId)
+    {
+        string k = KeyOf(doc) + "|" + _changeSerial;
+        if (_countsKey != k) { _instanceCounts.Clear(); _typeChoices.Clear(); _countsKey = k; }
+        if (!_instanceCounts.TryGetValue(typeId.Value, out int n))
+        {
+            n = new FilteredElementCollector(doc).WhereElementIsNotElementType().Where(x => x.GetTypeId() == typeId).Count();
+            _instanceCounts[typeId.Value] = n;
+        }
+        return n;
+    }
+
+    /// <summary>The types an element can switch to: its category's, as the Properties type selector lists them.</summary>
+    private IReadOnlyList<TypeChoice> TypesFor(Document doc, Element e)
+    {
+        if (e.Category == null) return Array.Empty<TypeChoice>();
+        long cat = e.Category.Id.Value;
+        if (_typeChoices.TryGetValue(cat, out var cached)) return cached;
+        var list = new FilteredElementCollector(doc).WhereElementIsElementType().OfCategoryId(e.Category.Id)
+            .Cast<ElementType>().Where(t => e.IsValidType(t.Id))
+            .Select(t => new TypeChoice(t.Id.Value, t.FamilyName, t.Name))
+            .OrderBy(t => t.Family).ThenBy(t => t.Name).ToList();
+        _typeChoices[cat] = list;
+        return list;
+    }
+
+    /// <summary>
+    /// Edits in one transaction (one undo), each in its own sub-transaction so one refusal does not block
+    /// the others; a dry run is a group that is always rolled back (Revit still raises its warnings).
+    /// A type duplicated by an earlier edit can be named by later ones (FamilyName + TypeName).
+    /// </summary>
+    public Task<WriteResult> EditAsync(string key, IReadOnlyList<EditOp> ops, bool dryRun) => _queue.Run(ui =>
+    {
+        var doc = RequireProject(ui);
+        RequireKey(doc, key);
+        if (_mapKey != KeyOf(doc) || ops.SelectMany(o => o.GlobalIds).Any(g => !_byGlobalId.ContainsKey(g))) BuildMap(doc);
+        string undoName = EditPlanner.UndoName(ops);
+        var results = new List<ChangeResult>();
+        var warnings = new List<string>();
+        using var group = dryRun ? new TransactionGroup(doc, "Shanku: check " + undoName) : null;
+        group?.Start();
+        using var t = new Transaction(doc, undoName);
+        var opts = t.GetFailureHandlingOptions();
+        opts.SetFailuresPreprocessor(new WarningCollector(warnings));
+        t.SetFailureHandlingOptions(opts);
+        t.Start();
+        for (int i = 0; i < ops.Count; i++)
+        {
+            var op = ops[i];
+            string? error = null, after = null;
+            using var st = new SubTransaction(doc);
+            try
+            {
+                st.Start();
+                after = Apply(doc, op);
+                st.Commit();
+            }
+            catch (Exception ex)
+            {
+                if (st.HasStarted() && !st.HasEnded()) st.RollBack();
+                error = ex.Message;
+            }
+            results.Add(new ChangeResult(i, error == null, error, after));
+        }
+        if (results.All(r => !r.Ok)) t.RollBack();
+        else if (t.Commit() != TransactionStatus.Committed && !dryRun) throw new BridgeException(500, "Revit did not accept the edits (the transaction was rolled back).");
+        group?.RollBack();
+        if (!dryRun) _changeSerial++;
+        return new WriteResult(dryRun, undoName, results, warnings.Distinct().ToList());
+    }, Export);
+
+    private static double Ft(double mm) => UnitUtils.ConvertToInternalUnits(mm, UnitTypeId.Millimeters);
+
+    /// <summary>One edit; returns what Shanku shows as its result, or throws with the reason Revit refused.</summary>
+    private string? Apply(Document doc, EditOp op)
+    {
+        switch (op.Kind)
+        {
+            case "param":
+            {
+                var e = Editable(doc, op.GlobalIds[0]);
+                var p = FindParam(e, op.ParamId, op.Name!) ?? throw new InvalidOperationException($"{e.Category?.Name} has no parameter \"{op.Name}\".");
+                return SetChecked(p, op);
+            }
+            case "typeParam":
+            {
+                var type = TypeOf(doc, op);
+                var p = FindParam(type, op.ParamId, op.Name!) ?? throw new InvalidOperationException($"The type {type.Name} has no parameter \"{op.Name}\".");
+                return SetChecked(p, op);
+            }
+            case "setType":
+            {
+                var type = TypeOf(doc, op);
+                foreach (var gid in op.GlobalIds)
+                {
+                    var e = Editable(doc, gid);
+                    if (!e.IsValidType(type.Id)) throw new InvalidOperationException($"{e.Category?.Name} cannot take the type {type.FamilyName}: {type.Name}.");
+                    e.ChangeTypeId(type.Id);
+                }
+                return $"{type.FamilyName}: {type.Name}";
+            }
+            case "duplicateType":
+            {
+                var src = doc.GetElement(new ElementId(op.TypeId)) as ElementType ?? throw new InvalidOperationException("The type to duplicate is no longer in the Revit model.");
+                if (FindType(doc, src.FamilyName, op.NewName!) != null) throw new InvalidOperationException($"{src.FamilyName} already has a type named \"{op.NewName}\".");
+                var copy = src.Duplicate(op.NewName);
+                foreach (var gid in op.GlobalIds) Editable(doc, gid).ChangeTypeId(copy.Id);
+                return $"{copy.FamilyName}: {copy.Name}";
+            }
+            case "move":
+            {
+                var ids = op.GlobalIds.Select(g => Editable(doc, g).Id).ToList();
+                ElementTransformUtils.MoveElements(doc, ids, new XYZ(Ft(op.Dx), Ft(op.Dy), Ft(op.Dz)));
+                return $"moved {ids.Count}";
+            }
+            case "rotate":
+            {
+                var els = op.GlobalIds.Select(g => Editable(doc, g)).ToList();
+                double rad = op.Angle * Math.PI / 180;
+                if (op.About == "group")
+                {
+                    var c = Centre(els);
+                    ElementTransformUtils.RotateElements(doc, els.Select(x => x.Id).ToList(), Line.CreateBound(c, c + XYZ.BasisZ), rad);
+                }
+                else foreach (var e in els)
+                {
+                    var c = Centre(new[] { e });
+                    ElementTransformUtils.RotateElement(doc, e.Id, Line.CreateBound(c, c + XYZ.BasisZ), rad);
+                }
+                return $"rotated {els.Count}";
+            }
+        }
+        throw new InvalidOperationException($"\"{op.Kind}\" is not an edit the add-in knows.");
+    }
+
+    /// <summary>A parameter set after checking it is writable and unchanged in Revit since Shanku read it.</summary>
+    private static string? SetChecked(Parameter p, EditOp op)
+    {
+        if (p.IsReadOnly || KindOf(p) == "element") throw new InvalidOperationException($"\"{op.Name}\" is read-only in Revit.");
+        string now = DisplayOf(p) ?? "";
+        if (op.OldDisplay != null && now != op.OldDisplay) throw new InvalidOperationException($"Changed in Revit since Shanku read it (now \"{now}\"). Refresh, then edit again.");
+        SetValue(p, op.Value ?? "");
+        return DisplayOf(p);
+    }
+
+    /// <summary>The element behind a GlobalId, if it may be edited: present, not pinned, not borrowed by someone else.</summary>
+    private Element Editable(Document doc, string gid)
+    {
+        if (!_byGlobalId.TryGetValue(gid, out var id) || doc.GetElement(id) is not { } e) throw new InvalidOperationException("An element is no longer in the Revit model.");
+        if (e.Pinned) throw new InvalidOperationException($"{e.Category?.Name} {e.Id.Value} is pinned in Revit; unpin it to edit it.");
+        if (doc.IsWorkshared && WorksharingUtils.GetCheckoutStatus(doc, e.Id, out string owner) == CheckoutStatus.OwnedByOtherUser)
+            throw new InvalidOperationException($"Borrowed by {owner} in the central model.");
+        return e;
+    }
+
+    private static ElementType TypeOf(Document doc, EditOp op)
+    {
+        if (op.TypeId > 0 && doc.GetElement(new ElementId(op.TypeId)) is ElementType byId) return byId;
+        return FindType(doc, op.FamilyName ?? "", op.TypeName ?? "") ?? throw new InvalidOperationException($"No type \"{op.FamilyName}: {op.TypeName}\" in the Revit model.");
+    }
+
+    private static ElementType? FindType(Document doc, string family, string name) =>
+        new FilteredElementCollector(doc).WhereElementIsElementType().Cast<ElementType>().FirstOrDefault(t => t.FamilyName == family && t.Name == name);
+
+    /// <summary>The middle of the elements' bounding box, at its base (the vertical axis passes through it).</summary>
+    private static XYZ Centre(IEnumerable<Element> els)
+    {
+        double x0 = double.MaxValue, y0 = double.MaxValue, z0 = double.MaxValue, x1 = double.MinValue, y1 = double.MinValue;
+        foreach (var e in els)
+        {
+            var b = e.get_BoundingBox(null);
+            if (b == null) continue;
+            x0 = Math.Min(x0, b.Min.X); y0 = Math.Min(y0, b.Min.Y); z0 = Math.Min(z0, b.Min.Z);
+            x1 = Math.Max(x1, b.Max.X); y1 = Math.Max(y1, b.Max.Y);
+        }
+        if (x0 == double.MaxValue) throw new InvalidOperationException("The elements have no extent to rotate about.");
+        return new XYZ((x0 + x1) / 2, (y0 + y1) / 2, z0);
+    }
 
     /// <summary>
     /// The parameters the Properties palette shows, in its order: GetOrderedParameters() leaves out the
@@ -381,6 +575,7 @@ public sealed class RevitHost : IRevitHost
     /// </summary>
     public void OnDocumentChanged(object? sender, DocumentChangedEventArgs e)
     {
+        _changeSerial++; // any change in Revit: instance counts and type lists are read again
         var doc = e.GetDocument();
         if (doc == null || doc.IsFamilyDocument) return;
         string key = KeyOf(doc);

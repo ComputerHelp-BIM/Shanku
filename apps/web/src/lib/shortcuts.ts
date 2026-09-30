@@ -18,7 +18,9 @@ export type CommandId =
   | 'sectionBox'
   | 'measure'
   | 'dimAligned'
-  | 'spotElevation';
+  | 'spotElevation'
+  | 'moveTool'
+  | 'rotateTool';
 
 export const SEQUENCES: Record<string, CommandId> = {
   ZF: 'fit',
@@ -46,6 +48,8 @@ export const SEQUENCES: Record<string, CommandId> = {
   ME: 'measure',
   DI: 'dimAligned',
   EL: 'spotElevation',
+  MV: 'moveTool',
+  RO: 'rotateTool',
 };
 
 /**
@@ -89,6 +93,8 @@ export const SHORTCUT_HELP: Array<{ keys: string; action: string }> = [
   { keys: 'EU', action: 'Unhide the selected elements (while revealing)' },
   { keys: 'BX', action: 'Section box around the selection (again to remove)' },
   { keys: 'ME', action: 'Measure: distance with snaps, clear and centre to centre, along, face area, chain (again to close)' },
+  { keys: 'MV', action: 'Move the selection by a typed distance (Revit-linked)' },
+  { keys: 'RO', action: 'Rotate the selection by a typed angle (Revit-linked)' },
   { keys: 'DI · EL', action: 'Aligned dimension · spot elevation (Annotate → Dimension); pick references, click away to place' },
   { keys: 'Delete', action: 'Delete the selected dimensions or sections' },
   { keys: 'Tab · Shift + Tab', action: 'Over the view: step through the elements under the cursor, then a chain of joined walls or beams; while measuring, through the snaps' },

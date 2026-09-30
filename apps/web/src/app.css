@@ -812,3 +812,42 @@
 .app-start__shared h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
 .app-start__shared p { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
 .app-start__shared-actions { display: flex; gap: 8px; margin-top: 12px; }
+.app-type-switch { display: flex; align-items: center; gap: 8px; padding: 4px 12px 6px; font-size: 12px; color: var(--text-secondary); }
+.app-type-switch select { flex: 1; min-width: 0; height: 26px; padding: 0 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; font-size: 13px; }
+.app-type-switch.is-modified select { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.app-typeprops__name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; }
+.app-typeprops__name label { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.app-typeprops__name input { width: 260px; height: 26px; padding: 0 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; }
+.app-typeprops__name input[aria-invalid='true'] { border-color: var(--status-error); }
+.app-typeprops__problem { color: var(--status-error); font-size: 12px; }
+.app-typeprops__scope { margin: 6px 0 2px; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--chip); color: var(--text-secondary); font-size: 12px; }
+.app-typeprops__scope.is-warning { border-left: 3px solid var(--status-warning); color: var(--text); }
+.app-geom { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; font-size: 13px; color: var(--text); }
+.app-geom__modes { display: flex; gap: 4px; }
+.app-geom__modes button { flex: 1; display: flex; justify-content: center; align-items: center; gap: 8px; height: 30px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; cursor: pointer; }
+.app-geom__modes button[aria-selected='true'] { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); font-weight: 600; }
+.app-geom__modes kbd { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.app-geom__what { margin: 0; color: var(--text-secondary); }
+.app-geom__fields { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-start; }
+.app-geom__field { display: flex; align-items: center; gap: 6px; }
+.app-geom__field span { min-width: 34px; font-weight: 600; }
+.app-geom__field input { width: 110px; height: 28px; padding: 0 8px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; font-variant-numeric: tabular-nums; text-align: right; }
+.app-geom__field em { font-style: normal; color: var(--text-secondary); }
+.app-geom__about { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0 0 0 4px; border: none; }
+.app-geom__about legend { padding: 0; margin-bottom: 2px; color: var(--text-secondary); }
+.app-geom__problem { margin: 0; color: var(--status-error); }
+.app-geom__hint { margin: 0; color: var(--text-secondary); font-size: 12px; }
+.app-geom__buttons { display: flex; justify-content: flex-end; gap: 8px; }
+.app-share-model { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.app-share-model h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.app-share-model__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+.app-share-model__row label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+.app-share-model__row select, .app-share-model__row input { height: 28px; padding: 0 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; }
+.app-share-model__off { margin: 8px 0 0; font-size: 13px; color: var(--text-secondary); }
+.app-share-model__error { margin: 8px 0 0; font-size: 13px; color: var(--status-error); }
+.app-share-model__done { margin: 8px 0 0; font-size: 13px; color: var(--status-ok); }
+.app-share-model__mine { margin-top: 10px; font-size: 13px; }
+.app-share-model__mine ul { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.app-share-model__mine li { display: flex; align-items: center; gap: 8px; }
+.app-share-model__mine li > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-share-model__mine em { font-style: normal; color: var(--text-secondary); }

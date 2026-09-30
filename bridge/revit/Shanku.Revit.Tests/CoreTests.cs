@@ -267,6 +267,12 @@ internal sealed class FakeHost : IRevitHost
     public Task<CreateReport> CreateModelAsync(string key, ExchangeModel exchange, bool dryRun) =>
         Task.FromResult(new CreateReport(dryRun, "Shanku: export", new[] { new LevelPlan("L1", 0, "exists", "01 GROUND LVL.") }, Array.Empty<TypePlan>(),
             exchange.Elements.Select(e => new CreateResult(e.Id, true, TypeName: "CH-300 X 600")).ToList(), Array.Empty<string>(), Array.Empty<string>()));
+    public List<EditOp> Edited { get; } = new();
+    public Task<WriteResult> EditAsync(string key, IReadOnlyList<EditOp> ops, bool dryRun)
+    {
+        Edited.AddRange(ops);
+        return Task.FromResult(new WriteResult(dryRun, EditPlanner.UndoName(ops), ops.Select((o, i) => new ChangeResult(i, true, null, o.Kind)).ToList(), Array.Empty<string>()));
+    }
     public Task<SelectResult> SetSelectionAsync(string key, IReadOnlyList<string> globalIds, IReadOnlyList<long> elementIds)
     {
         if (key != "key-a") throw new BridgeException(409, "Revit is showing a different model (Tower A).");
@@ -313,6 +319,36 @@ public class ServerTests : IDisposable
         var res = await _http.SendAsync(Req(HttpMethod.Post, "/pair", body: new { code = _pairing.NewCode(), client = "test" }));
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         return JsonDocument.Parse(await res.Content.ReadAsStringAsync()).RootElement.GetProperty("token").GetString()!;
+    }
+
+    [Fact]
+    public async Task Edits_are_checked_then_passed_to_Revit()
+    {
+        string token = await Pair();
+        var hello = JsonDocument.Parse(await (await _http.SendAsync(Req(HttpMethod.Get, "/hello"))).Content.ReadAsStringAsync()).RootElement;
+        Assert.Contains("edit", hello.GetProperty("features").EnumerateArray().Select(x => x.GetString()));
+        var ok = await _http.SendAsync(Req(HttpMethod.Post, "/elements/edit", token: token, body: new
+        {
+            key = "key-a",
+            dryRun = true,
+            ops = new object[]
+            {
+                new { kind = "move", globalIds = new[] { "g1", "g2" }, dx = 500.0, dy = 0.0, dz = -150.0 },
+                new { kind = "duplicateType", globalIds = new[] { "g1" }, typeId = 7, newName = "CH-230 X 650" },
+                new { kind = "typeParam", familyName = "CH-Concrete-Rectangular-Beam", typeName = "CH-230 X 650", name = "H", value = "650", globalIds = Array.Empty<string>() },
+            },
+        }));
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        var r = JsonDocument.Parse(await ok.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal("Shanku: move 2 elements, duplicate 1 type, change 1 type parameter", r.GetProperty("undoName").GetString());
+        Assert.Equal(3, _host.Edited.Count);
+        Assert.Equal((500.0, -150.0), (_host.Edited[0].Dx, _host.Edited[0].Dz));
+        Assert.Equal("CH-230 X 650", _host.Edited[2].TypeName);
+        // a bad edit is refused before Revit is asked, with which one and why
+        var bad = await _http.SendAsync(Req(HttpMethod.Post, "/elements/edit", token: token, body: new { key = "key-a", ops = new object[] { new { kind = "move", globalIds = new[] { "g1" } } } }));
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+        Assert.Contains("Edit 1: The distance is zero.", await bad.Content.ReadAsStringAsync());
+        Assert.Equal(3, _host.Edited.Count);
     }
 
     [Fact]
@@ -588,5 +624,57 @@ public class PairedEventTests
         Assert.Null(p.CodeExpiresUtc); // one use
         Assert.Null(p.TryPair(code));
         Assert.Equal(1, fired);
+    }
+}
+
+public class EditPlannerTests
+{
+    private static EditOp Op(string kind, params string[] gids) => new(kind, gids);
+
+    [Fact]
+    public void Each_kind_needs_what_it_acts_on()
+    {
+        Assert.Null(EditPlanner.Problem(Op("move", "g1") with { Dx = 500 }));
+        Assert.Equal("The distance is zero.", EditPlanner.Problem(Op("move", "g1")));
+        Assert.Equal("Choose the elements to move.", EditPlanner.Problem(Op("move") with { Dx = 500 }));
+        Assert.Contains("check the distance", EditPlanner.Problem(Op("move", "g1") with { Dx = 2_000_000 }));
+        Assert.Equal("The distance is not a number.", EditPlanner.Problem(Op("move", "g1") with { Dy = double.NaN }));
+        Assert.Null(EditPlanner.Problem(Op("rotate", "g1") with { Angle = 90 }));
+        Assert.Equal("The angle is zero.", EditPlanner.Problem(Op("rotate", "g1")));
+        Assert.Contains("\"each\"", EditPlanner.Problem(Op("rotate", "g1") with { Angle = 90, About = "sideways" }));
+        Assert.Null(EditPlanner.Problem(Op("param", "g1") with { Name = "Comments" }));
+        Assert.Equal("A parameter change is for one element.", EditPlanner.Problem(Op("param", "g1", "g2") with { Name = "Comments" }));
+        Assert.Null(EditPlanner.Problem(Op("typeParam") with { TypeId = 42, Name = "W" }));
+        Assert.Null(EditPlanner.Problem(Op("typeParam") with { FamilyName = "CH-Concrete-Rectangular-Beam", TypeName = "CH-230 X 650", Name = "H" })); // a type duplicated in the same edit
+        Assert.Equal("A type parameter change needs the type.", EditPlanner.Problem(Op("typeParam") with { Name = "W" }));
+        Assert.Null(EditPlanner.Problem(Op("setType", "g1") with { TypeId = 7 }));
+        Assert.Equal("Choose the type to change them to.", EditPlanner.Problem(Op("setType", "g1")));
+        Assert.Null(EditPlanner.Problem(Op("duplicateType", "g1") with { TypeId = 7, NewName = "CH-230 X 650" }));
+        Assert.Contains("not an edit", EditPlanner.Problem(Op("delete", "g1")));
+    }
+
+    [Fact]
+    public void Type_names_follow_Revits_rules()
+    {
+        Assert.Null(EditPlanner.NameProblem("CH-230 X 650"));
+        Assert.Equal("The new type needs a name.", EditPlanner.NameProblem(" "));
+        Assert.Equal("The name starts or ends with a space.", EditPlanner.NameProblem("CH-230 "));
+        Assert.Equal("Revit does not allow \":\" in a type name.", EditPlanner.NameProblem("CH:230"));
+        Assert.Equal("Revit does not allow \"[\" in a type name.", EditPlanner.NameProblem("CH [new]"));
+    }
+
+    [Fact]
+    public void The_undo_entry_says_what_changes()
+    {
+        var ops = new List<EditOp>
+        {
+            Op("move", "a", "b", "c") with { Dx = 500 },
+            Op("duplicateType", "a") with { TypeId = 1, NewName = "X" },
+            Op("typeParam") with { FamilyName = "F", TypeName = "X", Name = "H" },
+            Op("param", "a") with { Name = "Comments" },
+            Op("param", "b") with { Name = "Comments" },
+        };
+        Assert.Equal("Shanku: move 3 elements, duplicate 1 type, change 1 type parameter, change 2 parameters", EditPlanner.UndoName(ops));
+        Assert.Equal("Shanku: rotate 1 element", EditPlanner.UndoName(new[] { Op("rotate", "a") with { Angle = 90 } }));
     }
 }

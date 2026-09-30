@@ -65,6 +65,18 @@ A comment line (`: ping`) every 15 s keeps the stream open. A selection that Sha
 echoed back.
 
 
+`POST /elements/edit` (add-in 0.12.0+, feature `edit`): `{ key, dryRun, ops: [...] }`, one Revit transaction
+(one undo) with each edit in its own sub-transaction; answers `{ dryRun, undoName, results: [{ index, ok,
+error, newDisplay }], warnings }`. Kinds: `param` (one element: paramId, name, oldDisplay, value),
+`typeParam` (typeId, or familyName + typeName for a type duplicated in the same edit; every instance
+changes), `setType` (globalIds; typeId or familyName + typeName), `duplicateType` (typeId, newName; given to
+globalIds), `move` (globalIds; dx, dy, dz in mm along the model's axes, which are Revit's internal axes:
+the IFC export uses `SitePlacement = Internal`), `rotate` (globalIds; angle in degrees counter-clockwise from
+above, about `each` element's centre or the `group`'s). Pinned elements, elements borrowed by someone else,
+taken or invalid type names and values changed in Revit since they were read are refused per edit.
+`/params/read` (0.12.0) adds `typeId`, `typeInstances` and `types` (the category's types) per element; type
+parameters are editable where Revit allows.
+
 `progress` (add-in 0.8.0+): Revit's progress on long work, sent while `/model/create` runs:
 `{ "task": "check" | "create", "fraction": 0.4, "busy": true, "done": 4444, "total": 4444, "phase": "Regenerating the model: …" }`.
 `fraction` (0.10.0+) is overall, each phase its share (create: levels and types 0–2 %, creating 2–40 %,

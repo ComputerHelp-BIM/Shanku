@@ -7,7 +7,7 @@
  * browser paired before (Chrome asks once for local network access).
  */
 
-import type { RevitElementParams } from './paramEdits';
+import type { ChangeOutcome, EditOp, RevitElementParams } from './paramEdits';
 import type { RevitExchange } from '@shanku/engine';
 
 /** What Revit did, or would do, with an Export to Revit (add-in 0.6.0). */
@@ -312,6 +312,16 @@ export class RevitBridge {
   /** Instance parameters of these elements, as Revit has them now (up to 500 elements). */
   async readParams(key: string, globalIds: string[]): Promise<RevitElementParams[]> {
     return (await (await this.call<{ elements: RevitElementParams[] }>('/params/read', { method: 'POST', body: JSON.stringify({ key, globalIds }) }, 120_000)).json()).elements;
+  }
+
+  /** The add-in can move, rotate, retype and edit types (Shanku Bridge for Revit 0.12.0+). */
+  get canEdit(): boolean {
+    return !!this.state.features?.includes('edit');
+  }
+
+  /** Moves, rotations, type switches, type parameters and instance parameters in one Revit undo (add-in 0.12.0+). */
+  async editElements(key: string, ops: EditOp[], dryRun: boolean): Promise<{ dryRun: boolean; undoName: string; results: ChangeOutcome[]; warnings: string[] }> {
+    return (await this.call<never>('/elements/edit', { method: 'POST', body: JSON.stringify({ key, dryRun, ops }) }, 600_000)).json();
   }
 
   /** Applies (or, with dryRun, only checks) parameter changes in one Revit transaction. */

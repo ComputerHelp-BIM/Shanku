@@ -87,10 +87,24 @@ import { CommandPalette, type ElementHit } from './components/CommandPalette';
 import { GuidePanel } from './components/GuidePanel';
 import { RevitPanel } from './components/RevitPanel';
 import { RevitChanges } from './components/RevitChanges';
+import { EditGeometry } from './components/EditGeometry';
 import { TypeProperties } from './components/TypeProperties';
 import { ExportToRevit, type ExportState } from './components/ExportToRevit';
 import { approvedOnly } from './lib/exportPlan';
-import { afterApply, byGroup, changeKey, commonParams, effectiveCommon, stageEdit, type PendingChange, type RevitElementParams } from './lib/paramEdits';
+import {
+  afterApply,
+  byGroup,
+  changeKey,
+  commonParams,
+  effectiveCommon,
+  stageEdit,
+  type PendingChange,
+  type RevitElementParams,
+  toEditOp,
+  changesGeometry,
+  stageOp,
+  type TypeChoice,
+} from './lib/paramEdits';
 import { RevitBridge, indicesForRevitSelection } from './lib/revitBridge';
 import { NO_CHANGES, addChanges, changeCount, remapIndices, remapRecord, toExport, withoutMerged, type ChangeSet } from './lib/liveUpdate';
 import { QaPanel } from './components/QaPanel';
@@ -105,8 +119,9 @@ import { decodeViewToken, hiddenForLink, viewLinkUrl, type ViewToken } from './l
 import { useDrawingTools } from './lib/useDrawingTools';
 import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/DrawingTools';
 import { formatPoint } from './lib/drawingTools';
+import { RETENTION_LABEL, deleteShare, myShares, openShared, readModelParam, setTeamCode, shareInfo, shareModel, type MyShare, type Retention, type ShareInfo } from './lib/sharedModel';
 
-const APP_VERSION = '0.48.0';
+const APP_VERSION = '0.49.0';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },
@@ -277,7 +292,11 @@ export function App({ start }: { start?: AppStart } = {}) {
   const dock = useRef<DockWorkspaceHandle>(null);
   const [openPanels, setOpenPanels] = useState<PanelId[]>([]);
   // Revit-style windows (float above everything, ribbon included)
-  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false, revit: false, changes: false, typeProps: false, exportRevit: false });
+  const [shareInfoState, setShareInfoState] = useState<ShareInfo | null>(null);
+  const [myShareList, setMyShareList] = useState<MyShare[]>([]);
+  const [wins, setWins] = useState({ boq: false, pipeline: false, keys: false, guide: false, revit: false, changes: false, typeProps: false, exportRevit: false, editGeom: false });
+  /** The Move / Rotate tool's mode. */
+  const [geomMode, setGeomMode] = useState<'move' | 'rotate'>('move');
   // Guide & FAQ (F1): which section to open on
   const [guideSection, setGuideSection] = useState<string | undefined>(undefined);
   const openGuide = (section?: string) => {
@@ -668,6 +687,10 @@ export function App({ start }: { start?: AppStart } = {}) {
         case 'spotElevation':
           if (!model) return setNotice('Open a model to dimension it.');
           return setDimTool(cmd === 'dimAligned' ? 'aligned' : 'spotElevation');
+        case 'moveTool':
+          return openGeom('move');
+        case 'rotateTool':
+          return openGeom('rotate');
         case 'sectionBox': {
           if (isTwoD(activeModelView ?? undefined)) return setNotice('Section boxes are for 3D views; plans and sections have a view range (Properties).');
           if (!sectionBox && !sel.length) return void needSelection();
@@ -835,6 +858,52 @@ export function App({ start }: { start?: AppStart } = {}) {
     const e = m.model?.elements.find((x) => x.globalId === gid);
     return e ? `${e.category === 'Other' ? e.ifcClass : e.category} ${e.mark || e.typeName || e.name}`.trim() : `${fallback?.category ?? 'Element'} ${fallback?.typeName ?? ''}`.trim();
   };
+  /** "Structural Columns C-1", or "12 elements" for a larger selection. */
+  const selectionLabel = (gids: readonly string[]) => (gids.length === 1 ? elementLabel(gids[0], paramsCache.current.get(gids[0])) : `${fmtCount(gids.length)} elements`);
+  const stageChange = (title: string, after: PendingChange[]) => {
+    const before = pending;
+    history.run(title, (tx) => tx.change('revit-pending', before, after, setPending));
+    setLastApplied(null);
+  };
+  /** The selection to another type of its category (Revit's type selector). */
+  const stageTypeSwitch = (t: TypeChoice) => {
+    const gids = [...selectedGids];
+    stageChange(`Change type to ${t.name}`, stageOp(pending, { kind: 'setType', globalIds: gids, typeId: t.id, familyName: t.family, typeName: t.name, name: 'Type', value: `${t.family}: ${t.name}`, element: selectionLabel(gids) }));
+    setNotice(`${gids.length === 1 ? 'Its type change is' : `The type change for ${gids.length} elements is`} waiting in Changes for Revit: check, then apply.`);
+  };
+  /** Edits from the Type Properties dialog (OK or Apply): type parameters and duplicated types. */
+  const commitTypeDraft = (draft: PendingChange[]) => {
+    if (!draft.length) return;
+    let after = [...pending];
+    for (const c of draft) {
+      if (c.kind === 'typeParam') after = after.filter((x) => !(x.globalId === c.globalId && x.paramId === c.paramId && x.name === c.name));
+      after.push(c);
+    }
+    stageChange(`Edit type (${draft.length} change${draft.length === 1 ? '' : 's'})`, after);
+    toggleWin('changes', true);
+  };
+  /** Why Move / Rotate cannot be used now, or null. */
+  const editWhy: string | null = !revitLinked
+    ? 'load the model from Revit first: Revit makes the edit'
+    : !bridge.canEdit
+      ? `moving and rotating needs Shanku Bridge for Revit 0.12.0 (this Revit has ${revit.addin ?? 'an older add-in'})`
+      : !selectedGids.length
+        ? 'select elements first'
+        : null;
+  const openGeom = (mode: 'move' | 'rotate') => {
+    if (editWhy) return setNotice(editWhy[0].toUpperCase() + editWhy.slice(1) + '.');
+    setGeomMode(mode);
+    toggleWin('editGeom', true);
+  };
+  /** A move or rotation of the selection, from the Move and Rotate tools. */
+  const stageGeometry = (g: { kind: 'move'; dx: number; dy: number; dz: number } | { kind: 'rotate'; angle: number; about: 'each' | 'group' }) => {
+    const gids = [...selectedGids];
+    const mm = (v: number) => `${v >= 0 ? '' : '−'}${Math.abs(v).toLocaleString('en-IN')}`;
+    const value = g.kind === 'move' ? `ΔX ${mm(g.dx)}, ΔY ${mm(g.dy)}, ΔZ ${mm(g.dz)} mm` : `${g.angle}° about ${g.about === 'each' ? 'each element’s centre' : 'the selection’s centre'}`;
+    stageChange(`${g.kind === 'move' ? 'Move' : 'Rotate'} ${gids.length} element${gids.length === 1 ? '' : 's'}`, stageOp(pending, { ...g, globalIds: gids, name: g.kind === 'move' ? 'Move' : 'Rotate', value, element: selectionLabel(gids) }));
+    toggleWin('changes', true);
+    setNotice(`${g.kind === 'move' ? 'The move' : 'The rotation'} is waiting in Changes for Revit: check, then apply. Shanku shows the result once Revit has it.`);
+  };
   const stage = (els: RevitElementParams[], param: { id: number; name: string }, value: string) => {
     const before = pending;
     const after = stageEdit(before, els, param, value, (e) => elementLabel(e.globalId, e));
@@ -927,7 +996,21 @@ export function App({ start }: { start?: AppStart } = {}) {
     const category = same((e) => e.category) ?? 'Common';
     const selKeys = pending.filter((c) => selectedGids.includes(c.globalId)).map(changeKey);
     return {
-      header: { family, typeName, category, count: els.length },
+      header: (() => {
+        // Revit's type selector: the category's types, and a staged switch shown as the value
+        const sameCat = els.every((e) => e.category === els[0].category);
+        const staged = [...pending].reverse().find((c) => c.kind === 'setType' && c.globalIds?.length === selectedGids.length && selectedGids.every((g) => c.globalIds!.includes(g)));
+        return {
+          family,
+          typeName,
+          category,
+          count: els.length,
+          types: sameCat && bridge.canEdit ? els[0].types : undefined,
+          typeId: staged?.typeId ?? same((e) => e.typeId ?? null),
+          typeModified: !!staged,
+          onChangeType: bridge.canEdit ? stageTypeSwitch : undefined,
+        };
+      })(),
       onEditType: typeName && els[0].typeParams?.length ? () => toggleWin('typeProps', true) : null,
       apply: {
         count: pendingHere,
@@ -1149,11 +1232,14 @@ export function App({ start }: { start?: AppStart } = {}) {
     if (!sent.length) return;
     setChangesBusy(dryRun ? 'check' : 'apply');
     try {
-      const r = await bridge.writeParams(
-        revitLink.key,
-        sent.map(({ globalId, paramId, name, oldDisplay, value }) => ({ globalId, paramId, name, oldDisplay, value })),
-        dryRun,
-      );
+      // add-in 0.12.0+: every kind of change (parameters, types, moves, rotations) in one Revit undo
+      const r = bridge.canEdit
+        ? await bridge.editElements(revitLink.key, sent.map(toEditOp), dryRun)
+        : await bridge.writeParams(
+            revitLink.key,
+            sent.map(({ globalId, paramId, name, oldDisplay, value }) => ({ globalId, paramId, name, oldDisplay, value })),
+            dryRun,
+          );
       const status = new Map(changeStatus);
       sent.forEach((c, i) => status.set(changeKey(c), { ok: !!r.results[i]?.ok, message: r.results[i]?.error ?? null }));
       setChangeWarnings(r.warnings.length ? { dryRun, list: r.warnings } : null);
@@ -1171,6 +1257,13 @@ export function App({ start }: { start?: AppStart } = {}) {
         setPending(done.remaining); // applied in Revit: Revit's undo takes them back, not Shanku's
         setLastApplied({ undoName: r.undoName, applied: done.applied, warnings: r.warnings });
         for (const c of sent) paramsCache.current.delete(c.globalId);
+        // moved, turned or retyped elements (and a type's new values on all its instances): read again,
+        // and bring their geometry over from Revit
+        const reshaped = sent.filter((c, i) => changesGeometry(c) && r.results[i]?.ok);
+        if (reshaped.length) {
+          paramsCache.current.clear();
+          if (canLive) setTimeout(() => void updateRef.current(), 600);
+        }
         void fetchParams(selectedGids, true);
         m.log(`Revit: ${r.undoName} — ${done.applied} applied${done.failed.size ? `, ${done.failed.size} refused` : ''}.`);
         setNotice((done.applied ? `Applied ${done.applied} change${done.applied === 1 ? '' : 's'} in Revit (Edit → Undo in Revit takes them back).${done.failed.size ? ` ${done.failed.size} refused.` : ''}` : `Revit refused all ${sent.length} changes; see the Changes window.`) + warned);
@@ -1601,8 +1694,25 @@ export function App({ start }: { start?: AppStart } = {}) {
       await navigator.clipboard.writeText(link);
       setNotice(`View link copied. Anyone who opens it with ${t.file} sees this view.`);
     } catch {
-      setLinkDialog({ mode: 'copy', link }); // clipboard blocked: show it to copy by hand
+      /* clipboard blocked: the dialog shows it to copy by hand */
     }
+    // the dialog: the link, and sharing it with the model for someone without the file (opt-in)
+    setLinkDialog({ mode: 'copy', link });
+    setShareInfoState(null);
+    setMyShareList(myShares());
+    void shareInfo().then(setShareInfoState);
+  };
+
+  /** Encrypts and uploads the open model with the view link (opt-in); returns the full link. */
+  const shareOpenModel = async (retention: Retention, teamCode: string): Promise<string> => {
+    if (!m.model || !linkDialog) throw new Error('Open a model first.');
+    if (teamCode) setTeamCode(teamCode);
+    const saved = await loadModel();
+    if (!saved || saved.name !== m.model.info.fileName) throw new Error('The open model’s file is not kept on this device any more; open it again, then share.');
+    const share = await withTask('share', 'Sharing the model', 'Encrypting on this device…', () => shareModel(new Uint8Array(saved.bytes), saved.name, retention, linkDialog.link, (step) => updateTask('share', { phase: step })));
+    setMyShareList(myShares());
+    m.log(`Shared ${saved.name} with its view (${RETENTION_LABEL[retention].toLowerCase()}); the key is only in the link.`);
+    return share.link;
   };
 
   /** Applies a link to the open model; elements are matched by GlobalId, so a re-export still works. */
@@ -1653,8 +1763,23 @@ export function App({ start }: { start?: AppStart } = {}) {
   useEffect(() => {
     const t = decodeViewToken(window.location.hash);
     if (!t) return;
+    const shared = readModelParam(window.location.hash);
     window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#app`); // the link is used; keep the address clean
     pendingLink.current = t;
+    if (shared) {
+      // the link carries the model (encrypted): download, decrypt here, open; the view then applies
+      void (async () => {
+        try {
+          const f = await withTask('share', `Opening ${t.file}`, 'Finding the shared model…', () => openShared(shared.id, shared.key, (step) => updateTask('share', { phase: step })));
+          await m.open({ name: f.name, bytes: f.bytes.buffer.slice(f.bytes.byteOffset, f.bytes.byteOffset + f.bytes.byteLength) as ArrayBuffer });
+          m.log(`Opened the shared model ${f.name} from a link (decrypted on this device).`);
+        } catch (e) {
+          setLinkFor(t);
+          setNotice(`${(e as Error).message} Open ${t.file} to see the view.`);
+        }
+      })();
+      return;
+    }
     setLinkFor(t);
     // A sample building's link opens the sample itself (anyone can load it); any other model has to be
     // opened by the reader: models stay on each device and are never in a link.
@@ -1691,7 +1816,7 @@ export function App({ start }: { start?: AppStart } = {}) {
     { id: 'boq', title: 'Get quantities and cost', detail: 'Concrete by level, category and grade; rates; steel estimate; Excel export.', needsModel: true, run: withModel(() => toggleWin('boq', true)) },
     { id: 'plan', title: 'Look at one floor', detail: 'Open a structural plan of a level.', needsModel: true, run: withModel(() => { const v = viewsRef.current.find((x) => x.kind === 'plan'); if (v) openView(v.id); }) },
     { id: 'find', title: 'Find an element', detail: 'Type a mark, Element ID or GlobalId in the search (Ctrl + K).', needsModel: true, run: withModel(() => search.current?.focus({ preventScroll: true })) },
-    { id: 'share', title: 'Share this view', detail: 'Copy a link that opens this camera, selection and isolation for someone with the same file.', needsModel: true, run: withModel(() => void copyViewLink()) },
+    { id: 'share', title: 'Share this view', detail: 'Copy a link that opens this camera, selection and isolation, for someone with the same file or, shared with the model, for anyone.', needsModel: true, run: withModel(() => void copyViewLink()) },
     { id: 'dxf', title: 'Open a DXF drawing', detail: 'See it like AutoCAD, or build a 3D model from it (DXF → 3D).', run: () => void openDxfFromDisk() },
     { id: 'learn', title: 'Learn the basics', detail: 'The Guide: moving around, selecting, views, quantities (F1).', run: () => openGuide() },
   ];
@@ -1966,7 +2091,7 @@ export function App({ start }: { start?: AppStart } = {}) {
       { id: 'view.shadows', title: 'Shadows', group: 'View', keywords: 'sun shadow render realistic presentation', checked: shadows, enabled: hasModel, why: needModel, run: () => setShadows((v) => !v) },
       { id: 'view.realistic', title: 'Visual style: Realistic', group: 'View', keywords: 'render sun sky concrete presentation', checked: displayStyle === 'realistic', enabled: hasModel, why: needModel, run: () => setDisplayStyle('realistic') },
       { id: 'select.byMarks', title: 'Select by marks…', group: 'Select', keywords: 'paste whatsapp list marks c1 b12 find', enabled: hasModel, why: needModel, run: () => setMarksDialog(true) },
-      { id: 'views.copyLink', title: 'Copy view link', group: 'Views', keywords: 'share url whatsapp email send link token', enabled: hasModel, why: needModel, run: () => void copyViewLink() },
+      { id: 'views.copyLink', title: 'Copy view link', group: 'Views', keywords: 'share url whatsapp email send link token upload model encrypted', enabled: hasModel, why: needModel, run: () => void copyViewLink() },
       { id: 'views.openLink', title: 'Open a view link…', group: 'Views', keywords: 'share url paste token', enabled: hasModel, why: needModel, run: () => setLinkDialog({ mode: 'open', link: '' }) },
       { id: 'help.whatNow', title: 'What now? Common tasks', group: 'Help', keywords: 'start begin tasks help', run: () => document.querySelector<HTMLButtonElement>('.app-whatnow__button')?.click() },
       { id: 'views.templates', title: 'View templates…', group: 'Views', keywords: 'template apply', enabled: hasModel, why: needModel, run: () => setVtOpen(true) },
@@ -1989,6 +2114,9 @@ export function App({ start }: { start?: AppStart } = {}) {
       { id: 'bridge.update', title: 'Update from Revit', group: 'File', keywords: 'bridge revit live sync refresh changed', enabled: canLive && liveCount > 0 && !liveBusy, why: !canLive ? 'load the model from Revit (add-in 0.5.0)' : 'nothing changed in Revit', run: () => void updateFromRevit() },
       { id: 'bridge.autoUpdate', title: 'Auto-update from Revit', group: 'File', keywords: 'bridge revit live sync', checked: autoUpdate, enabled: canLive, why: 'load the model from Revit (add-in 0.5.0)', run: () => setAutoUpdate((v) => !v) },
       { id: 'bridge.exportDxf', title: 'Export DXF to Revit', group: 'File', keywords: 'bridge revit create native pipeline dxf 3d families', enabled: canExport, why: exportWhy, run: () => void exportToRevit() },
+      { id: 'bridge.move', title: 'Move…', group: 'Edit', keys: 'M V', keywords: 'bridge revit move shift displace translate geometry distance', enabled: !editWhy, why: editWhy ?? undefined, run: () => openGeom('move') },
+      { id: 'bridge.rotate', title: 'Rotate…', group: 'Edit', keys: 'R O', keywords: 'bridge revit rotate turn angle geometry', enabled: !editWhy, why: editWhy ?? undefined, run: () => openGeom('rotate') },
+      { id: 'bridge.editType', title: 'Edit type…', group: 'Edit', keywords: 'bridge revit type properties duplicate type parameters', enabled: !!revitProps?.onEditType, why: revitProps?.onEditType ? undefined : 'select elements of one type in a model loaded from Revit', run: () => revitProps?.onEditType?.() },
       { id: 'bridge.changes', title: 'Changes for Revit…', group: 'Edit', keywords: 'bridge revit parameters pending apply review', checked: wins.changes, run: () => toggleWin('changes') },
       { id: 'bridge.check', title: 'Check changes in Revit', group: 'Edit', keywords: 'bridge revit parameters dry run validate', enabled: pending.length > 0 && canParams, why: !pending.length ? 'no changes waiting' : 'connect to the Revit model first', run: () => void runChanges(pending.map(changeKey), true) },
       { id: 'bridge.syncSelection', title: 'Sync selection with Revit', group: 'Select', keywords: 'bridge revit link', checked: revitSync, run: () => setRevitSync((v) => !v) },
@@ -2278,6 +2406,10 @@ export function App({ start }: { start?: AppStart } = {}) {
           <RibbonGroup label="Create">
             <RibbonButton icon="dxf" label="Export to Revit" disabled={!canExport} onClick={() => void exportToRevit()} shortcutHint={canExport ? 'build the DXF → 3D model natively in Revit (checked first, one undo)' : exportWhy} />
           </RibbonGroup>
+          <RibbonGroup label="Modify">
+            <RibbonButton icon="move" label="Move" disabled={!!editWhy} active={wins.editGeom && geomMode === 'move'} onClick={() => openGeom('move')} shortcutHint={editWhy ?? 'move the selection by a typed distance (MV)'} />
+            <RibbonButton icon="rotate" label="Rotate" disabled={!!editWhy} active={wins.editGeom && geomMode === 'rotate'} onClick={() => openGeom('rotate')} shortcutHint={editWhy ?? 'rotate the selection by a typed angle (RO)'} />
+          </RibbonGroup>
           <RibbonGroup label="Parameters">
             <RibbonButton icon="properties" label={pending.length ? `Changes (${pending.length})` : 'Changes'} active={wins.changes} onClick={() => toggleWin('changes')} shortcutHint="parameter edits waiting for Revit" />
             <RibbonButton icon="qa" label="Check" disabled={!pending.length || !canParams || !!changesBusy} onClick={() => void runChanges(pending.map(changeKey), true)} shortcutHint="Revit checks every change and keeps nothing" />
@@ -2545,12 +2677,26 @@ export function App({ start }: { start?: AppStart } = {}) {
               />
             ) : null}
           </FloatingWindow>
+          <FloatingWindow id="editGeom" title={geomMode === 'move' ? 'Move' : 'Rotate'} subtitle="staged for Revit" open={wins.editGeom} onClose={() => toggleWin('editGeom', false)} initial={{ w: 440, h: 330 }} minWidth={380} minHeight={260}>
+            <EditGeometry mode={geomMode} count={selectedGids.length} disabledWhy={editWhy ? editWhy[0].toUpperCase() + editWhy.slice(1) + '.' : null} onMode={setGeomMode} onStage={stageGeometry} onClose={() => toggleWin('editGeom', false)} />
+          </FloatingWindow>
           <FloatingWindow id="typeProps" title="Type Properties" open={wins.typeProps} onClose={() => toggleWin('typeProps', false)} initial={{ w: 760, h: 620 }} minWidth={480} minHeight={360}>
             {(() => {
               void paramsTick;
               const gid = selectedGids[0] ?? '';
               const idx = m.model ? m.model.elements.findIndex((e) => e.globalId === gid) : -1;
-              return <TypeProperties element={paramsCache.current.get(gid) ?? null} model={m.model} index={idx >= 0 ? idx : null} onClose={() => toggleWin('typeProps', false)} />;
+              return (
+                <TypeProperties
+                  element={paramsCache.current.get(gid) ?? null}
+                  model={m.model}
+                  index={idx >= 0 ? idx : null}
+                  selection={selectedGids}
+                  pending={pending}
+                  canEdit={bridge.canEdit && revitLinked}
+                  onCommit={commitTypeDraft}
+                  onClose={() => toggleWin('typeProps', false)}
+                />
+              );
             })()}
           </FloatingWindow>
           <FloatingWindow id="changes" title="Changes for Revit" subtitle={revit.document?.title} open={wins.changes} onClose={() => toggleWin('changes', false)} initial={{ w: 760, h: 420 }} minWidth={520} minHeight={240}>
@@ -2670,6 +2816,17 @@ export function App({ start }: { start?: AppStart } = {}) {
           <ViewLinkDialog
             mode={linkDialog?.mode ?? null}
             link={linkDialog?.link ?? ''}
+            share={{
+              why: !m.model ? 'Open a model first.' : null,
+              info: shareInfoState,
+              mine: myShareList,
+              onShare: shareOpenModel,
+              onDelete: async (sh) => {
+                await deleteShare(sh);
+                setMyShareList(myShares());
+                m.log(`Deleted the shared copy of ${sh.file}; its link no longer opens the model.`);
+              },
+            }}
             onClose={() => setLinkDialog(null)}
             onApply={(t) => {
               setLinkDialog(null);

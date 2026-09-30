@@ -231,6 +231,14 @@
     "downloadIfc": {
       "label": "Download the model as an IFC file",
       "outline": "<path d=\"M12 3v11\"></path><path d=\"M8 10.5l4 4 4-4\"></path><path d=\"M4 15.5v3.5a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5v-3.5\"></path>"
+    },
+    "move": {
+      "label": "Move",
+      "outline": "<path d=\"M5 9l-3 3 3 3\"></path><path d=\"M9 5l3-3 3 3\"></path><path d=\"M15 19l-3 3-3-3\"></path><path d=\"M19 9l3 3-3 3\"></path><path d=\"M2 12h20\"></path><path d=\"M12 2v20\"></path>"
+    },
+    "rotate": {
+      "label": "Rotate",
+      "outline": "<path d=\"M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8\"></path><path d=\"M21 3v5h-5\"></path>"
     }
   }
 }

@@ -59,6 +59,10 @@ class State:
         self.created_ids = set()
         # instance parameters per element: {globalId: {name: [id, group, kind, display, readOnly]}}
         self.params = {}
+        # type editing (add-in 0.12.0): each element's type, type ids and type parameter values
+        self.type_of = {}
+        self.type_ids = {}
+        self.type_values = {}
         for n, (g, _, tag) in enumerate(self.ids):
             self.params[g] = {
                 "Base Level": [-1001100, "Constraints", "element", "01 GROUND LVL.", True],
@@ -191,7 +195,7 @@ def make_handler(st: State):
             if path == "/mock/received":
                 return self.send_json(200, {"received": st.received})
             if path == "/shanku/v1/hello":
-                return self.send_json(200, {"service": "shanku-revit", "protocol": 1, "addin": "mock", "revit": "2025", "pairingOpen": True, "hasDocument": st.document is not None, "features": (["params", "changes", "partial-export"] if ifcopenshell else ["params"]) + ["create"]})
+                return self.send_json(200, {"service": "shanku-revit", "protocol": 1, "addin": "mock", "revit": "2025", "pairingOpen": True, "hasDocument": st.document is not None, "features": (["params", "changes", "partial-export"] if ifcopenshell else ["params"]) + ["create", "edit"]})
             if not self.authed(q):
                 return self.send_json(401, {"error": "Not paired. Click Shanku → Connect in Revit and enter the code in Shanku."})
             if path == "/shanku/v1/status":
@@ -330,9 +334,64 @@ def make_handler(st: State):
                     tag = next((t for gg, _, t in st.ids if gg == g), 0)
                     unit = lambda k, v: ("m³" if k == "Volume" else "mm") if v[2] == "number" else None
                     ps = [{"id": v[0], "name": k, "group": v[1], "kind": v[2], "display": v[3], "readOnly": v[4], "unit": unit(k, v), "why": ("Choose it in Revit" if v[2] == "element" else "Read-only in Revit") if v[4] else None} for k, v in st.params[g].items()]
-                    tps = [{"id": -2001, "name": n2, "group": g2, "kind": k2, "display": d2, "readOnly": True, "why": "Type parameter: edit it in Revit (Edit Type) for now"} for n2, g2, k2, d2 in [("b", "Dimensions", "number", "300.000"), ("h", "Dimensions", "number", "600.000"), ("Type Mark", "Identity Data", "text", "C1"), ("Keynote", "Identity Data", "text", "E")]]
-                    out.append({"globalId": g, "elementId": tag, "category": "Structural Columns", "typeName": "CH-300 X 600", "familyName": "Concrete-Rectangular-Column", "params": ps, "typeParams": tps})
+                    tname = st.type_of.get(g, "CH-300 X 600")
+                    tvals = st.type_values.setdefault(tname, {"b": "300.000", "h": "600.000", "Type Mark": "C1", "Keynote": "E"})
+                    tps = [{"id": -2001 - i2, "name": n2, "group": g2, "kind": k2, "display": tvals[n2], "readOnly": False, "unit": "mm" if k2 == "number" else None} for i2, (n2, g2, k2) in enumerate([("b", "Dimensions", "number"), ("h", "Dimensions", "number"), ("Type Mark", "Identity Data", "text"), ("Keynote", "Identity Data", "text")])]
+                    tid = st.type_ids.setdefault(tname, 485400 + len(st.type_ids))
+                    types = [{"id": st.type_ids.setdefault(n, 485400 + len(st.type_ids)), "family": "Concrete-Rectangular-Column", "name": n} for n in sorted(set(["CH-230 X 450", "CH-300 X 600", "CH-300 X 750", *st.type_ids]))]
+                    count = sum(1 for gg in st.params if st.type_of.get(gg, "CH-300 X 600") == tname)
+                    out.append({"globalId": g, "elementId": tag, "category": "Structural Columns", "typeName": tname, "familyName": "Concrete-Rectangular-Column", "params": ps, "typeParams": tps, "typeId": tid, "typeInstances": count, "types": types})
                 return self.send_json(200, {"elements": out})
+            if path == "/shanku/v1/elements/edit":
+                # as add-in 0.12.0: every edit checked on its own; a move really moves (a live update follows)
+                b = self.body()
+                dry = bool(b.get("dryRun"))
+                results, moved, typed = [], [], {}
+                forbidden = set("{}[]|;<>?`~\\:")
+                for i, o in enumerate(b.get("ops", [])):
+                    k, gids, err, after = o.get("kind"), o.get("globalIds", []), None, None
+                    if k == "move":
+                        if not gids: err = "Choose the elements to move."
+                        elif all(abs(o.get(a, 0) or 0) < 0.01 for a in ("dx", "dy", "dz")): err = "The distance is zero."
+                        elif any(g not in st.params for g in gids): err = "An element is no longer in the Revit model."
+                        else: moved.append(o); after = f"moved {len(gids)}"
+                    elif k == "rotate":
+                        err = None if gids and abs(o.get("angle", 0) or 0) > 1e-6 else "The angle is zero."
+                        after = f"rotated {len(gids)}" if err is None else None
+                    elif k == "setType":
+                        name = o.get("typeName")
+                        if not name: err = "Choose the type to change them to."
+                        else: typed.update({g: name for g in gids}); after = f'{o.get("familyName")}: {name}'
+                    elif k == "duplicateType":
+                        n = o.get("newName") or ""
+                        if not n.strip(): err = "The new type needs a name."
+                        elif any(c in forbidden for c in n): err = f'Revit does not allow "{next(c for c in n if c in forbidden)}" in a type name.'
+                        elif n in st.type_ids: err = f'Concrete-Rectangular-Column already has a type named "{n}".'
+                        else: typed.update({g: n for g in gids}); typed[("dup", n)] = o.get("typeName") or "CH-300 X 600"; after = f"Concrete-Rectangular-Column: {n}"
+                    elif k == "typeParam":
+                        after = str(o.get("value", ""))
+                    elif k == "param":
+                        p = st.params.get((gids or [""])[0], {}).get(o.get("name"))
+                        if p is None: err = "No such parameter."
+                        elif p[4]: err = f'"{o.get("name")}" is read-only in Revit.'
+                        else: after = str(o.get("value", ""))
+                    else:
+                        err = f'"{k}" is not an edit the add-in knows.'
+                    results.append({"index": i, "ok": err is None, "error": err, "newDisplay": after})
+                if not dry:
+                    for key2, v in typed.items():
+                        if isinstance(key2, tuple):
+                            st.type_ids.setdefault(key2[1], 485400 + len(st.type_ids)); st.type_values[key2[1]] = dict(st.type_values.get(v, {"b": "300.000", "h": "600.000", "Type Mark": "C1", "Keynote": "E"}))
+                    for key2, v in typed.items():
+                        if not isinstance(key2, tuple): st.type_of[key2] = v
+                    for o, r in zip(b.get("ops", []), results):
+                        if r["ok"] and o.get("kind") == "typeParam":
+                            st.type_values.setdefault(o.get("typeName") or next((n for n, t in st.type_ids.items() if t == o.get("typeId")), "CH-300 X 600"), {})[o.get("name")] = str(o.get("value", ""))
+                    for o in moved:
+                        st.move(o["globalIds"], (o.get("dx") or 0) / 1000, (o.get("dy") or 0) / 1000, (o.get("dz") or 0) / 1000)
+                        st.broadcast("changes", {"key": st.document["key"], "modified": o["globalIds"], "added": [], "deleted": []})
+                n = len(b.get("ops", []))
+                return self.send_json(200, {"dryRun": dry, "undoName": f"Shanku: {n} edit{'s' if n != 1 else ''}", "results": results, "warnings": []})
             if path == "/shanku/v1/params/write":
                 b = self.body()
                 dry = bool(b.get("dryRun"))

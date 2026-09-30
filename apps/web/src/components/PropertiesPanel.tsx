@@ -2,6 +2,7 @@ import { DockPanel, PropertiesFooter, PropertyGrid, PropertyRow, PropertySection
 import type { ReactNode } from 'react';
 import type { Category, ElementRecord, ParsedModel, PropertyGroup } from '@shanku/engine';
 import { fmtBytes, fmtCount, fmtMs, fmtValue } from '../lib/format';
+import type { TypeChoice } from '../lib/paramEdits';
 
 const ICON: Record<Category, IconName> = {
   Column: 'column',
@@ -33,7 +34,18 @@ export interface PropertiesPanelProps {
     pending?: number;
     groups: Array<{ group: string; rows: Array<PropertyRowProps & { key: string }> }>;
     /** As Revit's palette head: family and type, and the category with the selection count. */
-    header?: { family: string; typeName: string; category: string; count: number };
+    header?: {
+      family: string;
+      typeName: string;
+      category: string;
+      count: number;
+      /** Revit's type selector: the types the selection can switch to, the current (or staged) one. */
+      types?: TypeChoice[];
+      typeId?: number | null;
+      /** A type change is staged (not yet applied in Revit). */
+      typeModified?: boolean;
+      onChangeType?: (t: TypeChoice) => void;
+    };
     /** Edit Type: the type's parameters (null when the selection has several types). */
     onEditType?: (() => void) | null;
     /** The Apply bar at the bottom, as in Revit. */
@@ -58,6 +70,30 @@ export function PropertiesPanel({ model, selection, properties, onEditMarkRules,
     revitMode && revit!.header ? (
       <>
         <TypeSelector icon="column" category={revit!.header.family || revit!.header.category} typeName={revit!.header.typeName || 'Multiple types'} />
+        {revit!.header.types?.length && revit!.header.onChangeType ? (
+          <label className={`app-type-switch${revit!.header.typeModified ? ' is-modified' : ''}`}>
+            <span>Change type</span>
+            <select
+              value={revit!.header.typeId ?? ''}
+              onChange={(e) => {
+                const t = revit!.header!.types!.find((x) => x.id === Number(e.target.value));
+                if (t) revit!.header!.onChangeType!(t);
+              }}
+              aria-label="Change the type of the selection"
+            >
+              {revit!.header.typeId == null ? <option value="">Multiple types</option> : null}
+              {[...new Set(revit!.header.types.map((t) => t.family))].map((fam) => (
+                <optgroup key={fam} label={fam}>
+                  {revit!.header!.types!.filter((t) => t.family === fam).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <div className="app-prop-filter">
           <span className="app-prop-filter__what">
             {revit!.header.category} ({revit!.header.count})
