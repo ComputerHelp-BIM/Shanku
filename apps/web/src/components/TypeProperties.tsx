@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, PropertiesFooter, PropertyGrid, PropertyRow, PropertySection, usePropertySort } from '@shanku/ui';
 import { Viewer, type ParsedModel } from '@shanku/engine';
+import { typeNameProblem } from '../lib/editChecks';
 import { byGroup, stageOp, stageTypeEdit, typeKey, type PendingChange, type RevitElementParams, type RevitParam, type TypeRef } from '../lib/paramEdits';
 
 const LOAD_LATER = 'Loading families comes later: load them in Revit (Insert → Load Family).';
 const RENAME_LATER = 'Renaming a type comes later: rename it in Revit, or Duplicate here.';
-/** Characters Revit refuses in a type name (as the add-in checks). */
-const FORBIDDEN = '{}[]|;<>?`~\\:';
 
 /** A small 3D view of one instance of the type, as Revit's Preview. */
 function TypePreview({ model, index }: { model: ParsedModel; index: number }) {
@@ -22,15 +21,6 @@ function TypePreview({ model, index }: { model: ParsedModel; index: number }) {
   return <div ref={ref} className="app-type-preview" aria-label="Preview of the type" />;
 }
 
-/** Why a new type name cannot be used, or null. */
-export function typeNameProblem(name: string, taken: readonly string[]): string | null {
-  if (!name.trim()) return 'The new type needs a name.';
-  if (name.trim() !== name) return 'The name starts or ends with a space.';
-  const bad = [...name].find((c) => FORBIDDEN.includes(c));
-  if (bad) return `Revit does not allow "${bad}" in a type name.`;
-  if (taken.includes(name)) return 'The family already has a type with this name.';
-  return null;
-}
 
 export interface TypePropertiesProps {
   element: RevitElementParams | null;

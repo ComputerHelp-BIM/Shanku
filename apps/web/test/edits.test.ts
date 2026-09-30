@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { changesGeometry, stageOp, stageTypeEdit, toEditOp, typeKey, type PendingChange } from '../src/lib/paramEdits';
-import { geometryProblem, readNumber } from '../src/components/EditGeometry';
-import { typeNameProblem } from '../src/components/TypeProperties';
+import { geometryProblem, readNumber, typeNameProblem } from '../src/lib/editChecks';
 
 const H = { id: -2002, name: 'h', display: '600.000' };
 

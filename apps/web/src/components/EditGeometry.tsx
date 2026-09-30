@@ -1,31 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@shanku/ui';
-
-export type GeometryEdit = { kind: 'move'; dx: number; dy: number; dz: number } | { kind: 'rotate'; angle: number; about: 'each' | 'group' };
-
-/** Most one move may be (mm), as the add-in checks: a typo guard. */
-const MAX_MOVE = 1_000_000;
-
-/** A typed number ("500", "-1,500", "1 500"); NaN when it is not one. */
-export function readNumber(text: string): number {
-  const t = text.replace(/[,\s]/g, '').replace(/^\u2212/, '-');
-  return t === '' ? 0 : /^-?\d*\.?\d+$/.test(t) ? Number(t) : NaN;
-}
-
-/** Why a move or rotation cannot be staged, or null. */
-export function geometryProblem(g: GeometryEdit): string | null {
-  if (g.kind === 'move') {
-    const d = [g.dx, g.dy, g.dz];
-    if (d.some((v) => !Number.isFinite(v))) return 'A distance is not a number.';
-    if (d.every((v) => Math.abs(v) < 0.01)) return 'Type a distance to move by.';
-    if (d.some((v) => Math.abs(v) > MAX_MOVE)) return 'More than 1 km in one move: check the distance.';
-    return null;
-  }
-  if (!Number.isFinite(g.angle)) return 'The angle is not a number.';
-  if (Math.abs(g.angle) < 1e-6) return 'Type an angle to rotate by.';
-  if (Math.abs(g.angle) > 360) return 'The angle is more than a full turn.';
-  return null;
-}
+import { geometryProblem, readNumber, type GeometryEdit } from '../lib/editChecks';
 
 /**
  * Revit's Move (MV) and Rotate (RO) for the selection, with typed values: a move in mm along the model's

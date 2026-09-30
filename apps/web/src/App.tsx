@@ -121,7 +121,7 @@ import { FindTextPanel, QuickProperties, QuickSelectPanel } from './components/D
 import { formatPoint } from './lib/drawingTools';
 import { RETENTION_LABEL, deleteShare, myShares, openShared, readModelParam, setTeamCode, shareInfo, shareModel, type MyShare, type Retention, type ShareInfo } from './lib/sharedModel';
 
-const APP_VERSION = '0.49.0';
+const APP_VERSION = '0.49.1';
 const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   { id: 'shaded', label: 'Shaded', keys: 'SD' },
   { id: 'consistent', label: 'Consistent', keys: 'CO' },

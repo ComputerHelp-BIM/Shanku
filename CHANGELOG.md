@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.49.1 — 2026-09-30
+
+### Fixed
+- CI: a new test loaded UI components that need the UI package built; the checks it tests moved to `lib/editChecks.ts`. Verified from a clean clone (`npm ci`, `npm test`, `npm run build`).
+
 ## 0.49.0 — 2026-09-30
 
 ### Added
