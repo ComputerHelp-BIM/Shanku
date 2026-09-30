@@ -78,6 +78,9 @@ import { useFileOpening } from './features/files/useFileOpening';
 import { usePipelineFeature } from './features/pipeline/usePipelineFeature';
 import { useRevitLink, type RevitLinkLate } from './features/revit/useRevitLink';
 import { useViewsFeature, type ViewsFeatureLate } from './features/views/useViewsFeature';
+import { useProjectFile } from './features/project/useProjectFile';
+import { isProjectFile } from './lib/project';
+import { projectLabel } from './features/project/projectLabel';
 
 /** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
 export interface AppStart {
@@ -179,13 +182,15 @@ export function App({ start }: { start?: AppStart } = {}) {
   const revitLinkLate = useRef({} as RevitLinkLate);
   const { activeDoc, autoUpdate, boqSelect, bridge, canExport, canLive, canParams, changeRates, changeStatus, changeWarnings, changesBusy, commitTypeDraft, confirmMarks, createInRevit, cursor, diagnose, diagnosedFor, diagnosis, downloadIfc, drawingView, dx, editWhy, elementLabel, exportOff, exportState, exportToRevit, exportWhy, getSelectionFromRevit, ifcColor, lastApplied, lastFile, liveBusy, liveCount, loadFromRevit, markBusy, markProposal, openDrawing, openDxfFromDisk, openGeom, openModelFile, openRevit, paramsCache, paramsTick, pending, qaFix, rates, refreshChanges, revit, revitLink, revitLinked, revitLoading, revitProps, revitSync, runChanges, selectedGids, sendSelectionToRevit, setAutoUpdate, setCursor, setDiagnosis, setExportOff, setIfcColor, setMarkProposal, setPending, setRevitSync, showInRevit, snapshot, stageGeometry, updateFromRevit } = useRevitLink({ activeView, boxStore, camStore, dock, graphicsFor, hideStore, history, loadedView, m, openGuide, openedInfo, setActiveView, setDisplayStyle, setEdges, setExplode, setGeomMode, setGraphics, setHidden, setNotice, setOpenViews, setSectionBox, setViews, toggleWin, viewport, wins, late: revitLinkLate });
   const { pipe, pipeline, showQa } = usePipelineFeature({ drawingView, dx, m, setActiveView, setNotice, toggleWin });
-  const { openFromDisk, openSample, sampleBusy } = useFileOpening({ diagnosedFor, m, openDrawing, openModelFile, start });
+  // the project file: Save (Ctrl + S), Save As, and opening projects alongside models
+  const { projectStatus, saveProject, saveProjectAs, openAnyFile } = useProjectFile({ m, openModelFile, setNotice, changes: [views, graphics, pending, colorSettings] });
+  const { openFromDisk, openSample, sampleBusy } = useFileOpening({ diagnosedFor, m, openDrawing, openModelFile: openAnyFile, start });
   const commandDispatchLate = useRef({} as CommandDispatchLate);
   const { runCommand } = useCommandDispatch({ activeDoc, activeView, annSel, curSelection, dimSel, drawingView, dx, history, m, prevSelection, sectionBox, sectionTool, setAnnSel, setDimSel, setDimTool, setDisplayStyle, setHidden, setMeasure, setNotice, setOpenViews, setReveal, setSectionBox, setVgOpen, setViews, setZoomRegion, viewport, viewsRef, zoomRegion, late: commandDispatchLate });
   const { deleteDimensions, dimPropsFor, inModel, placeDimension, qaActions, qaReport, run, setViewDims, symbolPropsFor } = useDimensionsFeature({ activeDoc, activeModelView, activeView, annSel, dimOrigin, dimSel, heights, history, m, runCommand, setActiveView, setDimSel, setHidden, setLastCommand, setNotice, setViewRange, setViews, viewport, views, viewsRef, zY });
   const { marksDialog, selectByMarks, setMarksDialog } = usePasteMarks({ inModel, m, revitLinked, revitSync, setNotice, viewport });
   const { applyViewToken, copyViewLink, linkDialog, linkFor, pendingLink, setLinkDialog, setLinkFor, shareOpenModel } = useViewLinks({ activeDoc, activeModelView, displayStyle, explode, hidden, m, openSample, openView, setActiveView, setDisplayStyle, setExplode, setHidden, setMyShareList, setNotice, setSectionBox, setShareInfoState, viewport, views });
-  const { contextItems, dxt, dxtRef, findElement, getCommands, info, intents, load, sel, selLabel, selectCategory, selectLevel, toggleExplode } = useAppCommands({ activeDoc, activeModelView, autoUpdate, bridge, canExport, canLive, canParams, cancelSection, canvasTheme, colorSettings, copyViewLink, cycle, cycleCanvasTheme, dimTool, displayStyle, dock, downloadIfc, drawingView, duplicateModelView, dx, edges, editWhy, explode, exportToRevit, exportWhy, fullscreen, getSelectionFromRevit, hidden, history, lastCommand, liveBusy, liveCount, loadFromRevit, m, measure, notice, openDxfFromDisk, openFromDisk, openGeom, openGuide, openPanels, openRevit, openSample, openView, pending, pipe, pipeline, preference, prevSelection, reveal, revit, revitLoading, revitProps, revitSync, run, runChanges, runCommand, search, sectionBox, sectionTool, sendSelectionToRevit, setAutoUpdate, setBrowserFocus, setColorMode, setDimTool, setDisplayStyle, setEdges, setElemVgOpen, setExplode, setFiltersOpen, setGradeDialog, setLinkDialog, setMarkDialog, setMarksDialog, setMeasure, setNotice, setRevitSync, setShadows, setVgOpen, setViews, setVtOpen, shadows, startSection, toggleFullscreen, toggleWin, updateFromRevit, viewHidden, viewport, views, viewsRef, wins });
+  const { contextItems, dxt, dxtRef, findElement, getCommands, info, intents, load, sel, selLabel, selectCategory, selectLevel, toggleExplode } = useAppCommands({ saveProject, saveProjectAs, activeDoc, activeModelView, autoUpdate, bridge, canExport, canLive, canParams, cancelSection, canvasTheme, colorSettings, copyViewLink, cycle, cycleCanvasTheme, dimTool, displayStyle, dock, downloadIfc, drawingView, duplicateModelView, dx, edges, editWhy, explode, exportToRevit, exportWhy, fullscreen, getSelectionFromRevit, hidden, history, lastCommand, liveBusy, liveCount, loadFromRevit, m, measure, notice, openDxfFromDisk, openFromDisk, openGeom, openGuide, openPanels, openRevit, openSample, openView, pending, pipe, pipeline, preference, prevSelection, reveal, revit, revitLoading, revitProps, revitSync, run, runChanges, runCommand, search, sectionBox, sectionTool, sendSelectionToRevit, setAutoUpdate, setBrowserFocus, setColorMode, setDimTool, setDisplayStyle, setEdges, setElemVgOpen, setExplode, setFiltersOpen, setGradeDialog, setLinkDialog, setMarkDialog, setMarksDialog, setMeasure, setNotice, setRevitSync, setShadows, setVgOpen, setViews, setVtOpen, shadows, startSection, toggleFullscreen, toggleWin, updateFromRevit, viewHidden, viewport, views, viewsRef, wins });
   const { tasks } = useAppProgress({ bridge, dx, load, pipeline });
 
   commandDispatchLate.current = { dxtRef, openGeom, activeModelView, cancelSection, deleteDimensions };
@@ -198,7 +203,7 @@ export function App({ start }: { start?: AppStart } = {}) {
           fileName={info?.fileName ?? 'No model open'}
           brandHref={import.meta.env.BASE_URL}
           quickAccess={<QuickAccess history={history} onOpen={openFromDisk} onHome={() => viewport.current?.home()} canHome={!!m.model} onMeasure={() => runCommand('measure')} measuring={!!measure} />}
-          saveState={info ? 'Opened from this device' : undefined}
+          saveState={info ? projectLabel(projectStatus) : undefined}
           search={<CommandPalette inputRef={search} getCommands={getCommands} findElement={findElement} appVersion={APP_VERSION} />}
           actions={
             <>
@@ -230,6 +235,8 @@ export function App({ start }: { start?: AppStart } = {}) {
             <RibbonButton icon="ifc" label="IFC" onClick={openFromDisk} shortcutHint="opens from this device" />
             <RibbonButton icon="dxf" label="DXF" onClick={openDxfFromDisk} shortcutHint="2D view, opens from this device" />
             <RibbonButton icon="column" label="DXF → 3D" active={wins.pipeline} onClick={() => (pipe ? toggleWin('pipeline') : void pipeline.start())} shortcutHint="build an IFC model from a CH-format drawing" />
+            <RibbonButton icon="save" label="Save" disabled={!m.model} onClick={() => void saveProject()} shortcutHint={!m.model ? 'open a model first' : 'the model, views, graphics, rates and changes for Revit in one project file (Ctrl + S)'} />
+            <RibbonButton icon="save" label="Save As" disabled={!m.model} onClick={() => void saveProjectAs()} shortcutHint={!m.model ? 'open a model first' : 'the project to a new file (Ctrl + Shift + S)'} />
             <RibbonButton icon="downloadIfc" label="Download IFC" disabled={!m.model} onClick={() => void downloadIfc()} shortcutHint={!m.model ? 'open a model first' : revitLinked ? 'a fresh export from Revit, with every change since loading' : 'the model as an IFC file'} />
           </RibbonGroup>
           <RibbonGroup label="Structure">
@@ -457,7 +464,7 @@ export function App({ start }: { start?: AppStart } = {}) {
               const file = await fileFromDrop(e);
               diagnosedFor.current = '';
               if (file?.kind === 'dxf') await openDrawing(file);
-              else if (file?.kind === 'ifc') await openModelFile(file);
+              else if (file?.kind === 'ifc' || (file && isProjectFile(file.name))) await openAnyFile(file);
               else if (file) diagnose(snapshot(file)); // not IFC or DXF: say what it is and how to export
             } catch (err) {
               setNotice(err instanceof Error ? err.message : String(err));

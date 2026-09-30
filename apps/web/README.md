@@ -1,4 +1,4 @@
-# @shanku/web 0.49.2
+# @shanku/web 0.50.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.50.0 — 2026-09-30
+- **The Shanku project file** (`.shk`, provisional; `lib/project.ts`): one zip with a versioned manifest, the model, views (with graphics, ranges and dimensions), graphics, rates and changes staged for Revit. **Save** (Ctrl + S, the ribbon's Open group, command search) writes back to the same file in Chrome and Edge, the handle kept across reloads; **Save As** (Ctrl + Shift + S); other browsers download. `.shk` opens wherever a model opens (Open button, drag and drop, homepage): its state is written to the browser's store, then the model opens and the usual restore brings it back (`features/project/useProjectFile.ts`). The title bar shows where the work is; leaving with an out-of-date file asks first.
+- **Offline**: a service worker (`public/sw.js`, production) keeps the app's files and the Python runtime after first use; Shanku opens without internet with the project restored. Never kept: `/api/`, shared models, the Revit bridge.
+- Session store: `snapshotFor` / `seedFrom` (everything kept for a model, including the Revit feature's pending changes). `docs/design/project-file.md`. Brand 1.12.0 (icon `save`). Checked in the browser on the production build: a duplicated view survives a reload, Ctrl + S writes a `.shk` holding it, an offline reload opens Shanku with it, a fresh browser restores it from the `.shk`.
 
 ### 0.49.2 — 2026-09-30
 - **Refactor, no change in behaviour: `App.tsx` split into feature hooks** (`src/features/`: revit, views, commands, dimensions, viewLinks, files, pipeline, selection, progress) and `src/app/constants.ts`. `App.tsx` 3,240 → 1,226 lines, 194 of them logic (the app's shared state and one call per feature); the rest is the layout. Each hook takes its inputs as one typed object and returns what the app uses; values declared later come through a ref, read at the same moments as before. Made with `tools/refactor/` (the TypeScript checker finds each hook's inputs and outputs), every step type-checked; checked with all tests, the browser walk-throughs (Revit editing, Export to Revit, sharing, DXF → 3D, views, shortcuts) and side by side with the 0.49.1 build. `docs/architecture.md` describes the structure.

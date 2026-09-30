@@ -2,7 +2,12 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
-## Unreleased
+## 0.50.0 — 2026-09-30
+
+### Added
+- The Shanku project file (`.shk`, provisional): Save (Ctrl + S) back to the same file, Save As, open wherever models open; everything Shanku keeps for a model in one file (`docs/design/project-file.md`).
+- Offline: Shanku opens without internet after first use, with the work restored (service worker).
+- The title bar says where the work is saved.
 
 ### Docs
 - Designs for approval: add-ons as pyRevit-style extensions (`docs/design/addons.md`, replacing `addons-api.md`) and → CH DXF (`docs/design/to-ch-dxf.md`); roadmap updated.

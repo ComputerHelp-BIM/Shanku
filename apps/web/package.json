@@ -1,6 +1,6 @@
 {
   "name": "@shanku/web",
-  "version": "0.49.2",
+  "version": "0.50.0",
   "private": true,
   "description": "Shanku \u2014 the web app. Open IFC, navigate like Revit, select, isolate, section, inspect.",
   "license": "UNLICENSED",
@@ -22,6 +22,7 @@
     "@vercel/blob": "^2.8.0",
     "dockview-react": "^8.3.1",
     "exceljs": "^4.4.0",
+    "fflate": "^0.8.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

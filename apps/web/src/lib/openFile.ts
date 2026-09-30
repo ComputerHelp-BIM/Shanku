@@ -1,6 +1,9 @@
+import { PROJECT_EXT } from './project';
 export interface PickedFile {
   name: string;
   bytes: ArrayBuffer;
+  /** The file's handle where the browser gives one (Chrome, Edge): a project saves back to it. */
+  handle?: unknown;
 }
 
 export type FileKind = 'ifc' | 'dxf';
@@ -43,8 +46,9 @@ export async function pickIfcFile(): Promise<PickedFile | null> {
 
 /** Opens the system file picker for one IFC or DXF file. */
 export async function pickFile(kind: FileKind): Promise<PickedFile | null> {
-  const accept: Record<string, string[]> = kind === 'ifc' ? { 'application/x-step': ['.ifc'], 'application/gzip': ['.gz'] } : { 'image/vnd.dxf': ['.dxf'] };
-  const description = kind === 'ifc' ? 'IFC model' : 'DXF drawing';
+  // models and Shanku projects open from the same picker
+  const accept: Record<string, string[]> = kind === 'ifc' ? { 'application/x-step': ['.ifc'], 'application/gzip': ['.gz'], 'application/x-shanku-project': [PROJECT_EXT] } : { 'image/vnd.dxf': ['.dxf'] };
+  const description = kind === 'ifc' ? 'IFC model or Shanku project' : 'DXF drawing';
   const picker = (window as unknown as { showOpenFilePicker?: Picker }).showOpenFilePicker;
   if (picker) {
     try {
@@ -53,7 +57,7 @@ export async function pickFile(kind: FileKind): Promise<PickedFile | null> {
         multiple: false,
       });
       const file = await handle.getFile();
-      return unpack({ name: file.name, bytes: await file.arrayBuffer() });
+      return { ...(await unpack({ name: file.name, bytes: await file.arrayBuffer() })), handle };
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return null;
       throw err;
@@ -62,7 +66,7 @@ export async function pickFile(kind: FileKind): Promise<PickedFile | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = kind === 'ifc' ? '.ifc,.gz' : `.${kind}`;
+    input.accept = kind === 'ifc' ? `.ifc,.gz,${PROJECT_EXT}` : `.${kind}`;
     input.onchange = async () => {
       const file = input.files?.[0];
       resolve(file ? await unpack({ name: file.name, bytes: await file.arrayBuffer() }) : null);

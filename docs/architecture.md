@@ -38,6 +38,7 @@ apps/web/src/
     pipeline/        usePipelineFeature — DXF → 3D
     selection/       usePasteMarks — selecting by pasted marks
     progress/        useAppProgress — the progress display's tasks
+    project/         useProjectFile — Save / Save As / opening projects (.shk), the title bar's status
   components/        UI pieces (windows, panels, dialogs), no app state of their own
   lib/               plain logic, unit-tested (paramEdits, liveUpdate, exportPlan, editChecks, sharedModel…)
 ```

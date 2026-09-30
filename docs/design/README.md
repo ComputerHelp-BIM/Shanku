@@ -14,4 +14,5 @@ Proposals for features that are not built yet. Each one says what exists today, 
 | [levels.md](levels.md) | Living | The one definition of an element's level (lowest level at or above its top) for Shanku, the pipeline and Export to Revit. |
 | [addons.md](addons.md) | For approval | Add-ons as pyRevit-style extensions built into Shanku: folders → ribbon, Python in sandboxed workers, the `shanku` module, permissions with risk ratings. Replaces addons-api.md. |
 | [to-ch-dxf.md](to-ch-dxf.md) | For approval | → CH DXF, the exact reverse of DXF → 3D: every source to the exchange model, one CH writer, round-trip proof. |
+| [project-file.md](project-file.md) | Living | The Shanku project: kept on the device as it changes, the .shk file (Save back, Save As, open), offline. |
 

@@ -47,3 +47,49 @@ export const loadGraphics = <T>(fileName: string) => tx<T>('readonly', (s) => s.
 
 export const saveViews = (fileName: string, views: unknown) => tx('readwrite', (s) => s.put(views, `views:${fileName}`));
 export const loadViews = <T>(fileName: string) => tx<T>('readonly', (s) => s.get(`views:${fileName}`));
+
+/** Pending changes for Revit (not yet applied) and the Revit document they are for, as the Revit feature keeps them. */
+export interface SavedPending<T = unknown> {
+  key: string;
+  changes: T[];
+}
+
+/** Everything kept for one model: what a project file carries besides the model itself. */
+export interface ModelState {
+  views?: unknown;
+  graphics?: unknown;
+  pending?: SavedPending;
+  rates?: unknown;
+}
+
+export async function snapshotFor(fileName: string): Promise<ModelState> {
+  const read = (k: string) => {
+    try {
+      return JSON.parse(localStorage.getItem(k) ?? 'null') as unknown;
+    } catch {
+      return null;
+    }
+  };
+  // changes staged for Revit: kept per Revit document (shanku.revitPending.<key>) for the model linked to it
+  const link = read('shanku.revitLink') as { key: string; fileName: string } | null;
+  const changes = link && link.fileName === fileName ? (read(`shanku.revitPending.${link.key}`) as unknown[] | null) : null;
+  return {
+    views: await loadViews(fileName),
+    graphics: await loadGraphics(fileName),
+    pending: link && changes?.length ? { key: link.key, changes } : undefined,
+    rates: read(`shanku.rates.${fileName}`) ?? undefined,
+  };
+}
+
+/** Writes a model's kept state (from a project file) so opening the model restores it. */
+export async function seedFrom(fileName: string, st: ModelState): Promise<void> {
+  if (st.views !== undefined) await saveViews(fileName, st.views);
+  if (st.graphics !== undefined) await saveGraphics(fileName, st.graphics);
+  if (st.pending?.key && st.pending.changes.length) localStorage.setItem(`shanku.revitPending.${st.pending.key}`, JSON.stringify(st.pending.changes));
+  if (st.rates !== undefined) localStorage.setItem(`shanku.rates.${fileName}`, JSON.stringify(st.rates));
+}
+
+/** The file a project was last saved to or opened from (Chrome and Edge keep the handle, so Ctrl + S writes back). */
+export const saveProjectHandle = (fileName: string, handle: unknown) => tx('readwrite', (s) => s.put(handle, `projectHandle:${fileName}`));
+export const loadProjectHandle = <T>(fileName: string) => tx<T>('readonly', (s) => s.get(`projectHandle:${fileName}`));
+

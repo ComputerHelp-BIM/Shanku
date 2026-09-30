@@ -20,3 +20,10 @@ createRoot(root).render(
     </ThemeProvider>
   </StrictMode>,
 );
+
+// Offline: the app opens without internet (public/sw.js); production builds only, so development is unaffected.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+  });
+}

@@ -20,6 +20,8 @@ import { useShortcut, isEditableTarget } from '@shanku/ui';
 import { useRef, useEffect, useCallback } from 'react';
 
 export interface AppCommandsDeps {
+  saveProject: () => Promise<void>;
+  saveProjectAs: () => Promise<void>;
   activeDoc: import('../../lib/useDrawings').DrawingDoc | null;
   activeModelView: import('../../lib/views').ModelView | null;
   autoUpdate: boolean;
@@ -114,7 +116,7 @@ export interface AppCommandsDeps {
 }
 
 export function useAppCommands(deps: AppCommandsDeps) {
-  const { activeDoc, activeModelView, autoUpdate, bridge, canExport, canLive, canParams, cancelSection, canvasTheme, colorSettings, copyViewLink, cycle, cycleCanvasTheme, dimTool, displayStyle, dock, downloadIfc, drawingView, duplicateModelView, dx, edges, editWhy, explode, exportToRevit, exportWhy, fullscreen, getSelectionFromRevit, hidden, history, lastCommand, liveBusy, liveCount, loadFromRevit, m, measure, notice, openDxfFromDisk, openFromDisk, openGeom, openGuide, openPanels, openRevit, openSample, openView, pending, pipe, pipeline, preference, prevSelection, reveal, revit, revitLoading, revitProps, revitSync, run, runChanges, runCommand, search, sectionBox, sectionTool, sendSelectionToRevit, setAutoUpdate, setBrowserFocus, setColorMode, setDimTool, setDisplayStyle, setEdges, setElemVgOpen, setExplode, setFiltersOpen, setGradeDialog, setLinkDialog, setMarkDialog, setMarksDialog, setMeasure, setNotice, setRevitSync, setShadows, setVgOpen, setViews, setVtOpen, shadows, startSection, toggleFullscreen, toggleWin, updateFromRevit, viewHidden, viewport, views, viewsRef, wins } = deps;
+  const { saveProject, saveProjectAs, activeDoc, activeModelView, autoUpdate, bridge, canExport, canLive, canParams, cancelSection, canvasTheme, colorSettings, copyViewLink, cycle, cycleCanvasTheme, dimTool, displayStyle, dock, downloadIfc, drawingView, duplicateModelView, dx, edges, editWhy, explode, exportToRevit, exportWhy, fullscreen, getSelectionFromRevit, hidden, history, lastCommand, liveBusy, liveCount, loadFromRevit, m, measure, notice, openDxfFromDisk, openFromDisk, openGeom, openGuide, openPanels, openRevit, openSample, openView, pending, pipe, pipeline, preference, prevSelection, reveal, revit, revitLoading, revitProps, revitSync, run, runChanges, runCommand, search, sectionBox, sectionTool, sendSelectionToRevit, setAutoUpdate, setBrowserFocus, setColorMode, setDimTool, setDisplayStyle, setEdges, setElemVgOpen, setExplode, setFiltersOpen, setGradeDialog, setLinkDialog, setMarkDialog, setMarksDialog, setMeasure, setNotice, setRevitSync, setShadows, setVgOpen, setViews, setVtOpen, shadows, startSection, toggleFullscreen, toggleWin, updateFromRevit, viewHidden, viewport, views, viewsRef, wins } = deps;
 
   // ---- "What now?" (Structura item 7) ----
   /** A task picked before a model was open: run once the sample has loaded. */
@@ -295,6 +297,8 @@ export function useAppCommands(deps: AppCommandsDeps) {
       // File
       { id: 'file.openIfc', title: 'Open IFC model', group: 'File', keywords: 'load import revit', run: () => void openFromDisk() },
       { id: 'file.openDxf', title: 'Open DXF drawing', group: 'File', keywords: 'cad 2d autocad', run: () => void openDxfFromDisk() },
+      { id: 'file.saveProject', title: 'Save project', group: 'File', keys: 'Ctrl + S', keywords: 'save project file shk keep store', enabled: !!m.model, why: 'open a model first', run: () => void saveProject() },
+      { id: 'file.saveProjectAs', title: 'Save project as…', group: 'File', keys: 'Ctrl + Shift + S', keywords: 'save as copy project file shk', enabled: !!m.model, why: 'open a model first', run: () => void saveProjectAs() },
       { id: 'file.downloadIfc', title: 'Download IFC', group: 'File', keywords: 'save export ifc file revit', run: () => void downloadIfc() },
       { id: 'file.dxfTo3d', title: 'DXF → 3D: build an IFC model from a drawing', group: 'File', keywords: 'pipeline convert computer help', run: () => (pipe ? toggleWin('pipeline', true) : void pipeline.start()) },
       { id: 'file.sample', title: 'Open the sample model', group: 'File', keywords: 'demo example frame', run: () => void openSample() },

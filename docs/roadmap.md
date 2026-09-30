@@ -4,6 +4,8 @@ Recorded requests and proposals; each gets its own design review before it is bu
 
 ## Next
 
+0. **Native Shanku projects** — done in 0.50.0 (`docs/design/project-file.md`): project file, save back, offline. Next on it: native editing (IFC writing), project ids, several models.
+
 1. **Add-ons as pyRevit-style extensions** — `docs/design/addons.md` (for approval).
 2. **→ CH DXF**, the reverse of DXF → 3D — `docs/design/to-ch-dxf.md` (for approval); then the **CH stair
    convention**, from a drawing the team sends.
