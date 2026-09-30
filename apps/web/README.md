@@ -1,4 +1,4 @@
-# @shanku/web 0.49.1
+# @shanku/web 0.49.2
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.49.2 — 2026-09-30
+- **Refactor, no change in behaviour: `App.tsx` split into feature hooks** (`src/features/`: revit, views, commands, dimensions, viewLinks, files, pipeline, selection, progress) and `src/app/constants.ts`. `App.tsx` 3,240 → 1,226 lines, 194 of them logic (the app's shared state and one call per feature); the rest is the layout. Each hook takes its inputs as one typed object and returns what the app uses; values declared later come through a ref, read at the same moments as before. Made with `tools/refactor/` (the TypeScript checker finds each hook's inputs and outputs), every step type-checked; checked with all tests, the browser walk-throughs (Revit editing, Export to Revit, sharing, DXF → 3D, views, shortcuts) and side by side with the 0.49.1 build. `docs/architecture.md` describes the structure.
 
 ### 0.49.1 — 2026-09-30
 - Fixed CI: `test/edits.test.ts` imported the Move / Rotate and Type Properties components, which load `@shanku/ui` from its build, and CI's `npm test` does not build the UI package. The checks (`geometryProblem`, `readNumber`, `typeNameProblem`) moved to `lib/editChecks.ts` (no UI imports); the components and the test use it. No change in behaviour.

@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.49.2 — 2026-09-30
+
+### Changed (no change in behaviour)
+- The web app's `App.tsx` split into feature hooks under `src/features/` (3,240 → 1,226 lines); `docs/architecture.md`; refactoring tools in `tools/refactor/`.
+- Design for review: Python add-on API (`docs/design/addons-api.md`); roadmap with the Revit "Export to Shanku" project file and ETABS e2k proposals (`docs/roadmap.md`).
+
 ## 0.49.1 — 2026-09-30
 
 ### Fixed
