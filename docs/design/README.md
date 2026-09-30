@@ -12,5 +12,6 @@ Proposals for features that are not built yet. Each one says what exists today, 
 | [quick-wins.md](quick-wins.md) | Analysis | Easy features: A1–A9 exist in Revit or only through add-ons; B1–B10 are not in Revit even with add-ons. Each one reuses existing Shanku code. |
 | [revit-parity.md](revit-parity.md) | Living | Revit 2025 patterns in Shanku's panels (Properties, Project Browser, Type Properties, docking, scrollbars): what, why, where in code, and the design review log. |
 | [levels.md](levels.md) | Living | The one definition of an element's level (lowest level at or above its top) for Shanku, the pipeline and Export to Revit. |
-| [addons-api.md](addons-api.md) | Proposal | Public add-on API in Python (Pyodide workers, manifest, permissions, `shanku` module), for review. |
+| [addons.md](addons.md) | For approval | Add-ons as pyRevit-style extensions built into Shanku: folders → ribbon, Python in sandboxed workers, the `shanku` module, permissions with risk ratings. Replaces addons-api.md. |
+| [to-ch-dxf.md](to-ch-dxf.md) | For approval | → CH DXF, the exact reverse of DXF → 3D: every source to the exchange model, one CH writer, round-trip proof. |
 

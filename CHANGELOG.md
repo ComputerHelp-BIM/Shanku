@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## Unreleased
+
+### Docs
+- Designs for approval: add-ons as pyRevit-style extensions (`docs/design/addons.md`, replacing `addons-api.md`) and → CH DXF (`docs/design/to-ch-dxf.md`); roadmap updated.
+
 ## 0.49.2 — 2026-09-30
 
 ### Changed (no change in behaviour)

@@ -1,3 +1,5 @@
+> **Superseded** by [addons.md](addons.md) (pyRevit-style extensions, decided 2026-09-30).
+
 # Add-ons: a public API, in Python (design, for review)
 
 Goal: teams write their own tools for Shanku — as Revit users write add-ins — preferably in Python, and

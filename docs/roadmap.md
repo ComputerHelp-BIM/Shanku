@@ -4,7 +4,9 @@ Recorded requests and proposals; each gets its own design review before it is bu
 
 ## Next
 
-1. **Python add-on API** — `docs/design/addons-api.md` (milestone 1: read and act).
+1. **Add-ons as pyRevit-style extensions** — `docs/design/addons.md` (for approval).
+2. **→ CH DXF**, the reverse of DXF → 3D — `docs/design/to-ch-dxf.md` (for approval); then the **CH stair
+   convention**, from a drawing the team sends.
 
 ## Then
 
