@@ -116,9 +116,10 @@ export function useProjectFile({ m, openModelFile, setNotice, changes }: Project
     async (file: PickedFile & { handle?: unknown }) => {
       const p = unpackProject(new Uint8Array(file.bytes));
       await seedFrom(p.model.name, p.state);
-      if (file.handle) await saveProjectHandle(p.model.name, file.handle);
+      // an older .shk is saved as a new .shkp, not over the old file
+      if (file.handle && file.name.toLowerCase().endsWith(PROJECT_EXT)) await saveProjectHandle(p.model.name, file.handle);
       await openModelFile({ name: p.model.name, bytes: p.model.bytes.buffer.slice(p.model.bytes.byteOffset, p.model.bytes.byteOffset + p.model.bytes.byteLength) as ArrayBuffer });
-      m.log(`Opened the project ${file.name} (saved ${new Date(p.manifest.savedAt).toLocaleString('en-IN')} by Shanku ${p.manifest.app}).`);
+      m.log(`Opened the project ${file.name} (saved by Shanku ${p.manifest.app}, project schema ${p.manifest.schema}).`);
     },
     [m, openModelFile],
   );

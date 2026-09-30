@@ -1,52 +1,82 @@
 /**
- * The Shanku project file: one zip (as .docx is) with the model and everything Shanku keeps for it.
- *
- *   manifest.json        { format: "shanku-project", schema, app, name, savedAt, model: { path, fileName, bytes } }
- *   model/<file>.ifc     the model as opened (IFC)
- *   state/views.json     views: plans, sections, elevations, their graphics, ranges and dimensions
- *   state/graphics.json  the 3D view's graphics
- *   state/pending.json   changes staged for Revit, not yet applied
- *   state/rates.json     the BOQ's rates
- *
- * Schema versions follow semver's spirit: a newer schema is refused with a clear message, never misread.
- * The extension is provisional (to be chosen); it lives only in PROJECT_EXT.
+ * The Shanku project file, `.shkp` (docs/format/README.md, schema 2): an open format — IFC for the model,
+ * JSON for everything else — as a zip (for keeping and sending) of the same folder that works with Git.
+ * Written canonically (sorted keys, fixed order, no save time, a fixed zip timestamp), so saving an unchanged
+ * project gives identical bytes. Reads schema 1 (`.shk`, Shanku 0.50.0) too; a newer schema is refused.
  */
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import type { ModelState } from './session';
 
-export const PROJECT_EXT = '.shk';
-export const PROJECT_SCHEMA = 1;
+export const PROJECT_EXT = '.shkp';
+/** Older project files Shanku still opens. */
+export const LEGACY_EXTS = ['.shk'];
+export const PROJECT_SCHEMA = 2;
 const FORMAT = 'shanku-project';
+/** Every zip entry's timestamp: fixed, so identical content gives identical bytes. */
+const ZIP_TIME = new Date('2000-01-01T00:00:00Z');
 
 export interface ProjectManifest {
   format: typeof FORMAT;
   schema: number;
   app: string;
   name: string;
-  savedAt: string;
-  model: { path: string; fileName: string; bytes: number };
+  units?: { length: 'mm' | 'm' };
+  model: { path: string; fileName: string };
 }
 
-export const isProjectFile = (name: string) => name.toLowerCase().endsWith(PROJECT_EXT);
-/** "adani.ifc" → "adani.shk". */
-export const projectNameFor = (modelName: string) => modelName.replace(/(\.ifc)?(\.gz)?$/i, '') + PROJECT_EXT;
+export const isProjectFile = (name: string) => [PROJECT_EXT, ...LEGACY_EXTS].some((e) => name.toLowerCase().endsWith(e));
+/** "adani.ifc" → "adani.shkp". */
+export const projectNameFor = (modelName: string) => baseName(modelName) + PROJECT_EXT;
+const baseName = (modelName: string) => modelName.replace(/(\.ifc)?(\.gz)?$/i, '');
 
-const json = (v: unknown) => strToU8(JSON.stringify(v ?? null, null, 1));
+/** Canonical JSON: keys sorted at every level, 2-space indentation, a final newline. */
+export function canonical(v: unknown): string {
+  return JSON.stringify(sortKeys(v), null, 2) + '\n';
+}
+/** One JSON Lines line: compact, keys sorted. */
+const line = (v: unknown) => JSON.stringify(sortKeys(v));
+function sortKeys(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(sortKeys);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.keys(v as object).sort().filter((k) => (v as Record<string, unknown>)[k] !== undefined).map((k) => [k, sortKeys((v as Record<string, unknown>)[k])]));
+  return v;
+}
+/** A name safe in any file system (the format's rule 4). */
+export const safeName = (s: string) => s.replace(/[/\\:*?"<>|\s]+/g, '_').replace(/^\.+/, '_') || '_';
 
-export function packProject(model: { name: string; bytes: Uint8Array }, state: ModelState, app: string, now = new Date()): Uint8Array {
-  const path = `model/${model.name.replace(/[\\/]/g, '_')}`;
-  const manifest: ProjectManifest = { format: FORMAT, schema: PROJECT_SCHEMA, app, name: projectNameFor(model.name), savedAt: now.toISOString(), model: { path, fileName: model.name, bytes: model.bytes.byteLength } };
-  return zipSync(
-    {
-      'manifest.json': json(manifest),
-      [path]: [model.bytes, { level: 6 }],
-      'state/views.json': json(state.views),
-      'state/graphics.json': json(state.graphics),
-      'state/pending.json': json(state.pending),
-      'state/rates.json': json(state.rates),
-    },
-    { level: 6 },
-  );
+type View = { id: string } & Record<string, unknown>;
+type Change = { globalId?: string; name?: string } & Record<string, unknown>;
+
+export function packProject(model: { name: string; bytes: Uint8Array }, state: ModelState, app: string): Uint8Array {
+  const files: Record<string, Uint8Array> = {};
+  const put = (path: string, text: string) => (files[path] = strToU8(text));
+  const modelPath = `model/${safeName(model.name)}`;
+  const manifest: ProjectManifest = { format: FORMAT, schema: PROJECT_SCHEMA, app, name: baseName(model.name), units: { length: 'mm' }, model: { path: modelPath, fileName: model.name } };
+  put('shanku.json', canonical(manifest));
+  files[modelPath] = model.bytes;
+  // views: one file each, their order and files in views.json
+  const views = Array.isArray(state.views) ? (state.views as View[]).filter((v) => v && typeof v.id === 'string') : [];
+  if (views.length) {
+    const used = new Set<string>();
+    const index = views.map((v) => {
+      let file = `${safeName(v.id)}.json`;
+      for (let n = 2; used.has(file.toLowerCase()); n++) file = `${safeName(v.id)}-${n}.json`;
+      used.add(file.toLowerCase());
+      put(`shanku/views/${file}`, canonical(v));
+      return { id: v.id, file };
+    });
+    put('shanku/views.json', canonical(index));
+  }
+  if (state.graphics !== undefined && state.graphics !== null) put('shanku/graphics.json', canonical(state.graphics));
+  if (state.rates !== undefined && state.rates !== null) put('shanku/rates.json', canonical(state.rates));
+  // changes staged for Revit: the document they are for, and one change per line in a stable order
+  if (state.pending?.key && state.pending.changes.length) {
+    put('revit/link.json', canonical({ documentKey: state.pending.key }));
+    const rows = [...(state.pending.changes as Change[])].sort((a, b) => `${a.globalId ?? ''}\u0000${a.name ?? ''}`.localeCompare(`${b.globalId ?? ''}\u0000${b.name ?? ''}`));
+    put('revit/pending.jsonl', rows.map(line).join('\n') + '\n');
+  }
+  // fixed entry order and timestamp: identical content, identical bytes
+  const ordered = Object.fromEntries(Object.keys(files).sort().map((k) => [k, [files[k], { level: k.startsWith('model/') ? 6 : 9, mtime: ZIP_TIME }] as const]));
+  return zipSync(ordered as Parameters<typeof zipSync>[0], { mtime: ZIP_TIME });
 }
 
 export class ProjectFileError extends Error {}
@@ -58,16 +88,25 @@ export function unpackProject(bytes: Uint8Array): { manifest: ProjectManifest; m
   } catch {
     throw new ProjectFileError('This is not a Shanku project file (it cannot be unzipped).');
   }
-  const read = (name: string) => (files[name] ? (JSON.parse(strFromU8(files[name])) as unknown) : undefined);
-  const manifest = read('manifest.json') as ProjectManifest | undefined;
+  const json = (name: string) => (files[name] ? (JSON.parse(strFromU8(files[name])) as unknown) : undefined);
+  const manifest = (json('shanku.json') ?? json('manifest.json')) as (ProjectManifest & { schema: number }) | undefined;
   if (!manifest || manifest.format !== FORMAT) throw new ProjectFileError('This is not a Shanku project file (it has no Shanku manifest).');
   if (manifest.schema > PROJECT_SCHEMA) throw new ProjectFileError(`This project was saved by a newer Shanku (project schema ${manifest.schema}); update Shanku to open it.`);
   const model = files[manifest.model.path];
   if (!model) throw new ProjectFileError('The project file has no model in it.');
   const opt = <T>(v: unknown) => (v === null ? undefined : (v as T));
+  if (manifest.schema === 1) {
+    // Shanku 0.50.0 (.shk): one JSON file per kind of state
+    return { manifest, model: { name: manifest.model.fileName, bytes: model }, state: { views: opt(json('state/views.json')), graphics: opt(json('state/graphics.json')), pending: opt(json('state/pending.json')), rates: opt(json('state/rates.json')) } };
+  }
+  const index = json('shanku/views.json') as Array<{ id: string; file: string }> | undefined;
+  const views = index?.map((e) => json(`shanku/views/${e.file}`)).filter((v): v is View => !!v);
+  const link = json('revit/link.json') as { documentKey: string } | undefined;
+  const pendingText = files['revit/pending.jsonl'] ? strFromU8(files['revit/pending.jsonl']) : '';
+  const changes = pendingText.split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l) as unknown);
   return {
     manifest,
     model: { name: manifest.model.fileName, bytes: model },
-    state: { views: opt(read('state/views.json')), graphics: opt(read('state/graphics.json')), pending: opt(read('state/pending.json')), rates: opt(read('state/rates.json')) },
+    state: { views: views?.length ? views : undefined, graphics: opt(json('shanku/graphics.json')), rates: opt(json('shanku/rates.json')), pending: link && changes.length ? { key: link.documentKey, changes } : undefined },
   };
 }

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shanku.app/format/2/pending.schema.json",
+  "title": "A change staged for Revit (one line of revit/pending.jsonl)",
+  "type": "object",
+  "required": ["globalId", "name"],
+  "properties": {
+    "globalId": { "type": "string", "description": "The element's IFC GlobalId, or a type:/op: key for type and geometry edits." },
+    "kind": { "enum": ["param", "typeParam", "setType", "duplicateType", "move", "rotate"] },
+    "name": { "type": "string" },
+    "value": {},
+    "oldDisplay": { "type": ["string", "null"] }
+  }
+}

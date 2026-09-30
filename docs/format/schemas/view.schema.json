@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shanku.app/format/2/view.schema.json",
+  "title": "A Shanku view (shanku/views/<id>.json)",
+  "type": "object",
+  "required": ["id", "kind", "name"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "kind": { "enum": ["3d", "plan", "elevation", "section"] },
+    "name": { "type": "string" },
+    "level": { "type": "string" },
+    "cutOffset": { "type": "number" },
+    "depthOffset": { "type": "number" },
+    "viewDepth": { "type": "number" },
+    "hiddenLines": { "type": "boolean" },
+    "direction": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+    "section": { "type": "object" },
+    "graphics": { "type": "object" },
+    "displayStyle": { "type": "string" },
+    "edges": { "type": "boolean" },
+    "dims": { "type": "array", "items": { "type": "object" } }
+  }
+}

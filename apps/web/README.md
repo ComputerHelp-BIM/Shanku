@@ -1,4 +1,4 @@
-# @shanku/web 0.50.0
+# @shanku/web 0.51.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.51.0 — 2026-09-30
+- **`.shkp`, an open project format** (`docs/format/README.md`, schema 2, JSON schemas in `docs/format/schemas/`): `shanku.json` manifest, `model/<name>.ifc`, `shanku/views.json` + one file per view, `shanku/graphics.json`, `shanku/rates.json`, `revit/link.json` + `revit/pending.jsonl` (one change per line, sorted); canonical JSON (sorted keys, 2 spaces, final newline), no save time in content, zip entries in a fixed order with a fixed timestamp — an unchanged project saves to identical bytes. Extensions: `.shkp` project, `.shkf` family and `.shkt` template reserved (`.shp` and `.sht` avoided: the ESRI Shapefile and MicroStation's sheet files). Schema 1 (`.shk`, 0.50.0) still opens and saves as a new `.shkp`. Tests: round trip, byte-identical saves, the Git layout, validation against the published schemas (ajv), schema 1, refusals.
 
 ### 0.50.0 — 2026-09-30
 - **The Shanku project file** (`.shk`, provisional; `lib/project.ts`): one zip with a versioned manifest, the model, views (with graphics, ranges and dimensions), graphics, rates and changes staged for Revit. **Save** (Ctrl + S, the ribbon's Open group, command search) writes back to the same file in Chrome and Edge, the handle kept across reloads; **Save As** (Ctrl + Shift + S); other browsers download. `.shk` opens wherever a model opens (Open button, drag and drop, homepage): its state is written to the browser's store, then the model opens and the usual restore brings it back (`features/project/useProjectFile.ts`). The title bar shows where the work is; leaving with an out-of-date file asks first.

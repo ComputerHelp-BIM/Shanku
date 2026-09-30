@@ -1,4 +1,4 @@
-# The Shanku project, and never losing work (0.50.0)
+# The Shanku project, and never losing work (0.50.0; format 0.51.0)
 
 ## Three layers
 
@@ -6,9 +6,11 @@
    browser's store (IndexedDB, localStorage) as they change: the model file, views (with their graphics,
    ranges and dimensions), the 3D view's graphics, colours, rates, and changes staged for Revit (per Revit
    document). A reload, a closed tab or a crash restores them when the model opens again.
-2. **The project file** (`.shk`, provisional — the extension lives only in `lib/project.ts` `PROJECT_EXT`).
-   One zip: `manifest.json` (format, schema, app version, model), `model/<file>.ifc`, `state/views.json`,
-   `state/graphics.json`, `state/pending.json`, `state/rates.json`. **Save** (Ctrl + S) writes back to the same
+2. **The project file, `.shkp`** — an open format specified in `docs/format/README.md` (schema 2, with JSON
+   schemas): IFC for the model, canonical JSON for the rest, one file per view, one line per change, no save
+   time in content, so an unchanged project saves to identical bytes; a zip of the same folder that works with
+   Git. (0.50.0 wrote `.shk`, schema 1; it still opens, and saves as a new `.shkp`.) Family `.shkf` and
+   template `.shkt` files are reserved. **Save** (Ctrl + S) writes back to the same
    file in Chrome and Edge (the file's handle is kept, even after a reload); **Save As** (Ctrl + Shift + S)
    picks a new one; other browsers download it. **Open** accepts `.shk` wherever a model opens (the Open
    button, drag and drop, the homepage): its state goes into the store first, then the model opens, so the

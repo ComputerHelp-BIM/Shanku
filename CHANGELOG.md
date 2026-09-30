@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.51.0 — 2026-09-30
+
+### Changed
+- Projects are saved as **`.shkp`**, an open format (IFC + canonical JSON, one file per view, one line per change, identical bytes for an unchanged project), specified in `docs/format/`. `.shk` files from 0.50.0 still open. `.shkf` (families) and `.shkt` (templates) reserved.
+
 ## 0.50.0 — 2026-09-30
 
 ### Added
