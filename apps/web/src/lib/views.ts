@@ -94,12 +94,12 @@ export function levelHeights(
   };
   for (const l of levels) {
     const on = elements.filter((e) => e.level === l.name);
+    // One definition everywhere (the Levels window, hosting, plans, labels): a level is its datum — the
+    // stored elevation from the calibrated ±0 — whether or not an element touches it (a sunk slab does not move
+    // its level). Geometry stands in only for a level with no elevation at all.
     if (l.elevation !== null && l.elevation !== undefined && scale !== null) {
-      const z = l.elevation * scale + offsetY; // offsetY: the project's ±0 in the viewer (engine projectZeroY)
-      if (on.some((e) => Math.abs(e.bounds[1] - z) < 0.05 || Math.abs(e.bounds[4] - z) < 0.05)) {
-        out.set(l.name, z);
-        continue;
-      }
+      out.set(l.name, l.elevation * scale + offsetY); // offsetY: the project's ±0 in the viewer (engine projectZeroY)
+      continue;
     }
     const tops = (cat: string) => on.filter((e) => e.category === cat).map((e) => e.bounds[4]);
     const bases = on.filter((e) => e.category === 'Column' || e.category === 'Wall').map((e) => e.bounds[1]);

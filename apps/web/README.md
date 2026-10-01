@@ -1,4 +1,4 @@
-# @shanku/web 0.53.0
+# @shanku/web 0.53.1
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.53.1 — 2026-10-01
+- **Fixed: one level definition everywhere.** The elevation views (labels) and plans worked a level's height out from the geometry whenever no element touched its stored elevation, while the Levels window and hosting used the stored elevation — so on the G+24 sample Podium 1 read +4,500 in one place and +1,510 in another (also Podium 2, 3, Terrace, Foundation). A level is now its datum everywhere (`lib/views.ts` `levelHeights`); geometry stands in only for a level with no elevation.
+- **Fixed: the project's ±0 one storey off** in files whose beams and slabs belong to the storey below them (engine 0.39.1 `projectZeroY`): G+24 −1.3 → −4.5 m, G+14 5.1 → 2.1 m, both checked against the file's own placements; adani.ifc and the sample frame unchanged.
+- **Fixed: numbers with a +** (as the Levels window shows them, "+1,01,000") were refused, so editing a shown elevation silently did nothing; any digit grouping works.
+- **Fixed: the status bar showed engine 0.35.1**; the workspace check now fails if a shown version differs from its package.
 
 ### 0.53.0 — 2026-10-01
 - **Levels as datums** (`docs/design/datums-and-constraints.md`, part 2): a **Levels** window (Modify → Datum → Levels, LL) lists every level with its elevation from ±0; changing one moves everything hosted on it (engine `followLevels`: columns and walls stretch, beams, slabs and footings move) and updates the model's own levels (`infoLevels`, so plans, elevation labels and level colours follow) — one transaction, one Ctrl + Z for the level and its elements. **New level** (named as Revit does, the next "Level N"); **Delete** for levels added in Shanku with nothing hosted (levels from the model go with their views, later). Elements kept as reference stay where they are, and the notice says how many. Kept on the device and in the `.shkp` (`shanku/levels.json`).

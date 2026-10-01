@@ -88,3 +88,21 @@ describe('one level definition: the lowest level at or above the top', () => {
     ]);
   });
 });
+
+describe('the project\'s ±0 when beams and slabs belong to the storey below them', () => {
+  it('fits the whole building, not a one-storey shift (found on the G+24 sample)', async () => {
+    const { projectZeroY } = await import('../src/model/levelRule');
+    // podium of 4.5 m storeys, then 3.2 m storeys; the viewer is the file moved by dy
+    const elevs = [0, 4.5, 9, 13.5, 18, 21.2, 24.4, 27.6, 30.8, 34];
+    const dy = -4.5;
+    const levels = elevs.map((z, i) => ({ name: `L${i}`, elevation: z * 1000, elementCount: 0 }));
+    const elements: Array<Record<string, unknown>> = [];
+    for (let i = 0; i < elevs.length - 1; i++) {
+      const b = elevs[i] + dy, t = elevs[i + 1] + dy;
+      elements.push({ storey: `L${i}`, level: `L${i}`, category: 'Column', bounds: [0, b, 0, 1, t - 0.2, 1] });
+      for (let k = 0; k < 3; k++) elements.push({ storey: `L${i}`, level: `L${i}`, category: 'Beam', bounds: [0, t - 0.6, 0, 1, t, 1] }); // in the storey below
+    }
+    const model = { info: { levels, units: { length: 'mm' } }, elements, coordination: undefined } as never;
+    expect(projectZeroY(model)).toBeCloseTo(dy, 6);
+  });
+});

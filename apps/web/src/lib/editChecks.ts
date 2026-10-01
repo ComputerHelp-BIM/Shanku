@@ -14,7 +14,8 @@ const MAX_MOVE = 1_000_000;
 
 /** A typed number ("500", "-1,500", "1 500"); NaN when it is not one. */
 export function readNumber(text: string): number {
-  const t = text.replace(/[,\s]/g, '').replace(/^\u2212/, '-');
+  // any digit grouping (1,00,000 or 100,000), a leading + (as values are shown), − or -
+  const t = text.replace(/[,\s]/g, '').replace(/^\u2212/, '-').replace(/^\+/, '');
   return t === '' ? 0 : /^-?\d*\.?\d+$/.test(t) ? Number(t) : NaN;
 }
 

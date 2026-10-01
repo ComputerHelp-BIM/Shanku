@@ -25,7 +25,8 @@ describe('views (Revit project browser)', () => {
   it('uses the storey elevation (converted) when the geometry agrees, else ignores it', () => {
     const e = [el('Slab', 'L', 2.85, 3), el('Beam', 'L', 2.4, 3)];
     expect(levelHeights([{ name: 'L', elevation: 3000 }], e, 'mm').get('L')).toBe(3);
-    expect(levelHeights([{ name: 'L', elevation: 99999 }], e, 'mm').get('L')).toBe(3); // disagrees: geometry wins
+    expect(levelHeights([{ name: 'L', elevation: 99999 }], e, 'mm').get('L')).toBe(99.999); // a level is its datum, even when nothing touches it (one definition with the Levels window)
+    expect(levelHeights([{ name: 'L' }], e, 'mm').get('L')).toBe(3); // no elevation: geometry stands in
   });
 
   it('creates {3D}, a plan per level with a height, and four elevations', () => {

@@ -1,4 +1,4 @@
-# @shanku/engine 0.39.0
+# @shanku/engine 0.39.1
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.39.1 — 2026-10-01
+- **Fixed `projectZeroY`:** the commonest offset between elements and their own storey put ±0 one storey off when beams and slabs belong to the storey below (IFC from many writers; a building of equal storeys makes the shift fit as well as the truth). Candidates are now scored by how many elements land on any level; the commonest breaks ties. G+24 −1.3 → −4.5 m and G+14 5.1 → 2.1 m (both checked against IfcOpenShell's reading of the files' placements); adani.ifc and the sample frame unchanged. A test reproduces the case and fails with the old rule.
+- `ENGINE_VERSION` was left at 0.35.1 since 0.36.0; now checked against the package version.
 
 ### 0.39.0 — 2026-10-01
 - `model/hosting.ts`: `infoLevels` (levels back into the model's own list, in its length unit, from the ±0 calibrated at opening), `zeroOf`, `elevationMm`; `levelRule.scaleOf` exported (one source for the unit scale).

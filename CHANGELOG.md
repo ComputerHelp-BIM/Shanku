@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.53.1 — 2026-10-01
+
+### Fixed
+- Levels showed different elevations in the Levels window and the elevation views (G+24: Podium 1–3, Terrace, Foundation); one definition everywhere now — a level is its datum.
+- The project's ±0 was one storey off for files whose beams and slabs belong to the storey below (both samples).
+- Typed numbers with a + (as shown) were refused, so large elevations could not be entered.
+- The status bar showed an old engine version.
+
 ## 0.53.0 — 2026-10-01
 
 ### Added

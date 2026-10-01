@@ -33,6 +33,9 @@ describe('staging edits for Revit', () => {
     expect(readNumber('1 500.5')).toBe(1500.5);
     expect(readNumber('')).toBe(0);
     expect(readNumber('5m')).toBeNaN();
+    expect(readNumber('+1,01,000')).toBe(101000); // shown with a + and Indian grouping (found in the Levels window)
+    expect(readNumber('+98,000')).toBe(98000);
+    expect(readNumber('1,000,000')).toBe(1000000);
     expect(geometryProblem({ kind: 'move', dx: 500, dy: 0, dz: 0 })).toBeNull();
     expect(geometryProblem({ kind: 'move', dx: 0, dy: 0, dz: 0 })).toBe('Type a distance to move by.');
     expect(geometryProblem({ kind: 'move', dx: 2e6, dy: 0, dz: 0 })).toMatch(/1 km/);

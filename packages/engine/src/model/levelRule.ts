@@ -48,33 +48,63 @@ function hasGeometry(e: ElementRecord): boolean {
 
 /**
  * The project's ±0 in the viewer (metres), calibrated against the geometry: Δ such that a storey's
- * Elevation sits at Elevation + Δ. Nearly every element touches its storey's level with its bottom
- * (Revit files columns and walls by their base) or its top (beams and slabs; everything in Shanku's
- * pipeline), so Δ is the most common value of (bottom − Elevation) and (top − Elevation), in 5 mm steps.
+ * Elevation sits at Elevation + Δ.
+ *
+ * Candidates: the common values of (bottom − Elevation) and (top − Elevation) of each element against its
+ * own storey (5 mm steps) — Revit files columns and walls by their base and beams and slabs by their top, so
+ * the true Δ is always among them. But many IFC writers put beams and slabs in the storey *below* them, and in
+ * a building of equal storeys a one-storey shift then fits as well as the truth; so each candidate is scored by
+ * how many elements land on *any* level with their bottom or top (the truth fits podiums, foundations and
+ * changes of storey height too; the shift does not). Ties go to the commonest candidate. Found on the G+24
+ * sample: the old rule (commonest value alone) put ±0 one storey (3.2 m) off.
  * Without elevations or geometry: the file's origin shift alone.
  */
 export function projectZeroY(model: LevelModel): number {
   const scale = scaleOf(model);
   const elev = new Map<string, number>();
   for (const l of model.info.levels) if (l.elevation !== null && l.elevation !== undefined && Number.isFinite(l.elevation)) elev.set(l.name, l.elevation * scale);
+  const STEP = 0.005;
   const bins = new Map<number, { n: number; sum: number }>();
   const add = (v: number) => {
-    const k = Math.round(v / 0.005);
+    const k = Math.round(v / STEP);
     const b = bins.get(k) ?? { n: 0, sum: 0 };
     b.n++;
     b.sum += v;
     bins.set(k, b);
   };
+  const faces: number[] = [];
   for (const e of model.elements) {
+    if (!hasGeometry(e)) continue;
+    faces.push(e.bounds[1], e.bounds[4]);
     const z = elev.get(e.storey ?? e.level);
-    if (z === undefined || !hasGeometry(e)) continue;
+    if (z === undefined) continue;
     add(e.bounds[1] - z);
     add(e.bounds[4] - z);
   }
-  let best: { n: number; sum: number } | null = null;
-  for (const b of bins.values()) if (!best || b.n > best.n) best = b;
-  if (best) return best.sum / best.n;
-  return model.coordination && model.coordination.length === 16 ? model.coordination[13] : 0;
+  if (!bins.size) return model.coordination && model.coordination.length === 16 ? model.coordination[13] : 0;
+  const ranked = [...bins.values()].sort((a, b) => b.n - a.n);
+  const candidates = ranked.filter((b) => b.n >= ranked[0].n * 0.1).slice(0, 8);
+  const levels = [...new Set(elev.values())];
+  const score = (delta: number) => {
+    const at = new Set<number>();
+    for (const z of levels) {
+      const k = Math.round((z + delta) / STEP);
+      at.add(k - 1).add(k).add(k + 1); // within 5 mm
+    }
+    let n = 0;
+    for (const f of faces) if (at.has(Math.round(f / STEP))) n++;
+    return n;
+  };
+  let best = candidates[0];
+  let bestScore = score(best.sum / best.n);
+  for (const c of candidates.slice(1)) {
+    const sc = score(c.sum / c.n);
+    if (sc > bestScore) {
+      best = c;
+      bestScore = sc;
+    }
+  }
+  return best.sum / best.n;
 }
 
 /**
