@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.52.1 — 2026-10-01
+
+### Changed
+- Native edits record hosting on levels (engine 0.38.0), Revit's way; a vertical move changes offsets. The first part of the datums-and-constraints build.
+
 ## 0.52.0 — 2026-10-01
 
 ### Added

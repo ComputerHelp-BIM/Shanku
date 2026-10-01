@@ -34,6 +34,7 @@ export { DEFAULT_CHECKS, QA_TOLERANCE, duplicatePairs, elementLabel, findingId, 
 export type { Finding, QaCheck, QaContext, QaGroup, QaReport, Severity } from './qa/types';
 // native editing (docs/design/native-editing.md): the parametric model and Revit's Modify operations
 export * from './model/parametric';
+export * from './model/hosting';
 export * from './edit/ops';
 export * from './edit/history';
 export { newGlobalId } from './edit/ids';

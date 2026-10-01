@@ -15,5 +15,5 @@ Proposals for features that are not built yet. Each one says what exists today, 
 | [addons.md](addons.md) | For approval | Add-ons as pyRevit-style extensions built into Shanku: folders → ribbon, Python in sandboxed workers, the `shanku` module, permissions with risk ratings. Replaces addons-api.md. |
 | [to-ch-dxf.md](to-ch-dxf.md) | For approval | → CH DXF, the exact reverse of DXF → 3D: every source to the exchange model, one CH writer, round-trip proof. |
 | [project-file.md](project-file.md) | Living | The Shanku project: kept on the device as it changes, the .shk file (Save back, Save As, open), offline. |
-| [datums-and-constraints.md](datums-and-constraints.md) | For approval | Levels, grids, reference planes, work planes; elements placed on levels with offsets (Revit's hosting); attachments and Align locks; Move rebuilt Revit's way. |
+| [datums-and-constraints.md](datums-and-constraints.md) | Approved, in progress | Levels, grids, reference planes, work planes; elements placed on levels with offsets (Revit's hosting); attachments and Align locks; Move rebuilt Revit's way. |
 

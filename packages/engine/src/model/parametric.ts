@@ -39,6 +39,8 @@ export interface ParamElement {
   outline?: Pt[];
   holes?: Pt[][];
   pinned?: boolean;
+  /** Where it is placed relative to levels (model/hosting): heights follow the levels. */
+  hosting?: import('./hosting').Hosting;
   /** Ids in the source model it was made from (Revit element and type ids, the drawing's handle). */
   source?: { revitId?: number; revitTypeId?: number; handle?: string };
 }

@@ -1,4 +1,4 @@
-# @shanku/web 0.52.0
+# @shanku/web 0.52.1
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,9 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.52.1 — 2026-10-01
+- Native edits record **hosting** (engine 0.38.0): every element is placed on the model's levels as Revit places it — columns, pedestals and walls from a base level + offset to a top level + offset, beams, slabs, footings hanging from their level by their top + offset — and a vertical move changes offsets, keeping the host levels. Saved in the `.shkp` (`element.schema.json` gains `hosting`). No change in behaviour yet; levels you can move (and everything on them following) come next in this build (`docs/design/datums-and-constraints.md`).
 
 ### 0.52.0 — 2026-10-01
 - **Native editing, stage 1** (`docs/design/native-editing.md`): a **Modify** ribbon tab — Move, Copy, Rotate (about each element or the selection), Mirror (horizontal, vertical or angled axis through the selection; a copy unless cleared), Array (spacing, count), Offset (beams and walls), Delete, Pin, Unpin — with typed values (`components/ModifyTool.tsx`, checks in `lib/editChecks.ts` `modifyProblem`) and Revit's shortcuts MV, CO, RO, MM, AR, OF, DE, PN, UP. `features/editing/useNativeEditing.ts`: the open model read as parametric elements on first use (engine `deriveElement`; reference elements are left as they are, with the reason), each edit one transaction in the app's history (one Ctrl + Z), its geometry merged into the model as live updates are (engine `elementPatch`, `mergeModels` keeping each element's source). Copies become the selection; pinned and reference elements are refused with the reason. Edits are kept on this device as they happen (restored on reopen) and saved in the `.shkp` (`shanku/edits.jsonl`, `shanku/deleted.json`, `docs/format/schemas/element.schema.json`). Models linked to Revit keep Changes for Revit (Sync with Revit is stage 3).

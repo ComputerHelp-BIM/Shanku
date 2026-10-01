@@ -19,7 +19,7 @@ const state = {
   rates: { concrete: 7200 },
   edits: {
     elements: [
-      { id: 'zz', kind: 'column', mark: 'C2', material: 'M25', level: 'Level 2', z0: 0, z1: 3000, shape: 'rect', center: [6000, 0], width: 300, length: 600, angle: 0 },
+      { id: 'zz', kind: 'column', mark: 'C2', material: 'M25', level: 'Level 2', z0: 0, z1: 3000, shape: 'rect', center: [6000, 0], width: 300, length: 600, angle: 0, hosting: { base: { level: 'Level 1', offset: 0 }, top: { level: 'Level 2', offset: 0 } } },
       { id: 'aa', kind: 'beam', mark: 'B1', material: 'M25', level: 'Level 2', z0: 2550, z1: 3000, start: [0, 0], end: [4000, 0], thickness: 230, depth: 450, pinned: true },
     ],
     deleted: ['g9', 'g3'],

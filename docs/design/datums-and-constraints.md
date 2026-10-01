@@ -1,4 +1,4 @@
-# Datums, work planes, hosting and constraints (design, for approval)
+# Datums, work planes, hosting and constraints (design; approved 2026-10-01)
 
 Decided 2026-10-01: **24A** elements are placed as Revit places them (relative to levels, with offsets and
 attachments), now; **25A** the first build is a complete slice — levels, grids, reference planes, work
@@ -78,3 +78,11 @@ grows these fields (an addition: older files still open).
 
 Dimension constraints (EQ, locked), the family editor, arcs and multi-segment grids, sloped levels, section and
 elevation marks (with the views work), Sync with Revit (it will carry hosting across: Revit's own model).
+
+## Progress
+
+- **Hosting — done (engine 0.38.0, web 0.52.1):** the element model on levels and offsets; every native edit
+  keeps it; saved in the `.shkp`. On adani.ifc all 4,440 converted elements host with exact heights and natural
+  offsets (columns and beams on their levels, walls 650 under them, footing-to-plinth columns on Level 1).
+- **Next:** levels you can move (everything on them follows) and draw; grids and reference planes; work planes;
+  the picking and snapping engine; Align with locks; Move rebuilt.

@@ -1,4 +1,4 @@
-# @shanku/engine 0.37.0
+# @shanku/engine 0.38.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.38.0 — 2026-10-01
+- `model/hosting.ts` (decision 24A): `levelDatums` (levels in the parametric frame, calibrated by `levelHeightsOf`), `hostOf`, `heightsOf`, `rehost`, `followLevels`, `withLevel`. Spanning elements (columns, pedestals, walls) from a base level + offset to a top level + offset — the top level may be the base level, as Revit allows; hanging elements (beams, slabs, footings, PCC, chajjas) from a reference level by their top + offset, keeping their depth. On adani.ifc all 4,440 converted elements are hosted with their heights reproduced exactly; a survey first found 171 footing-to-plinth columns and 291 basement walls hosted one storey too high (a rule forcing the top level above the base level), fixed and tested.
 
 ### 0.37.0 — 2026-10-01
 - `edit/geometry.ts`: `meshOfElement` (prisms from parameters in the viewer's space, slab outlines with holes triangulated by three's earcut) and `elementPatch` (edited elements as a patch for `mergeModels`, with bounds and volume from their parameters). Tested by reading drawn geometry back with `deriveElement`: the same parameters.

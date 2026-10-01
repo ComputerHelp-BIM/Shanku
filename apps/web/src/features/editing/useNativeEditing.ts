@@ -6,7 +6,7 @@
  * project; models linked to Revit keep the Changes for Revit route until Sync with Revit (stage 3).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { arrayLinear, changeOf, copy, deriveElement, elementPatch, isReference, kindForCategory, mirror, move, newGlobalId, offset, pin, remove, rotate, trianglesOf, type EditResult, type ElementRecord, type History, type ParamElement, type Pt } from '@shanku/engine';
+import { arrayLinear, changeOf, copy, deriveElement, levelDatums, rehost, type LevelDatum, elementPatch, isReference, kindForCategory, mirror, move, newGlobalId, offset, pin, remove, rotate, trianglesOf, type EditResult, type ElementRecord, type History, type ParamElement, type Pt } from '@shanku/engine';
 import type { ModifyRequest } from '../../lib/editChecks';
 import { endTask, startTask } from '../../lib/progress';
 import { loadEdits, saveEdits, type SavedEdits } from '../../lib/session';
@@ -31,6 +31,7 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
   const refs = useRef(new Map<string, string>()); // GlobalId → why it stays reference
   const records = useRef(new Map<string, ElementRecord>()); // GlobalId → the record an element (or its copies) takes
   const original = useRef(new Set<string>()); // GlobalIds in the model as opened
+  const levels = useRef<LevelDatum[]>([]); // the model's levels: elements are hosted on them (Revit's way)
   const edited = useRef(new Map<string, ParamElement | null>()); // since opening: as now, or null (deleted)
   // A model is "opened" when it has no revision (merges, ours and Revit's live updates, add one) and is not the
   // one last seen: the parametric model is built once per opening, and edits reset only then.
@@ -58,6 +59,7 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
       refs.current = new Map();
       records.current = new Map();
       original.current = new Set();
+      levels.current = levelDatums(model);
       for (const e of model.elements) {
         records.current.set(e.globalId, e);
         original.current.add(e.globalId);
@@ -65,7 +67,7 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
         if (!kind) continue;
         const r = deriveElement({ id: e.globalId, kind, mark: e.mark, material: e.grade || null, level: e.level, type: e.typeName }, trianglesOf(model.mesh, e.index), e.volume);
         if (isReference(r)) refs.current.set(e.globalId, r.reason);
-        else doc.current.set(e.globalId, r);
+        else doc.current.set(e.globalId, rehost(r, levels.current));
       }
       builtFor.current = opened.current;
       return true;
@@ -159,7 +161,9 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
         if (e) els.push(e);
         else skipped.push(`${r.mark || r.name}: ${refs.current.get(r.globalId) ? `kept as reference (${refs.current.get(r.globalId)})` : 'not a structural element Shanku edits yet'}`);
       }
-      const res = op(els, () => newGlobalId());
+      const raw = op(els, () => newGlobalId());
+      // hosted on the same levels; a vertical move changes offsets, not absolute heights (Revit's way)
+      const res = { ...raw, changed: raw.changed.map((e) => rehost(e, levels.current)), created: raw.created.map((e) => rehost(e, levels.current)) };
       // copies take the record (category, type, properties) of the element they came from
       for (const c of res.created) {
         const from = els.find((e) => e.kind === c.kind && e.mark === c.mark) ?? els[0];

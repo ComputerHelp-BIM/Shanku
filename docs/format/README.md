@@ -66,7 +66,7 @@ does.
 
 Until Shanku writes the model's IFC itself, a project keeps the IFC as it arrived plus its **edits**:
 `shanku/edits.jsonl` holds every edited or created element as a parametric element
-(`schemas/element.schema.json`: kind, mark, level, heights, and its point, line or outline), one per line,
+(`schemas/element.schema.json`: kind, mark, level, heights, its point, line or outline, and its hosting on levels), one per line,
 sorted by id; `shanku/deleted.json` the ids deleted. Opening the project applies them to the model. These
 are additions to schema 2 — older readers ignore them.
 
