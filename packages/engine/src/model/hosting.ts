@@ -5,7 +5,8 @@
  * top + offset and keep their depth (they move with the level). Heights are mm in the parametric frame
  * (the viewer's height × 1000), the frame levelHeightsOf calibrates against the geometry.
  */
-import { levelHeightsOf } from './levelRule';
+import { levelHeightsOf, projectZeroY, scaleOf } from './levelRule';
+import type { Level } from './types';
 import type { ParsedModel } from './types';
 import type { ElementKind, ParamElement } from './parametric';
 
@@ -90,3 +91,20 @@ export function followLevels(els: Iterable<ParamElement>, levels: LevelDatum[]):
 
 /** The levels with one moved to a new height (mm). */
 export const withLevel = (levels: LevelDatum[], name: string, z: number): LevelDatum[] => levels.map((l) => (l.name === name ? { ...l, z } : l)).sort((a, b) => a.z - b.z);
+
+/**
+ * Levels back into the model's own list (IfcBuildingStorey elevations, in the file's length unit), so plans,
+ * elevation labels and everything reading the model's levels follow an edit. `zeroY` is the project's ±0
+ * in the viewer (metres) as calibrated when the model was opened; element counts by each element's level.
+ */
+export function infoLevels(model: Pick<ParsedModel, 'info' | 'elements'>, levels: LevelDatum[], zeroY: number): Level[] {
+  const scale = scaleOf(model);
+  const counts = new Map<string, number>();
+  for (const e of model.elements) counts.set(e.level, (counts.get(e.level) ?? 0) + 1);
+  return levels.map((l) => ({ name: l.name, elevation: Math.round(((l.z / 1000 - zeroY) / scale) * 1e6) / 1e6, elementCount: counts.get(l.name) ?? 0 }));
+}
+
+/** The project's ±0 (viewer metres) and the levels' elevations from it in mm, as people read them. */
+export const zeroOf = (model: Pick<ParsedModel, 'info' | 'elements' | 'coordination'>) => projectZeroY(model);
+export const elevationMm = (l: LevelDatum, zeroY: number) => Math.round((l.z - zeroY * 1000) * 10) / 10;
+

@@ -381,6 +381,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.53.0', date: '2026-10-01', items: ['Levels (Modify → Levels, LL): change a level’s elevation and everything hosted on it follows — columns stretch, beams and slabs move — as one undo step; add levels. Elements are placed on levels as Revit places them (base and top levels with offsets), and moving an element up or down changes its offsets.'] },
           { version: '0.52.0', date: '2026-10-01', items: ['Edit models in Shanku itself: the Modify tab — Move (MV), Copy (CO), Rotate (RO), Mirror (MM, a copy as in Revit), Array (AR), Offset (OF), Delete (DE), Pin (PN), Unpin (UP) — with typed values, one undo step each (Ctrl + Z). Edits are kept on this device and saved in the project. Models linked to Revit keep Changes for Revit.', 'CO is now Copy, as in Revit (Consistent Colors stays on the view bar).'] },
           { version: '0.51.0', date: '2026-09-30', items: ['Projects are saved as .shkp, an open format (IFC plus JSON, described in the project\'s docs/format): readable without Shanku, and laid out for Git. Files saved as .shk still open.'] },
           { version: '0.50.0', date: '2026-09-30', items: ['Save your work as a Shanku project: Ctrl + S saves the model, views, graphics, rates and changes for Revit to one file, back to the same file in Chrome and Edge; open it from the Open button or by dropping it.', 'Shanku opens without internet once it has been used, with your work restored; the title bar says where your work is saved.'] },

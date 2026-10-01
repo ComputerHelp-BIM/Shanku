@@ -39,7 +39,8 @@ export interface LevelHeight {
 
 type LevelModel = Pick<ParsedModel, 'info' | 'elements' | 'coordination'>;
 
-const scaleOf = (model: Pick<ParsedModel, 'info'>) => TO_M[(model.info.units?.length ?? '').toLowerCase()] ?? 1;
+/** Metres per unit of the model's length unit (levels' elevations are written in it). */
+export const scaleOf = (model: Pick<ParsedModel, 'info'>) => TO_M[(model.info.units?.length ?? '').toLowerCase()] ?? 1;
 
 function hasGeometry(e: ElementRecord): boolean {
   return Number.isFinite(e.bounds[4]) && Number.isFinite(e.bounds[1]) && e.bounds[4] >= e.bounds[1];

@@ -1,4 +1,4 @@
-# @shanku/web 0.52.1
+# @shanku/web 0.53.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,10 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.53.0 — 2026-10-01
+- **Levels as datums** (`docs/design/datums-and-constraints.md`, part 2): a **Levels** window (Modify → Datum → Levels, LL) lists every level with its elevation from ±0; changing one moves everything hosted on it (engine `followLevels`: columns and walls stretch, beams, slabs and footings move) and updates the model's own levels (`infoLevels`, so plans, elevation labels and level colours follow) — one transaction, one Ctrl + Z for the level and its elements. **New level** (named as Revit does, the next "Level N"); **Delete** for levels added in Shanku with nothing hosted (levels from the model go with their views, later). Elements kept as reference stay where they are, and the notice says how many. Kept on the device and in the `.shkp` (`shanku/levels.json`).
+- Checked in the browser (production build): raising the sample's Level 2 by 300 mm moved it from +3,200 to +3,500, stretched the columns reaching it and lifted its beams by exactly 0.3 m, left the footings; undo restored all of it; a moved level survives a reload and is saved; native editing walk-through unchanged.
 
 ### 0.52.1 — 2026-10-01
 - Native edits record **hosting** (engine 0.38.0): every element is placed on the model's levels as Revit places it — columns, pedestals and walls from a base level + offset to a top level + offset, beams, slabs, footings hanging from their level by their top + offset — and a vertical move changes offsets, keeping the host levels. Saved in the `.shkp` (`element.schema.json` gains `hosting`). No change in behaviour yet; levels you can move (and everything on them following) come next in this build (`docs/design/datums-and-constraints.md`).

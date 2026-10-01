@@ -27,7 +27,8 @@ export type CommandId =
   | 'offsetTool'
   | 'deleteTool'
   | 'pinTool'
-  | 'unpinTool';
+  | 'unpinTool'
+  | 'levelsTool';
 
 export const SEQUENCES: Record<string, CommandId> = {
   ZF: 'fit',
@@ -57,6 +58,7 @@ export const SEQUENCES: Record<string, CommandId> = {
   DE: 'deleteTool',
   PN: 'pinTool',
   UP: 'unpinTool',
+  LL: 'levelsTool',
   BX: 'sectionBox',
   ME: 'measure',
   DI: 'dimAligned',
@@ -114,6 +116,7 @@ export const SHORTCUT_HELP: Array<{ keys: string; action: string }> = [
   { keys: 'DE', action: 'Delete the selection' },
   { keys: 'PN', action: 'Pin the selection (protects it from changes)' },
   { keys: 'UP', action: 'Unpin the selection' },
+  { keys: 'LL', action: 'Levels: move a level (what is hosted on it follows), add levels' },
   { keys: 'DI · EL', action: 'Aligned dimension · spot elevation (Annotate → Dimension); pick references, click away to place' },
   { keys: 'Delete', action: 'Delete the selected dimensions or sections' },
   { keys: 'Tab · Shift + Tab', action: 'Over the view: step through the elements under the cursor, then a chain of joined walls or beams; while measuring, through the snaps' },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ParamElement } from '../src/model/parametric';
-import { followLevels, heightsOf, hostOf, rehost, withLevel, type LevelDatum } from '../src/model/hosting';
+import { elevationMm, followLevels, heightsOf, hostOf, infoLevels, rehost, withLevel, type LevelDatum } from '../src/model/hosting';
 import { move } from '../src/edit/ops';
 
 const L: LevelDatum[] = [{ name: 'Level 1', z: 0 }, { name: 'Level 2', z: 3000 }, { name: 'Level 3', z: 6000 }];
@@ -41,4 +41,13 @@ describe('hosting: elements placed on levels, as in Revit', () => {
     const b = hosted(el('beam', 2550, 3000));
     expect(rehost(move([b], 0, 0, -75).changed[0], L).hosting).toEqual({ base: { level: 'Level 2', offset: -75 } });
   });
+});
+
+it('writes levels back to the model in its own unit, from the calibrated ±0', () => {
+  const model = { info: { units: { length: 'mm' } }, elements: [{ level: 'Level 2' }, { level: 'Level 2' }] } as never;
+  // the viewer's ±0 at y = 0.5 m: a level at z 3500 mm in the parametric frame is +3000 in the file
+  expect(infoLevels(model, [{ name: 'Level 2', z: 3500 }], 0.5)).toEqual([{ name: 'Level 2', elevation: 3000, elementCount: 2 }]);
+  const metres = { info: { units: { length: 'm' } }, elements: [] } as never;
+  expect(infoLevels(metres, [{ name: 'L', z: 3500 }], 0.5)[0].elevation).toBe(3);
+  expect(elevationMm({ name: 'L', z: 3500 }, 0.5)).toBe(3000);
 });

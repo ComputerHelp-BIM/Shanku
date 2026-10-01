@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.53.0 — 2026-10-01
+
+### Added
+- Levels as datums: move a level and what is hosted on it follows (one undo); add levels (LL). Saved in the `.shkp` (`shanku/levels.json`).
+
 ## 0.52.1 — 2026-10-01
 
 ### Changed

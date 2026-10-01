@@ -6,7 +6,7 @@
  * project; models linked to Revit keep the Changes for Revit route until Sync with Revit (stage 3).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { arrayLinear, changeOf, copy, deriveElement, levelDatums, rehost, type LevelDatum, elementPatch, isReference, kindForCategory, mirror, move, newGlobalId, offset, pin, remove, rotate, trianglesOf, type EditResult, type ElementRecord, type History, type ParamElement, type Pt } from '@shanku/engine';
+import { arrayLinear, changeOf, copy, deriveElement, elevationMm, followLevels, infoLevels, levelDatums, rehost, withLevel, zeroOf, type LevelDatum, elementPatch, isReference, kindForCategory, mirror, move, newGlobalId, offset, pin, remove, rotate, trianglesOf, type EditResult, type ElementRecord, type History, type ParamElement, type Pt } from '@shanku/engine';
 import type { ModifyRequest } from '../../lib/editChecks';
 import { endTask, startTask } from '../../lib/progress';
 import { loadEdits, saveEdits, type SavedEdits } from '../../lib/session';
@@ -32,6 +32,10 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
   const records = useRef(new Map<string, ElementRecord>()); // GlobalId → the record an element (or its copies) takes
   const original = useRef(new Set<string>()); // GlobalIds in the model as opened
   const levels = useRef<LevelDatum[]>([]); // the model's levels: elements are hosted on them (Revit's way)
+  const openedLevels = useRef<LevelDatum[]>([]); // as the model was opened (what is kept is the difference)
+  const zeroY = useRef(0); // the project's ±0 in the viewer, as calibrated when the model was opened
+  const added = useRef(new Set<string>()); // levels added in Shanku (the only ones Delete removes, for now)
+  const [levelTick, setLevelTick] = useState(0);
   const edited = useRef(new Map<string, ParamElement | null>()); // since opening: as now, or null (deleted)
   // A model is "opened" when it has no revision (merges, ours and Revit's live updates, add one) and is not the
   // one last seen: the parametric model is built once per opening, and edits reset only then.
@@ -60,6 +64,9 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
       records.current = new Map();
       original.current = new Set();
       levels.current = levelDatums(model);
+      openedLevels.current = levels.current;
+      zeroY.current = zeroOf(model);
+      added.current = new Set();
       for (const e of model.elements) {
         records.current.set(e.globalId, e);
         original.current.add(e.globalId);
@@ -99,6 +106,18 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
     [m],
   );
 
+  /** Brings the levels to a state (a transaction's apply): the editor's and the model's own list. */
+  const applyLevels = useCallback(
+    (ls: LevelDatum[]) => {
+      levels.current = ls;
+      const model = m.model;
+      if (model) m.applyEdit(elementPatch(model, []), [], undefined, infoLevels(model, ls, zeroY.current));
+      setLevelTick((t) => t + 1);
+      setVersion((v) => v + 1);
+    },
+    [m],
+  );
+
   // a model opened: its parametric model is rebuilt when needed, its kept edits come back
   const openCount = opened.current;
   useEffect(() => {
@@ -110,7 +129,11 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
     const name = fileName;
     if (!name || revitLinked || !openTick) return;
     void loadEdits<ParamElement>(name).then((kept) => {
-      if (!kept || (!kept.elements.length && !kept.deleted.length) || !ensure()) return;
+      if (!kept || (!kept.elements.length && !kept.deleted.length && !kept.levels?.length) || !ensure()) return;
+      if (kept.levels?.length) {
+        for (const l of kept.levels) if (!openedLevels.current.some((o) => o.name === l.name)) added.current.add(l.name);
+        applyLevels(kept.levels);
+      }
       for (const e of kept.elements) if (!records.current.has(e.id)) {
         const like = [...doc.current.values()].find((d) => d.kind === e.kind && d.mark === e.mark);
         const rec = like && records.current.get(like.id);
@@ -127,6 +150,7 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
     if (!name || builtFor.current !== opened.current) return;
     const t = window.setTimeout(() => {
       const kept: SavedEdits<ParamElement> = { elements: [], deleted: [] };
+      if (JSON.stringify(levels.current) !== JSON.stringify(openedLevels.current)) kept.levels = levels.current;
       for (const [id, e] of edited.current) {
         if (e) kept.elements.push(e);
         else kept.deleted.push(id);
@@ -221,5 +245,62 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
   const del = () => run('Delete', (els) => remove(els));
   const setPinned = (on: boolean) => run(on ? 'Pin' : 'Unpin', (els) => pin(els, on));
 
-  return { nativePerform: perform, nativeDelete: del, nativePin: setPinned, nativeWhy: whyNot, nativeEditCount: edits };
+  // ---- levels (docs/design/datums-and-constraints.md): move one and what is hosted on it follows
+
+  /** The levels with their elevations from ±0 (mm), as people read them; null until the model is read. */
+  const levelList = () => {
+    if (!m.model || revitLinked) return null;
+    if (!ensure()) return null;
+    return levels.current.map((l) => ({ name: l.name, elevation: elevationMm(l, zeroY.current), added: added.current.has(l.name) }));
+  };
+
+  const moveLevel = (name: string, elevation: number) => {
+    if (revitLinked) return setNotice('This model is linked to Revit: change its levels in Revit (Sync with Revit comes next).');
+    if (!ensure() || !m.model) return;
+    const before = levels.current;
+    const cur = before.find((l) => l.name === name);
+    if (!cur) return;
+    const z = Math.round((elevation + zeroY.current * 1000) * 10) / 10;
+    if (Math.abs(z - cur.z) < 0.05) return;
+    const after = withLevel(before, name, z);
+    const moved = followLevels(doc.current.values(), after);
+    const beforeEls = moved.map((e) => doc.current.get(e.id)!).filter(Boolean);
+    const stay = m.model.elements.filter((e) => refs.current.has(e.globalId) && e.level === name).length;
+    history.run(`Move ${name}`, (t) => {
+      t.change('levels', before, after, (ls: LevelDatum[]) => applyLevels(ls));
+      if (moved.length) t.change('elements', { present: beforeEls, absent: [] } as EditState, { present: moved, absent: [] } as EditState, (st: EditState) => applyState(st));
+    });
+    setNotice(`${name} moved to ${elevation >= 0 ? '+' : ''}${elevation.toLocaleString('en-IN')} mm: ${moved.length} element${moved.length === 1 ? '' : 's'} followed${stay ? `; ${stay} kept as reference stay where they are` : ''}.`);
+    m.log(`Moved ${name} to ${elevation} mm; ${moved.length} hosted elements followed (one undo step).`);
+  };
+
+  const newLevel = (name: string, elevation: number) => {
+    if (revitLinked) return setNotice('This model is linked to Revit: add levels in Revit for now.');
+    if (!ensure()) return;
+    const n = name.trim();
+    if (!n) return setNotice('A level needs a name.');
+    if (levels.current.some((l) => l.name.toLowerCase() === n.toLowerCase())) return setNotice(`There is already a level named "${n}".`);
+    const before = levels.current;
+    const after = [...before, { name: n, z: Math.round((elevation + zeroY.current * 1000) * 10) / 10 }].sort((a, b) => a.z - b.z);
+    added.current.add(n);
+    history.run(`New level ${n}`, (t) => t.change('levels', before, after, (ls: LevelDatum[]) => applyLevels(ls)));
+    setNotice(`${n} added at ${elevation >= 0 ? '+' : ''}${elevation.toLocaleString('en-IN')} mm.`);
+  };
+
+  /** Why a level cannot be deleted now, or null. */
+  const levelDeleteWhy = (name: string): string | null => {
+    if (!added.current.has(name)) return 'levels from the model are deleted with their views (coming with the views work)';
+    const hosted = [...doc.current.values()].some((e) => e.level === name || e.hosting?.base.level === name || e.hosting?.top?.level === name);
+    return hosted || m.model?.elements.some((e) => e.level === name) ? 'elements are hosted on it' : null;
+  };
+  const deleteLevel = (name: string) => {
+    const why = levelDeleteWhy(name);
+    if (why) return setNotice(`${name} cannot be deleted: ${why}.`);
+    const before = levels.current;
+    const after = before.filter((l) => l.name !== name);
+    history.run(`Delete ${name}`, (t) => t.change('levels', before, after, (ls: LevelDatum[]) => applyLevels(ls)));
+    added.current.delete(name);
+  };
+
+  return { levelList, moveLevel, newLevel, deleteLevel, levelDeleteWhy, levelTick, nativePerform: perform, nativeDelete: del, nativePin: setPinned, nativeWhy: whyNot, nativeEditCount: edits };
 }

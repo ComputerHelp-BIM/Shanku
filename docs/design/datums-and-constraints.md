@@ -84,5 +84,7 @@ elevation marks (with the views work), Sync with Revit (it will carry hosting ac
 - **Hosting — done (engine 0.38.0, web 0.52.1):** the element model on levels and offsets; every native edit
   keeps it; saved in the `.shkp`. On adani.ifc all 4,440 converted elements host with exact heights and natural
   offsets (columns and beams on their levels, walls 650 under them, footing-to-plinth columns on Level 1).
-- **Next:** levels you can move (everything on them follows) and draw; grids and reference planes; work planes;
-  the picking and snapping engine; Align with locks; Move rebuilt.
+- **Levels — done (web 0.53.0, engine 0.39.0):** the Levels window (LL): move a level and what is hosted on it
+  follows (one undo), add levels, delete added empty ones; the model's own levels follow; saved in the `.shkp`.
+- **Next:** the picking and snapping engine and work planes; grids and reference planes drawn with it; Align
+  with locks; Move rebuilt. Renaming levels and deleting levels from the model come with the views work.

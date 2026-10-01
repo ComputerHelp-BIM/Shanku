@@ -69,7 +69,8 @@ export function packProject(model: { name: string; bytes: Uint8Array }, state: M
   if (state.graphics !== undefined && state.graphics !== null) put('shanku/graphics.json', canonical(state.graphics));
   if (state.rates !== undefined && state.rates !== null) put('shanku/rates.json', canonical(state.rates));
   // native edits: edited and created elements, one per line by id; deleted ids
-  const edits = state.edits as { elements: Array<{ id: string }>; deleted: string[] } | undefined;
+  const edits = state.edits as { elements: Array<{ id: string }>; deleted: string[]; levels?: Array<{ name: string; z: number }> } | undefined;
+  if (edits?.levels?.length) put('shanku/levels.json', canonical(edits.levels));
   if (edits?.elements.length) put('shanku/edits.jsonl', [...edits.elements].sort((a, b) => a.id.localeCompare(b.id)).map(line).join('\n') + '\n');
   if (edits?.deleted.length) put('shanku/deleted.json', canonical([...edits.deleted].sort()));
   // changes staged for Revit: the document they are for, and one change per line in a stable order
@@ -111,6 +112,7 @@ export function unpackProject(bytes: Uint8Array): { manifest: ProjectManifest; m
   const editsText = files['shanku/edits.jsonl'] ? strFromU8(files['shanku/edits.jsonl']) : '';
   const edited = editsText.split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l) as unknown);
   const deleted = (json('shanku/deleted.json') as string[] | undefined) ?? [];
+  const levels = json('shanku/levels.json') as Array<{ name: string; z: number }> | undefined;
   return {
     manifest,
     model: { name: manifest.model.fileName, bytes: model },
@@ -119,7 +121,7 @@ export function unpackProject(bytes: Uint8Array): { manifest: ProjectManifest; m
       graphics: opt(json('shanku/graphics.json')),
       rates: opt(json('shanku/rates.json')),
       pending: link && changes.length ? { key: link.documentKey, changes } : undefined,
-      edits: edited.length || deleted.length ? { elements: edited, deleted } : undefined,
+      edits: edited.length || deleted.length || levels?.length ? { elements: edited, deleted, ...(levels?.length ? { levels } : {}) } : undefined,
     },
   };
 }

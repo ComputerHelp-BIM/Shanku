@@ -59,6 +59,8 @@ export interface SavedPending<T = unknown> {
 export interface SavedEdits<T = unknown> {
   elements: T[];
   deleted: string[];
+  /** The levels when they differ from the model as opened (moved, added). */
+  levels?: Array<{ name: string; z: number }>;
 }
 export const saveEdits = (fileName: string, e: SavedEdits) => tx('readwrite', (s) => s.put(e, `edits:${fileName}`));
 export const loadEdits = <T>(fileName: string) => tx<SavedEdits<T>>('readonly', (s) => s.get(`edits:${fileName}`));

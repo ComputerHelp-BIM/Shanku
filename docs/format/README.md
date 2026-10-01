@@ -26,6 +26,7 @@ shanku/
   rates.json                the BOQ's rates (optional)
   edits.jsonl               native edits: edited and created elements, one per line by id (optional)
   deleted.json              native edits: ids of deleted elements (optional)
+  levels.json               native edits: the levels, when moved or added (optional): [{name, z}]
 revit/
   link.json                 the Revit document the project is linked to (optional)
   pending.jsonl             changes staged for Revit, not yet applied: one per line (optional)

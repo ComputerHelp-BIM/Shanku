@@ -1,6 +1,6 @@
 import { clearModel as clearSavedModel, saveModel as saveSessionModel } from './session';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, IfcClient, mergeModels, type Category, type MergeResult, type ParsedModel, type PropertyGroup, type SelectMode } from '@shanku/engine';
+import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, IfcClient, mergeModels, type Category, type Level, type MergeResult, type ParsedModel, type PropertyGroup, type SelectMode } from '@shanku/engine';
 import { fmtBytes, fmtCount, fmtMs } from './format';
 import type { PickedFile } from './openFile';
 
@@ -134,10 +134,12 @@ export function useShankuModel() {
    * Native edits: edited elements' geometry (a patch from their parameters) merged into the model, as live
    * updates are; `select` (GlobalIds) becomes the selection when given, else the selection is carried over.
    */
-  const applyEdit = useCallback((patch: ParsedModel, deleted: string[], select?: string[]): MergeResult | null => {
+  const applyEdit = useCallback((patch: ParsedModel, deleted: string[], select?: string[], levels?: Level[]): MergeResult | null => {
     const cur = modelRef.current;
     if (!cur) return null;
     const r = mergeModels(cur, patch, deleted, null);
+    // a level edit: the model's own list of levels (names, elevations) as the editor now has it
+    if (levels) r.model = { ...r.model, info: { ...r.model.info, levels } };
     modelRef.current = r.model;
     setModel(r.model);
     if (select) {

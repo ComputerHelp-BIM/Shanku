@@ -84,6 +84,7 @@ import { projectLabel } from './features/project/projectLabel';
 import { useNativeEditing } from './features/editing/useNativeEditing';
 import { ModifyTool } from './components/ModifyTool';
 import type { ModifyKind } from './lib/editChecks';
+import { LevelsTool } from './components/LevelsTool';
 
 /** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
 export interface AppStart {
@@ -188,10 +189,12 @@ export function App({ start }: { start?: AppStart } = {}) {
   // the project file: Save (Ctrl + S), Save As, and opening projects alongside models
   const { projectStatus, saveProject, saveProjectAs, openAnyFile } = useProjectFile({ m, openModelFile, setNotice, changes: [views, graphics, pending, colorSettings] });
   // native editing: Revit's Modify tools on Shanku's own model (docs/design/native-editing.md)
-  const { nativePerform, nativeDelete, nativePin, nativeWhy, nativeEditCount } = useNativeEditing({ m, history, setNotice, revitLinked });
+  const { levelList, moveLevel, newLevel, deleteLevel, levelDeleteWhy, levelTick, nativePerform, nativeDelete, nativePin, nativeWhy, nativeEditCount } = useNativeEditing({ m, history, setNotice, revitLinked });
+  const [levelsOpen, setLevelsOpen] = useState(false);
   const [modifyKind, setModifyKind] = useState<ModifyKind | null>(null);
   /** One route for every Modify command: models linked to Revit keep Changes for Revit for Move and Rotate. */
-  const modifyCmd = (cmd: ModifyKind | 'delete' | 'pin' | 'unpin') => {
+  const modifyCmd = (cmd: ModifyKind | 'delete' | 'pin' | 'unpin' | 'levels') => {
+    if (cmd === 'levels') return setLevelsOpen(true);
     if (revitLinked && (cmd === 'move' || cmd === 'rotate')) return openGeom(cmd);
     const why = nativeWhy();
     if (why) return setNotice(why);
@@ -292,6 +295,9 @@ export function App({ start }: { start?: AppStart } = {}) {
                 ).map(([k, label, keys, hint]) => (
                   <RibbonButton key={k} icon={k} label={label} disabled={!m.model} onClick={() => modifyCmd(k)} shortcutHint={`${hint} (${keys})`} />
                 ))}
+              </RibbonGroup>
+              <RibbonGroup label="Datum">
+                <RibbonButton icon="level" label="Levels" disabled={!m.model} onClick={() => modifyCmd('levels')} shortcutHint="move a level and what is hosted on it follows; add levels (LL)" />
               </RibbonGroup>
               <RibbonGroup label="Element">
                 <RibbonButton icon="delete" label="Delete" disabled={!m.model || revitLinked} onClick={() => modifyCmd('delete')} shortcutHint={revitLinked ? 'models linked to Revit: delete in Revit for now' : 'the selection (DE); Ctrl + Z brings it back'} />
@@ -710,6 +716,9 @@ export function App({ start }: { start?: AppStart } = {}) {
           </FloatingWindow>
           <FloatingWindow id="editGeom" title={geomMode === 'move' ? 'Move' : 'Rotate'} subtitle="staged for Revit" open={wins.editGeom} onClose={() => toggleWin('editGeom', false)} initial={{ w: 440, h: 330 }} minWidth={380} minHeight={260}>
             <EditGeometry mode={geomMode} count={selectedGids.length} disabledWhy={editWhy ? editWhy[0].toUpperCase() + editWhy.slice(1) + '.' : null} onMode={setGeomMode} onStage={stageGeometry} onClose={() => toggleWin('editGeom', false)} />
+          </FloatingWindow>
+          <FloatingWindow id="levels" title="Levels" subtitle="datums" open={levelsOpen} onClose={() => setLevelsOpen(false)} initial={{ w: 460, h: 460 }}>
+            {levelsOpen ? <LevelsTool key={levelTick} rows={levelList()} why={!m.model ? 'Open a model first.' : revitLinked ? 'This model is linked to Revit: change its levels in Revit for now (Sync with Revit comes next).' : null} deleteWhy={levelDeleteWhy} onMove={moveLevel} onNew={newLevel} onDelete={deleteLevel} /> : null}
           </FloatingWindow>
           <FloatingWindow id="modify" title={modifyKind ? modifyKind[0].toUpperCase() + modifyKind.slice(1) : 'Modify'} subtitle="Shanku's model" open={!!modifyKind} onClose={() => setModifyKind(null)} initial={{ w: 520, h: 420 }}>
             {modifyKind ? <ModifyTool kind={modifyKind} count={m.selection.length} disabledWhy={nativeWhy()} onKind={setModifyKind} onApply={nativePerform} onClose={() => setModifyKind(null)} /> : null}
