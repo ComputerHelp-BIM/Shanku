@@ -24,6 +24,8 @@ shanku/
   views/<id>.json           one file per view: kind, level, ranges, graphics, display, dimensions
   graphics.json             the 3D view's graphics (optional)
   rates.json                the BOQ's rates (optional)
+  edits.jsonl               native edits: edited and created elements, one per line by id (optional)
+  deleted.json              native edits: ids of deleted elements (optional)
 revit/
   link.json                 the Revit document the project is linked to (optional)
   pending.jsonl             changes staged for Revit, not yet applied: one per line (optional)
@@ -59,6 +61,14 @@ does.
 4. **One file per view** (`shanku/views/<file>`): the view's id made safe for file names (`/ \ : * ? " < > |`
    and spaces become `_`; a clash gets `-2`, `-3`…), the id itself kept inside the file and in `views.json`.
 5. File and folder names are ASCII-safe; the model keeps its own name under `model/`.
+
+## Native edits
+
+Until Shanku writes the model's IFC itself, a project keeps the IFC as it arrived plus its **edits**:
+`shanku/edits.jsonl` holds every edited or created element as a parametric element
+(`schemas/element.schema.json`: kind, mark, level, heights, and its point, line or outline), one per line,
+sorted by id; `shanku/deleted.json` the ids deleted. Opening the project applies them to the model. These
+are additions to schema 2 — older readers ignore them.
 
 ## Revit and IFC (decision 14A)
 

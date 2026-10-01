@@ -17,6 +17,13 @@ const state = {
   graphics: { categories: { Slab: { transparency: 70 } } },
   pending: { key: 'doc-1', changes: [{ globalId: 'g2', name: 'Mark', value: 'C2', kind: 'param' }, { globalId: 'g1', name: 'Comments', value: 'x', kind: 'param', oldDisplay: null }] },
   rates: { concrete: 7200 },
+  edits: {
+    elements: [
+      { id: 'zz', kind: 'column', mark: 'C2', material: 'M25', level: 'Level 2', z0: 0, z1: 3000, shape: 'rect', center: [6000, 0], width: 300, length: 600, angle: 0 },
+      { id: 'aa', kind: 'beam', mark: 'B1', material: 'M25', level: 'Level 2', z0: 2550, z1: 3000, start: [0, 0], end: [4000, 0], thickness: 230, depth: 450, pinned: true },
+    ],
+    deleted: ['g9', 'g3'],
+  },
 };
 const files = (b: Uint8Array) => unzipSync(b);
 const schema = (n: string) => JSON.parse(readFileSync(join(__dirname, '../../../docs/format/schemas', n), 'utf8'));
@@ -31,6 +38,7 @@ describe('.shkp, schema 2 (docs/format)', () => {
     expect(p.state.rates).toEqual(state.rates);
     expect(p.state.pending?.key).toBe('doc-1');
     expect(new Set(p.state.pending?.changes)).toEqual(new Set(state.pending.changes));
+    expect(p.state.edits).toEqual({ elements: [state.edits.elements[1], state.edits.elements[0]], deleted: ['g3', 'g9'] }); // sorted by id
   });
 
   it('is deterministic: the same project saves to identical bytes', () => {
@@ -41,7 +49,7 @@ describe('.shkp, schema 2 (docs/format)', () => {
 
   it('is laid out for Git: sorted keys, a file per view, a line per change', () => {
     const f = files(packProject(model, state, '0.51.0'));
-    expect(Object.keys(f)).toEqual(['model/adani.ifc', 'revit/link.json', 'revit/pending.jsonl', 'shanku.json', 'shanku/graphics.json', 'shanku/rates.json', 'shanku/views.json', 'shanku/views/3d.json', 'shanku/views/plan_Level_2-2.json', 'shanku/views/plan_Level_2.json']);
+    expect(Object.keys(f)).toEqual(['model/adani.ifc', 'revit/link.json', 'revit/pending.jsonl', 'shanku.json', 'shanku/deleted.json', 'shanku/edits.jsonl', 'shanku/graphics.json', 'shanku/rates.json', 'shanku/views.json', 'shanku/views/3d.json', 'shanku/views/plan_Level_2-2.json', 'shanku/views/plan_Level_2.json']);
     expect(JSON.parse(strFromU8(f['shanku/views.json']))).toEqual([
       { id: '3d', file: '3d.json' },
       { id: 'plan:Level 2', file: 'plan_Level_2.json' },
@@ -68,6 +76,7 @@ describe('.shkp, schema 2 (docs/format)', () => {
     check('link.schema.json', JSON.parse(strFromU8(f['revit/link.json'])));
     for (const [k, v] of Object.entries(f)) if (k.startsWith('shanku/views/')) check('view.schema.json', JSON.parse(strFromU8(v)));
     for (const l of strFromU8(f['revit/pending.jsonl']).trim().split('\n')) check('pending.schema.json', JSON.parse(l));
+    for (const l of strFromU8(f['shanku/edits.jsonl']).trim().split('\n')) check('element.schema.json', JSON.parse(l));
   });
 
   it('opens Shanku 0.50.0 .shk files (schema 1)', () => {

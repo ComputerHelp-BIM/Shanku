@@ -1,4 +1,4 @@
-# @shanku/web 0.51.0
+# @shanku/web 0.52.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,11 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.52.0 — 2026-10-01
+- **Native editing, stage 1** (`docs/design/native-editing.md`): a **Modify** ribbon tab — Move, Copy, Rotate (about each element or the selection), Mirror (horizontal, vertical or angled axis through the selection; a copy unless cleared), Array (spacing, count), Offset (beams and walls), Delete, Pin, Unpin — with typed values (`components/ModifyTool.tsx`, checks in `lib/editChecks.ts` `modifyProblem`) and Revit's shortcuts MV, CO, RO, MM, AR, OF, DE, PN, UP. `features/editing/useNativeEditing.ts`: the open model read as parametric elements on first use (engine `deriveElement`; reference elements are left as they are, with the reason), each edit one transaction in the app's history (one Ctrl + Z), its geometry merged into the model as live updates are (engine `elementPatch`, `mergeModels` keeping each element's source). Copies become the selection; pinned and reference elements are refused with the reason. Edits are kept on this device as they happen (restored on reopen) and saved in the `.shkp` (`shanku/edits.jsonl`, `shanku/deleted.json`, `docs/format/schemas/element.schema.json`). Models linked to Revit keep Changes for Revit (Sync with Revit is stage 3).
+- **CO is now Copy**, as in Revit; Consistent Colors stays on the view bar.
+- Checked in the browser (production build): Move exact to the millimetre, undo and redo, Copy / Mirror / Array add exactly the right elements, a pinned element refuses Move, Delete and its undo, edits restored after a reload and from a saved `.shkp` in a fresh browser; on `adani.ifc` the first edit takes about 2.6 s (the parametric model is built), later ones about 0.4 s; Revit-linked editing unchanged.
 
 ### 0.51.0 — 2026-09-30
 - **`.shkp`, an open project format** (`docs/format/README.md`, schema 2, JSON schemas in `docs/format/schemas/`): `shanku.json` manifest, `model/<name>.ifc`, `shanku/views.json` + one file per view, `shanku/graphics.json`, `shanku/rates.json`, `revit/link.json` + `revit/pending.jsonl` (one change per line, sorted); canonical JSON (sorted keys, 2 spaces, final newline), no save time in content, zip entries in a fixed order with a fixed timestamp — an unchanged project saves to identical bytes. Extensions: `.shkp` project, `.shkf` family and `.shkt` template reserved (`.shp` and `.sht` avoided: the ESRI Shapefile and MicroStation's sheet files). Schema 1 (`.shk`, 0.50.0) still opens and saves as a new `.shkp`. Tests: round trip, byte-identical saves, the Git layout, validation against the published schemas (ajv), schema 1, refusals.

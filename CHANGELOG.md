@@ -2,6 +2,19 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.52.0 — 2026-10-01
+
+### Added
+- Native editing: the Modify tab (Move, Copy, Rotate, Mirror, Array, Offset, Delete, Pin, Unpin), typed values, one undo each; edits kept on the device and in the `.shkp`. Engine 0.37.0 (geometry from parameters), brand 1.13.0 (Modify icons).
+
+### Changed
+- CO is Copy (as in Revit), no longer Consistent Colors.
+
+## Engine 0.36.0 — 2026-10-01
+
+### Added
+- Parametric elements, conversion from IFC geometry (checked on adani.ifc), the Modify operations and undo/redo, as engine logic.
+
 ## 0.51.0 — 2026-09-30
 
 ### Changed

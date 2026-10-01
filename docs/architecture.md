@@ -38,7 +38,8 @@ apps/web/src/
     pipeline/        usePipelineFeature — DXF → 3D
     selection/       usePasteMarks — selecting by pasted marks
     progress/        useAppProgress — the progress display's tasks
-    project/         useProjectFile — Save / Save As / opening projects (.shk), the title bar's status
+    project/         useProjectFile — Save / Save As / opening projects (.shkp), the title bar's status
+    editing/         useNativeEditing — the Modify tab on Shanku's own parametric model (native edits)
   components/        UI pieces (windows, panels, dialogs), no app state of their own
   lib/               plain logic, unit-tested (paramEdits, liveUpdate, exportPlan, editChecks, sharedModel…)
 ```

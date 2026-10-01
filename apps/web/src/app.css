@@ -851,3 +851,5 @@
 .app-share-model__mine li { display: flex; align-items: center; gap: 8px; }
 .app-share-model__mine li > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-share-model__mine em { font-style: normal; color: var(--text-secondary); }
+.app-ribbon__note { align-self: center; margin: 0 12px; font-size: 12px; color: var(--text-secondary); }
+.app-geom__check { display: flex; align-items: center; gap: 6px; font-size: 13px; }

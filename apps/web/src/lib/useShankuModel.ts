@@ -130,6 +130,23 @@ export function useShankuModel() {
     [],
   );
 
+  /**
+   * Native edits: edited elements' geometry (a patch from their parameters) merged into the model, as live
+   * updates are; `select` (GlobalIds) becomes the selection when given, else the selection is carried over.
+   */
+  const applyEdit = useCallback((patch: ParsedModel, deleted: string[], select?: string[]): MergeResult | null => {
+    const cur = modelRef.current;
+    if (!cur) return null;
+    const r = mergeModels(cur, patch, deleted, null);
+    modelRef.current = r.model;
+    setModel(r.model);
+    if (select) {
+      const want = new Set(select);
+      setSelection(r.model.elements.filter((e) => want.has(e.globalId)).map((e) => e.index));
+    } else setSelection((sel) => sel.flatMap((i) => (r.indexMap.has(i) ? [r.indexMap.get(i)!] : [])));
+    return r;
+  }, []);
+
   /** Changes the mark rules, saves them, and re-detects marks on the open model. */
   const setMarkRules = useCallback(
     async (rules: string[]) => {
@@ -246,7 +263,7 @@ export function useShankuModel() {
   );
 
   return useMemo(
-    () => ({ load, model, selection, setSelection, properties, activity, log, open, applyUpdate, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules, close }),
-    [close, load, model, selection, properties, activity, log, open, applyUpdate, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules],
+    () => ({ load, model, selection, setSelection, properties, activity, log, open, applyUpdate, applyEdit, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules, close }),
+    [close, load, model, selection, properties, activity, log, open, applyUpdate, applyEdit, pick, boxSelect, selectWhere, find, markRules, setMarkRules, gradeRules, setGradeRules],
   );
 }

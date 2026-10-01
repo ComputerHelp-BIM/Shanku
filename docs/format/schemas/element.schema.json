@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shanku.app/format/2/element.schema.json",
+  "title": "A parametric element (one line of shanku/edits.jsonl)",
+  "type": "object",
+  "required": ["id", "kind", "mark", "level", "z0", "z1"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1, "description": "The IFC GlobalId (or the drawing's stable id)." },
+    "kind": { "enum": ["column", "pedestal", "beam", "wall", "slab", "chajja", "footing", "pcc"] },
+    "mark": { "type": "string" },
+    "material": { "type": ["string", "null"] },
+    "level": { "type": "string" },
+    "type": { "type": "string" },
+    "z0": { "type": "number", "description": "Bottom, mm from ±0." },
+    "z1": { "type": "number", "description": "Top, mm from ±0." },
+    "shape": { "enum": ["rect", "round"] },
+    "center": { "$ref": "#/$defs/pt" },
+    "width": { "type": "number" },
+    "length": { "type": "number" },
+    "diameter": { "type": "number" },
+    "angle": { "type": "number", "description": "Degrees counter-clockwise from +X." },
+    "start": { "$ref": "#/$defs/pt" },
+    "end": { "$ref": "#/$defs/pt" },
+    "thickness": { "type": "number" },
+    "depth": { "type": "number" },
+    "outline": { "type": "array", "items": { "$ref": "#/$defs/pt" }, "minItems": 3 },
+    "holes": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/$defs/pt" }, "minItems": 3 } },
+    "pinned": { "type": "boolean" },
+    "source": { "type": "object" }
+  },
+  "$defs": { "pt": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 } }
+}

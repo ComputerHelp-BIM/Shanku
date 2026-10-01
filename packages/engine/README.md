@@ -1,4 +1,4 @@
-# @shanku/engine 0.36.0
+# @shanku/engine 0.37.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.37.0 — 2026-10-01
+- `edit/geometry.ts`: `meshOfElement` (prisms from parameters in the viewer's space, slab outlines with holes triangulated by three's earcut) and `elementPatch` (edited elements as a patch for `mergeModels`, with bounds and volume from their parameters). Tested by reading drawn geometry back with `deriveElement`: the same parameters.
+- `mergeModels(…, source: number | null)`: null keeps each patch element's own source (native edits keep their properties).
 
 ### 0.36.0 — 2026-10-01
 - **Native editing, stage 1 core** (`docs/design/native-editing.md`): `model/parametric.ts` — parametric elements (point-, line- and area-based), `fromExchange` (DXF → 3D), and `deriveElement` from IFC geometry: plan rectangle (rotating calipers) or circle for columns, pedestals, footings; centreline, width and depth for beams and walls; top-face outline and holes for slabs. Only clean shapes convert; the rest stays reference with the reason (separate pieces, steps, non-rectangular), and the parameters must reproduce the IFC's own volume within 5 %. On `adani.ifc`: 4,440 of 4,448 structural elements convert (columns and beams all within 1 % of their IFC volume); 8 stepped slabs stay reference. `edit/ops.ts` — Move, Copy, Rotate, Mirror (copies by default), linear Array, Offset, Align (centre or nearest face; non-parallel refused), Delete, Pin; pinned elements refused with the reason; outlines stay counter-clockwise. `edit/history.ts` — undo and redo, one step per action. `edit/ids.ts` — IFC GlobalIds for copies.

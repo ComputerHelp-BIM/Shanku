@@ -55,7 +55,16 @@ export interface SavedPending<T = unknown> {
 }
 
 /** Everything kept for one model: what a project file carries besides the model itself. */
+/** Native edits to a model: the edited and created elements as they are now, and the deleted ones. */
+export interface SavedEdits<T = unknown> {
+  elements: T[];
+  deleted: string[];
+}
+export const saveEdits = (fileName: string, e: SavedEdits) => tx('readwrite', (s) => s.put(e, `edits:${fileName}`));
+export const loadEdits = <T>(fileName: string) => tx<SavedEdits<T>>('readonly', (s) => s.get(`edits:${fileName}`));
+
 export interface ModelState {
+  edits?: SavedEdits;
   views?: unknown;
   graphics?: unknown;
   pending?: SavedPending;
@@ -78,12 +87,14 @@ export async function snapshotFor(fileName: string): Promise<ModelState> {
     graphics: await loadGraphics(fileName),
     pending: link && changes?.length ? { key: link.key, changes } : undefined,
     rates: read(`shanku.rates.${fileName}`) ?? undefined,
+    edits: (await loadEdits(fileName)) ?? undefined,
   };
 }
 
 /** Writes a model's kept state (from a project file) so opening the model restores it. */
 export async function seedFrom(fileName: string, st: ModelState): Promise<void> {
   if (st.views !== undefined) await saveViews(fileName, st.views);
+  if (st.edits !== undefined) await saveEdits(fileName, st.edits);
   if (st.graphics !== undefined) await saveGraphics(fileName, st.graphics);
   if (st.pending?.key && st.pending.changes.length) localStorage.setItem(`shanku.revitPending.${st.pending.key}`, JSON.stringify(st.pending.changes));
   if (st.rates !== undefined) localStorage.setItem(`shanku.rates.${fileName}`, JSON.stringify(st.rates));

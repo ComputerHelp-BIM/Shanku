@@ -99,6 +99,9 @@ Sync is reviewed in Changes for Revit, checked, and applied as one undo in Revit
   checked on `adani.ifc` (4,440 of 4,448 structural elements convert, each reproducing its IFC volume within
   5 %, columns and beams within 1 %; 8 stepped slabs stay reference); Move, Copy, Rotate, Mirror, Array,
   Offset, Align, Delete, Pin; undo and redo. Pure functions, unit-tested.
-- **Stage 1 next:** edited elements drawn from their records (their original triangles hidden), the Modify tab
-  with picking, snaps, temporary dimensions and typed values, Ctrl + Z / Ctrl + Y, elements saved in the
-  `.shkp` (`shanku/elements.jsonl`), IFC written on save.
+- **Stage 1 — done (0.52.0):** the Modify tab with typed values (Move, Copy, Rotate, Mirror, Array, Offset,
+  Delete, Pin, Unpin), one undo each in the app's history; edited geometry merged into the model as live
+  updates are; edits kept on the device and in the `.shkp` (`shanku/edits.jsonl`, `shanku/deleted.json`, until
+  Shanku writes the IFC). First edit on adani.ifc ≈ 2.6 s (the parametric model is built), later ≈ 0.4 s.
+- **Stage 1 still to come:** Align (needs picking a reference), picking points with snaps and temporary
+  dimensions for every tool, Revit-style face and edge dimensions, IFC written from the edited model.

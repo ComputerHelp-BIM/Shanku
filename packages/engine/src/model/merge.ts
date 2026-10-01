@@ -93,9 +93,10 @@ export interface MergeResult {
 
 /**
  * Merges an aligned patch into the model. `deleted` are GlobalIds removed in Revit. Elements of the
- * patch take `source` (the patch's slot in the IFC worker, for their properties).
+ * patch take `source` (the patch's slot in the IFC worker, for their properties); null keeps each patch
+ * element's own (native edits: an edited element keeps its properties' source).
  */
-export function mergeModels(base: ParsedModel, patch: ParsedModel, deleted: readonly string[], source: number): MergeResult {
+export function mergeModels(base: ParsedModel, patch: ParsedModel, deleted: readonly string[], source: number | null): MergeResult {
   const byGid = new Map(patch.elements.map((e) => [e.globalId, e]));
   const gone = new Set(deleted);
   const elements: ElementRecord[] = [];
@@ -107,7 +108,7 @@ export function mergeModels(base: ParsedModel, patch: ParsedModel, deleted: read
     const up = byGid.get(e.globalId);
     if (up) {
       const at = elements.length;
-      elements.push({ ...up, index: at, source });
+      elements.push({ ...up, index: at, source: source ?? up.source });
       indexMap.set(e.index, at);
       patchNew.set(up.index, at);
       byGid.delete(e.globalId);
@@ -124,7 +125,7 @@ export function mergeModels(base: ParsedModel, patch: ParsedModel, deleted: read
   for (const up of patch.elements) {
     if (!byGid.has(up.globalId)) continue; // already placed
     const at = elements.length;
-    elements.push({ ...up, index: at, source });
+    elements.push({ ...up, index: at, source: source ?? up.source });
     patchNew.set(up.index, at);
     added++;
   }

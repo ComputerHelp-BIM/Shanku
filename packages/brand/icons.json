@@ -243,6 +243,34 @@
     "save": {
       "label": "Save",
       "outline": "<path d=\"M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z\"></path><path d=\"M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7\"></path><path d=\"M7 3v4a1 1 0 0 0 1 1h7\"></path>"
+    },
+    "copy": {
+      "label": "Copy",
+      "outline": "<rect x=\"8\" y=\"8\" width=\"14\" height=\"14\" rx=\"2\"></rect><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"></path>"
+    },
+    "mirror": {
+      "label": "Mirror",
+      "outline": "<path d=\"m3 7 5 5-5 5V7\"></path><path d=\"m21 7-5 5 5 5V7\"></path><path d=\"M12 20v2\"></path><path d=\"M12 14v2\"></path><path d=\"M12 8v2\"></path><path d=\"M12 2v2\"></path>"
+    },
+    "array": {
+      "label": "Array",
+      "outline": "<rect x=\"2\" y=\"8\" width=\"5\" height=\"8\" rx=\"1\"></rect><rect x=\"9.5\" y=\"8\" width=\"5\" height=\"8\" rx=\"1\"></rect><rect x=\"17\" y=\"8\" width=\"5\" height=\"8\" rx=\"1\"></rect>"
+    },
+    "offset": {
+      "label": "Offset",
+      "outline": "<path d=\"M3 15 15 3\"></path><path d=\"M9 21 21 9\"></path><path d=\"m10 11 4 4\"></path><path d=\"M14 11v4h-4\"></path>"
+    },
+    "delete": {
+      "label": "Delete",
+      "outline": "<path d=\"M3 6h18\"></path><path d=\"M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6\"></path><path d=\"M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2\"></path>"
+    },
+    "pin": {
+      "label": "Pin",
+      "outline": "<path d=\"M12 17v5\"></path><path d=\"M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z\"></path>"
+    },
+    "unpin": {
+      "label": "Unpin",
+      "outline": "<path d=\"M12 17v5\"></path><path d=\"M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89\"></path><path d=\"m2 2 20 20\"></path><path d=\"M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11\"></path>"
     }
   }
 }

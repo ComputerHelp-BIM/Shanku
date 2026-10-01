@@ -42,3 +42,39 @@ export function typeNameProblem(name: string, taken: readonly string[]): string 
   if (taken.includes(name)) return 'The family already has a type with this name.';
   return null;
 }
+
+/** A native Modify request with typed values (mm, degrees), as the Modify dialog builds it. */
+export type ModifyRequest =
+  | { kind: 'move' | 'copy'; dx: number; dy: number; dz: number }
+  | { kind: 'rotate'; angle: number; about: 'each' | 'group' }
+  | { kind: 'mirror'; axis: 'horizontal' | 'vertical' | 'angle'; angle: number; copy: boolean }
+  | { kind: 'array'; dx: number; dy: number; dz: number; count: number }
+  | { kind: 'offset'; distance: number; copy: boolean };
+export type ModifyKind = ModifyRequest['kind'];
+
+const LIMIT = 1_000_000; // 1 km
+
+/** Why a Modify request cannot be applied, or null (the same limits as the add-in's edits). */
+export function modifyProblem(r: ModifyRequest): string | null {
+  const nums = Object.entries(r).filter(([, v]) => typeof v === 'number') as Array<[string, number]>;
+  if (nums.some(([, v]) => Number.isNaN(v))) return 'A value is not a number.';
+  switch (r.kind) {
+    case 'move':
+    case 'copy':
+      if (!r.dx && !r.dy && !r.dz) return `Type a distance to ${r.kind} by.`;
+      return Math.hypot(r.dx, r.dy, r.dz) > LIMIT ? 'That is more than 1 km.' : null;
+    case 'rotate':
+      if (!r.angle) return 'Type an angle.';
+      return Math.abs(r.angle) > 360 ? 'Turn by at most one full turn (360°).' : null;
+    case 'mirror':
+      return r.axis === 'angle' && Math.abs(r.angle) > 360 ? 'An axis angle is at most 360°.' : null;
+    case 'array':
+      if (!Number.isInteger(r.count) || r.count < 2) return 'An array needs a count of 2 or more (the original included).';
+      if (r.count > 500) return 'At most 500 in one array.';
+      if (!r.dx && !r.dy && !r.dz) return 'Type the spacing between them.';
+      return Math.hypot(r.dx, r.dy, r.dz) * (r.count - 1) > LIMIT ? 'The array would reach more than 1 km.' : null;
+    case 'offset':
+      if (!r.distance) return 'Type the distance (positive: to the left of the beam’s start → end).';
+      return Math.abs(r.distance) > LIMIT ? 'That is more than 1 km.' : null;
+  }
+}

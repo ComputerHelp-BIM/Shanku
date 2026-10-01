@@ -81,6 +81,9 @@ import { useViewsFeature, type ViewsFeatureLate } from './features/views/useView
 import { useProjectFile } from './features/project/useProjectFile';
 import { isProjectFile } from './lib/project';
 import { projectLabel } from './features/project/projectLabel';
+import { useNativeEditing } from './features/editing/useNativeEditing';
+import { ModifyTool } from './components/ModifyTool';
+import type { ModifyKind } from './lib/editChecks';
 
 /** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
 export interface AppStart {
@@ -184,6 +187,18 @@ export function App({ start }: { start?: AppStart } = {}) {
   const { pipe, pipeline, showQa } = usePipelineFeature({ drawingView, dx, m, setActiveView, setNotice, toggleWin });
   // the project file: Save (Ctrl + S), Save As, and opening projects alongside models
   const { projectStatus, saveProject, saveProjectAs, openAnyFile } = useProjectFile({ m, openModelFile, setNotice, changes: [views, graphics, pending, colorSettings] });
+  // native editing: Revit's Modify tools on Shanku's own model (docs/design/native-editing.md)
+  const { nativePerform, nativeDelete, nativePin, nativeWhy, nativeEditCount } = useNativeEditing({ m, history, setNotice, revitLinked });
+  const [modifyKind, setModifyKind] = useState<ModifyKind | null>(null);
+  /** One route for every Modify command: models linked to Revit keep Changes for Revit for Move and Rotate. */
+  const modifyCmd = (cmd: ModifyKind | 'delete' | 'pin' | 'unpin') => {
+    if (revitLinked && (cmd === 'move' || cmd === 'rotate')) return openGeom(cmd);
+    const why = nativeWhy();
+    if (why) return setNotice(why);
+    if (cmd === 'delete') return nativeDelete();
+    if (cmd === 'pin' || cmd === 'unpin') return nativePin(cmd === 'pin');
+    setModifyKind(cmd);
+  };
   const { openFromDisk, openSample, sampleBusy } = useFileOpening({ diagnosedFor, m, openDrawing, openModelFile: openAnyFile, start });
   const commandDispatchLate = useRef({} as CommandDispatchLate);
   const { runCommand } = useCommandDispatch({ activeDoc, activeView, annSel, curSelection, dimSel, drawingView, dx, history, m, prevSelection, sectionBox, sectionTool, setAnnSel, setDimSel, setDimTool, setDisplayStyle, setHidden, setMeasure, setNotice, setOpenViews, setReveal, setSectionBox, setVgOpen, setViews, setZoomRegion, viewport, viewsRef, zoomRegion, late: commandDispatchLate });
@@ -193,7 +208,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   const { contextItems, dxt, dxtRef, findElement, getCommands, info, intents, load, sel, selLabel, selectCategory, selectLevel, toggleExplode } = useAppCommands({ saveProject, saveProjectAs, activeDoc, activeModelView, autoUpdate, bridge, canExport, canLive, canParams, cancelSection, canvasTheme, colorSettings, copyViewLink, cycle, cycleCanvasTheme, dimTool, displayStyle, dock, downloadIfc, drawingView, duplicateModelView, dx, edges, editWhy, explode, exportToRevit, exportWhy, fullscreen, getSelectionFromRevit, hidden, history, lastCommand, liveBusy, liveCount, loadFromRevit, m, measure, notice, openDxfFromDisk, openFromDisk, openGeom, openGuide, openPanels, openRevit, openSample, openView, pending, pipe, pipeline, preference, prevSelection, reveal, revit, revitLoading, revitProps, revitSync, run, runChanges, runCommand, search, sectionBox, sectionTool, sendSelectionToRevit, setAutoUpdate, setBrowserFocus, setColorMode, setDimTool, setDisplayStyle, setEdges, setElemVgOpen, setExplode, setFiltersOpen, setGradeDialog, setLinkDialog, setMarkDialog, setMarksDialog, setMeasure, setNotice, setRevitSync, setShadows, setVgOpen, setViews, setVtOpen, shadows, startSection, toggleFullscreen, toggleWin, updateFromRevit, viewHidden, viewport, views, viewsRef, wins });
   const { tasks } = useAppProgress({ bridge, dx, load, pipeline });
 
-  commandDispatchLate.current = { dxtRef, openGeom, activeModelView, cancelSection, deleteDimensions };
+  commandDispatchLate.current = { dxtRef, openGeom, modifyCmd, activeModelView, cancelSection, deleteDimensions };
   revitLinkLate.current = { inModel, pipeline };
   viewsFeatureLate.current = { dx, setIfcColor, sel };
   return (
@@ -261,6 +276,29 @@ export function App({ start }: { start?: AppStart } = {}) {
               shortcutHint="bill of quantities with rates and Excel export"
             />
           </RibbonGroup>
+            </>
+          ) : ribbonTab === 'modify' ? (
+            <>
+              <RibbonGroup label="Modify">
+                {(
+                  [
+                    ['move', 'Move', 'MV', 'by a typed distance'],
+                    ['copy', 'Copy', 'CO', 'copies by a typed distance; the copies become the selection'],
+                    ['rotate', 'Rotate', 'RO', 'by a typed angle, about each element or the selection'],
+                    ['mirror', 'Mirror', 'MM', 'a mirrored copy about an axis through the selection'],
+                    ['array', 'Array', 'AR', 'copies in a row by a spacing'],
+                    ['offset', 'Offset', 'OF', 'beams and walls parallel by a distance'],
+                  ] as const
+                ).map(([k, label, keys, hint]) => (
+                  <RibbonButton key={k} icon={k} label={label} disabled={!m.model} onClick={() => modifyCmd(k)} shortcutHint={`${hint} (${keys})`} />
+                ))}
+              </RibbonGroup>
+              <RibbonGroup label="Element">
+                <RibbonButton icon="delete" label="Delete" disabled={!m.model || revitLinked} onClick={() => modifyCmd('delete')} shortcutHint={revitLinked ? 'models linked to Revit: delete in Revit for now' : 'the selection (DE); Ctrl + Z brings it back'} />
+                <RibbonButton icon="pin" label="Pin" disabled={!m.model || revitLinked} onClick={() => modifyCmd('pin')} shortcutHint="protects the selection from changes (PN)" />
+                <RibbonButton icon="unpin" label="Unpin" disabled={!m.model || revitLinked} onClick={() => modifyCmd('unpin')} shortcutHint="(UP)" />
+              </RibbonGroup>
+              {nativeEditCount ? <p className="app-ribbon__note">{nativeEditCount} edited element{nativeEditCount === 1 ? '' : 's'} · kept on this device and saved with the project</p> : null}
             </>
           ) : ribbonTab === 'annotate' ? (
             <>
@@ -672,6 +710,9 @@ export function App({ start }: { start?: AppStart } = {}) {
           </FloatingWindow>
           <FloatingWindow id="editGeom" title={geomMode === 'move' ? 'Move' : 'Rotate'} subtitle="staged for Revit" open={wins.editGeom} onClose={() => toggleWin('editGeom', false)} initial={{ w: 440, h: 330 }} minWidth={380} minHeight={260}>
             <EditGeometry mode={geomMode} count={selectedGids.length} disabledWhy={editWhy ? editWhy[0].toUpperCase() + editWhy.slice(1) + '.' : null} onMode={setGeomMode} onStage={stageGeometry} onClose={() => toggleWin('editGeom', false)} />
+          </FloatingWindow>
+          <FloatingWindow id="modify" title={modifyKind ? modifyKind[0].toUpperCase() + modifyKind.slice(1) : 'Modify'} subtitle="Shanku's model" open={!!modifyKind} onClose={() => setModifyKind(null)} initial={{ w: 520, h: 420 }}>
+            {modifyKind ? <ModifyTool kind={modifyKind} count={m.selection.length} disabledWhy={nativeWhy()} onKind={setModifyKind} onApply={nativePerform} onClose={() => setModifyKind(null)} /> : null}
           </FloatingWindow>
           <FloatingWindow id="typeProps" title="Type Properties" open={wins.typeProps} onClose={() => toggleWin('typeProps', false)} initial={{ w: 760, h: 620 }} minWidth={480} minHeight={360}>
             {(() => {

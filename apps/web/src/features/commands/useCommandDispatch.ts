@@ -10,6 +10,8 @@ import { useCallback, useEffect } from 'react';
 export interface CommandDispatchLate {
   dxtRef: React.MutableRefObject<{ display: import('../../../../../packages/engine/src/render/DrawingViewer').DrawingDisplay; setDisplay: (patch: Partial<import('../../../../../packages/engine/src/render/DrawingViewer').DrawingDisplay>) => void; tool: import('../../../../../packages/engine/src/render/DrawingViewer').DrawingTool | null; setTool: React.Dispatch<React.SetStateAction<import('../../../../../packages/engine/src/render/DrawingViewer').DrawingTool | null>>; menu: { x: number; y: number; point: [number, number] | null; } | null; openMenu: (x: number, y: number) => void; closeMenu: () => void; menuItems: () => import('../../lib/menu').MenuItem[]; act: (a: import('../../lib/drawingMenu').DrawingAction, point?: [number, number] | null) => void; quickProperties: boolean; setQuickProperties: (on: boolean) => void; quickSelectOpen: boolean; setQuickSelectOpen: React.Dispatch<React.SetStateAction<boolean>>; findOpen: boolean; setFindOpen: React.Dispatch<React.SetStateAction<boolean>>; index: import('../../../../../packages/engine/src/dxf/entityIndex').EntityIndex | null; visible: number[]; visibleSet: Set<number>; selectObjects: (entities: number[], zoom?: boolean) => void; commands: () => import('../../lib/commands').AppCommand[]; } | null>;
   openGeom: (mode: "move" | "rotate") => void;
+  /** Revit's Modify commands (native, or for Revit-linked models the Changes for Revit route). */
+  modifyCmd: (cmd: 'move' | 'copy' | 'rotate' | 'mirror' | 'array' | 'offset' | 'delete' | 'pin' | 'unpin') => void;
   activeModelView: import('../../lib/views').ModelView | null;
   cancelSection: () => void;
   deleteDimensions: (ids: string[]) => void;
@@ -117,9 +119,23 @@ export function useCommandDispatch(deps: CommandDispatchDeps) {
           if (!model) return setNotice('Open a model to dimension it.');
           return setDimTool(cmd === 'dimAligned' ? 'aligned' : 'spotElevation');
         case 'moveTool':
-          return late.current.openGeom('move');
+          return late.current.modifyCmd('move');
         case 'rotateTool':
-          return late.current.openGeom('rotate');
+          return late.current.modifyCmd('rotate');
+        case 'copyTool':
+          return late.current.modifyCmd('copy');
+        case 'mirrorTool':
+          return late.current.modifyCmd('mirror');
+        case 'arrayTool':
+          return late.current.modifyCmd('array');
+        case 'offsetTool':
+          return late.current.modifyCmd('offset');
+        case 'deleteTool':
+          return late.current.modifyCmd('delete');
+        case 'pinTool':
+          return late.current.modifyCmd('pin');
+        case 'unpinTool':
+          return late.current.modifyCmd('unpin');
         case 'sectionBox': {
           if (isTwoD(late.current.activeModelView ?? undefined)) return setNotice('Section boxes are for 3D views; plans and sections have a view range (Properties).');
           if (!sectionBox && !sel.length) return void needSelection();

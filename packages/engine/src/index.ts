@@ -37,3 +37,4 @@ export * from './model/parametric';
 export * from './edit/ops';
 export * from './edit/history';
 export { newGlobalId } from './edit/ids';
+export { meshOfElement, elementPatch, planShape, type ElementMesh } from './edit/geometry';
