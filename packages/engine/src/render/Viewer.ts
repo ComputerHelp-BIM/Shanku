@@ -61,6 +61,7 @@ import { decodePickId } from './pickId';
 import { buildGeometryIndex, cutSegments, memberAxis, planarFace, raycastAll, type CutPlane, type GeometryIndex, type MeasureScene, type MemberAxis, type PlanarFace } from './measure';
 import { MeasureTool, tabOptions, type MeasureMode, type MeasureReadout } from './measureTool';
 import { DimensionTool, type DimensionReadout } from './dimensionTool';
+import { PointPicker, type PickOptions } from './pointPicker';
 import { drawDimensions, type DimensionKind, type Origin, type PlacedDimension, type Vec3 } from './dimensions';
 import { SectionGizmo, aabbOf, axesOf, cloneState, metresPerPixel, moveFace, planesOf, snapDelta, type GripData, type SectionBoxState } from './sectionBox';
 
@@ -98,6 +99,8 @@ export interface ViewerEvents {
   onSectionBoxEdit?: (before: SectionBoxState, after: SectionBoxState) => void;
   /** The Measure tool's readout changed (null: the tool closed, e.g. Esc with nothing pending). */
   onMeasure?: (readout: MeasureReadout | null) => void;
+  /** Picking points ended (Esc, or another tool started). */
+  onPickEnd?: () => void;
   /** Tab while selecting: what a click would select now, and its place in the cycle (null: cycle over). */
   onTabCycle?: (info: { label: string; position: number; total: number; chain: boolean; count: number } | null) => void;
   /** A Dimension tool's prompt and current snap (null: the tool closed). */
@@ -329,6 +332,14 @@ export class Viewer {
     container.appendChild(this.dimEl);
     this.annEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     Object.assign(this.annEl.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' });
+    // While picking points, annotations stay visible but do not catch the cursor (it would never reach the
+    // picker near a grid or a level line): their inline pointer-events are overridden.
+    if (!document.getElementById('sk-ann-picking-style')) {
+      const st = document.createElement('style');
+      st.id = 'sk-ann-picking-style';
+      st.textContent = '.sk-ann-picking, .sk-ann-picking * { pointer-events: none !important; }';
+      document.head.appendChild(st);
+    }
     container.appendChild(this.annEl);
     // Placed dimensions: their lines and text take clicks (select, drag the grip).
     this.dimsEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -756,6 +767,7 @@ export class Viewer {
   startMeasure(mode: MeasureMode = 'distance'): void {
     this.endTab();
     this.stopDimension();
+    this.stopPick();
     if (this.measure) {
       this.measure.setMode(mode);
       return;
@@ -802,8 +814,59 @@ export class Viewer {
   }
 
   /** The live tool (Measure or a Dimension tool): it takes clicks, hover, Tab and keys. */
-  private get tool(): MeasureTool | DimensionTool | null {
-    return this.measure ?? this.dimTool;
+  private get tool(): MeasureTool | DimensionTool | PointPicker | null {
+    return this.measure ?? this.dimTool ?? this.picker;
+  }
+
+  // ------------------------------------------------------------ picking points (grids, reference planes, Move)
+  private picker: PointPicker | null = null;
+
+  /**
+   * Starts picking two points on the active plan's work plane (snaps, angle locks, a listening dimension,
+   * typed lengths): the shared engine of the drawing and Modify tools. Ends with Esc, or stopPick().
+   */
+  startPick(opts: PickOptions): void {
+    this.stopMeasure();
+    this.stopDimension();
+    this.stopPick();
+    const container = this.container;
+    this.picker = new PointPicker(
+      {
+        scene: () => this.measureScene(),
+        ray: (x, y) => (this.model ? this.pickRay(x, y) : null),
+        project: (p) => {
+          const r = this.canvas.getBoundingClientRect();
+          const v = p.clone().project(this.camera);
+          if (v.z < -1 || v.z > 1) return null;
+          return [((v.x + 1) / 2) * r.width, ((1 - v.y) / 2) * r.height];
+        },
+        toLocal: (x, y) => {
+          const r = this.canvas.getBoundingClientRect();
+          return [x - r.left, y - r.top];
+        },
+        pixel: () => worldPerPixel(this.frameHeight, this.camera.zoom, container.getBoundingClientRect().height || 1),
+        axisOf: this.axisOf,
+        faceOf: this.faceOf,
+        cutsOf: this.cutsOf,
+        render: () => this.requestRender(),
+      },
+      opts,
+    );
+    this.setHover(null);
+    this.annEl.classList.add('sk-ann-picking');
+    this.canvas.style.cursor = 'crosshair';
+  }
+
+  /** Ends picking points (the tool's own cancel is called by its owner). */
+  stopPick(): void {
+    if (!this.picker) return;
+    const p = this.picker;
+    this.picker = null;
+    p.dispose();
+    this.annEl.classList.remove('sk-ann-picking');
+    this.canvas.style.cursor = '';
+    this.requestRender();
+    this.events.onPickEnd?.();
   }
 
   // ------------------------------------------------------------ dimensions
@@ -1864,6 +1927,14 @@ export class Viewer {
         hot: cs.getPropertyValue('--select-window').trim() || '#2F7FD8',
         font: cs.getPropertyValue('--font-sans').trim() || 'sans-serif',
       });
+    } else if (this.picker) {
+      this.picker.draw(svg, {
+        line: cs.getPropertyValue('--text-secondary').trim() || '#555',
+        text: cs.getPropertyValue('--text').trim() || '#222',
+        plate: cs.getPropertyValue('--viewport').trim() || '#fff',
+        guide: cs.getPropertyValue('--select-window').trim() || '#2F7FD8',
+        font: cs.getPropertyValue('--font-sans').trim() || 'sans-serif',
+      });
     } else if (this.measure) {
       this.measure.draw(svg, {
       line: cs.getPropertyValue('--accent').trim() || '#D9761E',
@@ -2247,6 +2318,14 @@ export class Viewer {
       }
       const tool = this.tool;
       if (!tool || editable(e.target) || modalOpen()) return;
+      // picking: a length typed for the listening dimension (digits, units, feet and inches)
+      if (tool === this.picker && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (this.picker.key(e.key)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+        return;
+      }
       if (e.key === 'Escape' || e.key === 'Enter' || e.key === 'Backspace') {
         const used = tool.key(e.key);
         if (!used && e.key !== 'Escape') return;
@@ -2255,6 +2334,7 @@ export class Viewer {
         // Esc with nothing pending closes the tool (Revit: Esc twice)
         if (!used) {
           if (tool === this.measure) this.stopMeasure();
+          else if (tool === this.picker) this.stopPick();
           else this.stopDimension();
         }
       }

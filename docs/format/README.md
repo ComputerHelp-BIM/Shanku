@@ -27,6 +27,8 @@ shanku/
   edits.jsonl               native edits: edited and created elements, one per line by id (optional)
   deleted.json              native edits: ids of deleted elements (optional)
   levels.json               native edits: the levels, when moved or added (optional): [{name, z}]
+  datums.json               grids and reference planes (optional): [{id, kind: grid | refplane, name, a: [x, y], b: [x, y]}], plan mm
+  units.json                the project's display units (optional): {length: mm | cm | m | ft-in, decimals, grouping}
 revit/
   link.json                 the Revit document the project is linked to (optional)
   pending.jsonl             changes staged for Revit, not yet applied: one per line (optional)

@@ -1,3 +1,4 @@
+import { formatLength } from '../units';
 import { Vector3 } from 'three';
 import type { Category, EdgeBuffers, ElementRecord, MeshBuffers } from '../model/types';
 
@@ -976,4 +977,5 @@ export function snapCandidates(s: MeasureScene, q: SnapQuery): { candidates: Sna
 }
 
 /** Millimetres as Revit shows them in Indian practice: "4,500" (en-IN grouping). */
-export const fmtMm = (m: number) => Math.round(m * 1000).toLocaleString('en-IN');
+/** A length (m) as the project shows it, without the unit (Project Units; the name is from when it was always mm). */
+export const fmtMm = (m: number) => formatLength(m);

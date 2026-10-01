@@ -1,3 +1,4 @@
+import { formatLength } from '../units';
 import { Vector3 } from 'three';
 import type { ElementRecord } from '../model/types';
 import { elementLabel } from '../qa/checks';
@@ -112,8 +113,8 @@ interface Result {
   drawing: Drawing;
 }
 
-const mm = (m: number) => `${fmtMm(m)} mm`;
-const signed = (m: number) => `${m > 0.0005 ? '+' : m < -0.0005 ? '−' : ''}${fmtMm(Math.abs(m))} mm`;
+const mm = (m: number) => formatLength(m, { symbol: true });
+const signed = (m: number) => formatLength(m, { symbol: true, signed: true });
 const m2 = (a: number) => `${a.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m²`;
 
 export class MeasureTool {

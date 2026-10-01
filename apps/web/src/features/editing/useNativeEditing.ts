@@ -6,7 +6,7 @@
  * project; models linked to Revit keep the Changes for Revit route until Sync with Revit (stage 3).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { arrayLinear, changeOf, copy, deriveElement, elevationMm, followLevels, infoLevels, levelDatums, rehost, withLevel, zeroOf, type LevelDatum, elementPatch, isReference, kindForCategory, mirror, move, newGlobalId, offset, pin, remove, rotate, trianglesOf, type EditResult, type ElementRecord, type History, type ParamElement, type Pt } from '@shanku/engine';
+import { arrayLinear, changeOf, copy, deriveElement, elevationMm, formatLength, followLevels, infoLevels, levelDatums, rehost, withLevel, zeroOf, type LevelDatum, elementPatch, isReference, kindForCategory, mirror, move, newGlobalId, offset, pin, remove, rotate, trianglesOf, type EditResult, type ElementRecord, type History, type ParamElement, type Pt } from '@shanku/engine';
 import type { ModifyRequest } from '../../lib/editChecks';
 import { endTask, startTask } from '../../lib/progress';
 import { loadEdits, saveEdits, type SavedEdits } from '../../lib/session';
@@ -270,7 +270,7 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
       t.change('levels', before, after, (ls: LevelDatum[]) => applyLevels(ls));
       if (moved.length) t.change('elements', { present: beforeEls, absent: [] } as EditState, { present: moved, absent: [] } as EditState, (st: EditState) => applyState(st));
     });
-    setNotice(`${name} moved to ${elevation >= 0 ? '+' : ''}${elevation.toLocaleString('en-IN')} mm: ${moved.length} element${moved.length === 1 ? '' : 's'} followed${stay ? `; ${stay} kept as reference stay where they are` : ''}.`);
+    setNotice(`${name} moved to ${formatLength(elevation / 1000, { signed: true, symbol: true })}: ${moved.length} element${moved.length === 1 ? '' : 's'} followed${stay ? `; ${stay} kept as reference stay where they are` : ''}.`);
     m.log(`Moved ${name} to ${elevation} mm; ${moved.length} hosted elements followed (one undo step).`);
   };
 
@@ -284,7 +284,7 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
     const after = [...before, { name: n, z: Math.round((elevation + zeroY.current * 1000) * 10) / 10 }].sort((a, b) => a.z - b.z);
     added.current.add(n);
     history.run(`New level ${n}`, (t) => t.change('levels', before, after, (ls: LevelDatum[]) => applyLevels(ls)));
-    setNotice(`${n} added at ${elevation >= 0 ? '+' : ''}${elevation.toLocaleString('en-IN')} mm.`);
+    setNotice(`${n} added at ${formatLength(elevation / 1000, { signed: true, symbol: true })}.`);
   };
 
   /** Why a level cannot be deleted now, or null. */

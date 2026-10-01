@@ -65,7 +65,14 @@ export interface SavedEdits<T = unknown> {
 export const saveEdits = (fileName: string, e: SavedEdits) => tx('readwrite', (s) => s.put(e, `edits:${fileName}`));
 export const loadEdits = <T>(fileName: string) => tx<SavedEdits<T>>('readonly', (s) => s.get(`edits:${fileName}`));
 
+export const saveDatums = (fileName: string, d: unknown) => tx('readwrite', (s) => s.put(d, `datums:${fileName}`));
+export const loadDatums = <T>(fileName: string) => tx<T>('readonly', (s) => s.get(`datums:${fileName}`));
+export const saveUnits = (fileName: string, u: unknown) => tx('readwrite', (s) => s.put(u, `units:${fileName}`));
+export const loadUnits = <T>(fileName: string) => tx<T>('readonly', (s) => s.get(`units:${fileName}`));
+
 export interface ModelState {
+  datums?: unknown;
+  units?: unknown;
   edits?: SavedEdits;
   views?: unknown;
   graphics?: unknown;
@@ -90,6 +97,8 @@ export async function snapshotFor(fileName: string): Promise<ModelState> {
     pending: link && changes?.length ? { key: link.key, changes } : undefined,
     rates: read(`shanku.rates.${fileName}`) ?? undefined,
     edits: (await loadEdits(fileName)) ?? undefined,
+    datums: (await loadDatums(fileName)) ?? undefined,
+    units: (await loadUnits(fileName)) ?? undefined,
   };
 }
 
@@ -97,6 +106,8 @@ export async function snapshotFor(fileName: string): Promise<ModelState> {
 export async function seedFrom(fileName: string, st: ModelState): Promise<void> {
   if (st.views !== undefined) await saveViews(fileName, st.views);
   if (st.edits !== undefined) await saveEdits(fileName, st.edits);
+  if (st.datums !== undefined) await saveDatums(fileName, st.datums);
+  if (st.units !== undefined) await saveUnits(fileName, st.units);
   if (st.graphics !== undefined) await saveGraphics(fileName, st.graphics);
   if (st.pending?.key && st.pending.changes.length) localStorage.setItem(`shanku.revitPending.${st.pending.key}`, JSON.stringify(st.pending.changes));
   if (st.rates !== undefined) localStorage.setItem(`shanku.rates.${fileName}`, JSON.stringify(st.rates));

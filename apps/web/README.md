@@ -1,4 +1,4 @@
-# @shanku/web 0.53.1
+# @shanku/web 0.54.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.54.0 — 2026-10-01
+- **The shared point picker** (engine `render/pointPicker.ts`, `render/snapping.ts`; docs/design/datums-and-constraints.md part 3): two points on the plan's work plane, snapping to element points (end, mid, centre, member-axis ends via `snapCandidates`), then datum intersections and datum lines, else a free point; directions lock near 0°/45°/90° (Shift: orthogonal); a listening dimension in Project Units; a length typed and Enter places the second point along the direction shown; Esc clears the typing, then the first point, then ends — Revit's way. While picking, annotations stay visible but do not catch the cursor.
+- **Grids (GR) and reference planes (RP)** (`features/datums/useDatums.ts`): drawn with the picker in a plan, one after another until Esc, named 1, 2, 3 / A, B, C as Revit names them; drawn as annotations (engine kinds `grid`, `refplane`) — bubbles at both ends in plans, along-view grids as vertical lines with their bubble on top in elevations and sections (`lib/viewMarks.ts` `datumMarksFor`); listed in the Levels window to rename and delete; one undo step each; kept on the device and in the `.shkp` (`shanku/datums.json`). The status bar shows the prompt, the length and the snap.
+- **Project Units (Manage → Project Units, UN)** (engine `units.ts`, `features/units/useProjectUnits.ts`): mm, cm, m or feet-inches, decimals or inch rounding, Indian / international / no grouping; lengths are kept in mm inside (decision 27A) and every length shown or typed goes through `formatLength` / `parseLength` — Measure, dimension labels, level heads (formatted when drawn, so they follow a change at once), the Levels and Modify windows, the picker. Kept per project (`shanku/units.json`); a new project starts from the last units chosen.
+- Checked in the browser (production build): a grid locked north–south; a typed 6000 gave exactly 6,000.0 mm; a grid started 4 px from another snapped onto it exactly (offset 0.0 mm); bubbles in the North elevation for the grids along it; Project Units → metres switched the level heads, the Levels window and the sample; undo, reload and the saved file keep grids and units; the Levels and native editing walk-throughs unchanged.
 
 ### 0.53.1 — 2026-10-01
 - **Fixed: one level definition everywhere.** The elevation views (labels) and plans worked a level's height out from the geometry whenever no element touched its stored elevation, while the Levels window and hosting used the stored elevation — so on the G+24 sample Podium 1 read +4,500 in one place and +1,510 in another (also Podium 2, 3, Terrace, Foundation). A level is now its datum everywhere (`lib/views.ts` `levelHeights`); geometry stands in only for a level with no elevation.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@shanku/ui';
-import { readNumber } from '../lib/editChecks';
+import { formatLength, parseLength, unitLabel } from '@shanku/engine';
 
 export interface LevelRow {
   name: string;
@@ -9,7 +9,10 @@ export interface LevelRow {
   added: boolean;
 }
 
-const fmt = (n: number) => `${n > 0 ? '+' : ''}${n.toLocaleString('en-IN', { maximumFractionDigits: 1 })}`;
+/** mm → as the project shows it, signed. */
+const fmt = (n: number) => formatLength(n / 1000, { signed: true });
+/** typed → mm (NaN when not a length). */
+const readMm = (t: string) => parseLength(t) * 1000;
 
 /**
  * Levels as datums (docs/design/datums-and-constraints.md): each level's elevation from ±0. Changing one moves
@@ -30,11 +33,11 @@ export function LevelsTool({ rows, why, deleteWhy, onMove, onNew, onDelete }: { 
   const commit = (name: string) => {
     const v = draft[name];
     if (v === undefined) return;
-    const n = readNumber(v);
+    const n = readMm(v);
     if (Number.isNaN(n)) return;
     onMove(name, n);
   };
-  const newElevation = newElev ? readNumber(newElev) : (top?.elevation ?? 0) + 3000;
+  const newElevation = newElev ? readMm(newElev) : (top?.elevation ?? 0) + 3000;
   return (
     <div className="app-levels">
       <p className="app-geom__what">Change a level’s elevation and everything hosted on it follows (columns stretch, beams and slabs move). One undo step each.</p>
@@ -42,7 +45,7 @@ export function LevelsTool({ rows, why, deleteWhy, onMove, onNew, onDelete }: { 
         <thead>
           <tr>
             <th>Level</th>
-            <th>Elevation (mm from ±0)</th>
+            <th>Elevation ({unitLabel()} from ±0)</th>
             <th aria-label="Actions" />
           </tr>
         </thead>
@@ -55,7 +58,7 @@ export function LevelsTool({ rows, why, deleteWhy, onMove, onNew, onDelete }: { 
                 <td>
                   <input
                     inputMode="decimal"
-                    aria-label={`${r.name} elevation (mm)`}
+                    aria-label={`${r.name} elevation`}
                     value={draft[r.name] ?? fmt(r.elevation)}
                     onChange={(e) => setDraft((d) => ({ ...d, [r.name]: e.target.value }))}
                     onKeyDown={(e) => (e.key === 'Enter' ? commit(r.name) : e.key === 'Escape' ? setDraft((d) => ({ ...d, [r.name]: fmt(r.elevation) })) : undefined)}
@@ -70,7 +73,7 @@ export function LevelsTool({ rows, why, deleteWhy, onMove, onNew, onDelete }: { 
       </table>
       <div className="app-levels__new">
         <input aria-label="New level name" placeholder={next} value={newName} onChange={(e) => setNewName(e.target.value)} />
-        <input aria-label="New level elevation (mm)" inputMode="decimal" placeholder={fmt((top?.elevation ?? 0) + 3000)} value={newElev} onChange={(e) => setNewElev(e.target.value)} />
+        <input aria-label="New level elevation" inputMode="decimal" placeholder={fmt((top?.elevation ?? 0) + 3000)} value={newElev} onChange={(e) => setNewElev(e.target.value)} />
         <Button
           size="sm"
           variant="primary"

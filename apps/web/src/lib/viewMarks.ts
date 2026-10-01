@@ -5,7 +5,7 @@
  *   across the view as vertical section lines.
  * 3D views show none.
  */
-import type { Annotation } from '@shanku/engine';
+import { formatLength, type Annotation } from '@shanku/engine';
 import { viewDirection, type ModelView } from './views';
 
 interface Box {
@@ -54,7 +54,8 @@ export function marksFor(active: ModelView | null, views: readonly ModelView[], 
       kind: 'level',
       id: `plan:${name}`,
       name,
-      value: `${h - offsetY >= 0 ? '+' : '−'}${Math.round(Math.abs(h - offsetY) * 1000).toLocaleString('en-IN')}`,
+      value: formatLength(h - offsetY, { signed: true }),
+      height: h - offsetY,
       a: [mid[0] - right[0] * reach, h, mid[1] - right[1] * reach],
       b: [mid[0] + right[0] * reach, h, mid[1] + right[1] * reach],
     });
@@ -69,3 +70,28 @@ export function marksFor(active: ModelView | null, views: readonly ModelView[], 
   }
   return out;
 }
+
+/** Grids and reference planes in a view (plan mm datums): in plans at the level, both bubbles; in elevations and
+ * sections, grids running along the view direction as vertical lines with their bubble on top (Revit's display). */
+export function datumMarksFor(active: ModelView | null, datums: ReadonlyArray<{ id: string; kind: 'grid' | 'refplane'; name: string; a: [number, number]; b: [number, number] }>, heights: Map<string, number>, bounds: readonly number[] | undefined): Annotation[] {
+  if (!active || active.kind === '3d' || !datums.length) return [];
+  const w = (p: [number, number], y: number): [number, number, number] => [p[0] / 1000, y, -p[1] / 1000];
+  if (active.kind === 'plan') {
+    const y = active.level !== undefined ? heights.get(active.level) ?? 0 : 0;
+    return datums.map((d) => (d.kind === 'grid' ? { kind: 'grid' as const, id: `grid:${d.id}`, name: d.name, a: w(d.a, y), b: w(d.b, y), heads: ['a', 'b'] as Array<'a' | 'b'> } : { kind: 'refplane' as const, id: `refplane:${d.id}`, name: d.name, a: w(d.a, y), b: w(d.b, y) }));
+  }
+  const look = viewDirection(active);
+  if (!look || !bounds || bounds.length < 6 || !Number.isFinite(bounds[1])) return [];
+  const span = bounds[4] - bounds[1];
+  const y0 = bounds[1] - span * 0.04, y1 = bounds[4] + span * 0.06;
+  const out: Annotation[] = [];
+  for (const d of datums) {
+    if (d.kind !== 'grid') continue;
+    const dx = (d.b[0] - d.a[0]) / 1000, dz = -(d.b[1] - d.a[1]) / 1000;
+    const len = Math.hypot(dx, dz) || 1;
+    if (Math.abs((dx / len) * look[0] + (dz / len) * look[2]) < Math.cos((10 * Math.PI) / 180)) continue;
+    out.push({ kind: 'grid', id: `grid:${d.id}`, name: d.name, a: w(d.a, y0), b: w(d.a, y1), heads: ['b'] });
+  }
+  return out;
+}
+

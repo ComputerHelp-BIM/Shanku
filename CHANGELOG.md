@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.54.0 — 2026-10-01
+
+### Added
+- Grids (GR) and reference planes (RP), drawn with the shared point picker (snaps, angle locks, listening dimension, typed lengths).
+- Project Units (UN): mm, cm, m or feet-inches, decimals, digit grouping; every length shown or typed follows them.
+
 ## 0.53.1 — 2026-10-01
 
 ### Fixed

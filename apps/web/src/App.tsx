@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import {
   AppShell,
   Button,
@@ -85,6 +85,11 @@ import { useNativeEditing } from './features/editing/useNativeEditing';
 import { ModifyTool } from './components/ModifyTool';
 import type { ModifyKind } from './lib/editChecks';
 import { LevelsTool } from './components/LevelsTool';
+import { useDatums } from './features/datums/useDatums';
+import { useProjectUnits } from './features/units/useProjectUnits';
+import { ProjectUnits } from './components/ProjectUnits';
+import { DatumsList } from './components/DatumsList';
+import { datumMarksFor } from './lib/viewMarks';
 
 /** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
 export interface AppStart {
@@ -191,10 +196,18 @@ export function App({ start }: { start?: AppStart } = {}) {
   // native editing: Revit's Modify tools on Shanku's own model (docs/design/native-editing.md)
   const { levelList, moveLevel, newLevel, deleteLevel, levelDeleteWhy, levelTick, nativePerform, nativeDelete, nativePin, nativeWhy, nativeEditCount } = useNativeEditing({ m, history, setNotice, revitLinked });
   const [levelsOpen, setLevelsOpen] = useState(false);
+  // grids and reference planes, drawn with the shared point picker; Project Units
+  const { datums, datumTool, datumPick, pickStatus, startDatumTool, endDatumTool, renameDatum, deleteDatum } = useDatums({ m, history, setNotice, activeModelView, heights });
+  const { units, setProjectUnits } = useProjectUnits({ m });
+  const [unitsOpen, setUnitsOpen] = useState(false);
+  const datumMarks = useMemo(() => datumMarksFor(activeModelView, datums, heights, m.model?.info.bounds), [activeModelView, datums, heights, m.model]);
+  const allMarks = useMemo(() => (datumMarks.length ? [...marks, ...datumMarks] : marks), [marks, datumMarks]);
   const [modifyKind, setModifyKind] = useState<ModifyKind | null>(null);
   /** One route for every Modify command: models linked to Revit keep Changes for Revit for Move and Rotate. */
-  const modifyCmd = (cmd: ModifyKind | 'delete' | 'pin' | 'unpin' | 'levels') => {
+  const modifyCmd = (cmd: ModifyKind | 'delete' | 'pin' | 'unpin' | 'levels' | 'grid' | 'refplane' | 'units') => {
     if (cmd === 'levels') return setLevelsOpen(true);
+    if (cmd === 'units') return setUnitsOpen(true);
+    if (cmd === 'grid' || cmd === 'refplane') return startDatumTool(cmd);
     if (revitLinked && (cmd === 'move' || cmd === 'rotate')) return openGeom(cmd);
     const why = nativeWhy();
     if (why) return setNotice(why);
@@ -298,6 +311,8 @@ export function App({ start }: { start?: AppStart } = {}) {
               </RibbonGroup>
               <RibbonGroup label="Datum">
                 <RibbonButton icon="level" label="Levels" disabled={!m.model} onClick={() => modifyCmd('levels')} shortcutHint="move a level and what is hosted on it follows; add levels (LL)" />
+                <RibbonButton icon="grid" label="Grid" active={datumTool === 'grid'} disabled={!m.model} onClick={() => (datumTool === 'grid' ? endDatumTool() : modifyCmd('grid'))} shortcutHint="in a plan: click two points, or type a length; one after another until Esc (GR)" />
+                <RibbonButton icon="section" label="Ref. Plane" active={datumTool === 'refplane'} disabled={!m.model} onClick={() => (datumTool === 'refplane' ? endDatumTool() : modifyCmd('refplane'))} shortcutHint="in a plan: click two points (RP)" />
               </RibbonGroup>
               <RibbonGroup label="Element">
                 <RibbonButton icon="delete" label="Delete" disabled={!m.model || revitLinked} onClick={() => modifyCmd('delete')} shortcutHint={revitLinked ? 'models linked to Revit: delete in Revit for now' : 'the selection (DE); Ctrl + Z brings it back'} />
@@ -401,6 +416,9 @@ export function App({ start }: { start?: AppStart } = {}) {
           ) : ribbonTab === 'manage' ? (
             <>
           <RibbonGroup label="Settings">
+                <RibbonButton icon="layout" label="Project Units" onClick={() => setUnitsOpen(true)} shortcutHint="how lengths are shown and typed: mm, cm, m or feet-inches (UN)" />
+              </RibbonGroup>
+              <RibbonGroup label="Settings">
             <RibbonButton icon="byid" label="Marks" disabled={!m.model} onClick={() => setMarkDialog(true)} shortcutHint="which property is the mark" />
           </RibbonGroup>
             </>
@@ -610,7 +628,9 @@ export function App({ start }: { start?: AppStart } = {}) {
             twoD={isTwoD(activeModelView ?? undefined)}
             hiddenLines={!!activeModelView?.hiddenLines}
             shadows={shadows}
-            annotations={marks}
+            annotations={allMarks}
+            pick={datumPick}
+            onPickEnd={endDatumTool}
             explode={isTwoD(activeModelView ?? undefined) ? null : explode}
             onOpenView={(id) => views.some((v) => v.id === id) && openView(id)}
             onContextMenu={(x, y) => m.model && setCtxMenu({ x, y })}
@@ -717,7 +737,11 @@ export function App({ start }: { start?: AppStart } = {}) {
           <FloatingWindow id="editGeom" title={geomMode === 'move' ? 'Move' : 'Rotate'} subtitle="staged for Revit" open={wins.editGeom} onClose={() => toggleWin('editGeom', false)} initial={{ w: 440, h: 330 }} minWidth={380} minHeight={260}>
             <EditGeometry mode={geomMode} count={selectedGids.length} disabledWhy={editWhy ? editWhy[0].toUpperCase() + editWhy.slice(1) + '.' : null} onMode={setGeomMode} onStage={stageGeometry} onClose={() => toggleWin('editGeom', false)} />
           </FloatingWindow>
+          <FloatingWindow id="units" title="Project Units" subtitle="how lengths are shown" open={unitsOpen} onClose={() => setUnitsOpen(false)} initial={{ w: 420, h: 380 }}>
+            {unitsOpen ? <ProjectUnits units={units} onChange={setProjectUnits} onClose={() => setUnitsOpen(false)} /> : null}
+          </FloatingWindow>
           <FloatingWindow id="levels" title="Levels" subtitle="datums" open={levelsOpen} onClose={() => setLevelsOpen(false)} initial={{ w: 460, h: 460 }}>
+            {levelsOpen ? <DatumsList datums={datums} onRename={renameDatum} onDelete={deleteDatum} /> : null}
             {levelsOpen ? <LevelsTool key={levelTick} rows={levelList()} why={!m.model ? 'Open a model first.' : revitLinked ? 'This model is linked to Revit: change its levels in Revit for now (Sync with Revit comes next).' : null} deleteWhy={levelDeleteWhy} onMove={moveLevel} onNew={newLevel} onDelete={deleteLevel} /> : null}
           </FloatingWindow>
           <FloatingWindow id="modify" title={modifyKind ? modifyKind[0].toUpperCase() + modifyKind.slice(1) : 'Modify'} subtitle="Shanku's model" open={!!modifyKind} onClose={() => setModifyKind(null)} initial={{ w: 520, h: 420 }}>
@@ -1225,8 +1249,18 @@ export function App({ start }: { start?: AppStart } = {}) {
           ) : (
           <>
           <span className="app-sel">
-            {sel.length ? <span className="app-sel__dot" aria-hidden="true" /> : null}
-            {selLabel}
+            {pickStatus ? (
+              <span className="app-pick-status" role="status">
+                {pickStatus.prompt}
+                {pickStatus.typed ? ` · ${pickStatus.typed}` : pickStatus.length ? ` · ${pickStatus.length}` : ''}
+                {pickStatus.snap ? ` · ${pickStatus.snap}` : ''}
+              </span>
+            ) : (
+              <>
+                {sel.length ? <span className="app-sel__dot" aria-hidden="true" /> : null}
+                {selLabel}
+              </>
+            )}
           </span>
           {info ? <span className="app-divider" aria-hidden="true" /> : null}
           {info

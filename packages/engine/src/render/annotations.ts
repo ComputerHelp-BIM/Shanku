@@ -5,6 +5,8 @@
  * of it, a selected level shows temporary dimensions to its neighbours, double-click opens the view.
  * Also draws the Section tool's rubber band (line, angle arc, angle and length).
  */
+import { formatLength } from '../units';
+
 export type Annotation =
   | {
       kind: 'section';
@@ -17,7 +19,12 @@ export type Annotation =
       depth?: number;
     }
   | { kind: 'elevation'; id: string; name: string; at: [number, number, number]; look: [number, number, number] }
-  | { kind: 'level'; id: string; name: string; value: string; a: [number, number, number]; b: [number, number, number] };
+  /** `height` (m from ±0), when given, is formatted when drawn, so the head follows Project Units; else `value`. */
+  | { kind: 'level'; id: string; name: string; value: string; height?: number; a: [number, number, number]; b: [number, number, number] }
+  /** A grid line: bubbles with its name at the ends listed in `heads` (plans: both; elevations, sections: the top). */
+  | { kind: 'grid'; id: string; name: string; a: [number, number, number]; b: [number, number, number]; heads: Array<'a' | 'b'> }
+  /** A reference plane's trace: thin and dashed, its name at the b end. */
+  | { kind: 'refplane'; id: string; name: string; a: [number, number, number]; b: [number, number, number] };
 
 export interface AnnotationStyle {
   line: string;
@@ -197,19 +204,46 @@ export function drawAnnotations(
       el('circle', { cx: p[0], cy: p[1], r: 12, fill: style.plate, stroke, 'stroke-width': w }, g);
       text(g, p[0], p[1], a.name.slice(0, 1).toUpperCase(), 11, ink);
       el('title', {}, g).textContent = `Elevation: ${a.name} (click to select, double-click to open)`;
+    } else if (a.kind === 'grid') {
+      const pa0 = project(a.a), pb0 = project(a.b);
+      if (!pa0 || !pb0) continue;
+      const room = { l: 26, r: 26, t: 26, b: 26 };
+      const pa = keepInView(pa0, pb0, room), pb = keepInView(pb0, pa0, room);
+      if (!pa || !pb) continue;
+      const g = group(a.id);
+      hitLine(g, pa, pb);
+      el('line', { x1: pa[0], y1: pa[1], x2: pb[0], y2: pb[1], stroke, 'stroke-width': on ? w : 1, 'stroke-dasharray': '14 4 2 4' }, g);
+      const len = Math.hypot(pb[0] - pa[0], pb[1] - pa[1]) || 1;
+      const u: Screen = [(pb[0] - pa[0]) / len, (pb[1] - pa[1]) / len];
+      for (const end of a.heads) {
+        const at = end === 'a' ? pa : pb, out = end === 'a' ? -1 : 1;
+        const c: Screen = [at[0] + u[0] * 12 * out, at[1] + u[1] * 12 * out];
+        el('circle', { cx: c[0], cy: c[1], r: 12, fill: style.plate, stroke, 'stroke-width': on ? w : 1.2 }, g);
+        text(g, c[0], c[1], a.name.length > 3 ? a.name.slice(0, 3) : a.name, a.name.length > 2 ? 9.5 : 11.5, ink);
+      }
+      el('title', {}, g).textContent = `Grid: ${a.name} (click to select)`;
+    } else if (a.kind === 'refplane') {
+      const pa = project(a.a), pb = project(a.b);
+      if (!pa || !pb) continue;
+      const g = group(a.id);
+      hitLine(g, pa, pb);
+      el('line', { x1: pa[0], y1: pa[1], x2: pb[0], y2: pb[1], stroke, 'stroke-width': on ? w : 0.9, 'stroke-dasharray': '6 4', opacity: on ? 1 : 0.8 }, g);
+      if (a.name) text(g, pb[0] + 4, pb[1] - 8, a.name, 10.5, ink, 500, 'start');
+      el('title', {}, g).textContent = `Reference plane${a.name ? `: ${a.name}` : ''} (click to select)`;
     } else {
       const pa = project(a.a), rb = project(a.b);
       if (!pa || !rb) continue;
-      const pb = keepInView(rb, pa, { l: 8, r: 30 + Math.max(a.name.length, a.value.length) * 7.2, t: 16, b: 16 });
+      const value = a.height !== undefined ? formatLength(a.height, { signed: true }) : a.value;
+      const pb = keepInView(rb, pa, { l: 8, r: 30 + Math.max(a.name.length, value.length) * 7.2, t: 16, b: 16 });
       if (!pb) continue;
       const g = group(a.id);
       hitLine(g, pa, pb);
       el('line', { x1: pa[0], y1: pa[1], x2: pb[0], y2: pb[1], stroke, 'stroke-width': on ? w : 1, 'stroke-dasharray': '10 4 2 4' }, g);
-      el('rect', { x: pb[0] - 1, y: pb[1] - 18, width: 22 + Math.max(a.name.length, a.value.length) * 7.2, height: 36, fill: 'transparent', 'pointer-events': 'all' }, g);
+      el('rect', { x: pb[0] - 1, y: pb[1] - 18, width: 22 + Math.max(a.name.length, value.length) * 7.2, height: 36, fill: 'transparent', 'pointer-events': 'all' }, g);
       el('circle', { cx: pb[0] + 9, cy: pb[1], r: 7, fill: style.plate, stroke, 'stroke-width': 1.2 }, g);
       el('path', { d: `M ${pb[0] + 9} ${pb[1] - 7} A 7 7 0 0 1 ${pb[0] + 16} ${pb[1]} L ${pb[0] + 9} ${pb[1]} Z M ${pb[0] + 9} ${pb[1] + 7} A 7 7 0 0 1 ${pb[0] + 2} ${pb[1]} L ${pb[0] + 9} ${pb[1]} Z`, fill: stroke }, g);
       text(g, pb[0] + 22, pb[1] - 8, a.name, 11.5, ink, 600, 'start');
-      text(g, pb[0] + 22, pb[1] + 8, a.value, 11, ink, 400, 'start');
+      text(g, pb[0] + 22, pb[1] + 8, value, 11, ink, 400, 'start');
       el('title', {}, g).textContent = `Level: ${a.name} (click to select, double-click to open its plan)`;
       levelsDrawn.push({ an: a, pa });
     }
@@ -229,7 +263,7 @@ export function drawAnnotations(
       const y0 = s0[1], y1 = s1[1];
       el('line', { x1: x, y1: y0, x2: x, y2: y1, stroke: style.hot, 'stroke-width': 1.2 });
       for (const yy of [y0, y1]) el('line', { x1: x - 5, y1: yy + 5, x2: x + 5, y2: yy - 5, stroke: style.hot, 'stroke-width': 1.2 });
-      const label = Math.round(Math.abs(o.an.a[1] - y) * 1000).toLocaleString('en-IN');
+      const label = formatLength(Math.abs(o.an.a[1] - y));
       const my = (y0 + y1) / 2;
       el('rect', { x: x - 12 - label.length * 7, y: my - 8, width: label.length * 7 + 8, height: 16, rx: 3, fill: style.plate, 'fill-opacity': 0.92 });
       text(svg, x - 8, my, label, 11.5, style.hot, 600, 'end');
@@ -253,7 +287,7 @@ export function drawAnnotations(
       const lp = [a[0] + Math.cos(lt) * (r + 22), a[1] - Math.sin(lt) * (r + 22)];
       text(svg, lp[0], lp[1], `${preview.angle.toFixed(2)}°${preview.snapped ? '' : ''}`, 12, style.hot, preview.snapped ? 700 : 500);
       const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-      const lenLabel = `${Math.round(preview.length * 1000).toLocaleString('en-IN')} mm`;
+      const lenLabel = formatLength(preview.length, { symbol: true });
       el('rect', { x: mid[0] - lenLabel.length * 3.6 - 4, y: mid[1] - 22, width: lenLabel.length * 7.2 + 8, height: 16, rx: 3, fill: style.plate, 'fill-opacity': 0.9 });
       text(svg, mid[0], mid[1] - 14, lenLabel, 11.5, style.hot);
     }

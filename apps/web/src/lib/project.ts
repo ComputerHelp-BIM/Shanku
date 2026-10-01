@@ -68,6 +68,9 @@ export function packProject(model: { name: string; bytes: Uint8Array }, state: M
   }
   if (state.graphics !== undefined && state.graphics !== null) put('shanku/graphics.json', canonical(state.graphics));
   if (state.rates !== undefined && state.rates !== null) put('shanku/rates.json', canonical(state.rates));
+  // datums (grids, reference planes) and the project's display units
+  if (Array.isArray(state.datums) && state.datums.length) put('shanku/datums.json', canonical(state.datums));
+  if (state.units) put('shanku/units.json', canonical(state.units));
   // native edits: edited and created elements, one per line by id; deleted ids
   const edits = state.edits as { elements: Array<{ id: string }>; deleted: string[]; levels?: Array<{ name: string; z: number }> } | undefined;
   if (edits?.levels?.length) put('shanku/levels.json', canonical(edits.levels));
@@ -122,6 +125,8 @@ export function unpackProject(bytes: Uint8Array): { manifest: ProjectManifest; m
       rates: opt(json('shanku/rates.json')),
       pending: link && changes.length ? { key: link.documentKey, changes } : undefined,
       edits: edited.length || deleted.length || levels?.length ? { elements: edited, deleted, ...(levels?.length ? { levels } : {}) } : undefined,
+      datums: opt(json('shanku/datums.json')),
+      units: opt(json('shanku/units.json')),
     },
   };
 }

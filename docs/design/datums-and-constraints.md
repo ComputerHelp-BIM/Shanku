@@ -86,5 +86,10 @@ elevation marks (with the views work), Sync with Revit (it will carry hosting ac
   offsets (columns and beams on their levels, walls 650 under them, footing-to-plinth columns on Level 1).
 - **Levels — done (web 0.53.0, engine 0.39.0):** the Levels window (LL): move a level and what is hosted on it
   follows (one undo), add levels, delete added empty ones; the model's own levels follow; saved in the `.shkp`.
-- **Next:** the picking and snapping engine and work planes; grids and reference planes drawn with it; Align
-  with locks; Move rebuilt. Renaming levels and deleting levels from the model come with the views work.
+- **Picking, grids, reference planes, Project Units — done (web 0.54.0, engine 0.40.0):** the shared point
+  picker (element, datum and free snaps on the plan's work plane; angle locks; listening dimension; typed lengths;
+  Revit's Esc); grids and reference planes drawn with it and shown in plans and elevations; Project Units (27A).
+- **Next (0.55.0):** Align with locks and "Constraints are not satisfied"; Move rebuilt on the picker (pre- or
+  post-selection, start and end points, typed distance, Constrain, vertical moves in elevations as offsets).
+  Work planes in elevations and sections come with Move. Renaming levels and deleting levels from the model
+  come with the views work.

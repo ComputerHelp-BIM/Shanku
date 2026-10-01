@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { ViewCube, type Orientation } from './ViewCube';
 import { MeasureBar } from './MeasureBar';
 import { DimensionBar } from './DimensionBar';
-import { Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName } from '@shanku/engine';
+import { Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName, onDisplayUnits, type PickOptions } from '@shanku/engine';
 import type { Annotation, CameraState, DimensionKind, DimensionReadout, ExplodeMode, MeasureMode, MeasureReadout, PlacedDimension, SectionBoxState, Vec3 } from '@shanku/engine';
 
 export interface ViewportHandle {
@@ -82,6 +82,9 @@ export interface ViewportProps {
   canvasTheme?: 'follow' | 'paper' | 'ink';
   /** The Measure tool's mode, or null when it is closed. */
   measure?: MeasureMode | null;
+  /** Picking two points (grids, reference planes, Move): stable while picking. */
+  pick?: PickOptions | null;
+  onPickEnd?: () => void;
   /** The tool changed mode or closed from inside the view (its bar, or Esc). */
   onMeasureChange?: (mode: MeasureMode | null) => void;
   /** Placed dimensions of the active view, and the selected ones. */
@@ -135,6 +138,7 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
           if (!r && handlers.current.measure) handlers.current.onMeasureChange?.(null);
         },
         onTabCycle: (info) => setTabInfo(info),
+        onPickEnd: () => handlers.current.onPickEnd?.(),
         onDimensionTool: (r) => {
           setDimReadout(r);
           if (!r && handlers.current.dimensionTool) handlers.current.onDimensionToolChange?.(null);
@@ -234,6 +238,19 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     if (props.measure && model) v.startMeasure(props.measure);
     else v.stopMeasure();
   }, [props.measure, model]);
+  useEffect(() => {
+    const v = viewer.current;
+    if (!v) return;
+    if (props.pick && model) v.startPick(props.pick);
+    else v.stopPick();
+  }, [props.pick, model]);
+  // Project Units changed: labels and level heads redraw
+  useEffect(() => {
+    const off = onDisplayUnits(() => viewer.current?.refreshTheme());
+    return () => {
+      off();
+    };
+  }, []);
   useEffect(() => {
     const v = viewer.current;
     if (!v) return;

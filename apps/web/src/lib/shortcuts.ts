@@ -28,7 +28,10 @@ export type CommandId =
   | 'deleteTool'
   | 'pinTool'
   | 'unpinTool'
-  | 'levelsTool';
+  | 'levelsTool'
+  | 'gridTool'
+  | 'refPlaneTool'
+  | 'unitsTool';
 
 export const SEQUENCES: Record<string, CommandId> = {
   ZF: 'fit',
@@ -59,6 +62,9 @@ export const SEQUENCES: Record<string, CommandId> = {
   PN: 'pinTool',
   UP: 'unpinTool',
   LL: 'levelsTool',
+  GR: 'gridTool',
+  RP: 'refPlaneTool',
+  UN: 'unitsTool',
   BX: 'sectionBox',
   ME: 'measure',
   DI: 'dimAligned',
@@ -117,6 +123,9 @@ export const SHORTCUT_HELP: Array<{ keys: string; action: string }> = [
   { keys: 'PN', action: 'Pin the selection (protects it from changes)' },
   { keys: 'UP', action: 'Unpin the selection' },
   { keys: 'LL', action: 'Levels: move a level (what is hosted on it follows), add levels' },
+  { keys: 'GR', action: 'Grid: click two points in a plan (or type a length); one after another until Esc' },
+  { keys: 'RP', action: 'Reference plane: click two points in a plan' },
+  { keys: 'UN', action: 'Project Units: how lengths are shown and typed' },
   { keys: 'DI · EL', action: 'Aligned dimension · spot elevation (Annotate → Dimension); pick references, click away to place' },
   { keys: 'Delete', action: 'Delete the selected dimensions or sections' },
   { keys: 'Tab · Shift + Tab', action: 'Over the view: step through the elements under the cursor, then a chain of joined walls or beams; while measuring, through the snaps' },

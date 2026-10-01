@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@shanku/ui';
+import { parseLength, unitLabel } from '@shanku/engine';
 import { modifyProblem, readNumber, type ModifyKind, type ModifyRequest } from '../lib/editChecks';
 
 const TITLE: Record<ModifyKind, string> = { move: 'Move', copy: 'Copy', rotate: 'Rotate', mirror: 'Mirror', array: 'Array', offset: 'Offset' };
@@ -26,14 +27,16 @@ export function ModifyTool({ kind, count, disabledWhy, onKind, onApply, onClose 
     setV({});
     setCopy(kind !== 'offset');
   }, [kind]);
-  const n = (k: string) => readNumber(v[k] ?? '');
+  /** a length typed in Project Units → mm (empty: 0) */
+  const n = (k: string) => ((v[k] ?? '').trim() === '' ? 0 : parseLength(v[k]) * 1000);
+  const num = (k: string) => readNumber(v[k] ?? '');
   const req: ModifyRequest =
     kind === 'move' || kind === 'copy'
       ? { kind, dx: n('dx'), dy: n('dy'), dz: n('dz') }
       : kind === 'rotate'
-        ? { kind, angle: n('angle'), about }
+        ? { kind, angle: num('angle'), about }
         : kind === 'mirror'
-          ? { kind, axis, angle: n('axisAngle'), copy }
+          ? { kind, axis, angle: num('axisAngle'), copy }
           : kind === 'array'
             ? { kind, dx: n('dx'), dy: n('dy'), dz: n('dz'), count: v.count ? readNumber(v.count) : 2 }
             : { kind, distance: n('distance'), copy };
@@ -72,9 +75,9 @@ export function ModifyTool({ kind, count, disabledWhy, onKind, onApply, onClose 
       <div className="app-geom__fields">
         {kind === 'move' || kind === 'copy' || kind === 'array' ? (
           <>
-            {field('dx', kind === 'array' ? 'Spacing X' : 'ΔX', 'mm', true)}
-            {field('dy', kind === 'array' ? 'Spacing Y' : 'ΔY', 'mm')}
-            {field('dz', kind === 'array' ? 'Spacing Z' : 'ΔZ', 'mm')}
+            {field('dx', kind === 'array' ? 'Spacing X' : 'ΔX', unitLabel(), true)}
+            {field('dy', kind === 'array' ? 'Spacing Y' : 'ΔY', unitLabel())}
+            {field('dz', kind === 'array' ? 'Spacing Z' : 'ΔZ', unitLabel())}
             {kind === 'array' ? field('count', 'Count', 'in all', false, '2') : null}
           </>
         ) : null}
@@ -97,7 +100,7 @@ export function ModifyTool({ kind, count, disabledWhy, onKind, onApply, onClose 
             {axis === 'angle' ? field('axisAngle', 'Axis angle', '° from X', true) : null}
           </fieldset>
         ) : null}
-        {kind === 'offset' ? field('distance', 'Distance', 'mm', true) : null}
+        {kind === 'offset' ? field('distance', 'Distance', unitLabel(), true) : null}
         {kind === 'mirror' || kind === 'offset' ? (
           <label className="app-geom__check">
             <input type="checkbox" checked={copy} onChange={(e) => setCopy(e.target.checked)} /> Copy (keep the original)

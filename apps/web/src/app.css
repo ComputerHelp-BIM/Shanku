@@ -859,3 +859,8 @@
 .app-levels__table td { padding: 4px 6px; border-bottom: 1px solid var(--border); }
 .app-levels__table input, .app-levels__new input { width: 100%; height: 28px; padding: 0 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; font-variant-numeric: tabular-nums; }
 .app-levels__new { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; }
+.app-pick-status { color: var(--select-window); font-weight: 600; }
+.app-units { display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.app-units label { display: grid; grid-template-columns: 130px 1fr; align-items: center; gap: 8px; color: var(--text-secondary); }
+.app-units select { height: 28px; padding: 0 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--field); color: var(--text); font: inherit; }
+.app-units__sample { margin: 4px 0 0; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--field); font-variant-numeric: tabular-nums; white-space: pre; }
