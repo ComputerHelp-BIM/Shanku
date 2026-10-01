@@ -1,4 +1,4 @@
-# Native editing (design, for approval)
+# Native editing (design; approved 2026-10-01)
 
 Decided 2026-09-30: **16A** parametric elements are the model, IFC is generated from them; **17A** IFC from
 other software: what maps cleanly becomes editable, the rest is read-only reference; **18B** models from
@@ -58,13 +58,19 @@ reason, as in Revit.
 | Trim/Extend Single / Multiple | — | beams or walls trimmed or extended to a boundary |
 | Split Element | SL | a beam or wall split at a point (two elements, marks suffixed) |
 | Array | AR | linear (count, spacing or "last") or radial; grouped or not |
-| Scale | RE | **positions** scaled about a base point (a layout enlarged); section sizes are types and do not scale, as in Revit |
+| Scale | RE | as Revit: positions and lengths scaled about a base point (a beam or wall gets longer, a slab outline larger); thickness and section sizes never scale — they are types (decision 20); dropped if it proves of no use |
 | Pin / Unpin | PN / UP | protects elements from changes |
 | Delete | DE | with what depends on it listed (openings in a wall) |
 | Match Type | MA | the type of one element given to others |
 | Copy to Levels | — | the selection copied to chosen levels, offsets kept (multi-storey) |
 
 Tools work in **plans, elevations and sections**; Move, Copy, Rotate, Mirror, Delete and Pin also in **3D**.
+
+### Measure and dimensions (decision 21)
+
+Both ways, to choose per use: **points**, as now (AutoCAD-style: snap to end, mid, centre, intersection), and
+**faces and edges**, as Revit (hover highlights a face, an edge or a corner point; a dimension attaches to
+the references picked and follows them when elements move).
 
 ## Revit (18B): edit natively, sync later
 
@@ -74,7 +80,7 @@ the model as loaded (the base), Shanku now, and Revit now (read through the brid
 - Changed only in Shanku → sent to Revit (move, rotate, type, parameters exist; create, delete, copy, curve
   ends for trim/extend/split come in Shanku Bridge for Revit 0.13.0).
 - Changed only in Revit → taken into Shanku.
-- Changed in both → **a conflict**, listed per element with both values, for a person to choose.
+- Changed in both → **a conflict**, listed per element with both values, for a person to choose (decision 22: never settled silently).
 
 Sync is reviewed in Changes for Revit, checked, and applied as one undo in Revit.
 
@@ -86,3 +92,13 @@ Sync is reviewed in Changes for Revit, checked, and applied as one undo in Revit
 2. Trim/Extend (all three), Split, Scale, radial Array, Match Type, Copy to Levels.
 3. Sync with Revit (three-way, conflicts), with Shanku Bridge for Revit 0.13.0.
 4. Create tools: columns, beams, walls, slabs, footings, levels, grids (CL, BM, WA, SB, LL, GR).
+
+## Progress
+
+- **Stage 1 core — done (engine 0.36.0):** parametric elements; conversion from DXF → 3D and from IFC geometry,
+  checked on `adani.ifc` (4,440 of 4,448 structural elements convert, each reproducing its IFC volume within
+  5 %, columns and beams within 1 %; 8 stepped slabs stay reference); Move, Copy, Rotate, Mirror, Array,
+  Offset, Align, Delete, Pin; undo and redo. Pure functions, unit-tested.
+- **Stage 1 next:** edited elements drawn from their records (their original triangles hidden), the Modify tab
+  with picking, snaps, temporary dimensions and typed values, Ctrl + Z / Ctrl + Y, elements saved in the
+  `.shkp` (`shanku/elements.jsonl`), IFC written on save.

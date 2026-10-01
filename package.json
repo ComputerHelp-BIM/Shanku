@@ -17,7 +17,7 @@
     "build": "npm run build -w @shanku/tokens && npm run build -w @shanku/ui && npm run build -w @shanku/playground && npm run build -w @shanku/web",
     "dev": "npm run build -w @shanku/tokens && npm run dev -w @shanku/web",
     "dev:playground": "npm run build -w @shanku/tokens && npm run dev -w @shanku/playground",
-    "test": "npm run build -w @shanku/tokens && npm run test -w @shanku/ui && npm run test -w @shanku/engine && npm run test -w @shanku/web",
+    "test": "node tools/check-workspace-versions.mjs && npm run build -w @shanku/tokens && npm run test -w @shanku/ui && npm run test -w @shanku/engine && npm run test -w @shanku/web",
     "typecheck": "npm run build -w @shanku/tokens && npm run typecheck -w @shanku/ui && npm run typecheck -w @shanku/engine && npm run typecheck -w @shanku/playground && npm run typecheck -w @shanku/web && tsc -p api/tsconfig.json",
     "fixtures:large": "python tools/fixtures/make_sample_ifc.py large large-frame.ifc",
     "fixtures:showcase": "python tools/fixtures/make_showcase_ifc.py tower apps/web/public/samples/g14-tower.ifc.gz && python tools/fixtures/make_showcase_ifc.py twin apps/web/public/samples/g24-twin-towers.ifc.gz",

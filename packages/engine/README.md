@@ -1,4 +1,4 @@
-# @shanku/engine 0.35.1
+# @shanku/engine 0.36.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.36.0 — 2026-10-01
+- **Native editing, stage 1 core** (`docs/design/native-editing.md`): `model/parametric.ts` — parametric elements (point-, line- and area-based), `fromExchange` (DXF → 3D), and `deriveElement` from IFC geometry: plan rectangle (rotating calipers) or circle for columns, pedestals, footings; centreline, width and depth for beams and walls; top-face outline and holes for slabs. Only clean shapes convert; the rest stays reference with the reason (separate pieces, steps, non-rectangular), and the parameters must reproduce the IFC's own volume within 5 %. On `adani.ifc`: 4,440 of 4,448 structural elements convert (columns and beams all within 1 % of their IFC volume); 8 stepped slabs stay reference. `edit/ops.ts` — Move, Copy, Rotate, Mirror (copies by default), linear Array, Offset, Align (centre or nearest face; non-parallel refused), Delete, Pin; pinned elements refused with the reason; outlines stay counter-clockwise. `edit/history.ts` — undo and redo, one step per action. `edit/ids.ts` — IFC GlobalIds for copies.
 
 ### 0.35.1 — 2026-09-26
 - **DXF → 3D pipeline 2.0.1: large drawings read about 14× faster, output identical.** Three all-pairs loops dominated (millions of calls on a 4,444-element drawing): the overlap check now runs only on the levels that report it (a repeated plan's first level) with candidates from a sweep over x-sorted boxes; labels are found through a grid index (`PointGrid`) instead of scanning every label per outline; openings test wall boxes first. adani.dxf: analysis 8.6 s → 0.59 s natively (about 30 s → 2.7 s in the browser); QA findings, exchange and levels byte-identical, checked against the previous output.
