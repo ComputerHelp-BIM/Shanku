@@ -1,4 +1,4 @@
-# @shanku/web 0.56.0
+# @shanku/web 0.56.1
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -26,11 +26,15 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 
 ## Changelog
 
+### 0.56.1 — 2026-10-03
+- **Faster tools on large models** (engine 0.42.1). Profiling a 14,039-element model while picking points showed most of each hover in `getBoundingClientRect`: snapping asked for the canvas's position once per projected point, and with the overlays redrawn in between each lookup could force a layout. The viewer now measures each element once per task (cleared by a microtask, so never stale). Hover median 42.1 → 14.5 ms on that model, 5.6 → 4.3 ms on a 4,448-element one; output identical.
+- The 0.56.0 note blaming the synchronous GPU pick read was wrong for tools: picking tools snap with a CPU ray cast; the GPU read is used only by the idle hover highlight.
+
 ### 0.56.0 — 2026-10-03
 - **Grid underlay** (engine `render/gridUnderlay.ts`, `features/views/useViewsFeature.ts`): plans on the level, elevations and sections on the view's plane (the horizontal zero line at the project's ±0), 3D on the ±0 ground fading with distance; 10ⁿ m spacing from the zoom (`gridSpacing`), origin axes red/green (Blender's); its own scene drawn before the model (never picked, snapped to or clipped). **Grid: On/Off** on the view bar, remembered.
 - **Visual Style menu** (`components/VisualStyleMenu.tsx`): Revit's list and order (Wireframe, Hidden Line, Shaded, Consistent Colors, Realistic) in one view-bar button; the list is placed on the page (inside the view bar the viewport covered it). Consistent Colors no longer lists CO (Copy since 0.52.0).
 - **Fixed (from testing 0.55.0):** an element moved ~10 m or more vanished from a plan and Fit kept to the old extent — a view's range was computed only when the view opened; it now follows edits, the camera kept. Typed distances (and Backspace) showed on the canvas only when the cursor next moved — every key the picker handles now redraws. The status bar re-rendered the app on every mouse move — it now shows the prompt and the snap and changes only when they do (the length and the typing are on the canvas, as Revit's listening dimension).
-- **Known:** hover picking reads the GPU pick buffer synchronously on each mouse move (a pipeline stall; in a software-GPU test browser frames stop after rapid movement). Non-blocking picking is the next release.
+- **Known:** in a software-GPU test browser, frames can stop after rapid cursor movement (a test-environment stall).
 - Checked in the browser (production build): a column moved 15 m stays in the plan and Fit includes it; typed 5, 50, 500 and Backspace show at once; the menu applies and closes; grid screenshots in 3D, plan and elevation; Move/Copy/Align, native editing, levels, datums and Revit-linked walk-throughs unchanged.
 
 ### 0.55.0 — 2026-10-02

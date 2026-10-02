@@ -254,6 +254,22 @@ export class Viewer {
   private history: CameraState[] = [];
   private zoomRegionArmed = false;
   private frameRequested = false;
+  /**
+   * Element positions for the current task: the first lookup measures, the rest reuse it, and the cache clears when
+   * the task ends (a microtask), so nothing is ever stale. Snapping asked for the canvas's position once per point
+   * it projected — with the overlays redrawn in between, each lookup could force a layout: on a 14,000-element
+   * model that was most of a 40–100 ms hover.
+   */
+  private rects = new Map<Element, DOMRect>();
+  private rectOf(el: Element): DOMRect {
+    let r = this.rects.get(el);
+    if (!r) {
+      if (!this.rects.size) queueMicrotask(() => this.rects.clear());
+      r = el.getBoundingClientRect();
+      this.rects.set(el, r);
+    }
+    return r;
+  }
   private disposers: Array<() => void> = [];
   private modelSphere = new Sphere(new Vector3(), 10);
   /** Exploded view: mode, current amount (0-1) and the per-element offsets at full explosion. */
@@ -377,7 +393,7 @@ export class Viewer {
       e.preventDefault();
       const plane = new Plane(new Vector3(0, 1, 0), -ann.a[1]);
       const at = (cx: number, cy: number): [number, number, number] | null => {
-        const r = this.canvas.getBoundingClientRect();
+        const r = this.rectOf(this.canvas);
         this.raycaster.setFromCamera(new Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), this.camera);
         const p = this.raycaster.ray.intersectPlane(plane, new Vector3());
         return p ? [p.x, p.y, p.z] : null;
@@ -619,7 +635,7 @@ export class Viewer {
   /** Element index under a client-space point, or null. Renders one pixel of the ID buffer. */
   pick(clientX: number, clientY: number): number | null {
     if (!this.model) return null;
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.rectOf(this.canvas);
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     if (x < 0 || y < 0 || x >= rect.width || y >= rect.height) return null;
@@ -645,7 +661,7 @@ export class Viewer {
    */
   elementsInRect(x0: number, y0: number, x1: number, y1: number, crossing: boolean): number[] {
     if (!this.model) return [];
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.rectOf(this.canvas);
     const [ax, bx] = [Math.min(x0, x1) - rect.left, Math.max(x0, x1) - rect.left];
     const [ay, by] = [Math.min(y0, y1) - rect.top, Math.max(y0, y1) - rect.top];
     const m = new Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse).elements;
@@ -745,7 +761,7 @@ export class Viewer {
 
   /** Orthographic pick ray through a client point, starting behind everything. */
   private pickRay(clientX: number, clientY: number): { origin: Vector3; dir: Vector3 } {
-    const r = this.canvas.getBoundingClientRect();
+    const r = this.rectOf(this.canvas);
     this.raycaster.setFromCamera(new Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), this.camera);
     const dir = this.raycaster.ray.direction.clone().normalize();
     // Back off far enough that nothing in the model is behind the start (the camera is orthographic).
@@ -781,16 +797,16 @@ export class Viewer {
         scene: () => this.measureScene(),
         ray: (x, y) => (this.model ? this.pickRay(x, y) : null),
         project: (p) => {
-          const r = this.canvas.getBoundingClientRect();
+          const r = this.rectOf(this.canvas);
           const v = p.clone().project(this.camera);
           if (v.z < -1 || v.z > 1) return null;
           return [((v.x + 1) / 2) * r.width, ((1 - v.y) / 2) * r.height];
         },
         toLocal: (x, y) => {
-          const r = this.canvas.getBoundingClientRect();
+          const r = this.rectOf(this.canvas);
           return [x - r.left, y - r.top];
         },
-        pixel: () => worldPerPixel(this.frameHeight, this.camera.zoom, container.getBoundingClientRect().height || 1),
+        pixel: () => worldPerPixel(this.frameHeight, this.camera.zoom, this.rectOf(container).height || 1),
         viewDir: () => (this.nav2d ? this.camera.getWorldDirection(new Vector3()) : null),
         axisOf: this.axisOf,
         faceOf: this.faceOf,
@@ -840,16 +856,16 @@ export class Viewer {
         scene: () => this.measureScene(),
         ray: (x, y) => (this.model ? this.pickRay(x, y) : null),
         project: (p) => {
-          const r = this.canvas.getBoundingClientRect();
+          const r = this.rectOf(this.canvas);
           const v = p.clone().project(this.camera);
           if (v.z < -1 || v.z > 1) return null;
           return [((v.x + 1) / 2) * r.width, ((1 - v.y) / 2) * r.height];
         },
         toLocal: (x, y) => {
-          const r = this.canvas.getBoundingClientRect();
+          const r = this.rectOf(this.canvas);
           return [x - r.left, y - r.top];
         },
-        pixel: () => worldPerPixel(this.frameHeight, this.camera.zoom, container.getBoundingClientRect().height || 1),
+        pixel: () => worldPerPixel(this.frameHeight, this.camera.zoom, this.rectOf(container).height || 1),
         axisOf: this.axisOf,
         faceOf: this.faceOf,
         cutsOf: this.cutsOf,
@@ -912,10 +928,10 @@ export class Viewer {
         ray: (x, y) => (this.model ? this.pickRay(x, y) : null),
         project: (p) => this.projectLocal(p),
         toLocal: (x, y) => {
-          const r = this.canvas.getBoundingClientRect();
+          const r = this.rectOf(this.canvas);
           return [x - r.left, y - r.top];
         },
-        pixel: () => worldPerPixel(this.frameHeight, this.camera.zoom, container.getBoundingClientRect().height || 1),
+        pixel: () => worldPerPixel(this.frameHeight, this.camera.zoom, this.rectOf(container).height || 1),
         viewDir: () => (this.nav2d ? this.camera.getWorldDirection(new Vector3()) : null),
         cameraDir: () => this.camera.getWorldDirection(new Vector3()),
         axisOf: this.axisOf,
@@ -946,7 +962,7 @@ export class Viewer {
 
   /** World → container pixels (null behind the camera). */
   private projectLocal(p: Vector3): [number, number] | null {
-    const r = this.canvas.getBoundingClientRect();
+    const r = this.rectOf(this.canvas);
     const v = p.clone().project(this.camera);
     if (v.z < -1 || v.z > 1) return null;
     return [((v.x + 1) / 2) * r.width, ((1 - v.y) / 2) * r.height];
@@ -986,7 +1002,7 @@ export class Viewer {
       const before: Vec3 = [...d.at];
       let moved = false;
       const at = (cx: number, cy: number): Vec3 | null => {
-        const r = this.canvas.getBoundingClientRect();
+        const r = this.rectOf(this.canvas);
         this.raycaster.setFromCamera(new Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), this.camera);
         const p = this.raycaster.ray.intersectPlane(plane, new Vector3());
         return p ? [p.x, p.y, p.z] : null;
@@ -1047,7 +1063,7 @@ export class Viewer {
     const s = this.measureScene();
     if (!s) return;
     const [x, y] = this.lastPointer;
-    const r = this.canvas.getBoundingClientRect();
+    const r = this.rectOf(this.canvas);
     const local: [number, number] = [x - r.left, y - r.top];
     if (!this.tab) {
       const { origin, dir: d } = this.pickRay(x, y);
@@ -1662,7 +1678,7 @@ export class Viewer {
   }
 
   private zoomToRect(x0: number, y0: number, x1: number, y1: number): void {
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.rectOf(this.canvas);
     const rw = Math.abs(x1 - x0), rh = Math.abs(y1 - y0);
     if (rw < 4 || rh < 4) return;
     this.pushHistory();
@@ -1704,7 +1720,7 @@ export class Viewer {
   }
 
   private aspect(): number {
-    const r = this.container.getBoundingClientRect();
+    const r = this.rectOf(this.container);
     return r.height > 0 ? r.width / r.height : 1;
   }
 
@@ -1719,19 +1735,19 @@ export class Viewer {
   }
 
   private resize(): void {
-    const r = this.container.getBoundingClientRect();
+    const r = this.rectOf(this.container);
     this.renderer.setSize(Math.max(1, r.width), Math.max(1, r.height), false);
     this.updateFrustum();
     this.requestRender();
   }
 
   private unproject(clientX: number, clientY: number): Vector3 {
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.rectOf(this.canvas);
     return new Vector3(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1, 0).unproject(this.camera);
   }
 
   private pan(dxPx: number, dyPx: number): void {
-    const k = worldPerPixel(this.frameHeight, this.camera.zoom, this.canvas.getBoundingClientRect().height);
+    const k = worldPerPixel(this.frameHeight, this.camera.zoom, this.rectOf(this.canvas).height);
     const right = new Vector3().setFromMatrixColumn(this.camera.matrix, 0);
     const up = new Vector3().setFromMatrixColumn(this.camera.matrix, 1);
     const move = right.multiplyScalar(-dxPx * k).add(up.multiplyScalar(dyPx * k));
@@ -1752,7 +1768,7 @@ export class Viewer {
     const e = this.model.elements[[...this.selection][0]];
     if (!e || this.hidden.has(e.index)) return;
     const [x0, y0, z0, x1, y1, z1] = this.boundsOf(e.index);
-    const r = this.container.getBoundingClientRect();
+    const r = this.rectOf(this.container);
     const view = this.camera.position.clone().sub(this.target);
     const zs = view.z > 0 ? z1 : z0; // the side facing the camera
     const xs = view.x > 0 ? x1 : x0;
@@ -1821,7 +1837,7 @@ export class Viewer {
   /** View symbols in a client-space rectangle: window takes whole symbols, crossing anything touched. */
   annotationsInRect(x0: number, y0: number, x1: number, y1: number, crossing: boolean): string[] {
     if (!this.annotations.length) return [];
-    const r = this.canvas.getBoundingClientRect();
+    const r = this.rectOf(this.canvas);
     const [ax, bx] = [Math.min(x0, x1) - r.left, Math.max(x0, x1) - r.left];
     const [ay, by] = [Math.min(y0, y1) - r.top, Math.max(y0, y1) - r.top];
     const v = new Vector3();
@@ -1871,7 +1887,7 @@ export class Viewer {
   private linePoint(clientX: number, clientY: number): Vector3 | null {
     const lp = this.linePick;
     if (!lp) return null;
-    const r = this.canvas.getBoundingClientRect();
+    const r = this.rectOf(this.canvas);
     let sx = clientX - r.left, sy = clientY - r.top;
     let preview: LinePreview | null = null;
     if (lp.first) {
@@ -1907,7 +1923,7 @@ export class Viewer {
       while (this.annEl.firstChild) this.annEl.firstChild.remove();
       return;
     }
-    const r = this.container.getBoundingClientRect();
+    const r = this.rectOf(this.container);
     const cs = getComputedStyle(this.container);
     const v = new Vector3();
     drawAnnotations(
@@ -1965,7 +1981,7 @@ export class Viewer {
     if (!els.length || !m) return;
     this.geoIndex ??= buildGeometryIndex(m.mesh, m.edges, m.elements.length);
     const idx = this.geoIndex;
-    const r = this.canvas.getBoundingClientRect();
+    const r = this.rectOf(this.canvas);
     const E = m.edges.positions;
     const v = new Vector3();
     const data = this.explodeData, k = this.explodeAmount;
@@ -1997,7 +2013,7 @@ export class Viewer {
       this.pivotEl.style.display = 'none';
       return;
     }
-    const r = this.container.getBoundingClientRect();
+    const r = this.rectOf(this.container);
     const s = this.toScreen(p);
     Object.assign(this.pivotEl.style, { display: 'block', left: `${s.x - r.left}px`, top: `${s.y - r.top}px` });
   }
@@ -2030,7 +2046,7 @@ export class Viewer {
   // ------------------------------------------------------------------ input
 
   private showRect(x0: number, y0: number, x1: number, y1: number, dashed: boolean): void {
-    const c = this.container.getBoundingClientRect();
+    const c = this.rectOf(this.container);
     Object.assign(this.rectEl.style, {
       display: 'block',
       left: `${Math.min(x0, x1) - c.left}px`,
@@ -2047,7 +2063,7 @@ export class Viewer {
   /** The section-box grip under the pointer (within 14 px of its centre on screen), if any. */
   private gripAt(clientX: number, clientY: number): Mesh | null {
     if (!this.sbox || !this.gripsOn || this.nav2d) return null;
-    this.gizmo.update(this.sbox, metresPerPixel(this.camera, this.canvas.getBoundingClientRect().height), this.hotGrip);
+    this.gizmo.update(this.sbox, metresPerPixel(this.camera, this.rectOf(this.canvas).height), this.hotGrip);
     let best: Mesh | null = null;
     let bestD = 14;
     for (const m of this.gizmo.targets) {
@@ -2062,14 +2078,14 @@ export class Viewer {
 
   /** Screen position (client px) of a world point. */
   private toScreen(p: Vector3): Vector2 {
-    const r = this.canvas.getBoundingClientRect();
+    const r = this.rectOf(this.canvas);
     const v = p.clone().project(this.camera);
     return new Vector2(r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height);
   }
 
   /** Point on the horizontal plane through the box centre under the pointer (for rotation). */
   private planPoint(clientX: number, clientY: number, y: number): Vector3 | null {
-    const r = this.canvas.getBoundingClientRect();
+    const r = this.rectOf(this.canvas);
     this.raycaster.setFromCamera(new Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), this.camera);
     return this.raycaster.ray.intersectPlane(new Plane(new Vector3(0, 1, 0), -y), new Vector3());
   }
@@ -2202,7 +2218,7 @@ export class Viewer {
       }
       lastHover = e;
       this.lastPointer = [e.clientX, e.clientY];
-      if (this.tab && Math.hypot(e.clientX - c.getBoundingClientRect().left - this.tab.anchor[0], e.clientY - c.getBoundingClientRect().top - this.tab.anchor[1]) > CLICK_TOLERANCE_PX) this.endTab();
+      if (this.tab && Math.hypot(e.clientX - this.rectOf(c).left - this.tab.anchor[0], e.clientY - this.rectOf(c).top - this.tab.anchor[1]) > CLICK_TOLERANCE_PX) this.endTab();
       if (hoverQueued) return;
       hoverQueued = true;
       requestAnimationFrame(() => {
@@ -2271,7 +2287,7 @@ export class Viewer {
           }
           this.requestRender();
         } else if (!d.moved && this.pointPick) {
-          const r = this.canvas.getBoundingClientRect();
+          const r = this.rectOf(this.canvas);
           this.raycaster.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
           const p = this.raycaster.ray.intersectPlane(this.pointPick.plane, new Vector3());
           if (p) this.pointPick.onPoint(p);
@@ -2479,7 +2495,7 @@ export class Viewer {
       this.renderer.setClearColor(0x000000, 0);
       // the grid first (it clears the frame), then the model over it without clearing again
       if (this.grid.visible) {
-        const h = this.canvas.getBoundingClientRect().height || 1;
+        const h = this.rectOf(this.canvas).height || 1;
         this.grid.update(this.camera, metresPerPixel(this.camera, h), this.target, Math.max(this.frameHeight, this.frameHeight * this.aspect()), this.modelSphere.radius);
         this.renderer.render(this.grid.scene, this.camera);
         this.renderer.autoClear = false;
@@ -2488,7 +2504,7 @@ export class Viewer {
       this.renderer.autoClear = true;
       if (this.sbox && this.clipPlanes.length === 6 && this.capStencilMat) this.renderCaps();
       if (this.sbox && this.gripsOn) {
-        const h = this.canvas.getBoundingClientRect().height;
+        const h = this.rectOf(this.canvas).height;
         this.gizmo.update(this.sbox, metresPerPixel(this.camera, h), this.hotGrip);
         this.renderer.autoClear = false;
         this.renderer.render(this.gizmoScene, this.camera);

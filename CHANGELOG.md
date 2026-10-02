@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.56.1 — 2026-10-03
+
+### Performance
+- Snapping while picking points ~3× faster on large models (canvas position measured once per task, not per point).
+
 ## 0.56.0 — 2026-10-03
 
 ### Added

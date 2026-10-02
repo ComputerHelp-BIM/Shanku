@@ -1,4 +1,4 @@
-# @shanku/engine 0.42.0
+# @shanku/engine 0.42.1
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.42.1 — 2026-10-03
+- `Viewer`: element positions measured once per task (`rectOf`, cleared by a microtask) instead of per projected point; hover while picking ~3× faster on a 14,000-element model. Output identical.
 
 ### 0.42.0 — 2026-10-03
 - `render/gridUnderlay.ts`: `GridUnderlay` (shader quad, premultiplied output), `gridSpacing`, `GridSpec`; `Viewer.setGrid`, `setGridVisible`; drawn before the model each frame.
