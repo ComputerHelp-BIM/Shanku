@@ -64,6 +64,7 @@ import { DimensionTool, type DimensionReadout } from './dimensionTool';
 import { PointPicker, type PickOptions } from './pointPicker';
 import { drawDimensions, type DimensionKind, type Origin, type PlacedDimension, type Vec3 } from './dimensions';
 import { SectionGizmo, aabbOf, axesOf, cloneState, metresPerPixel, moveFace, planesOf, snapDelta, type GripData, type SectionBoxState } from './sectionBox';
+import { GridUnderlay, type GridSpec } from './gridUnderlay';
 
 export type ViewName = 'iso' | 'top' | 'bottom' | 'front' | 'back' | 'left' | 'right';
 /** Revit visual styles: SD, CO, HL, WF. */
@@ -215,6 +216,8 @@ export class Viewer {
   private hiddenVersion = 0;
   private sbox: SectionBoxState | null = null;
   private gizmo = new SectionGizmo();
+  /** The grid under the model (CAD-style in 2D, Blender-style in 3D). */
+  private grid = new GridUnderlay();
   private gizmoScene = new Scene();
   private hotGrip: Mesh | null = null;
   private raycaster = new Raycaster();
@@ -1607,6 +1610,16 @@ export class Viewer {
     this.requestRender();
   }
 
+  /** The grid under the model for the active view (null: none), and whether it is shown (the view bar's Grid). */
+  setGrid(spec: GridSpec | null): void {
+    this.grid.setSpec(spec);
+    this.requestRender();
+  }
+  setGridVisible(on: boolean): void {
+    this.grid.setVisible(on);
+    this.requestRender();
+  }
+
   /** Revit ZF / ZE / ZX: fit the model, or the given elements, tight to their projected box. */
   fit(indices?: Iterable<number>, record = true): void {
     const box = indices ? this.boxOf(indices) : this.section ?? this.modelBox();
@@ -2440,6 +2453,7 @@ export class Viewer {
     set(this.edgeMat, 'uHover', t['hover-outline']);
     // Hidden lines: the projection line colour, clearly visible over the faces in front of them.
     set(this.hiddenEdgeMat, 'uEdge', t['line-projection']);
+    this.grid.setLineColor(t['line-projection'].r, t['line-projection'].g, t['line-projection'].b);
     set(this.hiddenEdgeMat, 'uEdgeSel', t['edge-selected']);
     set(this.hiddenEdgeMat, 'uHover', t['hover-outline']);
     if (this.hiddenEdgeMat) {
@@ -2463,7 +2477,15 @@ export class Viewer {
       const t0 = performance.now();
       this.renderer.setRenderTarget(null);
       this.renderer.setClearColor(0x000000, 0);
+      // the grid first (it clears the frame), then the model over it without clearing again
+      if (this.grid.visible) {
+        const h = this.canvas.getBoundingClientRect().height || 1;
+        this.grid.update(this.camera, metresPerPixel(this.camera, h), this.target, Math.max(this.frameHeight, this.frameHeight * this.aspect()), this.modelSphere.radius);
+        this.renderer.render(this.grid.scene, this.camera);
+        this.renderer.autoClear = false;
+      }
       this.renderer.render(this.scene, this.camera);
+      this.renderer.autoClear = true;
       if (this.sbox && this.clipPlanes.length === 6 && this.capStencilMat) this.renderCaps();
       if (this.sbox && this.gripsOn) {
         const h = this.canvas.getBoundingClientRect().height;
@@ -2482,6 +2504,7 @@ export class Viewer {
   }
 
   dispose(): void {
+    this.grid.dispose();
     for (const d of this.disposers) d();
     this.clearModel();
     this.pickTarget.dispose();

@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.56.0 — 2026-10-03
+
+### Added
+- Grid underlay in 2D views and 3D (Grid: On/Off). Visual Style menu (Revit's).
+
+### Fixed
+- Elements moved far vanished from plans (the view range now follows edits); typed distances and Backspace showed late on the canvas; the status bar re-rendered the app on every mouse move.
+
 ## 0.55.0 — 2026-10-02
 
 ### Added

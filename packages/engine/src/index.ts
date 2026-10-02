@@ -29,7 +29,7 @@ export { DIMENSION_TOOLS, dimensionSummary, dimensionValues, followModel, type D
 export type { DimensionReadout } from './render/dimensionTool';
 export { fmtMm, faceOrientation, toRevitAxes, SNAP_LABEL, type SnapKind } from './render/measure';
 export { CURSOR, cursorsFor, isDarkColor, modifierCursor, type CursorSet } from './render/cursors';
-export const ENGINE_VERSION = '0.41.0';
+export const ENGINE_VERSION = '0.42.0';
 export { DEFAULT_CHECKS, QA_TOLERANCE, duplicatePairs, elementLabel, findingId, runChecks } from './qa/checks';
 export type { Finding, QaCheck, QaContext, QaGroup, QaReport, Severity } from './qa/types';
 // native editing (docs/design/native-editing.md): the parametric model and Revit's Modify operations
@@ -37,6 +37,7 @@ export * from './model/parametric';
 export * from './model/hosting';
 export * from './units';
 export * from './render/snapping';
+export { gridSpacing, type GridSpec } from './render/gridUnderlay';
 export { planWorkPlane, type PickOptions, type PickStatus, type WorkPlane } from './render/pointPicker';
 export * from './edit/ops';
 export * from './edit/history';

@@ -10,7 +10,7 @@ import { marksFor } from '../../lib/viewMarks';
 import { type ModelView, levelHeights, isTwoD, viewClip, viewDirection, duplicateView, nextSectionName, sectionFromVerticalView } from '../../lib/views';
 import { type ViewTemplate, loadTemplates, saveTemplates, type ViewState, applyTemplate } from '../../lib/viewTemplates';
 import { resolveGraphics, type ViewGraphics, type CategoryOverrides, type GraphicsOverride, EMPTY_GRAPHICS } from '../../lib/visibility';
-import { type CameraState, type SectionBoxState, type ExplodeMode, projectZeroY, type Vec3, followModel, boxState } from '@shanku/engine';
+import { type CameraState, type GridSpec, type SectionBoxState, type ExplodeMode, projectZeroY, type Vec3, followModel, boxState } from '@shanku/engine';
 import { useState, useRef, useEffect, useMemo } from 'react';
 
 /** Values App declares after this feature: read through a ref, in callbacks and effects only. */
@@ -270,6 +270,59 @@ export function useViewsFeature(deps: ViewsFeatureDeps) {
     }
   };
 
+  // The model's extent or its levels changed (a move, a copy, a level moved): the active view's range follows, the
+  // camera stays. Found: an element moved ~10 m away vanished from a plan, and Fit kept to the old extent, until
+  // the view was opened again.
+  // The grid under the model (the view bar's Grid; remembered, on by default): CAD-style on a plan's level or an
+  // elevation's plane (its zero lines: the model's origin and the project's ±0), Blender-style on the ±0 ground in 3D.
+  const [gridOn, setGridOn] = useState(() => {
+    try {
+      return localStorage.getItem('shanku.grid') !== 'off';
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('shanku.grid', gridOn ? 'on' : 'off');
+    } catch {
+      // private browsing: the grid simply isn't remembered
+    }
+  }, [gridOn]);
+  useEffect(() => {
+    const vp = viewport.current;
+    if (!vp) return;
+    const v = activeModelView;
+    let spec: GridSpec | null = null;
+    if (m.model) {
+      if (!v || v.kind === '3d') spec = { mode: '3d', origin: [0, zY, 0], u: [1, 0, 0], v: [0, 0, -1] };
+      else if (v.kind === 'plan') {
+        const y = v.level !== undefined ? heights.get(v.level) : undefined;
+        if (y !== undefined) spec = { mode: '2d', origin: [0, y, 0], u: [1, 0, 0], v: [0, 0, -1] };
+      } else {
+        const look = viewDirection(v);
+        if (look) {
+          const l = Math.hypot(look[0], look[2]) || 1;
+          spec = { mode: '2d', origin: [0, zY, 0], u: [-look[2] / l, 0, look[0] / l], v: [0, 1, 0] };
+        }
+      }
+    }
+    vp.setGrid(spec);
+    vp.setGridVisible(gridOn);
+  }, [activeModelView, heights, zY, gridOn, m.model]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const appliedClip = useRef('');
+  useEffect(() => {
+    const vp = viewport.current;
+    if (!vp || !activeModelView) return;
+    const clip = viewClip(activeModelView, heights, bounds);
+    if (!clip) return;
+    const key = JSON.stringify(clip);
+    if (key === appliedClip.current) return;
+    appliedClip.current = key;
+    vp.setSectionBoxState(boxState(clip.center, clip.half, clip.angle));
+  }, [bounds, heights]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /** Keeps the outgoing view's state and shows the incoming one (Revit: each view remembers its own). */
   useEffect(() => {
     const vp = viewport.current;
@@ -369,5 +422,5 @@ export function useViewsFeature(deps: ViewsFeatureDeps) {
     sectionA.current = null;
   };
 
-  return { activeModelView, activeView, annSel, applyElementGraphics, applyFilterDefs, applyMode, applyTemplateToView, applyViewGraphics, applyViewTemplate, boxStore, camStore, cancelSection, closeView, colorResult, colorSettings, curSelection, deleteModelView, dimOrigin, dock, duplicateModelView, explode, geomMode, gradeDialog, graphicsFor, gripStart, guideSection, heights, hideStore, history, lastCommand, loadedView, markDialog, marks, myShareList, openGuide, openPanels, openView, openViews, prevSelection, renameView, reveal, sectionTool, setActiveView, setAnnSel, setColorMode, setColorSettings, setExplode, setGeomMode, setGradeDialog, setLastCommand, setMarkDialog, setMyShareList, setOpenPanels, setOpenViews, setRenameView, setReveal, setShareInfoState, setTemplates, setViewMenu, setViewRange, setViews, setVtFocus, setVtMenu, setVtOpen, setZoomRegion, shareInfoState, startSection, templates, toggleWin, viewHidden, viewMenu, viewOverrides, viewState, views, viewsRef, vtFocus, vtMenu, vtOpen, wins, zY, zoomRegion };
+  return { gridOn, setGridOn, activeModelView, activeView, annSel, applyElementGraphics, applyFilterDefs, applyMode, applyTemplateToView, applyViewGraphics, applyViewTemplate, boxStore, camStore, cancelSection, closeView, colorResult, colorSettings, curSelection, deleteModelView, dimOrigin, dock, duplicateModelView, explode, geomMode, gradeDialog, graphicsFor, gripStart, guideSection, heights, hideStore, history, lastCommand, loadedView, markDialog, marks, myShareList, openGuide, openPanels, openView, openViews, prevSelection, renameView, reveal, sectionTool, setActiveView, setAnnSel, setColorMode, setColorSettings, setExplode, setGeomMode, setGradeDialog, setLastCommand, setMarkDialog, setMyShareList, setOpenPanels, setOpenViews, setRenameView, setReveal, setShareInfoState, setTemplates, setViewMenu, setViewRange, setViews, setVtFocus, setVtMenu, setVtOpen, setZoomRegion, shareInfoState, startSection, templates, toggleWin, viewHidden, viewMenu, viewOverrides, viewState, views, viewsRef, vtFocus, vtMenu, vtOpen, wins, zY, zoomRegion };
 }

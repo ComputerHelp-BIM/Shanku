@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { ViewCube, type Orientation } from './ViewCube';
 import { MeasureBar } from './MeasureBar';
 import { DimensionBar } from './DimensionBar';
-import { Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName, onDisplayUnits, type PickOptions } from '@shanku/engine';
+import { type GridSpec, Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName, onDisplayUnits, type PickOptions } from '@shanku/engine';
 import type { Annotation, CameraState, DimensionKind, DimensionReadout, ExplodeMode, MeasureMode, MeasureReadout, PlacedDimension, SectionBoxState, Vec3 } from '@shanku/engine';
 
 export interface ViewportHandle {
@@ -36,6 +36,9 @@ export interface ViewportHandle {
   sectionBoxState: () => SectionBoxState | null;
   /** Restores an exact section box state (undo/redo). */
   setSectionBoxState: (st: SectionBoxState | null) => void;
+  /** The grid under the model for the active view (null: none), and whether it shows. */
+  setGrid: (spec: GridSpec | null) => void;
+  setGridVisible: (on: boolean) => void;
 }
 
 export interface ViewportProps {
@@ -283,6 +286,8 @@ export const Viewport = forwardRef<ViewportHandle, ViewportProps>(function Viewp
     canNext: () => viewer.current?.canGoNext ?? false,
     sectionBoxState: () => viewer.current?.sectionBox ?? null,
     setSectionBoxState: (st) => viewer.current?.setSectionBoxState(st),
+    setGrid: (spec) => viewer.current?.setGrid(spec),
+    setGridVisible: (on) => viewer.current?.setGridVisible(on),
     home: () => viewer.current?.home(),
     setView: (v) => viewer.current?.setView(v),
     previousView: () => viewer.current?.previousView() ?? false,

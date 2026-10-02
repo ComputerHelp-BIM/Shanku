@@ -87,6 +87,8 @@ export class PointPicker {
     }
   };
   private lastHover: [number, number] | null = null;
+  /** What the status bar last showed: it is told only when that changes (every mouse move re-rendered the app). */
+  private shown = '';
 
   constructor(
     private ctx: PickContext,
@@ -219,6 +221,14 @@ export class PointPicker {
 
   /** Keys while picking: a length to type, Enter to place it, Backspace, Esc. True when the key was used. */
   key(key: string): boolean {
+    const handled = this.keyInner(key);
+    // every handled key redraws: the typed value is shown in the listening dimension on the canvas (found: digits and
+    // Backspace showed there only when the cursor next moved)
+    if (handled) this.ctx.render();
+    return handled;
+  }
+
+  private keyInner(key: string): boolean {
     if (key === 'Escape') {
       if (this.typed) this.typed = '';
       else if (this.start) this.start = null;
@@ -231,6 +241,7 @@ export class PointPicker {
       if (!this.typed) return false;
       this.typed = this.typed.slice(0, -1);
       this.publish();
+      this.ctx.render(); // the listening dimension on the canvas follows at once
       return true;
     }
     if (key === 'Enter') {
@@ -275,6 +286,11 @@ export class PointPicker {
     const len = this.length();
     const hint = this.hint;
     this.hint = null;
+    // the status bar shows the prompt and the snap (Revit's); the length and the typing are on the canvas
+    const prompt = hint ?? this.opts.prompts[this.start ? 1 : 0];
+    const key = `${prompt}|${this.cur?.label ?? ''}|${this.typed ? 'typing' : ''}`;
+    if (key === this.shown) return;
+    this.shown = key;
     this.opts.onStatus?.({
       prompt: hint ?? this.opts.prompts[this.start ? 1 : 0],
       snap: this.cur?.label ?? null,

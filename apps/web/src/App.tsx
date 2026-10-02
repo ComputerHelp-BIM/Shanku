@@ -91,6 +91,7 @@ import { ProjectUnits } from './components/ProjectUnits';
 import { DatumsList } from './components/DatumsList';
 import { datumMarksFor } from './lib/viewMarks';
 import { useModifyTools } from './features/modify/useModifyTools';
+import { VisualStyleMenu } from './components/VisualStyleMenu';
 
 /** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
 export interface AppStart {
@@ -188,7 +189,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   const [elemVgOpen, setElemVgOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const viewsFeatureLate = useRef({} as ViewsFeatureLate);
-  const { activeModelView, activeView, annSel, applyElementGraphics, applyFilterDefs, applyMode, applyTemplateToView, applyViewGraphics, applyViewTemplate, boxStore, camStore, cancelSection, closeView, colorResult, colorSettings, curSelection, deleteModelView, dimOrigin, dock, duplicateModelView, explode, geomMode, gradeDialog, graphicsFor, gripStart, guideSection, heights, hideStore, history, lastCommand, loadedView, markDialog, marks, myShareList, openGuide, openPanels, openView, openViews, prevSelection, renameView, reveal, sectionTool, setActiveView, setAnnSel, setColorMode, setColorSettings, setExplode, setGeomMode, setGradeDialog, setLastCommand, setMarkDialog, setMyShareList, setOpenPanels, setOpenViews, setRenameView, setReveal, setShareInfoState, setTemplates, setViewMenu, setViewRange, setViews, setVtFocus, setVtMenu, setVtOpen, setZoomRegion, shareInfoState, startSection, templates, toggleWin, viewHidden, viewMenu, viewOverrides, viewState, views, viewsRef, vtFocus, vtMenu, vtOpen, wins, zY, zoomRegion } = useViewsFeature({ displayStyle, edges, graphics, graphicsRef, hidden, m, openedInfo, sectionBox, setDimSel, setDimTool, setDisplayStyle, setEdges, setGraphics, setHidden, setMeasure, setNotice, setSectionBox, start, viewport, late: viewsFeatureLate });
+  const { gridOn, setGridOn, activeModelView, activeView, annSel, applyElementGraphics, applyFilterDefs, applyMode, applyTemplateToView, applyViewGraphics, applyViewTemplate, boxStore, camStore, cancelSection, closeView, colorResult, colorSettings, curSelection, deleteModelView, dimOrigin, dock, duplicateModelView, explode, geomMode, gradeDialog, graphicsFor, gripStart, guideSection, heights, hideStore, history, lastCommand, loadedView, markDialog, marks, myShareList, openGuide, openPanels, openView, openViews, prevSelection, renameView, reveal, sectionTool, setActiveView, setAnnSel, setColorMode, setColorSettings, setExplode, setGeomMode, setGradeDialog, setLastCommand, setMarkDialog, setMyShareList, setOpenPanels, setOpenViews, setRenameView, setReveal, setShareInfoState, setTemplates, setViewMenu, setViewRange, setViews, setVtFocus, setVtMenu, setVtOpen, setZoomRegion, shareInfoState, startSection, templates, toggleWin, viewHidden, viewMenu, viewOverrides, viewState, views, viewsRef, vtFocus, vtMenu, vtOpen, wins, zY, zoomRegion } = useViewsFeature({ displayStyle, edges, graphics, graphicsRef, hidden, m, openedInfo, sectionBox, setDimSel, setDimTool, setDisplayStyle, setEdges, setGraphics, setHidden, setMeasure, setNotice, setSectionBox, start, viewport, late: viewsFeatureLate });
   const revitLinkLate = useRef({} as RevitLinkLate);
   const { activeDoc, autoUpdate, boqSelect, bridge, canExport, canLive, canParams, changeRates, changeStatus, changeWarnings, changesBusy, commitTypeDraft, confirmMarks, createInRevit, cursor, diagnose, diagnosedFor, diagnosis, downloadIfc, drawingView, dx, editWhy, elementLabel, exportOff, exportState, exportToRevit, exportWhy, getSelectionFromRevit, ifcColor, lastApplied, lastFile, liveBusy, liveCount, loadFromRevit, markBusy, markProposal, openDrawing, openDxfFromDisk, openGeom, openModelFile, openRevit, paramsCache, paramsTick, pending, qaFix, rates, refreshChanges, revit, revitLink, revitLinked, revitLoading, revitProps, revitSync, runChanges, selectedGids, sendSelectionToRevit, setAutoUpdate, setCursor, setDiagnosis, setExportOff, setIfcColor, setMarkProposal, setPending, setRevitSync, showInRevit, snapshot, stageGeometry, updateFromRevit } = useRevitLink({ activeView, boxStore, camStore, dock, graphicsFor, hideStore, history, loadedView, m, openGuide, openedInfo, setActiveView, setDisplayStyle, setEdges, setExplode, setGeomMode, setGraphics, setHidden, setNotice, setOpenViews, setSectionBox, setViews, toggleWin, viewport, wins, late: revitLinkLate });
   const { pipe, pipeline, showQa } = usePipelineFeature({ drawingView, dx, m, setActiveView, setNotice, toggleWin });
@@ -1098,22 +1099,11 @@ export function App({ start }: { start?: AppStart } = {}) {
           <Button size="sm" variant="ghost" onClick={() => viewport.current?.fit()} title="Zoom to fit (ZF)">
             Fit
           </Button>
+          <Button size="sm" variant="ghost" aria-pressed={gridOn} disabled={!m.model} onClick={() => setGridOn((g) => !g)} title="The grid under the model: in plans and elevations as in CAD, in 3D on the ±0 ground (red X, green Y)">
+            Grid: {gridOn ? 'On' : 'Off'}
+          </Button>
           <span className="app-divider" aria-hidden="true" />
-          <div className="app-segmented" role="radiogroup" aria-label="Visual style">
-            {STYLES.map((st) => (
-              <button
-                key={st.id}
-                type="button"
-                role="radio"
-                aria-checked={displayStyle === st.id}
-                className={displayStyle === st.id ? 'is-active' : undefined}
-                title={st.keys ? `${st.label} (${st.keys})` : st.id === 'realistic' ? 'Realistic: sun and sky light on concrete (try with Shadows)' : st.label}
-                onClick={() => setDisplayStyle(st.id)}
-              >
-                {st.label}
-              </button>
-            ))}
-          </div>
+          <VisualStyleMenu styles={STYLES} value={displayStyle} onChange={setDisplayStyle} />
           <Button size="sm" variant="ghost" aria-pressed={shadows} disabled={!m.model || isTwoD(activeModelView ?? undefined)} onClick={() => setShadows((v) => !v)} title="Ground shadows from the sun (lightweight: one extra draw)">
             Shadows: {shadows ? 'On' : 'Off'}
           </Button>
@@ -1331,7 +1321,6 @@ export function App({ start }: { start?: AppStart } = {}) {
             {toolStatus ? (
               <span className="app-pick-status" role="status">
                 {toolStatus.prompt}
-                {toolStatus.typed ? ` · ${toolStatus.typed}` : toolStatus.length ? ` · ${toolStatus.length}` : ''}
                 {toolStatus.snap ? ` · ${toolStatus.snap}` : ''}
               </span>
             ) : (

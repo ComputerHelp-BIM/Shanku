@@ -1,4 +1,4 @@
-# @shanku/engine 0.41.0
+# @shanku/engine 0.42.0
 # @shanku/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,10 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.42.0 — 2026-10-03
+- `render/gridUnderlay.ts`: `GridUnderlay` (shader quad, premultiplied output), `gridSpacing`, `GridSpec`; `Viewer.setGrid`, `setGridVisible`; drawn before the model each frame.
+- `render/pointPicker.ts`: every handled key redraws; the status is published only when the prompt, snap or typing state changes.
 
 ### 0.41.0 — 2026-10-02
 - `render/pointPicker.ts`: work planes (`WorkPlane`, `planWorkPlane`) instead of a plan height; `ortho` (Constrain); single picks with what was clicked (Align); point snaps only within reach on screen; typed lengths along the angle-locked cursor direction; a hint when there is no direction yet. `Viewer.startPick` replaces a running picker quietly (a tool's next phase).
