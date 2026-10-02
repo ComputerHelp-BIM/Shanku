@@ -26,14 +26,33 @@ export interface PickContext {
   render: () => void;
 }
 
+/**
+ * The work plane: an origin and two unit axes in the viewer (Y up, metres); points are reported as (u, v) in mm
+ * along them. A plan: origin on the level, u east (+X), v north (−Z) — (u, v) are plan mm. An elevation or
+ * section: the view's vertical plane, u along the view (to the right on screen), v up.
+ */
+export interface WorkPlane {
+  origin: [number, number, number];
+  u: [number, number, number];
+  v: [number, number, number];
+}
+export const planWorkPlane = (y: number): WorkPlane => ({ origin: [0, y, 0], u: [1, 0, 0], v: [0, 0, -1] });
+
 export interface PickOptions {
   /** What to ask for: the first point, then the second. */
   prompts: [string, string];
-  /** The work plane's height in the viewer (m): a plan's level. */
-  planeY: number;
-  /** Datum lines to snap to, in plan mm. */
+  /** Where points are picked. */
+  plane: WorkPlane;
+  /** Datum lines to snap to, in the plane's (u, v) mm. */
   datums: () => readonly DatumLine[];
+  /** Constrain (Revit's Move option): only along u or v. */
+  ortho?: boolean;
   onPick: (a: P2, b: P2) => void;
+  /**
+   * Single picks (Align): each click is reported at once, with what is under it — a datum ('datum',
+   * 'intersection'), an element (its index, and 'axis' for its centreline or 'edge' for a face), or nothing.
+   */
+  single?: { onPickOne: (p: P2, hit: { kind: string; element: number | null; label: string | null }) => void; elements: boolean };
   onStatus?: (s: PickStatus) => void;
   /** Keep picking after a pair (Revit's Grid tool draws one grid after another until Esc). */
   continuous?: boolean;
@@ -48,15 +67,17 @@ export interface PickStatus {
   typed: string;
 }
 
-type Snap = { at: P2; kind: SnapCandidate['kind'] | 'intersection' | 'datum' | 'free'; label: string | null };
+type Snap = { at: P2; kind: SnapCandidate['kind'] | 'intersection' | 'datum' | 'free'; label: string | null; element?: number | null };
 
-const toPlan = (v: Vector3): P2 => [v.x * 1000, -v.z * 1000];
 const RADIUS_PX = 12;
 
 export class PointPicker {
   private start: P2 | null = null;
   private cur: Snap | null = null;
   private typed = '';
+  private hint: string | null = null;
+  /** The direction a typed length goes: the cursor on the work plane, angle-locked (not the point it snaps to). */
+  private dirAt: P2 | null = null;
   private shift = false;
   private locked: number | null = null;
   private readonly onShift = (e: KeyboardEvent) => {
@@ -82,10 +103,19 @@ export class PointPicker {
   }
 
   private plane(): Plane {
-    return new Plane(new Vector3(0, 1, 0), -this.opts.planeY);
+    const { origin, u, v } = this.opts.plane;
+    const n = new Vector3(...u).cross(new Vector3(...v)).normalize();
+    return new Plane().setFromNormalAndCoplanarPoint(n, new Vector3(...origin));
+  }
+  /** A world point → (u, v) mm on the work plane (points off the plane are projected along its normal). */
+  private uv(w: Vector3): P2 {
+    const { origin, u, v } = this.opts.plane;
+    const d = w.clone().sub(new Vector3(...origin));
+    return [d.dot(new Vector3(...u)) * 1000, d.dot(new Vector3(...v)) * 1000];
   }
   private world(p: P2): Vector3 {
-    return new Vector3(p[0] / 1000, this.opts.planeY, -p[1] / 1000);
+    const { origin, u, v } = this.opts.plane;
+    return new Vector3(...origin).addScaledVector(new Vector3(...u), p[0] / 1000).addScaledVector(new Vector3(...v), p[1] / 1000);
   }
 
   hover(clientX: number, clientY: number): void {
@@ -97,24 +127,53 @@ export class PointPicker {
     let snap: Snap | null = null;
     // 1. element points
     const s = this.ctx.scene();
-    if (s) {
+    // picking a reference (Align's first click): datums only, so a grid wins over element points lying on it
+    if (s && !(this.opts.single && !this.opts.single.elements)) {
       const { candidates } = snapCandidates(s, { origin: ray.origin, dir: ray.dir, cursor: local, project: (p) => this.ctx.project(p) ?? [-1e9, -1e9], radius: RADIUS_PX, pixel, axisOf: this.ctx.axisOf, faceOf: this.ctx.faceOf, cutsOf: this.ctx.cutsOf });
-      const pt = candidates.find((c) => ['endpoint', 'midpoint', 'centre', 'axisEnd', 'axisMid'].includes(c.kind) && c.dist <= RADIUS_PX);
-      if (pt) snap = { at: toPlan(pt.point), kind: pt.kind, label: pt.label };
+      // single picks of elements take any snap (an edge is a face, the centreline the centre); else points only
+      // a point snap only where the point itself is within reach on screen (a face centre is offered near the
+      // centre, not from anywhere on the face: found as a "frozen" cursor over a beam face in an elevation)
+      const near = (c: SnapCandidate) => {
+        const sp = this.ctx.project(c.point);
+        return !!sp && Math.hypot(sp[0] - local[0], sp[1] - local[1]) <= RADIUS_PX;
+      };
+      // Align's element click: the reference line (face edge or centreline) nearest the cursor on screen, as Revit
+      // picks it — not the first in snap order (a beam's centreline at a column face would win)
+      const lineDist = (c: SnapCandidate): number => {
+        if (!c.on) return Infinity;
+        const a = this.ctx.project(c.on[0]), b = this.ctx.project(c.on[1]);
+        if (!a || !b) return Infinity;
+        const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1;
+        const t = Math.max(0, Math.min(1, ((local[0] - a[0]) * dx + (local[1] - a[1]) * dy) / l2));
+        return Math.hypot(local[0] - (a[0] + t * dx), local[1] - (a[1] + t * dy));
+      };
+      const pt = this.opts.single?.elements
+        ? candidates
+            .filter((c) => c.index !== null && (c.kind === 'edge' || c.kind === 'axis'))
+            .map((c) => ({ c, d: lineDist(c) }))
+            .filter((x) => x.d <= RADIUS_PX)
+            .sort((a, b) => a.d - b.d)[0]?.c
+        : candidates.find((c) => ['endpoint', 'midpoint', 'centre', 'axisEnd', 'axisMid'].includes(c.kind) && near(c));
+      if (pt) snap = { at: this.uv(pt.point), kind: pt.kind, label: pt.label, element: pt.index };
     }
     // the free point on the work plane
     const hit = new Vector3();
     const ok = this.planeHit(ray.origin, ray.dir, hit);
     if (!snap && ok) {
       // 2. datums
-      const d = snapToDatums(toPlan(hit), this.opts.datums(), RADIUS_PX * pixel * 1000);
-      snap = d ? { at: d.at, kind: d.kind, label: d.label } : { at: toPlan(hit), kind: 'free', label: null };
+      const d = snapToDatums(this.uv(hit), this.opts.datums(), RADIUS_PX * pixel * 1000);
+      snap = d ? { at: d.at, kind: d.kind, label: d.label } : { at: this.uv(hit), kind: 'free', label: null };
     }
     if (!snap) return;
+    // the direction a typed length follows: where the cursor is, with the angle locks, as Revit's listening dimension
+    if (this.start && ok) {
+      const raw = snapDirection(this.start, this.uv(hit), { ortho: this.shift || !!this.opts.ortho });
+      this.dirAt = raw.end;
+    }
     // 3. direction locks for free and datum-line points once a first point is down
     this.locked = null;
     if (this.start && (snap.kind === 'free' || snap.kind === 'datum')) {
-      const dir = snapDirection(this.start, snap.at, { ortho: this.shift });
+      const dir = snapDirection(this.start, snap.at, { ortho: this.shift || !!this.opts.ortho });
       if (dir.locked) {
         snap = { ...snap, at: dir.end };
         this.locked = dir.angle;
@@ -135,6 +194,10 @@ export class PointPicker {
 
   click(_x?: number, _y?: number, _double?: boolean): void {
     if (!this.cur) return;
+    if (this.opts.single) {
+      this.opts.single.onPickOne(this.cur.at, { kind: this.cur.kind, element: this.cur.element ?? null, label: this.cur.label });
+      return;
+    }
     if (!this.start) {
       this.start = this.cur.at;
       this.typed = '';
@@ -173,9 +236,16 @@ export class PointPicker {
     if (key === 'Enter') {
       if (!this.start || !this.typed || !this.cur) return false;
       const len = parseLength(this.typed) * 1000;
-      const dx = this.cur.at[0] - this.start[0], dy = this.cur.at[1] - this.start[1];
+      const toward = this.dirAt ?? this.cur.at;
+      const dx = toward[0] - this.start[0], dy = toward[1] - this.start[1];
       const l = Math.hypot(dx, dy);
-      if (!Number.isFinite(len) || len === 0 || l < 1e-9) return true;
+      if (!Number.isFinite(len) || len === 0) return true;
+      if (l < 1e-9) {
+        // no direction yet: say so, rather than doing nothing
+        this.hint = 'Move the cursor to show the direction, then press Enter';
+        this.publish();
+        return true;
+      }
       this.finish([this.start[0] + (dx / l) * len, this.start[1] + (dy / l) * len]);
       return true;
     }
@@ -203,8 +273,10 @@ export class PointPicker {
 
   private publish(): void {
     const len = this.length();
+    const hint = this.hint;
+    this.hint = null;
     this.opts.onStatus?.({
-      prompt: this.opts.prompts[this.start ? 1 : 0],
+      prompt: hint ?? this.opts.prompts[this.start ? 1 : 0],
       snap: this.cur?.label ?? null,
       length: len === null ? null : formatLength(len, { symbol: true }),
       typed: this.typed,

@@ -72,7 +72,8 @@ export function packProject(model: { name: string; bytes: Uint8Array }, state: M
   if (Array.isArray(state.datums) && state.datums.length) put('shanku/datums.json', canonical(state.datums));
   if (state.units) put('shanku/units.json', canonical(state.units));
   // native edits: edited and created elements, one per line by id; deleted ids
-  const edits = state.edits as { elements: Array<{ id: string }>; deleted: string[]; levels?: Array<{ name: string; z: number }> } | undefined;
+  const edits = state.edits as { elements: Array<{ id: string }>; deleted: string[]; levels?: Array<{ name: string; z: number }>; locks?: unknown[] } | undefined;
+  if (edits?.locks?.length) put('shanku/locks.json', canonical(edits.locks));
   if (edits?.levels?.length) put('shanku/levels.json', canonical(edits.levels));
   if (edits?.elements.length) put('shanku/edits.jsonl', [...edits.elements].sort((a, b) => a.id.localeCompare(b.id)).map(line).join('\n') + '\n');
   if (edits?.deleted.length) put('shanku/deleted.json', canonical([...edits.deleted].sort()));
@@ -116,6 +117,7 @@ export function unpackProject(bytes: Uint8Array): { manifest: ProjectManifest; m
   const edited = editsText.split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l) as unknown);
   const deleted = (json('shanku/deleted.json') as string[] | undefined) ?? [];
   const levels = json('shanku/levels.json') as Array<{ name: string; z: number }> | undefined;
+  const lockList = json('shanku/locks.json') as unknown[] | undefined;
   return {
     manifest,
     model: { name: manifest.model.fileName, bytes: model },
@@ -124,7 +126,7 @@ export function unpackProject(bytes: Uint8Array): { manifest: ProjectManifest; m
       graphics: opt(json('shanku/graphics.json')),
       rates: opt(json('shanku/rates.json')),
       pending: link && changes.length ? { key: link.documentKey, changes } : undefined,
-      edits: edited.length || deleted.length || levels?.length ? { elements: edited, deleted, ...(levels?.length ? { levels } : {}) } : undefined,
+      edits: edited.length || deleted.length || levels?.length || lockList?.length ? { elements: edited, deleted, ...(levels?.length ? { levels } : {}), ...(lockList?.length ? { locks: lockList } : {}) } : undefined,
       datums: opt(json('shanku/datums.json')),
       units: opt(json('shanku/units.json')),
     },

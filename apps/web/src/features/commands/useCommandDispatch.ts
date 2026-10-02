@@ -11,7 +11,7 @@ export interface CommandDispatchLate {
   dxtRef: React.MutableRefObject<{ display: import('../../../../../packages/engine/src/render/DrawingViewer').DrawingDisplay; setDisplay: (patch: Partial<import('../../../../../packages/engine/src/render/DrawingViewer').DrawingDisplay>) => void; tool: import('../../../../../packages/engine/src/render/DrawingViewer').DrawingTool | null; setTool: React.Dispatch<React.SetStateAction<import('../../../../../packages/engine/src/render/DrawingViewer').DrawingTool | null>>; menu: { x: number; y: number; point: [number, number] | null; } | null; openMenu: (x: number, y: number) => void; closeMenu: () => void; menuItems: () => import('../../lib/menu').MenuItem[]; act: (a: import('../../lib/drawingMenu').DrawingAction, point?: [number, number] | null) => void; quickProperties: boolean; setQuickProperties: (on: boolean) => void; quickSelectOpen: boolean; setQuickSelectOpen: React.Dispatch<React.SetStateAction<boolean>>; findOpen: boolean; setFindOpen: React.Dispatch<React.SetStateAction<boolean>>; index: import('../../../../../packages/engine/src/dxf/entityIndex').EntityIndex | null; visible: number[]; visibleSet: Set<number>; selectObjects: (entities: number[], zoom?: boolean) => void; commands: () => import('../../lib/commands').AppCommand[]; } | null>;
   openGeom: (mode: "move" | "rotate") => void;
   /** Revit's Modify commands (native, or for Revit-linked models the Changes for Revit route). */
-  modifyCmd: (cmd: 'move' | 'copy' | 'rotate' | 'mirror' | 'array' | 'offset' | 'delete' | 'pin' | 'unpin' | 'levels' | 'grid' | 'refplane' | 'units') => void;
+  modifyCmd: (cmd: 'move' | 'copy' | 'rotate' | 'mirror' | 'array' | 'offset' | 'delete' | 'pin' | 'unpin' | 'levels' | 'grid' | 'refplane' | 'units' | 'align') => void;
   activeModelView: import('../../lib/views').ModelView | null;
   cancelSection: () => void;
   deleteDimensions: (ids: string[]) => void;
@@ -140,6 +140,8 @@ export function useCommandDispatch(deps: CommandDispatchDeps) {
           return late.current.modifyCmd('levels');
         case 'gridTool':
           return late.current.modifyCmd('grid');
+        case 'alignTool':
+          return late.current.modifyCmd('align');
         case 'refPlaneTool':
           return late.current.modifyCmd('refplane');
         case 'unitsTool':

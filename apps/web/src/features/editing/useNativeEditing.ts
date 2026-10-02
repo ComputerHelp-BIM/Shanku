@@ -6,7 +6,7 @@
  * project; models linked to Revit keep the Changes for Revit route until Sync with Revit (stage 3).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { arrayLinear, changeOf, copy, deriveElement, elevationMm, formatLength, followLevels, infoLevels, levelDatums, rehost, withLevel, zeroOf, type LevelDatum, elementPatch, isReference, kindForCategory, mirror, move, newGlobalId, offset, pin, remove, rotate, trianglesOf, type EditResult, type ElementRecord, type History, type ParamElement, type Pt } from '@shanku/engine';
+import { align, arrayLinear, brokenLocks, changeOf, copy, deriveElement, elevationMm, formatLength, type AlignLock, followLevels, infoLevels, levelDatums, rehost, withLevel, zeroOf, type LevelDatum, elementPatch, isReference, kindForCategory, mirror, move, newGlobalId, offset, pin, remove, rotate, trianglesOf, type EditResult, type ElementRecord, type History, type ParamElement, type Pt } from '@shanku/engine';
 import type { ModifyRequest } from '../../lib/editChecks';
 import { endTask, startTask } from '../../lib/progress';
 import { loadEdits, saveEdits, type SavedEdits } from '../../lib/session';
@@ -24,9 +24,20 @@ export interface NativeEditingDeps {
   setNotice: (n: string | null) => void;
   /** Linked to Revit: edits go through Changes for Revit (until Sync with Revit). */
   revitLinked: boolean;
+  /** Datum lines by id (plan mm), for Align locks: a ref the app keeps current. */
+  datumLineRef: { current: (id: string) => { a: Pt; b: Pt; name: string } | null };
 }
 
-export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeEditingDeps) {
+export interface ConstraintPrompt {
+  label: string;
+  broken: Array<{ lock: AlignLock; what: string }>;
+  remove: () => void;
+  cancel: () => void;
+}
+
+export function useNativeEditing({ m, history, setNotice, revitLinked, datumLineRef }: NativeEditingDeps) {
+  const locks = useRef<AlignLock[]>([]); // Align locks (Revit's padlocks)
+  const [constraintPrompt, setConstraintPrompt] = useState<ConstraintPrompt | null>(null);
   const doc = useRef(new Map<string, ParamElement>());
   const refs = useRef(new Map<string, string>()); // GlobalId → why it stays reference
   const records = useRef(new Map<string, ElementRecord>()); // GlobalId → the record an element (or its copies) takes
@@ -125,11 +136,13 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
   }, [openCount, openTick]);
   useEffect(() => {
     edited.current = new Map();
+    locks.current = [];
     setEdits(0);
     const name = fileName;
     if (!name || revitLinked || !openTick) return;
     void loadEdits<ParamElement>(name).then((kept) => {
-      if (!kept || (!kept.elements.length && !kept.deleted.length && !kept.levels?.length) || !ensure()) return;
+      if (!kept || (!kept.elements.length && !kept.deleted.length && !kept.levels?.length && !kept.locks?.length) || !ensure()) return;
+      if (kept.locks?.length) locks.current = kept.locks as AlignLock[];
       if (kept.levels?.length) {
         for (const l of kept.levels) if (!openedLevels.current.some((o) => o.name === l.name)) added.current.add(l.name);
         applyLevels(kept.levels);
@@ -151,6 +164,7 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
     const t = window.setTimeout(() => {
       const kept: SavedEdits<ParamElement> = { elements: [], deleted: [] };
       if (JSON.stringify(levels.current) !== JSON.stringify(openedLevels.current)) kept.levels = levels.current;
+      if (locks.current.length) kept.locks = locks.current;
       for (const [id, e] of edited.current) {
         if (e) kept.elements.push(e);
         else kept.deleted.push(id);
@@ -161,10 +175,11 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
   }, [version, fileName]);
 
   /** Why the selection cannot be edited now, or null. */
-  const whyNot = (): string | null => {
+  /** `clicked`: the edit names its own elements (Align acts on the element clicked, not the selection). */
+  const whyNot = (clicked = false): string | null => {
     if (!m.model) return 'Open a model first.';
     if (revitLinked) return 'This model is linked to Revit: its edits go through Changes for Revit (Sync with Revit comes next).';
-    if (!m.selection.length) return 'Select the elements to modify first.';
+    if (!clicked && !m.selection.length) return 'Select the elements to modify first.';
     return null;
   };
 
@@ -173,11 +188,11 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
    * selection, as in Revit; what could not be changed is said with the reason.
    */
   const run = useCallback(
-    (label: string, op: (els: ParamElement[], newId: () => string) => EditResult) => {
-      const why = whyNot();
+    (label: string, op: (els: ParamElement[], newId: () => string) => EditResult, opts: { targets?: string[]; addLocks?: (res: EditResult) => AlignLock[] } = {}) => {
+      const why = whyNot(!!opts.targets);
       if (why) return setNotice(why);
       if (!ensure() || !m.model) return;
-      const picked = m.selection.map((i) => m.model!.elements[i]).filter(Boolean);
+      const picked = opts.targets ? m.model.elements.filter((e) => opts.targets!.includes(e.globalId)) : m.selection.map((i) => m.model!.elements[i]).filter(Boolean);
       const els: ParamElement[] = [];
       const skipped: string[] = [];
       for (const r of picked) {
@@ -200,7 +215,37 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
       const before: EditState = { present: ch.before, absent: ch.after.filter((a) => !ch.before.some((b) => b.id === a.id)).map((a) => a.id) };
       const after: EditState = { present: ch.after, absent: ch.before.filter((b) => !ch.after.some((a) => a.id === b.id)).map((b) => b.id) };
       const select = res.created.length ? res.created.map((e) => e.id) : undefined;
-      history.run(label, (t) => t.change('elements', before, after, (s: EditState) => applyState(s, s === after ? select : undefined)));
+      const added = opts.addLocks?.(res) ?? [];
+      const commit = (drop: AlignLock[]) => {
+        const lb = locks.current;
+        const la = [...lb.filter((l) => !drop.some((d) => d.id === l.id) && !added.some((a) => a.element === l.element && a.datum === l.datum)), ...added];
+        history.run(label, (t) => {
+          if (drop.length || added.length) t.change('locks', lb, la, (ls: AlignLock[]) => {
+            locks.current = ls;
+            setVersion((v) => v + 1);
+          });
+          t.change('elements', before, after, (s: EditState) => applyState(s, s === after ? select : undefined));
+        });
+      };
+      // Align locks this edit would break: Revit's "Constraints are not satisfied" (remove them, or cancel)
+      const broken = brokenLocks(res.changed, locks.current, (id) => datumLineRef.current(id));
+      if (broken.length) {
+        setConstraintPrompt({
+          label,
+          broken: broken.map((l) => ({ lock: l, what: `${doc.current.get(l.element)?.mark || l.element}: ${l.to === 'center' ? 'centre' : 'face'} locked to ${datumLineRef.current(l.datum)?.name || 'a datum'}` })),
+          remove: () => {
+            setConstraintPrompt(null);
+            commit(broken);
+            setNotice(`${label}: done; ${broken.length} constraint${broken.length === 1 ? '' : 's'} removed.`);
+          },
+          cancel: () => {
+            setConstraintPrompt(null);
+            setNotice(`${label}: cancelled (constraints kept).`);
+          },
+        });
+        return;
+      }
+      commit([]);
       const n = res.changed.length + res.created.length + res.deleted.length;
       setNotice(`${label}: ${n} element${n === 1 ? '' : 's'}.${refused.length ? ` Not changed: ${refused.slice(0, 2).join('; ')}${refused.length > 2 ? ` and ${refused.length - 2} more` : ''}.` : ''}`);
       m.log(`${label}: ${n} element${n === 1 ? '' : 's'} (native edit; Ctrl + Z undoes it).`);
@@ -243,6 +288,30 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
     }
   };
   const del = () => run('Delete', (els) => remove(els));
+
+  /** Align (AL): the element's centre or nearest face onto a datum line; locked (Revit's padlock) when asked. */
+  const alignTo = (gid: string, datumId: string, to: 'center' | 'face', lock: boolean) => {
+    const line = datumLineRef.current(datumId);
+    if (!line) return setNotice('That datum is gone.');
+    run(`Align to ${line.name || 'reference plane'}`, (els) => align(els, line.a, line.b, to), {
+      targets: [gid],
+      addLocks: (res) => (lock ? [...res.changed].map((e) => ({ id: `lock-${e.id}-${datumId}`, element: e.id, datum: datumId, to })) : []),
+    });
+  };
+  /** Removes the Align locks of the selection. */
+  const unlock = () => {
+    if (!m.model) return;
+    const ids = new Set(m.selection.map((i) => m.model!.elements[i]?.globalId));
+    const before = locks.current;
+    const after = before.filter((l) => !ids.has(l.element));
+    if (after.length === before.length) return setNotice('The selection has no Align locks.');
+    history.run('Unlock', (t) => t.change('locks', before, after, (ls: AlignLock[]) => {
+      locks.current = ls;
+      setVersion((v) => v + 1);
+    }));
+    setNotice(`${before.length - after.length} Align lock${before.length - after.length === 1 ? '' : 's'} removed.`);
+  };
+  const lockCount = () => locks.current.length;
   const setPinned = (on: boolean) => run(on ? 'Pin' : 'Unpin', (els) => pin(els, on));
 
   // ---- levels (docs/design/datums-and-constraints.md): move one and what is hosted on it follows
@@ -302,5 +371,5 @@ export function useNativeEditing({ m, history, setNotice, revitLinked }: NativeE
     added.current.delete(name);
   };
 
-  return { levelList, moveLevel, newLevel, deleteLevel, levelDeleteWhy, levelTick, nativePerform: perform, nativeDelete: del, nativePin: setPinned, nativeWhy: whyNot, nativeEditCount: edits };
+  return { alignTo, unlock, lockCount, constraintPrompt, levelList, moveLevel, newLevel, deleteLevel, levelDeleteWhy, levelTick, nativePerform: perform, nativeDelete: del, nativePin: setPinned, nativeWhy: whyNot, nativeEditCount: edits };
 }

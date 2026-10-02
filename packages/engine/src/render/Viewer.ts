@@ -828,7 +828,9 @@ export class Viewer {
   startPick(opts: PickOptions): void {
     this.stopMeasure();
     this.stopDimension();
-    this.stopPick();
+    // a picker replaced by the next (a tool's next phase) ends quietly; only Esc or another tool reports the end
+    this.picker?.dispose();
+    this.picker = null;
     const container = this.container;
     this.picker = new PointPicker(
       {

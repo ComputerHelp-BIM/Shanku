@@ -20,6 +20,9 @@ Round 1: 20 icons on a 24 px grid, 1.5 px round strokes, `currentColor`. `icons.
 
 ## Changelog
 
+### 1.14.0 — 2026-10-01
+- Icon `align` (Lucide align-start-vertical, ISC), for Align.
+
 ### 1.13.0 — 2026-10-01
 - Icons for the Modify tab: `copy`, `mirror` (flip-horizontal-2), `delete` (trash-2), `pin`, `unpin` (pin-off) from Lucide (ISC); `array` and `offset` drawn in the same style.
 

@@ -30,6 +30,7 @@ export type CommandId =
   | 'unpinTool'
   | 'levelsTool'
   | 'gridTool'
+  | 'alignTool'
   | 'refPlaneTool'
   | 'unitsTool';
 
@@ -63,6 +64,7 @@ export const SEQUENCES: Record<string, CommandId> = {
   UP: 'unpinTool',
   LL: 'levelsTool',
   GR: 'gridTool',
+  AL: 'alignTool',
   RP: 'refPlaneTool',
   UN: 'unitsTool',
   BX: 'sectionBox',
@@ -114,7 +116,7 @@ export const SHORTCUT_HELP: Array<{ keys: string; action: string }> = [
   { keys: 'EU', action: 'Unhide the selected elements (while revealing)' },
   { keys: 'BX', action: 'Section box around the selection (again to remove)' },
   { keys: 'ME', action: 'Measure: distance with snaps, clear and centre to centre, along, face area, chain (again to close)' },
-  { keys: 'MV', action: 'Move the selection by a typed distance' },
+  { keys: 'MV', action: 'Move: select (before or after), then a start and an end point, or type a distance' },
   { keys: 'RO', action: 'Rotate the selection by a typed angle' },
   { keys: 'MM', action: 'Mirror the selection (a copy, as in Revit)' },
   { keys: 'AR', action: 'Array: copies in a row by a spacing' },
@@ -124,6 +126,7 @@ export const SHORTCUT_HELP: Array<{ keys: string; action: string }> = [
   { keys: 'UP', action: 'Unpin the selection' },
   { keys: 'LL', action: 'Levels: move a level (what is hosted on it follows), add levels' },
   { keys: 'GR', action: 'Grid: click two points in a plan (or type a length); one after another until Esc' },
+  { keys: 'AL', action: 'Align: click a grid or reference plane, then an element’s face or centreline (Lock keeps it)' },
   { keys: 'RP', action: 'Reference plane: click two points in a plan' },
   { keys: 'UN', action: 'Project Units: how lengths are shown and typed' },
   { keys: 'DI · EL', action: 'Aligned dimension · spot elevation (Annotate → Dimension); pick references, click away to place' },

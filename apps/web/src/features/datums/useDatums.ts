@@ -4,7 +4,7 @@
  * this device and in the project file. Grids are named as Revit names them (1, 2, 3 or A, B, C, from the last).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { nextDatumName, type History, type P2, type PickOptions, type PickStatus } from '@shanku/engine';
+import { nextDatumName, planWorkPlane, type History, type P2, type PickOptions, type PickStatus } from '@shanku/engine';
 import { loadDatums, saveDatums } from '../../lib/session';
 import type { ModelView } from '../../lib/views';
 import type { useShankuModel } from '../../lib/useShankuModel';
@@ -77,7 +77,7 @@ export function useDatums({ m, history, setNotice, activeModelView, heights }: D
     setTool(kind);
     setPick({
       prompts: kind === 'grid' ? ['Grid: click its start point', 'Click its end point, or type a length and press Enter'] : ['Reference plane: click its start point', 'Click its end point, or type a length and press Enter'],
-      planeY,
+      plane: planWorkPlane(planeY),
       datums: () => ref.current.map((d) => ({ name: d.name || 'Reference plane', a: d.a, b: d.b })),
       continuous: true,
       onStatus: setStatus,

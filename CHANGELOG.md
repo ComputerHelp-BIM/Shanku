@@ -2,6 +2,15 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.55.0 — 2026-10-02
+
+### Added
+- Move and Copy Revit's way (pre- or post-selection, start and end points with snaps, typed distance, Constrain, moves in elevations and sections as offsets).
+- Align with locks, "Constraints are not satisfied", Unlock. Brand 1.14.0 (icon align).
+
+### Fixed
+- Snapping to a face centre from anywhere on the face; typed distances tilted by snaps; Align picking element points or a neighbouring centreline; Align needing a selection; tools left running after changing views.
+
 ## 0.54.0 — 2026-10-01
 
 ### Added

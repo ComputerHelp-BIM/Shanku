@@ -1,4 +1,4 @@
-# @shanku/web 0.54.0
+# @shanku/web 0.55.0
 
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
 The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
@@ -25,6 +25,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.55.0 — 2026-10-02
+- **Move and Copy rebuilt Revit's way** (`features/modify/useModifyTools.ts`; docs/design/datums-and-constraints.md, part 4): MV / CO with a selection go straight to picking; with none, they ask to select and Enter goes on; a start and an end point on the shared picker (snaps, angle locks, the listening dimension, a typed distance + Enter); an options bar with Constrain, Copy and "Type values…" (the dialog). Plans move in plan; elevations and sections move in the view's plane (engine `WorkPlane`: origin and two axes), level lines and along-view grids snap, and vertical moves are offsets. Changing views ends the tool in progress. Models linked to Revit keep the staged dialog.
+- **Align (AL) with locks:** a grid or reference plane, then an element's face (a cut edge) or centreline; Lock (Revit's padlock) records an Align lock (engine `edit/constraints.ts`). An edit that would take a locked element off its datum stops with **"Constraints are not satisfied"** — Remove constraints (the edit and the removal, one undo step) or Cancel; moving along the datum keeps the lock. **Unlock** (Modify → Element) removes the selection's locks. Locks are kept on the device and saved (`shanku/locks.json`).
+- Found and fixed with the browser tests: a face centre snapped from anywhere on the face (the cursor seemed frozen over a beam in an elevation) — point snaps now count only within reach on screen; a typed distance followed the point the cursor snapped to (a corner tilted it) — it now follows the cursor's angle-locked direction; Align's reference click took element points on a grid — it takes datums only; Align's element click took a beam centreline at a column face — it takes the reference line nearest the cursor; Align was refused for want of a selection — it acts on the element clicked; typing before moving the cursor did nothing — it now says to show the direction.
+- Checked in the browser (production build): pre- and post-selection moves exact (0.5 m, 1.0 m), Copy, a beam up exactly 0.1 m in the North elevation with no drift, a column face aligned exactly onto a grid with Lock, the constraints window (Cancel keeps it, Remove constraints moves it, the next move needs no prompt); native editing, levels, grids and units, and Revit-linked walk-throughs unchanged.
 
 ### 0.54.0 — 2026-10-01
 - **The shared point picker** (engine `render/pointPicker.ts`, `render/snapping.ts`; docs/design/datums-and-constraints.md part 3): two points on the plan's work plane, snapping to element points (end, mid, centre, member-axis ends via `snapCandidates`), then datum intersections and datum lines, else a free point; directions lock near 0°/45°/90° (Shift: orthogonal); a listening dimension in Project Units; a length typed and Enter places the second point along the direction shown; Esc clears the typing, then the first point, then ends — Revit's way. While picking, annotations stay visible but do not catch the cursor.

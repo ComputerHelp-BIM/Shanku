@@ -1,4 +1,4 @@
-# Datums, work planes, hosting and constraints (design; approved 2026-10-01)
+# Datums, work planes, hosting and constraints (design; approved 2026-10-01; built 0.52.1–0.55.0)
 
 Decided 2026-10-01: **24A** elements are placed as Revit places them (relative to levels, with offsets and
 attachments), now; **25A** the first build is a complete slice — levels, grids, reference planes, work
@@ -89,7 +89,9 @@ elevation marks (with the views work), Sync with Revit (it will carry hosting ac
 - **Picking, grids, reference planes, Project Units — done (web 0.54.0, engine 0.40.0):** the shared point
   picker (element, datum and free snaps on the plan's work plane; angle locks; listening dimension; typed lengths;
   Revit's Esc); grids and reference planes drawn with it and shown in plans and elevations; Project Units (27A).
-- **Next (0.55.0):** Align with locks and "Constraints are not satisfied"; Move rebuilt on the picker (pre- or
-  post-selection, start and end points, typed distance, Constrain, vertical moves in elevations as offsets).
-  Work planes in elevations and sections come with Move. Renaming levels and deleting levels from the model
-  come with the views work.
+- **Move, Copy, Align, locks — done (web 0.55.0, engine 0.41.0); this milestone is complete.** Move and Copy on
+  the picker (pre- or post-selection, typed distance, Constrain, work planes in elevations and sections with
+  vertical moves as offsets); Align with locks, "Constraints are not satisfied", Unlock.
+- **Later:** dimension constraints (locked dimensions, EQ); Rotate and Mirror on the picker; moving grids (and
+  what is locked to them follows); Align in elevations; renaming and deleting levels from the model with the
+  views work; the family editor on this foundation (26A).

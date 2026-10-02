@@ -61,6 +61,8 @@ export interface SavedEdits<T = unknown> {
   deleted: string[];
   /** The levels when they differ from the model as opened (moved, added). */
   levels?: Array<{ name: string; z: number }>;
+  /** Align locks (element, datum, centre or face). */
+  locks?: unknown[];
 }
 export const saveEdits = (fileName: string, e: SavedEdits) => tx('readwrite', (s) => s.put(e, `edits:${fileName}`));
 export const loadEdits = <T>(fileName: string) => tx<SavedEdits<T>>('readonly', (s) => s.get(`edits:${fileName}`));

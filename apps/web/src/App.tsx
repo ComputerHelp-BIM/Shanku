@@ -90,6 +90,7 @@ import { useProjectUnits } from './features/units/useProjectUnits';
 import { ProjectUnits } from './components/ProjectUnits';
 import { DatumsList } from './components/DatumsList';
 import { datumMarksFor } from './lib/viewMarks';
+import { useModifyTools } from './features/modify/useModifyTools';
 
 /** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
 export interface AppStart {
@@ -194,21 +195,50 @@ export function App({ start }: { start?: AppStart } = {}) {
   // the project file: Save (Ctrl + S), Save As, and opening projects alongside models
   const { projectStatus, saveProject, saveProjectAs, openAnyFile } = useProjectFile({ m, openModelFile, setNotice, changes: [views, graphics, pending, colorSettings] });
   // native editing: Revit's Modify tools on Shanku's own model (docs/design/native-editing.md)
-  const { levelList, moveLevel, newLevel, deleteLevel, levelDeleteWhy, levelTick, nativePerform, nativeDelete, nativePin, nativeWhy, nativeEditCount } = useNativeEditing({ m, history, setNotice, revitLinked });
+  // datum lines by id for Align locks (kept current below, once the datums are known)
+  const datumLineRef = useRef<(id: string) => { a: [number, number]; b: [number, number]; name: string } | null>(() => null);
+  const { alignTo, unlock, lockCount, constraintPrompt, levelList, moveLevel, newLevel, deleteLevel, levelDeleteWhy, levelTick, nativePerform, nativeDelete, nativePin, nativeWhy, nativeEditCount } = useNativeEditing({ m, history, setNotice, revitLinked, datumLineRef });
   const [levelsOpen, setLevelsOpen] = useState(false);
   // grids and reference planes, drawn with the shared point picker; Project Units
   const { datums, datumTool, datumPick, pickStatus, startDatumTool, endDatumTool, renameDatum, deleteDatum } = useDatums({ m, history, setNotice, activeModelView, heights });
   const { units, setProjectUnits } = useProjectUnits({ m });
+  datumLineRef.current = (id) => {
+    const d = datums.find((x) => x.id === id);
+    return d ? { a: d.a, b: d.b, name: d.name || 'reference plane' } : null;
+  };
+  // Move, Copy and Align on the shared point picker
+  const { modifyTool, modifyPick, modifyStatus, startMove, startAlign, setMoveOption, setAlignLock, endModifyTool } = useModifyTools({ m, setNotice, activeModelView, heights, datums, revitLinked, openGeom, nativePerform, alignTo });
+  const toolStatus = modifyStatus ?? pickStatus;
+  // changing views ends the tool in progress (Revit's way): its work plane belonged to the view it started in
+  const toolView = useRef(activeView);
+  useEffect(() => {
+    if (toolView.current === activeView) return;
+    toolView.current = activeView;
+    endModifyTool();
+    endDatumTool();
+  }, [activeView]); // eslint-disable-line react-hooks/exhaustive-deps
   const [unitsOpen, setUnitsOpen] = useState(false);
   const datumMarks = useMemo(() => datumMarksFor(activeModelView, datums, heights, m.model?.info.bounds), [activeModelView, datums, heights, m.model]);
   const allMarks = useMemo(() => (datumMarks.length ? [...marks, ...datumMarks] : marks), [marks, datumMarks]);
   const [modifyKind, setModifyKind] = useState<ModifyKind | null>(null);
   /** One route for every Modify command: models linked to Revit keep Changes for Revit for Move and Rotate. */
-  const modifyCmd = (cmd: ModifyKind | 'delete' | 'pin' | 'unpin' | 'levels' | 'grid' | 'refplane' | 'units') => {
+  const modifyCmd = (cmd: ModifyKind | 'delete' | 'pin' | 'unpin' | 'levels' | 'grid' | 'refplane' | 'units' | 'align' | 'unlock') => {
+    if (cmd === 'unlock') return unlock();
     if (cmd === 'levels') return setLevelsOpen(true);
     if (cmd === 'units') return setUnitsOpen(true);
-    if (cmd === 'grid' || cmd === 'refplane') return startDatumTool(cmd);
-    if (revitLinked && (cmd === 'move' || cmd === 'rotate')) return openGeom(cmd);
+    if (cmd === 'grid' || cmd === 'refplane') {
+      endModifyTool();
+      return startDatumTool(cmd);
+    }
+    if (cmd === 'move' || cmd === 'copy') {
+      endDatumTool();
+      return startMove(cmd === 'copy');
+    }
+    if (cmd === 'align') {
+      endDatumTool();
+      return startAlign();
+    }
+    if (revitLinked && cmd === 'rotate') return openGeom('rotate'); // Move's own tool sends linked models to it too
     const why = nativeWhy();
     if (why) return setNotice(why);
     if (cmd === 'delete') return nativeDelete();
@@ -304,6 +334,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                     ['mirror', 'Mirror', 'MM', 'a mirrored copy about an axis through the selection'],
                     ['array', 'Array', 'AR', 'copies in a row by a spacing'],
                     ['offset', 'Offset', 'OF', 'beams and walls parallel by a distance'],
+                    ['align', 'Align', 'AL', 'click a grid or reference plane, then an element’s face or centreline; Lock keeps it'],
                   ] as const
                 ).map(([k, label, keys, hint]) => (
                   <RibbonButton key={k} icon={k} label={label} disabled={!m.model} onClick={() => modifyCmd(k)} shortcutHint={`${hint} (${keys})`} />
@@ -318,6 +349,7 @@ export function App({ start }: { start?: AppStart } = {}) {
                 <RibbonButton icon="delete" label="Delete" disabled={!m.model || revitLinked} onClick={() => modifyCmd('delete')} shortcutHint={revitLinked ? 'models linked to Revit: delete in Revit for now' : 'the selection (DE); Ctrl + Z brings it back'} />
                 <RibbonButton icon="pin" label="Pin" disabled={!m.model || revitLinked} onClick={() => modifyCmd('pin')} shortcutHint="protects the selection from changes (PN)" />
                 <RibbonButton icon="unpin" label="Unpin" disabled={!m.model || revitLinked} onClick={() => modifyCmd('unpin')} shortcutHint="(UP)" />
+                <RibbonButton icon="unpin" label="Unlock" disabled={!m.model || revitLinked} onClick={() => modifyCmd('unlock')} shortcutHint={`removes the selection’s Align locks${lockCount() ? ` (${lockCount()} in the model)` : ''}`} />
               </RibbonGroup>
               {nativeEditCount ? <p className="app-ribbon__note">{nativeEditCount} edited element{nativeEditCount === 1 ? '' : 's'} · kept on this device and saved with the project</p> : null}
             </>
@@ -563,6 +595,30 @@ export function App({ start }: { start?: AppStart } = {}) {
             ) : null,
           )}
           <div className="app-view3d" hidden={activeDoc !== null}>
+          {modifyTool ? (
+            <div className="app-optionsbar" role="toolbar" aria-label="Options">
+              {modifyTool.kind === 'move' ? (
+                <>
+                  <strong>{modifyTool.copy ? 'Copy' : 'Move'}</strong>
+                  <label>
+                    <input type="checkbox" checked={modifyTool.constrain} onChange={(e) => setMoveOption({ constrain: e.target.checked })} /> Constrain
+                  </label>
+                  <label>
+                    <input type="checkbox" checked={modifyTool.copy} onChange={(e) => setMoveOption({ copy: e.target.checked })} /> Copy
+                  </label>
+                  <Button size="sm" onClick={() => { const k = modifyTool.copy ? 'copy' : 'move'; endModifyTool(); setModifyKind(k); }}>Type values…</Button>
+                </>
+              ) : (
+                <>
+                  <strong>Align</strong>
+                  <label>
+                    <input type="checkbox" checked={modifyTool.lock} onChange={(e) => setAlignLock(e.target.checked)} /> Lock
+                  </label>
+                </>
+              )}
+              <Button size="sm" onClick={endModifyTool}>Cancel</Button>
+            </div>
+          ) : null}
           <Viewport
             ref={viewport}
             model={m.model}
@@ -629,8 +685,11 @@ export function App({ start }: { start?: AppStart } = {}) {
             hiddenLines={!!activeModelView?.hiddenLines}
             shadows={shadows}
             annotations={allMarks}
-            pick={datumPick}
-            onPickEnd={endDatumTool}
+            pick={modifyPick ?? datumPick}
+            onPickEnd={() => {
+              endDatumTool();
+              endModifyTool();
+            }}
             explode={isTwoD(activeModelView ?? undefined) ? null : explode}
             onOpenView={(id) => views.some((v) => v.id === id) && openView(id)}
             onContextMenu={(x, y) => m.model && setCtxMenu({ x, y })}
@@ -736,6 +795,26 @@ export function App({ start }: { start?: AppStart } = {}) {
           </FloatingWindow>
           <FloatingWindow id="editGeom" title={geomMode === 'move' ? 'Move' : 'Rotate'} subtitle="staged for Revit" open={wins.editGeom} onClose={() => toggleWin('editGeom', false)} initial={{ w: 440, h: 330 }} minWidth={380} minHeight={260}>
             <EditGeometry mode={geomMode} count={selectedGids.length} disabledWhy={editWhy ? editWhy[0].toUpperCase() + editWhy.slice(1) + '.' : null} onMode={setGeomMode} onStage={stageGeometry} onClose={() => toggleWin('editGeom', false)} />
+          </FloatingWindow>
+          <FloatingWindow id="constraints" title="Constraints are not satisfied" subtitle={constraintPrompt?.label ?? ''} open={!!constraintPrompt} onClose={() => constraintPrompt?.cancel()} initial={{ w: 460, h: 300 }}>
+            {constraintPrompt ? (
+              <div className="app-geom">
+                <p className="app-geom__what">This edit would take {constraintPrompt.broken.length === 1 ? 'an element' : `${constraintPrompt.broken.length} elements`} off what {constraintPrompt.broken.length === 1 ? 'it is' : 'they are'} locked to:</p>
+                <ul className="app-constraints">
+                  {constraintPrompt.broken.map((b) => (
+                    <li key={b.lock.id}>{b.what}</li>
+                  ))}
+                </ul>
+                <div className="app-geom__buttons">
+                  <Button size="sm" onClick={constraintPrompt.cancel}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" variant="primary" onClick={constraintPrompt.remove}>
+                    Remove constraints
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </FloatingWindow>
           <FloatingWindow id="units" title="Project Units" subtitle="how lengths are shown" open={unitsOpen} onClose={() => setUnitsOpen(false)} initial={{ w: 420, h: 380 }}>
             {unitsOpen ? <ProjectUnits units={units} onChange={setProjectUnits} onClose={() => setUnitsOpen(false)} /> : null}
@@ -1249,11 +1328,11 @@ export function App({ start }: { start?: AppStart } = {}) {
           ) : (
           <>
           <span className="app-sel">
-            {pickStatus ? (
+            {toolStatus ? (
               <span className="app-pick-status" role="status">
-                {pickStatus.prompt}
-                {pickStatus.typed ? ` · ${pickStatus.typed}` : pickStatus.length ? ` · ${pickStatus.length}` : ''}
-                {pickStatus.snap ? ` · ${pickStatus.snap}` : ''}
+                {toolStatus.prompt}
+                {toolStatus.typed ? ` · ${toolStatus.typed}` : toolStatus.length ? ` · ${toolStatus.length}` : ''}
+                {toolStatus.snap ? ` · ${toolStatus.snap}` : ''}
               </span>
             ) : (
               <>

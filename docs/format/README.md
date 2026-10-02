@@ -29,6 +29,7 @@ shanku/
   levels.json               native edits: the levels, when moved or added (optional): [{name, z}]
   datums.json               grids and reference planes (optional): [{id, kind: grid | refplane, name, a: [x, y], b: [x, y]}], plan mm
   units.json                the project's display units (optional): {length: mm | cm | m | ft-in, decimals, grouping}
+  locks.json                Align locks (optional): [{id, element, datum, to: center | face}]
 revit/
   link.json                 the Revit document the project is linked to (optional)
   pending.jsonl             changes staged for Revit, not yet applied: one per line (optional)

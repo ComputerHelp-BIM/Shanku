@@ -4,6 +4,8 @@ Recorded requests and proposals; each gets its own design review before it is bu
 
 ## Next
 
+- **Datums, work planes, hosting and constraints** — done 0.52.1–0.55.0 (`docs/design/datums-and-constraints.md`).
+
 0. **Native Shanku projects** — done in 0.50.0 (`docs/design/project-file.md`): project file, save back, offline. Next on it: native editing (IFC writing), project ids, several models.
 
 1. **Add-ons as pyRevit-style extensions** — `docs/design/addons.md` (for approval).
