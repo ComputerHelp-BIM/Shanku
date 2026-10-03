@@ -10,7 +10,7 @@ Revit). Protocol: `docs/bridge/protocol.md`.
 ## Install
 
 1. Close Revit.
-2. Unzip `cad2bim-Bridge-for-Revit-0.12.1.zip`, open PowerShell in the folder, then:
+2. Unzip `cad2bim-Bridge-for-Revit-0.12.2.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -86,6 +86,10 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.12.2 — 2026-10-03
+- **Accepts the app from cad2bim.vercel.app** and its preview deployments (`cad2bim-….vercel.app`). With the rename the Vercel project moved there, and 0.12.1 refused it — the app could only say "Revit not found" while Revit showed a code. Look-alike domains are refused (tests).
+- Until this version is installed, add the address to `extraOrigins` in `shanku_bridge_config.json` (next to the DLL) and restart Revit.
 
 ### 0.12.1 — 2026-10-03
 - Renamed to **cad2bim Bridge for Revit** (ribbon tab, dialogs, undo names, installer messages). Protocol, pairing data (the AppData folder) and the C# project names unchanged, so existing installs and pairings keep working.

@@ -94,6 +94,11 @@ export interface BridgeDeps {
   clearTimeout: (id: unknown) => void;
 }
 
+/** What to do when Revit's add-in is running but does not allow this site. */
+export function refusedMessage(origin: string): string {
+  return `Revit's add-in is running but does not allow this site (${origin}). Install cad2bim Bridge for Revit 0.12.2 or later — or, in %APPDATA%\\Autodesk\\Revit\\Addins\\2025\\Shanku.Revit\\shanku_bridge_config.json, add "${origin}" to "extraOrigins" — then restart Revit.`;
+}
+
 const browserDeps = (): BridgeDeps => ({
   fetch: (...a) => fetch(...a),
   // read from globalThis: absent outside browsers (tests pass their own)
@@ -193,6 +198,26 @@ export class RevitBridge {
 
   // ---------------------------------------------------------------- calls
 
+  /**
+   * Whether anything listens on the port, even if it refuses this site: a no-cors request succeeds (with a reply this
+   * page may not read) whenever a server answers, and fails only when none does.
+   */
+  private async listening(): Promise<boolean> {
+    const ctrl = new AbortController();
+    const timer = this.deps.setTimeout(() => ctrl.abort(), 3000);
+    try {
+      await this.deps.fetch(this.base + '/hello', { mode: 'no-cors', signal: ctrl.signal });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      this.deps.clearTimeout(timer);
+    }
+  }
+  private origin(): string {
+    return (globalThis as { location?: { origin?: string } }).location?.origin ?? 'this site';
+  }
+
   private async call<T>(path: string, init: RequestInit = {}, timeoutMs = 30_000): Promise<Response & { json(): Promise<T> }> {
     const ctrl = new AbortController();
     const timer = this.deps.setTimeout(() => ctrl.abort(), timeoutMs);
@@ -234,7 +259,14 @@ export class RevitBridge {
     let hello: { service: string; protocol: number; addin: string; revit: string; features?: string[] };
     try {
       hello = await (await this.call<typeof hello>('/hello', {}, 5000)).json();
-    } catch {
+    } catch (e) {
+      // "Revit not found" only when nothing answers. An add-in that refuses this site (its allowed list lacks this
+      // address: found when the app moved to cad2bim.vercel.app) is there — say so, and how to allow it.
+      const said = e instanceof Error && /not allowed|Revit answered 403/.test(e.message);
+      if (said || (await this.listening())) {
+        this.set({ phase: 'error', error: refusedMessage(this.origin()) });
+        return this.state;
+      }
       this.set({ phase: 'absent', error: undefined });
       this.scheduleRetry();
       return this.state;

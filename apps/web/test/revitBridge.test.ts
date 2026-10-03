@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { RevitBridge, indicesForRevitSelection, type BridgeDeps } from '../src/lib/revitBridge';
 
 /** A pretend add-in: routes to handlers, with an in-memory event stream. */
-function fakeRevit(opts: { absent?: boolean; protocol?: number; code?: string; revoked?: boolean } = {}) {
+function fakeRevit(opts: { absent?: boolean; refuses?: 'blocked' | 'reason'; protocol?: number; code?: string; revoked?: boolean } = {}) {
   const calls: Array<{ path: string; body?: unknown; auth?: string }> = [];
   const streams: Array<{ listeners: Record<string, (e: { data: string }) => void>; onerror: ((e: Event) => void) | null; closed: boolean }> = [];
   const doc = { title: 'Tower A', key: 'key-a', path: 'C:/a.rvt', isFamily: false };
@@ -16,6 +16,13 @@ function fakeRevit(opts: { absent?: boolean; protocol?: number; code?: string; r
       const auth = (init?.headers as Record<string, string>)?.Authorization;
       calls.push({ path, body: init?.body ? JSON.parse(String(init.body)) : undefined, auth });
       if (opts.absent) throw new TypeError('Failed to fetch');
+      // an add-in whose allowed list lacks this site: the browser blocks the reply (a no-cors probe still gets one),
+      // or the add-in's 403 reason is readable
+      if (opts.refuses === 'blocked') {
+        if (init?.mode === 'no-cors') return { ok: false, status: 0, type: 'opaque' } as unknown as Response;
+        throw new TypeError('Failed to fetch');
+      }
+      if (opts.refuses === 'reason') return json(403, { error: 'This site is not allowed to use the cad2bim bridge.' });
       if (path === '/hello') return json(200, { service: 'shanku-revit', protocol: opts.protocol ?? 1, addin: '0.1.0', revit: '2025' });
       if (path === '/pair') return (JSON.parse(String(init!.body)).code === (opts.code ?? '123456') ? json(200, { token: 't0k' }) : json(403, { error: 'That code is not right.' }));
       if (!auth || opts.revoked) return json(401, { error: 'Not paired.' });
@@ -60,7 +67,18 @@ describe('Revit bridge client', () => {
     const f = fakeRevit({ absent: true });
     const b = new RevitBridge(f.deps);
     expect((await b.connect()).phase).toBe('absent');
-    expect(f.timers.length).toBe(1); // only the request timeout, no background retry loop
+    expect(f.timers.length).toBe(2); // the request's and the listening probe's timeouts — no background retry loop
+  });
+
+  it('an add-in that refuses this site is not "absent": it says so, and how to allow the site', async () => {
+    for (const refuses of ['blocked', 'reason'] as const) {
+      const f = fakeRevit({ refuses });
+      const st = await new RevitBridge(f.deps).connect();
+      expect(st.phase).toBe('error');
+      expect(st.error).toMatch(/running but does not allow this site/);
+      expect(st.error).toMatch(/extraOrigins/);
+      expect(st.error).toMatch(/0\.12\.2/);
+    }
   });
 
   it('pairs with the code, connects, loads and selects', async () => {

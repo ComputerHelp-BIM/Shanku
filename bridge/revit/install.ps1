@@ -10,7 +10,7 @@
     Remove:
         powershell -ExecutionPolicy RemoteSigned -File .\install.ps1 -Uninstall
 .NOTES
-    cad2bim Bridge 0.12.1 · Revit 2025
+    cad2bim Bridge 0.12.2 · Revit 2025
 #>
 [CmdletBinding()]
 param(

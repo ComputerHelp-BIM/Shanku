@@ -1,4 +1,4 @@
-# @cad2bim/web 0.57.1
+# @cad2bim/web 0.57.2
 
 The cad2bim app. Requires `@cad2bim/engine >= 0.43.0`, `@cad2bim/ui >= 0.16.0`, `@cad2bim/tokens >= 2.2.0`.
 
@@ -21,6 +21,10 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.57.2 — 2026-10-03
+- **"Revit not found" while Revit showed a code.** The app moved to cad2bim.vercel.app with the rename, which the add-in's allowed list (0.12.1) lacked; it refused the page, the browser blocked the reply, and any failed handshake read as "absent". The bridge client now tells the cases apart: the add-in's 403 reason when readable, else a no-cors probe (it succeeds whenever a server answers) — and says the add-in is running but does not allow this site, how to allow it (`extraOrigins`), and which add-in version allows it. "Revit not found" only when nothing answers. Tests: both kinds of refusal, and absence unchanged.
+- Needs **cad2bim Bridge for Revit 0.12.2**, which allows cad2bim.vercel.app and its previews.
 
 ### 0.57.1 — 2026-10-03
 - **Fixed: the GitHub Pages build failed** to resolve `@cad2bim/ui/styles.css`. The Vite aliases that point the apps at the packages' sources still matched `@shanku/…` (written as an escaped pattern, the rename missed them), so imports fell through to `ui`'s built `dist/` — present locally and in a full build, absent in the Pages workflow, which builds only tokens and web. Aliases now match `@cad2bim/…` (web and playground); the workflow's own steps pass in a fresh clone with `ui` unbuilt. The app itself is unchanged.

@@ -25,8 +25,9 @@ public sealed class BridgeConfig
         "http://localhost:4174",
     };
 
-    // Vercel preview deployments of the project (still named shanku on Vercel).
-    private static readonly Regex PreviewOrigin = new(@"^https://shanku(-[a-z0-9-]+)?\.vercel\.app$", RegexOptions.Compiled);
+    // The Vercel project, under its old and new names, and its preview deployments (shanku-…, cad2bim-…). The app
+    // moved to cad2bim.vercel.app with the rename: 0.12.1 refused it, so the app could not find Revit.
+    private static readonly Regex PreviewOrigin = new(@"^https://(shanku|cad2bim)(-[a-z0-9-]+)?\.vercel\.app$", RegexOptions.Compiled);
 
     // cad2bim's own domain and any subdomain of it (www., app.): the domain is ours, so only our sites match.
     private static readonly Regex Cad2bimOrigin = new(@"^https://([a-z0-9-]+\.)*cad2bim\.in$", RegexOptions.Compiled | RegexOptions.IgnoreCase);

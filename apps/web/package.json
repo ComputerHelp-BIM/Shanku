@@ -1,6 +1,6 @@
 {
   "name": "@cad2bim/web",
-  "version": "0.57.1",
+  "version": "0.57.2",
   "private": true,
   "description": "cad2bim \u2014 the web app. Open IFC, navigate like Revit, select, isolate, section, inspect.",
   "license": "UNLICENSED",

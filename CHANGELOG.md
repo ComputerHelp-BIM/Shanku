@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.57.2 — 2026-10-03
+
+### Fixed
+- Connecting to Revit from cad2bim.vercel.app: cad2bim Bridge for Revit 0.12.2 allows it (0.12.1 refused it); the app reports a refusing add-in as such, with how to allow the site, instead of "Revit not found".
+
 ## 0.57.1 — 2026-10-03
 
 ### Fixed

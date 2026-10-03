@@ -216,6 +216,10 @@ public class ConfigTests
     [InlineData("https://cad2bim.in.evil.example", false)]
     [InlineData("https://evilcad2bim.in", false)]
     [InlineData("https://cad2bim.in.co", false)]
+    [InlineData("https://cad2bim.vercel.app", true)]
+    [InlineData("https://cad2bim-git-main-computerhelp.vercel.app", true)]
+    [InlineData("https://notcad2bim.vercel.app", false)]
+    [InlineData("https://cad2bim.vercel.app.evil.example", false)]
     [InlineData(null, false)]
     public void Origins(string? origin, bool allowed) => Assert.Equal(allowed, new BridgeConfig().IsAllowedOrigin(origin));
 
