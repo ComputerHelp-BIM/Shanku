@@ -2,6 +2,15 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.59.0 — 2026-10-03
+
+### Added
+- Homepage as a drawing sheet, with a scroll build-up and the roadmap as a building and a metro map; `docs/roadmap.md` generated from the same list.
+- Guide sections: editing; levels, grids and reference planes; project files; units, the grid and visual styles.
+
+### Fixed
+- Homepage links to a repository that does not exist; outdated homepage, Guide, README and deploy content; screenshots of the old app.
+
 ## 0.58.0 — 2026-10-03
 
 ### Added

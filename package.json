@@ -1,6 +1,6 @@
 {
   "name": "shanku",
-  "version": "0.58.0",
+  "version": "0.59.0",
   "private": true,
   "description": "Shanku: open, IFC-native structural modelling in the browser.",
   "license": "UNLICENSED",
@@ -21,7 +21,8 @@
     "typecheck": "npm run build -w @cad2bim/tokens && npm run typecheck -w @cad2bim/ui && npm run typecheck -w @cad2bim/engine && npm run typecheck -w @cad2bim/playground && npm run typecheck -w @cad2bim/web && tsc -p api/tsconfig.json",
     "fixtures:large": "python tools/fixtures/make_sample_ifc.py large large-frame.ifc",
     "fixtures:showcase": "python tools/fixtures/make_showcase_ifc.py tower apps/web/public/samples/g14-tower.ifc.gz && python tools/fixtures/make_showcase_ifc.py twin apps/web/public/samples/g24-twin-towers.ifc.gz",
-    "lint:css": "stylelint \"packages/ui/src/**/*.css\" \"apps/*/src/**/*.css\""
+    "lint:css": "stylelint \"packages/ui/src/**/*.css\" \"apps/*/src/**/*.css\"",
+    "roadmap": "node --experimental-strip-types --no-warnings tools/gen-roadmap.mts"
   },
   "engines": {
     "node": ">=20"

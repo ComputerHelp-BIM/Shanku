@@ -39,7 +39,9 @@ export const GUIDE: GuideSection[] = [
             ['`.ifc` IFC4 Reference View', 'Recommended. Opens in 3D with properties, levels and quantities.'],
             ['`.ifc` IFC2x3, Design Transfer View', 'Supported. Rated in Properties with what may be missing.'],
             ['`.dxf`', 'Opens as a 2D drawing tab with its layers.'],
-            ['`.dxf` drawn to Computer Help’s layer standard', 'Model → DXF → 3D builds an IFC4 model from it with Computer Help’s conversion engine.'],
+            ['`.dxf` drawn to Computer Help’s layer standard', 'File → New → Model from a CH drawing builds an IFC4 model from it with Computer Help’s conversion engine.'],
+            ['`.c2b` cad2bim project', 'Opens with its model, views, edits, levels, grids and settings. Save (Ctrl + S) writes back to it.'],
+            ['`.shkp`, `.shk`', 'Projects saved by Shanku (cad2bim before 0.57) open the same; saving writes a new `.c2b` beside them.'],
             ['`.dwg`', 'Not read directly: save it as DXF first.'],
             ['`.rvt`', 'Not read: export IFC from Revit (see Common questions).'],
           ],
@@ -163,6 +165,72 @@ export const GUIDE: GuideSection[] = [
     ],
   },
   {
+    id: 'editing',
+    group: 'Guide',
+    title: 'Editing the model',
+    blocks: [
+      { p: 'The **Modify** tab works as Revit’s: select first (or start the tool and select, then press Enter), then pick points. Each change is **one undo** (Ctrl + Z), kept in this browser as you work and written into the project when you save.' },
+      {
+        table: {
+          head: ['Tool', 'Keys', 'How'],
+          rows: [
+            ['Move', 'MV', 'Click a start and an end point — they snap — or type a distance and press Enter. **Constrain** keeps it straight; **Copy** keeps the original. In elevations and sections, moving up or down changes offsets from the levels.'],
+            ['Copy', 'CO', 'As Move, keeping the originals.'],
+            ['Rotate', 'RO', 'By a typed angle.'],
+            ['Mirror', 'MM', 'A mirrored copy about an axis through the selection.'],
+            ['Array', 'AR', 'Copies in a row by a spacing.'],
+            ['Offset', 'OF', 'Beams and walls parallel by a distance.'],
+            ['Align', 'AL', 'Click a grid or reference plane, then an element’s face or centreline. Tick **Lock** to keep it there.'],
+            ['Delete · Pin · Unpin', 'DE · PN · UP', 'Pinned elements refuse changes. **Unlock** removes the selection’s Align locks.'],
+          ],
+        },
+      },
+      {
+        list: [
+          'While picking, **type a length**: it shows in the dimension on the view; Backspace edits it; Enter applies it along the cursor’s direction. Esc steps back.',
+          '**Snaps:** element ends, middles and centres, grid and level lines; directions lock at 0°, 45° and 90° — hold **Shift** for 0° and 90° only.',
+          '**Constraints are not satisfied:** an edit that would take a locked element off its grid asks first — Remove constraints, or Cancel. Moving along the grid keeps the lock.',
+          '**Models linked to Revit:** Move and Rotate are staged for Revit (**Revit → Changes**) instead of changing the model here.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'datums',
+    group: 'Guide',
+    title: 'Levels, grids and reference planes',
+    blocks: [
+      { p: 'Elements are hosted on levels, as in Revit: columns and walls run from a base level to a top level; beams, slabs and footings hang from their level by an offset.' },
+      {
+        list: [
+          '**Levels (LL):** move a level and everything hosted on it follows, in one undo; add levels, named as Revit names them.',
+          '**Grid (GR)** and **Reference Plane (RP):** in a plan, click two points (they snap to the model and to each other). Grids are named 1, 2, 3 or A, B, C, and show in plans and in elevations.',
+          'Rename or delete grids and reference planes in the Levels window.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'project',
+    group: 'Guide',
+    title: 'Project files',
+    blocks: [
+      { p: '**File → Save (Ctrl + S)** writes a cad2bim project, `.c2b`: the model with your views, edits, levels, grids, units, rates and Revit link, in one file. In Chrome and Edge, Save writes back to the same file; other browsers download a copy. **Save As** makes a new one.' },
+      { p: 'The format is open and documented (`docs/format` in the repository). Shanku’s `.shkp` and `.shk` projects open too; saving writes a new `.c2b` beside them, never over the old file.' },
+      { note: 'Your work is also kept in this browser between visits. The file is how you keep it safe, move it to another computer, and share it.' },
+    ],
+  },
+  {
+    id: 'units',
+    group: 'Guide',
+    title: 'Units, the grid and visual styles',
+    blocks: [
+      { p: '**Manage → Project Units (UN):** millimetres, centimetres, metres or feet-inches, the decimals, and Indian (1,00,000) or international (100,000) grouping. Every length shown and typed follows; the units are saved with the project.' },
+      { p: '**Grid: On/Off** on the view bar: a CAD-style grid under plans, elevations and sections (with the ±0 line in elevations), and a ground grid in 3D, red along X and green along Y. Its lines are 10ⁿ metres apart, closer as you zoom in.' },
+      { p: '**Visual Style** on the view bar lists Revit’s styles: Wireframe (WF), Hidden Line (HL), Shaded (SD), Consistent Colors and Realistic.' },
+    ],
+  },
+  {
     id: 'numbers',
     group: 'Guide',
     title: 'Where the numbers come from',
@@ -194,7 +262,7 @@ export const GUIDE: GuideSection[] = [
       { note: 'cad2bim opens drawings to view and check them. Erase, Move, Copy, Scale, Rotate, Draw Order and Group are in the menu so it matches AutoCAD, but greyed out.' },
       { note: 'An element’s level is the lowest level at or above its top: columns and walls belong to the level they rise to, beams and slabs to the level they hang from (sunk, or up to 600 mm upstand), foundations to Level 1. Every model follows this, including models loaded from Revit (whose IFC storey is shown in Properties for reference).' },
       { note: 'Levels follow Revit’s structural convention: a level is the top of its storey. The frame labelled Level 5 holds the structure below Level 5 (columns and walls from Level 4 up, beams and slabs hanging from Level 5); Level 1, the foundation frame, is ±0 with the foundations below it.' },
-      { p: 'DXF drawings drawn to Computer Help’s layer standard can become a 3D model: Model → DXF → 3D reads frames, levels and labelled outlines, shows its checks (each with Show, to zoom the drawing to the problem), then writes an IFC4 model that opens in cad2bim and can be downloaded.' },
+      { p: 'DXF drawings drawn to Computer Help’s layer standard can become a 3D model: File → New → Model from a CH drawing (DXF → 3D) reads frames, levels and labelled outlines, shows its checks (each with Show, to zoom the drawing to the problem), then writes an IFC4 model that opens in cad2bim and can be downloaded.' },
     ],
   },
   {
@@ -281,11 +349,12 @@ export const GUIDE: GuideSection[] = [
       { p: 'With **cad2bim Bridge for Revit** installed, cad2bim loads the model open in Revit 2025 and keeps the selection in step both ways: select in either program and the other follows.' },
       {
         list: [
-          'Install the add-in (`bridge/revit` in the cad2bim repository), open a model in Revit, then **cad2bim → Connect**: Revit shows a 6-digit code.',
+          'Install **cad2bim Bridge for Revit 2025**: unzip the package and run `install.ps1` with Revit closed (details: `bridge/revit` in the repository). Open a model in Revit, then **cad2bim → Connect**: Revit shows a 6-digit code.',
           'In cad2bim open the **Revit** ribbon tab and click **Connect** (or click **Revit** in the status bar), enter the code and allow Chrome\'s prompt for apps on this device.',
           'The **Revit** tab also has **Load from Revit** (Reload), **Sync**, and **Send to Revit** / **Get from Revit** to pass the selection once when Sync is off.',
           '**Load model from Revit** exports it as IFC4 inside a transaction that Revit rolls back, so the Revit model is never changed.',
           'This browser stays paired; **cad2bim → Disconnect** in Revit unpairs every browser.',
+          'If cad2bim says **Revit’s add-in is running but does not allow this site**, install add-in 0.12.2 or later, or add the site’s address to `extraOrigins` in `shanku_bridge_config.json` next to the add-in, then restart Revit.',
         ],
       },
       {
@@ -331,7 +400,7 @@ export const GUIDE: GuideSection[] = [
     group: 'Guide',
     title: 'The Python console',
     blocks: [
-      { p: '**Ctrl + `** opens the console. It runs Python in this tab. `shanku.elements(category="Column", level="Level 3")` returns elements you can filter, total (`.volume`) and group (`.by("grade")`); `shanku.isolate(...)`, `shanku.select(...)` and `shanku.fit(...)` act on the view. Type `shanku.help()` for everything.' },
+      { p: '**Ctrl + `** opens the console. It runs Python in this tab. `cad2bim.elements(category="Column", level="Level 3")` returns elements you can filter, total (`.volume`) and group (`.by("grade")`); `shanku.isolate(...)`, `shanku.select(...)` and `shanku.fit(...)` act on the view. Type `shanku.help()` for everything. (`shanku.` still works, for older scripts.)' },
       { p: 'Enter runs, Shift + Enter adds a line, ↑ and ↓ recall earlier input, Ctrl + L clears.' },
     ],
   },
@@ -351,14 +420,17 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         faq: [
-          { q: 'Is my model uploaded anywhere?', a: 'No. Files are read in this browser tab. The last model is stored in this browser so a reload restores it; closing the file removes it.' },
+          { q: 'Is my model uploaded anywhere?', a: 'No. Files are read in this browser tab. The model, your edits and settings are kept in this browser so a reload restores them, and saved into your `.c2b` project when you save. Nothing leaves the device unless you save or download a file.' },
+          { q: 'Can I edit the model?', a: 'Yes: the **Modify** tab moves, copies, rotates, mirrors, arrays, offsets, aligns, deletes and pins, and the Levels window moves levels. See **Editing the model**.' },
+          { q: 'Where are my edits kept?', a: 'In this browser as you work, and in the `.c2b` file when you save (Ctrl + S). Edits to a model linked to Revit go to Revit instead, through **Revit → Changes**.' },
+          { q: 'What happened to Shanku?', a: 'cad2bim was called Shanku until 0.57. Its `.shkp` and `.shk` projects open as before, and saving writes a new `.c2b` beside them, never over the old file.' },
           { q: 'Which IFC export should I use from Revit?', a: '**IFC4 Reference View [Structural]** with base quantities, Revit property sets and IFC common property sets turned on. Properties rates every file you open and says what is missing.' },
           { q: 'Can I open a .rvt or .dwg file?', a: 'Not directly. Export IFC from Revit; save DWG as DXF in AutoCAD or with the free ODA File Converter.' },
           { q: 'Why can\'t I see an element?', a: 'Check, in order: temporary hide (HR shows everything), the view\'s Visibility/Graphics and filters, the View Range in plans, and the section box. RH shows hidden elements in magenta.' },
           { q: 'Why is the mark or grade empty?', a: 'cad2bim reads them from properties by rules. Manage → Marks shows which properties the model has and lets you choose.' },
           { q: 'Are the quantities exact?', a: 'They are the IFC base quantities when the export has them, otherwise measured from the geometry. Properties shows the source for each element.' },
           { q: 'Does exploding change my model or quantities?', a: 'No. It only moves what you see, and opening another file resets it.' },
-          { q: 'My panels are in a mess.', a: 'View → Windows → Reset puts the Project Browser on the left and Properties on the right.' },
+          { q: 'My panels are in a mess.', a: 'View → Windows → Reset puts them back where Revit has them: Properties on the left, the Project Browser on the right.' },
           { q: 'Do shortcuts work on my keyboard layout?', a: 'Yes. They follow the physical keys, so ZF is the same two keys on every layout.' },
         ],
       },
@@ -381,6 +453,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.59.0', date: '2026-10-03', items: ['A new homepage: the page is a drawing sheet, a frame builds itself as you scroll, and the roadmap is drawn as a building under construction and as a metro map.', 'This Guide: new sections on editing, levels and grids, project files, and units, the grid and visual styles; corrected where things had moved.'] },
           { version: '0.58.0', date: '2026-10-03', items: ['The Modify tab follows Revit’s panels: Select, Properties (Type Properties, Properties), Clipboard, Modify, View (Hide Element, Isolate Element, Reset Temporary Hide/Isolate), Measure.', 'Fixed: the File menu and the Visual Style menu showed a serif font.'] },
           { version: '0.57.3', date: '2026-10-03', items: ['Fixed: the grid stopped at a square when you zoomed out or panned far in a plan or elevation; it now always fills the view.'] },
           { version: '0.57.2', date: '2026-10-03', items: ['Connecting to Revit: when Revit’s add-in is running but does not allow this site, cad2bim now says so and how to allow it, instead of “Revit not found”. cad2bim Bridge for Revit 0.12.2 allows cad2bim.vercel.app.'] },

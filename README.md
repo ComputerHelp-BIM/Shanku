@@ -2,7 +2,7 @@
 
 Open, IFC-native structural modelling for reinforced concrete, in the browser. No install, and no sign-up for core features: files open from your disk and stay on your device.
 
-> **Status: 0.2.0 — open, navigate and inspect IFC.** Live at https://shanku-bim.github.io/Shanku/ (component playground at `/Shanku/playground/`). DXF import, modelling and BOQ come next.
+> **Status: 0.59.0 — open, navigate and edit structural models; quantities to Excel; round-trip with Revit.** Live at https://cad2bim.vercel.app (also https://computerhelp-bim.github.io/Shanku/). What comes next: [`docs/roadmap.md`](docs/roadmap.md), also drawn on the homepage.
 
 ## Repository layout
 
@@ -12,7 +12,7 @@ Open, IFC-native structural modelling for reinforced concrete, in the browser. N
 | `packages/brand` | `@cad2bim/brand` | 1.17.0 | Logos, the structural icon set, and the brand book (`BRAND.md`) |
 | `packages/ui` | `@cad2bim/ui` | 0.17.1 | React components: title bar, ribbon, properties, project browser, view tabs, bottom panel, status bar, app shell |
 | `packages/engine` | `@cad2bim/engine` | 0.43.1 | IFC loading in a worker, element model, three.js viewer with Revit navigation and picking |
-| `apps/web` | `@cad2bim/web` | 0.58.0 | The cad2bim app |
+| `apps/web` | `@cad2bim/web` | 0.59.0 | The cad2bim app |
 | `bridge/revit` | cad2bim Bridge for Revit | 0.12.1 | Revit 2025 add-in (C#, .NET 8): pairing, load the model into Shanku, selection sync, parameter editing, live updates, Export to Revit (native elements from the DXF → 3D pipeline). Protocol: `docs/bridge/protocol.md` |
 | `apps/playground` | `@cad2bim/playground` | 0.2.1 | Component playground with sample data |
 | `tools/fixtures` | — | 1.2.0 | Python generator for sample and 50k-element test IFC files |
