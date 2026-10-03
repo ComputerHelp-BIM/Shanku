@@ -1,7 +1,6 @@
 # @cad2bim/engine 0.43.1
-# @cad2bim/engine 0.25.0
 
-The Shanku model engine: IFC loading, the element model, and the 3D viewer.
+The cad2bim model engine: IFC loading, the element model, and the 3D viewer.
 
 - **IFC loading** with web-ifc (MPL-2.0) inside a Web Worker, so the UI never blocks. `IfcClient` gives a promise API; properties are read on demand.
 - **One draw call** for the whole model: geometry merged into one indexed mesh, plus feature edges (boundary and > 30° creases only).

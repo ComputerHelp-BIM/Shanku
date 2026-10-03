@@ -10,6 +10,7 @@ import {
   Ribbon,
   RibbonButton,
   RibbonGroup,
+  RibbonStack,
   RibbonTabs,
   StatusBar,
   StatusChip,
@@ -92,6 +93,8 @@ import { DatumsList } from './components/DatumsList';
 import { datumMarksFor } from './lib/viewMarks';
 import { useModifyTools } from './features/modify/useModifyTools';
 import { VisualStyleMenu } from './components/VisualStyleMenu';
+import { FileMenu, type FileMenuItem } from './components/FileMenu';
+import { listRecent, openRecent, forgetRecent, type RecentFile } from './lib/recent';
 
 /** What the homepage hands to the app when it opens it (a dropped file, or the sample). */
 export interface AppStart {
@@ -133,6 +136,13 @@ export function App({ start }: { start?: AppStart } = {}) {
     if (next) setMeasureState(null);
     setDimToolState(next);
   };
+  // Revit's File menu: opened from the File tab; the recent files are read each time it opens
+  const [fileMenu, setFileMenu] = useState(false);
+  const fileTab = useRef<HTMLButtonElement>(null);
+  const [recent, setRecent] = useState<RecentFile[]>([]);
+  useEffect(() => {
+    if (fileMenu) void listRecent().then(setRecent);
+  }, [fileMenu]);
   /** Revit's Shadows On/Off (view control bar), remembered on this device. */
   const [shadows, setShadowsState] = useState<boolean>(() => {
     try {
@@ -209,6 +219,71 @@ export function App({ start }: { start?: AppStart } = {}) {
   };
   // Move, Copy and Align on the shared point picker
   const { modifyTool, modifyPick, modifyStatus, startMove, startAlign, setMoveOption, setAlignLock, endModifyTool } = useModifyTools({ m, setNotice, activeModelView, heights, datums, revitLinked, openGeom, nativePerform, alignTo });
+  // Revit's Modify button: ends whatever tool is running and goes back to selecting
+  const anyTool = !!modifyTool || !!datumTool || !!measure || !!dimTool;
+  const endAllTools = () => {
+    endModifyTool();
+    endDatumTool();
+    setMeasure(null);
+    setDimTool(null);
+  };  // Revit's File menu: its commands and their choices, each saying what it does
+  const closeModel = () => {
+    if (!m.model) return;
+    const unsaved = projectStatus.dirty || (!projectStatus.linked && nativeEditCount > 0);
+    if (unsaved && !window.confirm(`${m.model.info.fileName} has changes not saved to a project file. Close it anyway?\n\nYour edits stay on this device and come back when you open the same file.`)) return;
+    m.close();
+  };
+  const openRecentFile = async (r: RecentFile) => {
+    try {
+      const file = await openRecent(r);
+      if (r.kind === 'dxf') await openDrawing(file);
+      else await openAnyFile(file);
+    } catch (e) {
+      const why = e instanceof Error ? e.message : String(e);
+      setNotice(`${r.name} could not be opened again: ${why}`);
+      if (/not found|could not be found|NotFoundError/i.test(why)) void forgetRecent(r);
+    }
+  };
+  const fileItems: FileMenuItem[] = [
+    {
+      id: 'new', label: 'New', icon: 'new', heading: 'Creates a model.',
+      choices: [{ label: 'Model from a CH drawing', description: 'Builds an IFC model from a CH-format DXF drawing (DXF → 3D).', icon: 'column', onClick: () => (pipe ? toggleWin('pipeline', true) : void pipeline.start()) }],
+    },
+    {
+      id: 'open', label: 'Open', icon: 'open', heading: 'Opens models, projects and drawings.',
+      choices: [
+        { label: 'Model or project', description: 'An IFC model (.ifc, .ifc.gz) or a cad2bim project (.c2b; Shanku’s .shkp too). Ctrl + O', icon: 'ifc', onClick: () => void openFromDisk() },
+        { label: 'DXF drawing', description: 'A drawing in a 2D view, read on this device.', icon: 'dxf', onClick: () => void openDxfFromDisk() },
+        {
+          label: 'From Revit',
+          description: revit.phase === 'connected' && revit.document ? `The model open in Revit: ${revit.document.title}.` : 'The model open in Revit — connect first (Revit tab → Connect).',
+          icon: 'selectGet',
+          disabled: revit.phase !== 'connected' || !revit.document || revit.document.isFamily || revitLoading,
+          onClick: () => void loadFromRevit(),
+        },
+      ],
+    },
+    { id: 'save', label: 'Save', icon: 'save', disabled: !m.model, hint: m.model ? 'The project: model, views, edits, levels, grids and settings (Ctrl + S)' : 'Open a model first', onClick: () => void saveProject() },
+    {
+      id: 'saveas', label: 'Save As', icon: 'save', disabled: !m.model, hint: m.model ? undefined : 'Open a model first', heading: 'Saves a copy under a new name.',
+      choices: [{ label: 'Project', description: 'The model with its views, edits, levels, grids and settings, as a .c2b file. Ctrl + Shift + S', icon: 'save', onClick: () => void saveProjectAs() }],
+    },
+    {
+      id: 'export', label: 'Export', icon: 'export', disabled: !m.model, hint: m.model ? undefined : 'Open a model first', heading: 'Creates exchange files.',
+      choices: [
+        {
+          label: 'IFC',
+          description: revitLinked ? 'A fresh export from Revit, with every change since loading.' : nativeEditCount ? 'Saves the model as an IFC file — as opened: your edits are kept in the project file (IFC with edits comes with the IFC writer).' : 'Saves the model as an IFC file.',
+          icon: 'downloadIfc',
+          onClick: () => void downloadIfc(),
+        },
+        { label: 'BOQ to Excel', description: 'Opens the bill of quantities, with rates; export it to Excel from there.', icon: 'boq', onClick: () => toggleWin('boq', true) },
+        { label: 'CH DXF', description: 'Creates a CH-format DXF drawing from the model.', icon: 'dxf', disabled: true, hint: 'Planned' },
+      ],
+    },
+    { id: 'close', label: 'Close', icon: 'close', disabled: !m.model, hint: m.model ? `Closes ${m.model.info.fileName}` : 'No model open', onClick: closeModel },
+  ];
+
   const toolStatus = modifyStatus ?? pickStatus;
   // changing views ends the tool in progress (Revit's way): its work plane belonged to the view it started in
   const toolView = useRef(activeView);
@@ -264,7 +339,7 @@ export function App({ start }: { start?: AppStart } = {}) {
         <TitleBar
           fileName={info?.fileName ?? 'No model open'}
           brandHref={import.meta.env.BASE_URL}
-          quickAccess={<QuickAccess history={history} onOpen={openFromDisk} onHome={() => viewport.current?.home()} canHome={!!m.model} onMeasure={() => runCommand('measure')} measuring={!!measure} />}
+          quickAccess={<QuickAccess history={history} onOpen={openFromDisk} onHome={() => viewport.current?.home()} canHome={!!m.model} onMeasure={() => runCommand('measure')} measuring={!!measure} onSave={() => void saveProject()} canSave={!!m.model} onDimension={() => setDimTool(dimTool === 'aligned' ? null : 'aligned')} dimensioning={dimTool === 'aligned'} />}
           saveState={info ? projectLabel(projectStatus) : undefined}
           search={<CommandPalette inputRef={search} getCommands={getCommands} findElement={findElement} appVersion={APP_VERSION} />}
           actions={
@@ -288,23 +363,33 @@ export function App({ start }: { start?: AppStart } = {}) {
           }
         />
       }
-      ribbonTabs={<RibbonTabs tabs={RIBBON_TABS} activeId={ribbonTab} onChange={setRibbonTab} />}
+      ribbonTabs={
+        <RibbonTabs
+          tabs={RIBBON_TABS}
+          activeId={ribbonTab}
+          onChange={setRibbonTab}
+          leading={
+            <button type="button" ref={fileTab} className="app-file-tab" aria-label="File menu" aria-haspopup="menu" aria-expanded={fileMenu} onClick={() => setFileMenu((o) => !o)}>
+              File
+            </button>
+          }
+        />
+      }
       ribbon={
         <Ribbon label={RIBBON_TABS.find((t) => t.id === ribbonTab)?.label ?? 'Model'}>
           {ribbonTab === 'model' ? (
             <>
-          <RibbonGroup label="Open">
-            <RibbonButton icon="ifc" label="IFC" onClick={openFromDisk} shortcutHint="opens from this device" />
-            <RibbonButton icon="dxf" label="DXF" onClick={openDxfFromDisk} shortcutHint="2D view, opens from this device" />
-            <RibbonButton icon="column" label="DXF → 3D" active={wins.pipeline} onClick={() => (pipe ? toggleWin('pipeline') : void pipeline.start())} shortcutHint="build an IFC model from a CH-format drawing" />
-            <RibbonButton icon="save" label="Save" disabled={!m.model} onClick={() => void saveProject()} shortcutHint={!m.model ? 'open a model first' : 'the model, views, graphics, rates and changes for Revit in one project file (Ctrl + S)'} />
-            <RibbonButton icon="save" label="Save As" disabled={!m.model} onClick={() => void saveProjectAs()} shortcutHint={!m.model ? 'open a model first' : 'the project to a new file (Ctrl + Shift + S)'} />
-            <RibbonButton icon="downloadIfc" label="Download IFC" disabled={!m.model} onClick={() => void downloadIfc()} shortcutHint={!m.model ? 'open a model first' : revitLinked ? 'a fresh export from Revit, with every change since loading' : 'the model as an IFC file'} />
-          </RibbonGroup>
           <RibbonGroup label="Structure">
             {(['column', 'beam', 'wall', 'slab', 'footing'] as const).map((k) => (
               <RibbonButton key={k} icon={k} label={k[0].toUpperCase() + k.slice(1)} twoTone disabled shortcutHint="modelling arrives in 0.2" />
             ))}
+          </RibbonGroup>
+          <RibbonGroup label="Datum">
+            <RibbonButton icon="level" label="Levels" disabled={!m.model} onClick={() => modifyCmd('levels')} shortcutHint="move a level and what is hosted on it follows; add levels (LL)" />
+            <RibbonButton icon="grid" label="Grid" active={datumTool === 'grid'} disabled={!m.model} onClick={() => (datumTool === 'grid' ? endDatumTool() : modifyCmd('grid'))} shortcutHint="in a plan: click two points, or type a length; one after another until Esc (GR)" />
+          </RibbonGroup>
+          <RibbonGroup label="Work Plane">
+            <RibbonButton icon="section" label="Ref. Plane" active={datumTool === 'refplane'} disabled={!m.model} onClick={() => (datumTool === 'refplane' ? endDatumTool() : modifyCmd('refplane'))} shortcutHint="in a plan: click two points (RP)" />
           </RibbonGroup>
           <RibbonGroup label="Select">
             <RibbonButton icon="byid" label="By ID" onClick={() => search.current?.focus({ preventScroll: true })} shortcutHint="Ctrl + K" />
@@ -326,31 +411,82 @@ export function App({ start }: { start?: AppStart } = {}) {
             </>
           ) : ribbonTab === 'modify' ? (
             <>
+              <RibbonGroup label="Select">
+                <RibbonButton icon="select" label="Modify" active={!anyTool} disabled={!m.model} onClick={endAllTools} shortcutHint="ends the current tool and returns to selecting (Esc)" />
+              </RibbonGroup>
+              <RibbonGroup label="Properties">
+                <RibbonStack>
+                  <RibbonButton size="small" icon="typeProperties" label="Type Properties" disabled={!revitProps?.onEditType} onClick={() => revitProps?.onEditType?.()} shortcutHint={revitProps?.onEditType ? 'the selected type’s parameters (Edit Type)' : 'select one element of a Revit type in a model linked to Revit'} />
+                  <RibbonButton size="small" icon="properties" label="Properties" active={openPanels.includes('properties')} onClick={() => dock.current?.toggle('properties')} shortcutHint="show or hide the Properties palette" />
+                </RibbonStack>
+              </RibbonGroup>
+              <RibbonGroup label="Clipboard">
+                <RibbonStack>
+                  <RibbonButton size="small" icon="paste" label="Paste Aligned to Selected Levels" disabled shortcutHint="planned next: copies of the selection on other levels" />
+                  <RibbonButton size="small" icon="matchType" label="Match Type Properties" disabled shortcutHint="planned next (MA)" />
+                </RibbonStack>
+              </RibbonGroup>
               <RibbonGroup label="Modify">
                 {(
                   [
-                    ['move', 'Move', 'MV', 'by a typed distance'],
-                    ['copy', 'Copy', 'CO', 'copies by a typed distance; the copies become the selection'],
-                    ['rotate', 'Rotate', 'RO', 'by a typed angle, about each element or the selection'],
-                    ['mirror', 'Mirror', 'MM', 'a mirrored copy about an axis through the selection'],
-                    ['array', 'Array', 'AR', 'copies in a row by a spacing'],
-                    ['offset', 'Offset', 'OF', 'beams and walls parallel by a distance'],
-                    ['align', 'Align', 'AL', 'click a grid or reference plane, then an element’s face or centreline; Lock keeps it'],
+                    [
+                      ['align', 'align', 'Align', 'AL', 'a grid or reference plane, then an element’s face or centreline; Lock keeps it', modifyTool?.kind === 'align'],
+                      ['offset', 'offset', 'Offset', 'OF', 'beams and walls parallel by a distance', false],
+                      ['mirror', 'mirror', 'Mirror', 'MM', 'a mirrored copy about an axis through the selection', false],
+                    ],
+                    [
+                      ['move', 'move', 'Move', 'MV', 'start and end points, or a typed distance', modifyTool?.kind === 'move' && !modifyTool.copy],
+                      ['copy', 'copy', 'Copy', 'CO', 'as Move, keeping the originals', modifyTool?.kind === 'move' && modifyTool.copy],
+                      ['rotate', 'rotate', 'Rotate', 'RO', 'by a typed angle', false],
+                    ],
+                    [
+                      ['trim', 'trim', 'Trim/Extend to Corner', 'TR', 'planned next', false],
+                      ['split', 'split', 'Split Element', 'SL', 'planned next', false],
+                      ['array', 'array', 'Array', 'AR', 'copies in a row by a spacing', false],
+                    ],
+                    [
+                      ['scale', 'scale', 'Scale', 'RE', 'planned next', false],
+                      ['pin', 'pin', 'Pin', 'PN', 'protects the selection from changes', false],
+                      ['unpin', 'unpin', 'Unpin', 'UP', 'releases pinned elements', false],
+                    ],
                   ] as const
-                ).map(([k, label, keys, hint]) => (
-                  <RibbonButton key={k} icon={k} label={label} disabled={!m.model} onClick={() => modifyCmd(k)} shortcutHint={`${hint} (${keys})`} />
+                ).map((col, ci) => (
+                  <RibbonStack key={ci}>
+                    {col.map(([k, icon, label, keys, hint, active]) => {
+                      const planned = k === 'trim' || k === 'split' || k === 'scale';
+                      const linkedOnly = (k === 'pin' || k === 'unpin') && revitLinked;
+                      return (
+                        <RibbonButton
+                          key={k}
+                          size="small"
+                          icon={icon}
+                          label={label}
+                          active={active}
+                          disabled={planned || !m.model || linkedOnly}
+                          onClick={() => modifyCmd(k as 'align')}
+                          shortcutHint={linkedOnly ? 'models linked to Revit: in Revit for now' : `${keys} · ${hint}`}
+                        />
+                      );
+                    })}
+                  </RibbonStack>
                 ))}
+                <RibbonStack>
+                  <RibbonButton size="small" icon="unpin" label="Unlock" disabled={!m.model || revitLinked} onClick={() => modifyCmd('unlock')} shortcutHint={`removes the selection’s Align locks${lockCount() ? ` (${lockCount()} in the model)` : ''}`} />
+                  <RibbonButton size="small" icon="delete" label="Delete" disabled={!m.model || revitLinked} onClick={() => modifyCmd('delete')} shortcutHint={revitLinked ? 'models linked to Revit: delete in Revit for now' : 'DE · the selection; Ctrl + Z brings it back'} />
+                </RibbonStack>
               </RibbonGroup>
-              <RibbonGroup label="Datum">
-                <RibbonButton icon="level" label="Levels" disabled={!m.model} onClick={() => modifyCmd('levels')} shortcutHint="move a level and what is hosted on it follows; add levels (LL)" />
-                <RibbonButton icon="grid" label="Grid" active={datumTool === 'grid'} disabled={!m.model} onClick={() => (datumTool === 'grid' ? endDatumTool() : modifyCmd('grid'))} shortcutHint="in a plan: click two points, or type a length; one after another until Esc (GR)" />
-                <RibbonButton icon="section" label="Ref. Plane" active={datumTool === 'refplane'} disabled={!m.model} onClick={() => (datumTool === 'refplane' ? endDatumTool() : modifyCmd('refplane'))} shortcutHint="in a plan: click two points (RP)" />
+              <RibbonGroup label="View">
+                <RibbonStack>
+                  <RibbonButton size="small" icon="hide" label="Hide Element" disabled={!m.model || !m.selection.length} onClick={() => runCommand('hideElement')} shortcutHint="HH · hides the selection in this view, temporarily" />
+                  <RibbonButton size="small" icon="isolate" label="Isolate Element" disabled={!m.model || !m.selection.length} onClick={() => runCommand('isolateElement')} shortcutHint="HI · shows only the selection in this view, temporarily" />
+                  <RibbonButton size="small" icon="reveal" label="Reset Temporary Hide/Isolate" disabled={!m.model} onClick={() => runCommand('resetHidden')} shortcutHint="HR" />
+                </RibbonStack>
               </RibbonGroup>
-              <RibbonGroup label="Element">
-                <RibbonButton icon="delete" label="Delete" disabled={!m.model || revitLinked} onClick={() => modifyCmd('delete')} shortcutHint={revitLinked ? 'models linked to Revit: delete in Revit for now' : 'the selection (DE); Ctrl + Z brings it back'} />
-                <RibbonButton icon="pin" label="Pin" disabled={!m.model || revitLinked} onClick={() => modifyCmd('pin')} shortcutHint="protects the selection from changes (PN)" />
-                <RibbonButton icon="unpin" label="Unpin" disabled={!m.model || revitLinked} onClick={() => modifyCmd('unpin')} shortcutHint="(UP)" />
-                <RibbonButton icon="unpin" label="Unlock" disabled={!m.model || revitLinked} onClick={() => modifyCmd('unlock')} shortcutHint={`removes the selection’s Align locks${lockCount() ? ` (${lockCount()} in the model)` : ''}`} />
+              <RibbonGroup label="Measure">
+                <RibbonStack>
+                  <RibbonButton size="small" icon="measure" label="Measure Between Two References" active={!!measure} disabled={!m.model} onClick={() => runCommand('measure')} shortcutHint="ME" />
+                  <RibbonButton size="small" icon="dimAligned" label="Aligned Dimension" active={dimTool === 'aligned'} disabled={!m.model || !!activeDoc} onClick={() => setDimTool(dimTool === 'aligned' ? null : 'aligned')} shortcutHint="DI" />
+                </RibbonStack>
               </RibbonGroup>
               {nativeEditCount ? <p className="app-ribbon__note">{nativeEditCount} edited element{nativeEditCount === 1 ? '' : 's'} · kept on this device and saved with the project</p> : null}
             </>
@@ -450,8 +586,6 @@ export function App({ start }: { start?: AppStart } = {}) {
             <>
           <RibbonGroup label="Settings">
                 <RibbonButton icon="layout" label="Project Units" onClick={() => setUnitsOpen(true)} shortcutHint="how lengths are shown and typed: mm, cm, m or feet-inches (UN)" />
-              </RibbonGroup>
-              <RibbonGroup label="Settings">
             <RibbonButton icon="byid" label="Marks" disabled={!m.model} onClick={() => setMarkDialog(true)} shortcutHint="which property is the mark" />
           </RibbonGroup>
             </>
@@ -797,6 +931,15 @@ export function App({ start }: { start?: AppStart } = {}) {
           <FloatingWindow id="editGeom" title={geomMode === 'move' ? 'Move' : 'Rotate'} subtitle="staged for Revit" open={wins.editGeom} onClose={() => toggleWin('editGeom', false)} initial={{ w: 440, h: 330 }} minWidth={380} minHeight={260}>
             <EditGeometry mode={geomMode} count={selectedGids.length} disabledWhy={editWhy ? editWhy[0].toUpperCase() + editWhy.slice(1) + '.' : null} onMode={setGeomMode} onStage={stageGeometry} onClose={() => toggleWin('editGeom', false)} />
           </FloatingWindow>
+          <FileMenu
+            open={fileMenu}
+            anchor={fileTab.current}
+            items={fileItems}
+            recent={recent}
+            recentSupported={typeof (window as unknown as { showOpenFilePicker?: unknown }).showOpenFilePicker === 'function'}
+            onOpenRecent={(r) => void openRecentFile(r)}
+            onClose={() => setFileMenu(false)}
+          />
           <FloatingWindow id="constraints" title="Constraints are not satisfied" subtitle={constraintPrompt?.label ?? ''} open={!!constraintPrompt} onClose={() => constraintPrompt?.cancel()} initial={{ w: 460, h: 300 }}>
             {constraintPrompt ? (
               <div className="app-geom">

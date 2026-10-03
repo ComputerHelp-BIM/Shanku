@@ -39,6 +39,10 @@ export const saveModel = (f: SavedFile) => tx('readwrite', (s) => s.put({ name: 
 export const clearModel = () => tx('readwrite', (s) => s.delete('model'));
 export const loadModel = () => tx<SavedFile>('readonly', (s) => s.get('model'));
 
+/** Recent files for the File menu (lib/recent): their handles are kept as they are (IndexedDB stores them). */
+export const saveRecentList = (list: unknown[]) => tx('readwrite', (s) => s.put(list, 'recent'));
+export const loadRecentList = <T>() => tx<T[]>('readonly', (s) => s.get('recent'));
+
 export const saveDrawings = (files: SavedFile[]) => tx('readwrite', (s) => s.put(files, 'drawings'));
 export const loadDrawings = async () => (await tx<SavedFile[]>('readonly', (s) => s.get('drawings'))) ?? [];
 

@@ -1,6 +1,6 @@
 {
   "name": "@cad2bim/ui",
-  "version": "0.16.0",
+  "version": "0.17.1",
   "description": "cad2bim React UI components built on @cad2bim/tokens.",
   "license": "UNLICENSED",
   "type": "module",
@@ -25,7 +25,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@cad2bim/brand": "1.15.0",
+    "@cad2bim/brand": "1.17.0",
     "@cad2bim/tokens": "2.2.0"
   },
   "peerDependencies": {

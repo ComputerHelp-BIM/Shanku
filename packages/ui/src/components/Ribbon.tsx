@@ -10,11 +10,14 @@ export interface RibbonTabsProps {
   tabs: readonly RibbonTab[];
   activeId: string;
   onChange: (id: string) => void;
+  /** Before the tabs: Revit's File tab, which opens the application menu rather than a ribbon. */
+  leading?: ReactNode;
 }
 
-export function RibbonTabs({ tabs, activeId, onChange }: RibbonTabsProps) {
+export function RibbonTabs({ tabs, activeId, onChange, leading }: RibbonTabsProps) {
   return (
     <div className="sk-ribbon-tabs" role="tablist" aria-label="Ribbon">
+      {leading}
       {tabs.map((tab) => {
         const active = tab.id === activeId;
         return (
@@ -52,9 +55,16 @@ export function RibbonGroup({ label, children }: { label: string; children: Reac
   );
 }
 
+/** A column of up to three small buttons (Revit's stacked panel rows). */
+export function RibbonStack({ children }: { children: ReactNode }) {
+  return <div className="sk-ribbon-stack">{children}</div>;
+}
+
 export interface RibbonButtonProps {
   icon: IconName;
   label: string;
+  /** 'small': an icon in a stack (Revit's Modify panel); the label shows in the tooltip. Default 'large'. */
+  size?: 'large' | 'small';
   /** Use the two-tone drawing (structural elements on the ribbon only). */
   twoTone?: boolean;
   active?: boolean;
@@ -65,18 +75,20 @@ export interface RibbonButtonProps {
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
 }
 
-export function RibbonButton({ icon, label, twoTone, active, disabled, shortcutHint, onClick }: RibbonButtonProps) {
+export function RibbonButton({ icon, label, size = 'large', twoTone, active, disabled, shortcutHint, onClick }: RibbonButtonProps) {
+  const small = size === 'small';
   return (
     <button
       type="button"
-      className={['sk-ribbon-button', active && 'is-active'].filter(Boolean).join(' ')}
+      className={['sk-ribbon-button', small && 'sk-ribbon-button--small', active && 'is-active'].filter(Boolean).join(' ')}
       aria-pressed={active ?? undefined}
+      aria-label={small ? label : undefined}
       disabled={disabled}
       title={shortcutHint ? `${label} (${shortcutHint})` : label}
       onClick={onClick}
     >
-      <Icon name={icon} size={24} variant={twoTone ? 'twoTone' : 'outline'} />
-      <span>{label}</span>
+      <Icon name={icon} size={small ? 18 : 24} variant={twoTone ? 'twoTone' : 'outline'} />
+      {small ? null : <span>{label}</span>}
     </button>
   );
 }

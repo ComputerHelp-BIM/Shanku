@@ -1,6 +1,6 @@
-# @cad2bim/web 0.57.3
+# @cad2bim/web 0.58.0
 
-The cad2bim app. Requires `@cad2bim/engine >= 0.43.1`, `@cad2bim/ui >= 0.16.0`, `@cad2bim/tokens >= 2.2.0`.
+The cad2bim app. Requires `@cad2bim/engine >= 0.43.1`, `@cad2bim/ui >= 0.17.1`, `@cad2bim/tokens >= 2.2.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -21,6 +21,12 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.58.0 — 2026-10-03
+- **Modify tab in Revit's panels and order** (compared with Revit 2025's): Select, **Properties** (Type Properties — enabled exactly when Edit Type is; Properties — toggles the palette), Clipboard, Modify, **View** (Hide Element HH, Isolate Element HI, Reset Temporary Hide/Isolate HR — the same commands), Measure. Revit's Geometry, Controls and Create panels stay out until they have working or next-planned tools (decision: only working tools, greyed only for what is planned next). Icons `hide`, `typeProperties` (brand 1.17.0).
+- **Fixed: the File menu and the Visual Style menu showed a serif font** — placed on the page itself, outside the shell that sets the font (ui 0.17.1 sets it on the page). Checked: both menus compute IBM Plex Sans.
+- The File menu and the Quick Access Toolbar, both already Revit-style, were reviewed against Revit's; the Model tab has no Open group (File menu only).
+- Checked in the browser: the new buttons' states (Type Properties greyed off a Revit link), Isolate hides 71 of 72 elements and Reset shows them again.
 
 ### 0.57.3 — 2026-10-03
 - **Fixed: the grid stopped at a square** when zoomed out or panned far in 2D views (reported with a screenshot). Its quad was sized from the viewer's frame, but 2D views zoom the camera, not the frame; and it was centred on the orbit target, which panning can leave behind. Engine 0.43.1 sizes it from what is on screen (frame ÷ zoom) and centres 2D grids on the screen's middle. Checked in the browser: grid lines reach all four edges at zoom 0.05 and after a long pan.

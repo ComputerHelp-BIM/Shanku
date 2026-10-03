@@ -1,4 +1,5 @@
 import { LEGACY_EXTS, PROJECT_EXT } from './project';
+import { rememberRecent } from './recent';
 export interface PickedFile {
   name: string;
   bytes: ArrayBuffer;
@@ -57,6 +58,7 @@ export async function pickFile(kind: FileKind): Promise<PickedFile | null> {
         multiple: false,
       });
       const file = await handle.getFile();
+      void rememberRecent(file.name, kind, handle); // the File menu's recent files (Chrome, Edge)
       return { ...(await unpack({ name: file.name, bytes: await file.arrayBuffer() })), handle };
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return null;

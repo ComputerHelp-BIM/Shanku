@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.58.0 — 2026-10-03
+
+### Added
+- Modify tab: Revit's Properties and View panels, in Revit's order.
+
+### Fixed
+- The File menu and the Visual Style menu used a serif font (ui 0.17.1).
+
 ## 0.57.3 — 2026-10-03
 
 ### Fixed

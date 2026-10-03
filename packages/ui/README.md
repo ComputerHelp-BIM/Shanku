@@ -1,4 +1,4 @@
-# @cad2bim/ui 0.16.0
+# @cad2bim/ui 0.17.1
 
 React 18 components for the Shanku window, styled only with `@cad2bim/tokens`. Requires `@cad2bim/tokens >= 2.1.0` and `@cad2bim/brand >= 1.5.0`.
 
@@ -33,6 +33,12 @@ import { ThemeProvider, AppShell } from '@cad2bim/ui';
 - Every icon-only control has an accessible name.
 
 ## Changelog
+
+### 0.17.1 — 2026-10-03
+- The page's `body` takes the app's font: menus placed on the page itself (the File menu, the Visual Style list) showed the browser's serif default.
+
+### 0.17.0 — 2026-10-03
+- `RibbonButton size="small"`: an icon in a stack (Revit's Modify panel); the label is the tooltip and accessible name. `RibbonStack`: a column of up to three small buttons. `RibbonTabs leading`: a slot before the tabs (Revit's File tab). Requires `@cad2bim/brand >= 1.16.0`.
 
 ### 0.16.0 — 2026-10-03
 - Renamed `@cad2bim/ui` (was `@shanku/ui`); the title bar's wordmark reads cad2bim.

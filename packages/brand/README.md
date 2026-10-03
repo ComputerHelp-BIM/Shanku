@@ -1,5 +1,4 @@
-# @cad2bim/brand 1.15.0
-# @cad2bim/brand 1.2.1
+# @cad2bim/brand 1.17.0
 
 Logos, the custom structural icon set and the brand book (`BRAND.md`, the full design-system guidelines: voice, themes, colour rules, type, iconography, layout, shortcuts, accessibility).
 
@@ -19,6 +18,12 @@ The wordmark is lowercase **cad2bim** in Sora SemiBold. It is typeset, not yet o
 Round 1: 20 icons on a 24 px grid, 1.5 px round strokes, `currentColor`. `icons.json` holds each icon's inner SVG as `outline`, and a `twoTone` version for the five structural elements used on large ribbon buttons (column, beam, slab, wall, footing). Generic actions come from Lucide.
 
 ## Changelog
+
+### 1.17.0 — 2026-10-03
+- Icons `hide` (Lucide eye-off) and `typeProperties` (Lucide sliders-horizontal), ISC: the Modify tab's View and Properties panels.
+
+### 1.16.0 — 2026-10-03
+- Icons for the File menu and the Revit-style Modify tab (Lucide, ISC): `open` (folder-open), `new` (file-plus), `export` (share), `close` (file-x), `trim` (corner-down-right (adapted)), `split` (split), `scale` (scaling), `paste` (clipboard-paste), `matchType` (paintbrush), `select` (mouse-pointer-2).
 
 ### 1.15.0 — 2026-10-03
 - Renamed `@cad2bim/brand` (was `@shanku/brand`); the wordmark is lowercase **cad2bim**. The conch mark stays until a new one is chosen.

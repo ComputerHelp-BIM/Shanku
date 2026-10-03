@@ -1,3 +1,9 @@
+/* the page itself: menus and windows placed on the page (outside the shell, so the viewport cannot cover them)
+   inherit the app's font, not the browser's serif default */
+body {
+  font-family: var(--font-sans);
+}
+
 /* @cad2bim/ui 0.15.0 — requires @cad2bim/tokens/tokens.css loaded first. */
 
 /* ---------- base ---------- */
@@ -182,6 +188,9 @@
 .sk-ribbon-button:hover { background: var(--chip); }
 .sk-ribbon-button.is-active { background: var(--row-selected); color: var(--accent-text); }
 .sk-ribbon-button:disabled { opacity: var(--opacity-ghost); cursor: default; }
+/* Revit's stacked small buttons: columns of up to three icons */
+.sk-ribbon-stack { display: flex; flex-direction: column; justify-content: flex-start; gap: 1px; }
+.sk-ribbon-button--small { width: 26px; height: 24px; padding: 0; gap: 0; justify-content: center; }
 
 /* ---------- shell ---------- */
 .sk-shell__body { flex: 1; display: flex; min-height: 0; }

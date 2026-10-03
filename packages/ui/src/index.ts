@@ -14,7 +14,7 @@ export { Icon, iconNames, type IconName, type IconProps } from './components/Ico
 export { ShankuMark, type ShankuMarkProps } from './components/ShankuMark';
 export { Button, IconButton, Kbd, type ButtonProps, type IconButtonProps } from './components/Button';
 export { TitleBar, CommandSearch, type TitleBarProps, type CommandSearchProps } from './components/TitleBar';
-export { Ribbon, RibbonTabs, RibbonGroup, RibbonButton, type RibbonTab, type RibbonTabsProps, type RibbonButtonProps } from './components/Ribbon';
+export { Ribbon, RibbonTabs, RibbonGroup, RibbonButton, RibbonStack, type RibbonTab, type RibbonTabsProps, type RibbonButtonProps } from './components/Ribbon';
 export { DockPanel, TypeSelector, PropertySection, PropertyRow, PropertyGrid, PropertiesFooter, usePropertySort, type PropertyRowProps, type PropertySectionProps, type PropertySort, type TypeSelectorProps } from './components/Properties';
 export { TreeView, type TreeNode, type TreeViewProps } from './components/TreeView';
 export {

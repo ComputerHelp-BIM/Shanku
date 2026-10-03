@@ -26,6 +26,18 @@ export function useFileOpening(deps: FileOpeningDeps) {
     }
   }, [m]);
 
+  // Ctrl + O opens (Revit's; the browser's own Open File is replaced while cad2bim is open)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        void openFromDisk();
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [openFromDisk]);
+
   // Homepage hand-off: open what the visitor dropped or chose, once.
   const started = useRef(false);
   useEffect(() => {

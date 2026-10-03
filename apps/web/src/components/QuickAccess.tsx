@@ -10,10 +10,19 @@ export interface QuickAccessProps {
   /** Measure (Revit keeps it on the Quick Access Toolbar too). */
   onMeasure?: () => void;
   measuring?: boolean;
+  /** Save (Ctrl + S), as Revit's toolbar has it. */
+  onSave?: () => void;
+  canSave?: boolean;
+  /** Aligned Dimension (DI). */
+  onDimension?: () => void;
+  dimensioning?: boolean;
 }
 
-/** Revit's Quick Access Toolbar: Open · Undo ▾ · Redo ▾ · Measure · Default 3D View. The ▾ lists named transactions. */
-export function QuickAccess({ history, onOpen, onHome, canHome, onMeasure, measuring }: QuickAccessProps) {
+/**
+ * Revit's Quick Access Toolbar, in its order: Open · Save · Undo ▾ · Redo ▾ · Measure · Aligned Dimension ·
+ * Default 3D View. The ▾ lists named transactions.
+ */
+export function QuickAccess({ history, onOpen, onHome, canHome, onMeasure, measuring, onSave, canSave, onDimension, dimensioning }: QuickAccessProps) {
   const [menu, setMenu] = useState<'undo' | 'redo' | null>(null);
   const root = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -33,7 +42,8 @@ export function QuickAccess({ history, onOpen, onHome, canHome, onMeasure, measu
   );
   return (
     <span className="qat" ref={root}>
-      {btn('Open', 'ifc', onOpen, false, 'Open an IFC model')}
+      {btn('Open', 'open', onOpen, false, 'Open a model, project or drawing (Ctrl + O)')}
+      {onSave ? btn('Save', 'save', onSave, !canSave, canSave ? 'Save (Ctrl + S)' : 'Open a model to save') : null}
       <span className="qat-split">
         {btn('Undo', 'undo', () => history.undo(), !history.canUndo, history.canUndo ? `Undo ${history.undoList[0]} (Ctrl + Z)` : 'Nothing to undo')}
         <button type="button" className="qat-drop" aria-label="Undo list" aria-expanded={menu === 'undo'} disabled={!history.canUndo} onClick={() => setMenu((m) => (m === 'undo' ? null : 'undo'))}>▾</button>
@@ -45,6 +55,11 @@ export function QuickAccess({ history, onOpen, onHome, canHome, onMeasure, measu
       {onMeasure ? (
         <button type="button" className="qat-btn" aria-label="Measure" aria-pressed={!!measuring} title="Measure (ME)" disabled={!canHome} onClick={onMeasure}>
           <Icon name="measure" size={16} />
+        </button>
+      ) : null}
+      {onDimension ? (
+        <button type="button" className="qat-btn" aria-label="Aligned Dimension" aria-pressed={!!dimensioning} title="Aligned Dimension (DI)" disabled={!canHome} onClick={onDimension}>
+          <Icon name="dimAligned" size={16} />
         </button>
       ) : null}
       {btn('Default 3D View', 'view3d', onHome, !canHome)}
