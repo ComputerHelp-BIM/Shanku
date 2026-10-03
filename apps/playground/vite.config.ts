@@ -11,8 +11,8 @@ export default defineConfig({
   resolve: {
     // Work against @cad2bim/ui source for instant HMR; the package build is checked in CI.
     alias: [
-      { find: /^@shanku\/ui\/styles\.css$/, replacement: `${uiSrc}styles.css` },
-      { find: /^@shanku\/ui$/, replacement: `${uiSrc}index.ts` },
+      { find: /^@cad2bim\/ui\/styles\.css$/, replacement: `${uiSrc}styles.css` },
+      { find: /^@cad2bim\/ui$/, replacement: `${uiSrc}index.ts` },
     ],
   },
 });

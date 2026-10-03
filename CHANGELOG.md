@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.57.1 — 2026-10-03
+
+### Fixed
+- GitHub Pages build: the apps' Vite aliases still named `@shanku/…`; `@cad2bim/ui/styles.css` did not resolve where `ui` is not built. The workspace check now catches aliases naming no workspace package.
+
 ## 0.57.0 — 2026-10-03
 
 ### Changed

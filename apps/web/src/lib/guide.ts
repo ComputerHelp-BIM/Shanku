@@ -381,6 +381,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.57.1', date: '2026-10-03', items: ['Fixed the published site’s build after the rename (no change in the app).'] },
           { version: '0.57.0', date: '2026-10-03', items: ['Shanku is now cad2bim. Projects save as .c2b (tower.c2b); your .shkp and .shk projects still open, and saving one writes a new .c2b beside it. Everything kept on this device stays as it was.', 'In the Python console, cad2bim is the module’s name now (cad2bim.select(…)); shanku still works.'] },
           { version: '0.56.1', date: '2026-10-03', items: ['Tools respond faster on large models: snapping while you pick points is about three times quicker (a 14,000-element tower: 42 → 15 ms per cursor move).'] },
           { version: '0.56.0', date: '2026-10-03', items: ['A grid under the model, as in CAD in plans, elevations and sections and as in Blender in 3D: lines every 1, 10 or 100 m as you zoom, the origin’s axes in red and green, the ±0 line in elevations. Grid: On/Off on the view bar, remembered.', 'Visual Style is one menu on the view bar, as in Revit: Wireframe, Hidden Line, Shaded, Consistent Colors, Realistic.', 'Fixed: an element moved far (10 m or more) vanished from the plan and Fit missed it; the distance you type shows in the dimension on the view at once (Backspace too), not only in the status bar; the status bar no longer redraws the app on every mouse move.'] },

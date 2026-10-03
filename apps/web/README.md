@@ -1,4 +1,4 @@
-# @cad2bim/web 0.57.0
+# @cad2bim/web 0.57.1
 
 The cad2bim app. Requires `@cad2bim/engine >= 0.43.0`, `@cad2bim/ui >= 0.16.0`, `@cad2bim/tokens >= 2.2.0`.
 
@@ -21,6 +21,10 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.57.1 — 2026-10-03
+- **Fixed: the GitHub Pages build failed** to resolve `@cad2bim/ui/styles.css`. The Vite aliases that point the apps at the packages' sources still matched `@shanku/…` (written as an escaped pattern, the rename missed them), so imports fell through to `ui`'s built `dist/` — present locally and in a full build, absent in the Pages workflow, which builds only tokens and web. Aliases now match `@cad2bim/…` (web and playground); the workflow's own steps pass in a fresh clone with `ui` unbuilt. The app itself is unchanged.
+- The workspace check (`npm test`) now fails when a Vite alias names a package that is not in the workspace.
 
 ### 0.57.0 — 2026-10-03
 - **Shanku is now cad2bim** (cad2bim.in): the app's name everywhere it is seen (title bar and start-screen wordmark, page title, Guide, messages), the packages (`@cad2bim/*`), the Revit add-in's text.

@@ -20,8 +20,18 @@ for (const [file, name, pkg] of [['packages/engine/src/index.ts', 'ENGINE_VERSIO
   if (!m) wrong.push(`${file} has no ${name}`);
   else if (m[1] !== version[pkg]) wrong.push(`${file}: ${name} is ${m[1]}, but ${pkg} is ${version[pkg]}`);
 }
+// Vite aliases that point the apps at package sources must name real workspace packages: after the rename to
+// cad2bim they still matched @shanku/…, so imports fell through to packages' built dist/ — fine locally, where dist/
+// exists, but the GitHub Pages build (which does not build them) failed to resolve @cad2bim/ui/styles.css.
+for (const app of dirs.filter((d) => existsSync(join(d, 'vite.config.ts')))) {
+  const cfg = readFileSync(join(app, 'vite.config.ts'), 'utf8');
+  for (const m of cfg.matchAll(/find:\s*\/\^(@[a-z0-9-]+)\\\/([a-z0-9-]+)/g)) {
+    const name = `${m[1]}/${m[2]}`;
+    if (!(name in version)) wrong.push(`${app.slice(root.length)}/vite.config.ts aliases ${name}, which is not a workspace package`);
+  }
+}
 if (wrong.length) {
-  console.error('Workspace versions out of step:\n  ' + wrong.join('\n  ') + '\nUpdate the dependency, then run npm install to refresh package-lock.json.');
+  console.error('Workspace out of step:\n  ' + wrong.join('\n  ') + '\nFix each line above (for a dependency version, then run npm install to refresh package-lock.json).');
   process.exit(1);
 }
 console.log(`Workspace versions in step (${pkgs.length} packages).`);

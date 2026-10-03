@@ -95,9 +95,9 @@ export default defineConfig({
   plugins: [shareDev(), webIfcWasm(), react()],
   resolve: {
     alias: [
-      { find: /^@shanku\/ui\/styles\.css$/, replacement: `${uiSrc}styles.css` },
-      { find: /^@shanku\/ui$/, replacement: `${uiSrc}index.ts` },
-      { find: /^@shanku\/engine$/, replacement: `${engineSrc}index.ts` },
+      { find: /^@cad2bim\/ui\/styles\.css$/, replacement: `${uiSrc}styles.css` },
+      { find: /^@cad2bim\/ui$/, replacement: `${uiSrc}index.ts` },
+      { find: /^@cad2bim\/engine$/, replacement: `${engineSrc}index.ts` },
     ],
   },
   // Stamped at build time: the legal notice says which month the features and compatibility data describe.

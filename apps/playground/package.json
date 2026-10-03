@@ -1,6 +1,6 @@
 {
   "name": "@cad2bim/playground",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Live playground for @cad2bim/ui: the full cad2bim window with sample data.",
   "license": "UNLICENSED",
