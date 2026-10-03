@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Shanku Bridge for Revit 2025. Copied to %APPDATA%\Autodesk\Revit\Addins\2025\ by install.ps1. -->
+<!-- cad2bim Bridge for Revit 2025. Copied to %APPDATA%\Autodesk\Revit\Addins\2025\ by install.ps1. -->
 <RevitAddIns>
   <AddIn Type="Application">
-    <Name>Shanku Bridge</Name>
+    <!-- AddInId, VendorId and FullClassName stay as they were: Revit knows the add-in by them (a new id would ask again and could load two copies). -->
+    <Name>cad2bim Bridge</Name>
     <Assembly>Shanku.Revit\Shanku.Revit.dll</Assembly>
     <FullClassName>Shanku.Revit.App</FullClassName>
     <AddInId>6F3B2C1A-8D4E-4C57-9A1B-5E2D7C9F0A31</AddInId>
     <VendorId>SHNK</VendorId>
-    <VendorDescription>Shanku · ComputerHelp-BIM · https://shanku.vercel.app</VendorDescription>
+    <VendorDescription>cad2bim (formerly Shanku) · ComputerHelp-BIM · https://cad2bim.in</VendorDescription>
   </AddIn>
 </RevitAddIns>

@@ -10,7 +10,7 @@ Revit). Protocol: `docs/bridge/protocol.md`.
 ## Install
 
 1. Close Revit.
-2. Unzip `Shanku.Revit-0.12.0.zip`, open PowerShell in the folder, then:
+2. Unzip `cad2bim-Bridge-for-Revit-0.12.1.zip`, open PowerShell in the folder, then:
    ```powershell
    Unblock-File .\install.ps1
    powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
@@ -91,6 +91,7 @@ Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and asse
 - Renamed to **cad2bim Bridge for Revit** (ribbon tab, dialogs, undo names, installer messages). Protocol, pairing data (the AppData folder) and the C# project names unchanged, so existing installs and pairings keep working.
 - Accepts the app from **cad2bim.in** and its subdomains (`www.`, `app.`); look-alike domains and plain `http://` are refused (tests).
 - The export's headers stay `X-Shanku-Document-Key` / `-Title` (a first build of this version had renamed them, which would have unlinked models in apps expecting the old names). The "bridge did not start" message names the real log folder, `%APPDATA%\Shanku\bridge.log`.
+- Revit's add-in list and first-start prompt show **cad2bim Bridge** (the manifest's name and vendor text); its AddInId, vendor id and class are unchanged, so Revit treats it as the same add-in.
 
 ### 0.12.0 — 2026-09-30
 - **Editing from Shanku** (`POST /elements/edit`, feature `edit`): moves (mm) and rotations (degrees, about
