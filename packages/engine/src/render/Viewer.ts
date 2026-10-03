@@ -2496,7 +2496,10 @@ export class Viewer {
       // the grid first (it clears the frame), then the model over it without clearing again
       if (this.grid.visible) {
         const h = this.rectOf(this.canvas).height || 1;
-        this.grid.update(this.camera, metresPerPixel(this.camera, h), this.target, Math.max(this.frameHeight, this.frameHeight * this.aspect()), this.modelSphere.radius);
+        // what is on screen: the frame divided by the zoom (2D views zoom the camera, not the frame — the grid stopped
+        // at a square when zoomed out)
+        const span = Math.max(this.frameHeight, this.frameHeight * this.aspect()) / Math.max(this.camera.zoom, 1e-6);
+        this.grid.update(this.camera, metresPerPixel(this.camera, h), this.target, span, this.modelSphere.radius);
         this.renderer.render(this.grid.scene, this.camera);
         this.renderer.autoClear = false;
       }

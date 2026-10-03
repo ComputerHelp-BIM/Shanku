@@ -136,7 +136,10 @@ export class GridUnderlay {
     // the quad: centred where the camera looks, projected onto the plane; big enough to fill the view
     const o = new Vector3(...s.origin);
     const n = new Vector3(...s.u).cross(new Vector3(...s.v)).normalize();
-    const c = target.clone().sub(n.clone().multiplyScalar(target.clone().sub(o).dot(n)));
+    // centred on the middle of the screen: in 2D that is where the camera is (target and camera can part when
+    // panning); in 3D, what the camera orbits
+    const at = s.mode === '2d' ? camera.position : target;
+    const c = at.clone().sub(n.clone().multiplyScalar(at.clone().sub(o).dot(n)));
     this.mesh.position.copy(c);
     if (s.mode === '3d') {
       const r = Math.max(modelRadius * 2.5, viewSpan * 1.5, 20);

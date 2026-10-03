@@ -381,6 +381,7 @@ export const GUIDE: GuideSection[] = [
     blocks: [
       {
         releases: [
+          { version: '0.57.3', date: '2026-10-03', items: ['Fixed: the grid stopped at a square when you zoomed out or panned far in a plan or elevation; it now always fills the view.'] },
           { version: '0.57.2', date: '2026-10-03', items: ['Connecting to Revit: when Revit’s add-in is running but does not allow this site, cad2bim now says so and how to allow it, instead of “Revit not found”. cad2bim Bridge for Revit 0.12.2 allows cad2bim.vercel.app.'] },
           { version: '0.57.1', date: '2026-10-03', items: ['Fixed the published site’s build after the rename (no change in the app).'] },
           { version: '0.57.0', date: '2026-10-03', items: ['Shanku is now cad2bim. Projects save as .c2b (tower.c2b); your .shkp and .shk projects still open, and saving one writes a new .c2b beside it. Everything kept on this device stays as it was.', 'In the Python console, cad2bim is the module’s name now (cad2bim.select(…)); shanku still works.'] },

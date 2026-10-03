@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.57.3 — 2026-10-03
+
+### Fixed
+- The grid underlay stopped at a square when zoomed out or panned far in 2D views.
+
 ## 0.57.2 — 2026-10-03
 
 ### Fixed

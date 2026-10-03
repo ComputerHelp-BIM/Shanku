@@ -1,4 +1,4 @@
-# @cad2bim/engine 0.43.0
+# @cad2bim/engine 0.43.1
 # @cad2bim/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
@@ -53,6 +53,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @cad2bim/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.43.1 — 2026-10-03
+- Grid underlay sized from the visible span (frame ÷ camera zoom) and, in 2D, centred on the screen's middle: it no longer stops at a square when zoomed out or panned.
 
 ### 0.43.0 — 2026-10-03
 - Renamed `@cad2bim/engine` (was `@shanku/engine`); messages say cad2bim. DXF → 3D pipeline 2.0.2: new IFC headers name cad2bim (the `Shanku_Structural` property set is unchanged).

@@ -1,7 +1,7 @@
 import type { DisplayStyle } from '@cad2bim/engine';
 
 /** cad2bim's version, shown in the status bar and the Guide (kept in step with package.json). */
-export const APP_VERSION = '0.57.2';
+export const APP_VERSION = '0.57.3';
 /** The view bar's visual styles, with their shortcuts. */
 export const STYLES: Array<{ id: DisplayStyle; label: string; keys: string }> = [
   // Revit's order and names; Consistent Colors has no default shortcut in Revit (CO is Copy)

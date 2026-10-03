@@ -11,8 +11,8 @@ Open, IFC-native structural modelling for reinforced concrete, in the browser. N
 | `packages/tokens` | `@cad2bim/tokens` | 2.2.0 | Design tokens for the Paper and Ink themes, compiled to CSS custom properties |
 | `packages/brand` | `@cad2bim/brand` | 1.15.0 | Logos, the structural icon set, and the brand book (`BRAND.md`) |
 | `packages/ui` | `@cad2bim/ui` | 0.16.0 | React components: title bar, ribbon, properties, project browser, view tabs, bottom panel, status bar, app shell |
-| `packages/engine` | `@cad2bim/engine` | 0.43.0 | IFC loading in a worker, element model, three.js viewer with Revit navigation and picking |
-| `apps/web` | `@cad2bim/web` | 0.57.2 | The cad2bim app |
+| `packages/engine` | `@cad2bim/engine` | 0.43.1 | IFC loading in a worker, element model, three.js viewer with Revit navigation and picking |
+| `apps/web` | `@cad2bim/web` | 0.57.3 | The cad2bim app |
 | `bridge/revit` | cad2bim Bridge for Revit | 0.12.1 | Revit 2025 add-in (C#, .NET 8): pairing, load the model into Shanku, selection sync, parameter editing, live updates, Export to Revit (native elements from the DXF → 3D pipeline). Protocol: `docs/bridge/protocol.md` |
 | `apps/playground` | `@cad2bim/playground` | 0.2.1 | Component playground with sample data |
 | `tools/fixtures` | — | 1.2.0 | Python generator for sample and 50k-element test IFC files |

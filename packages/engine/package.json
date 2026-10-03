@@ -1,6 +1,6 @@
 {
   "name": "@cad2bim/engine",
-  "version": "0.43.0",
+  "version": "0.43.1",
   "description": "cad2bim model engine: IFC loading (web-ifc, in a worker), element model, and the three.js viewer with Revit-style navigation and ID-buffer picking.",
   "license": "UNLICENSED",
   "type": "module",

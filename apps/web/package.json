@@ -1,6 +1,6 @@
 {
   "name": "@cad2bim/web",
-  "version": "0.57.2",
+  "version": "0.57.3",
   "private": true,
   "description": "cad2bim \u2014 the web app. Open IFC, navigate like Revit, select, isolate, section, inspect.",
   "license": "UNLICENSED",
@@ -16,7 +16,7 @@
     "@fontsource/ibm-plex-mono": "^5.1.0",
     "@fontsource/ibm-plex-sans": "^5.1.0",
     "@fontsource/sora": "^5.1.0",
-    "@cad2bim/engine": "0.43.0",
+    "@cad2bim/engine": "0.43.1",
     "@cad2bim/tokens": "2.2.0",
     "@cad2bim/ui": "0.16.0",
     "@vercel/blob": "^2.8.0",
