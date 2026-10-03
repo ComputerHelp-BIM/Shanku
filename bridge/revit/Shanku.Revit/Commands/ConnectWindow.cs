@@ -12,15 +12,15 @@ using Autodesk.Revit.UI;
 namespace Shanku.Revit.Commands;
 
 /// <summary>
-/// The pairing code, in a modeless window styled like Shanku's own windows (its design tokens: orange
-/// top edge, warm header strip, digit tiles in IBM Plex Mono, Shanku's buttons) and following Revit's
-/// light or dark theme. Revit keeps working while it shows, so Shanku can pair AND load at once. Owned by
-/// Revit's main window, it stays above Revit; it closes itself a moment after Shanku pairs. One at a
+/// The pairing code, in a modeless window styled like cad2bim's own windows (its design tokens: orange
+/// top edge, warm header strip, digit tiles in IBM Plex Mono, cad2bim's buttons) and following Revit's
+/// light or dark theme. Revit keeps working while it shows, so cad2bim can pair AND load at once. Owned by
+/// Revit's main window, it stays above Revit; it closes itself a moment after cad2bim pairs. One at a
 /// time: Connect again brings it forward with a new code.
 /// </summary>
 internal sealed class ConnectWindow : Window
 {
-    /// <summary>Shanku's design tokens (packages/tokens), light and dark.</summary>
+    /// <summary>cad2bim's design tokens (packages/tokens), light and dark.</summary>
     private sealed record Palette(string Bg, string Panel, string Ribbon, string Field, string Border, string BorderStrong, string Text, string TextSecondary, string Accent, string Ok);
 
     private static readonly Palette Light = new("#F6F4EF", "#E9E4DA", "#EFECE5", "#FFFFFF", "#E2DED4", "#CFCAC0", "#17191E", "#5B5F68", "#D9761E", "#2E8B57");
@@ -61,7 +61,7 @@ internal sealed class ConnectWindow : Window
         try { dark = UIThemeManager.CurrentTheme == UITheme.Dark; } catch { dark = false; }
         _p = dark ? Dark : Light;
 
-        Title = "Connect to Shanku";
+        Title = "Connect to cad2bim";
         Width = 480; // six digit tiles and Copy in one row
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
@@ -74,7 +74,7 @@ internal sealed class ConnectWindow : Window
         FontSize = 13;
         Foreground = B(_p.Text);
 
-        // the window: rounded, shadowed, Shanku's orange top edge
+        // the window: rounded, shadowed, cad2bim's orange top edge
         var frame = new Border
         {
             Margin = new Thickness(14),
@@ -97,7 +97,7 @@ internal sealed class ConnectWindow : Window
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var titles = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(16, 9, 8, 9), VerticalAlignment = VerticalAlignment.Center };
-        titles.Children.Add(new TextBlock { Text = "Connect to Shanku", FontWeight = FontWeights.SemiBold, FontSize = 13 });
+        titles.Children.Add(new TextBlock { Text = "Connect to cad2bim", FontWeight = FontWeights.SemiBold, FontSize = 13 });
         titles.Children.Add(new TextBlock { Text = $"Revit {App.Host?.RevitVersion} · add-in {App.Host?.AddinVersion}", Foreground = B(_p.TextSecondary), FontSize = 12, Margin = new Thickness(10, 1, 0, 0) });
         header.Children.Add(titles);
         var x = FlatButton("✕", false);
@@ -120,9 +120,9 @@ internal sealed class ConnectWindow : Window
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
         var fresh = FlatButton("New code", false);
         fresh.Click += (_, _) => NewCode();
-        var open = FlatButton("Open Shanku", true);
+        var open = FlatButton("Open cad2bim", true);
         open.Margin = new Thickness(8, 0, 0, 0);
-        open.Click += (_, _) => App.OpenShanku();
+        open.Click += (_, _) => App.Opencad2bim();
         buttons.Children.Add(fresh);
         buttons.Children.Add(open);
         Grid.SetColumn(buttons, 1);
@@ -133,12 +133,12 @@ internal sealed class ConnectWindow : Window
         // body: the code in digit tiles, the countdown, the instructions
         var body = new StackPanel { Margin = new Thickness(16, 14, 16, 10) };
         body.Children.Add(new TextBlock { Text = "PAIRING CODE", Foreground = B(_p.TextSecondary), FontSize = 11, FontWeight = FontWeights.SemiBold });
-        // the digit tiles, and Copy beside them (the six digits, for pasting into Shanku)
+        // the digit tiles, and Copy beside them (the six digits, for pasting into cad2bim)
         var codeRow = new DockPanel { Margin = new Thickness(0, 8, 0, 0), LastChildFill = false };
         _copy = FlatButton("Copy", false);
         _copy.Height = 54;
         _copy.Padding = new Thickness(14, 0, 14, 0);
-        _copy.ToolTip = "Copy the code, to paste into Shanku";
+        _copy.ToolTip = "Copy the code, to paste into cad2bim";
         _copy.Click += (_, _) => CopyCode();
         DockPanel.SetDock(_copy, Dock.Right);
         codeRow.Children.Add(_copy);
@@ -167,7 +167,7 @@ internal sealed class ConnectWindow : Window
         body.Children.Add(_status);
         body.Children.Add(new TextBlock
         {
-            Text = "In Shanku, click Revit in the status bar (or search \"Connect to Revit\") and enter this code. Revit keeps working while this window is open.",
+            Text = "In cad2bim, click Revit in the status bar (or search \"Connect to Revit\") and enter this code. Revit keeps working while this window is open.",
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 12, 0, 0),
             LineHeight = 19,
@@ -188,7 +188,7 @@ internal sealed class ConnectWindow : Window
         _tick.Start();
     }
 
-    /// <summary>Shanku's buttons: primary (accent fill) or secondary (field with a border); flat, rounded.</summary>
+    /// <summary>cad2bim's buttons: primary (accent fill) or secondary (field with a border); flat, rounded.</summary>
     private Button FlatButton(string text, bool primary)
     {
         var bg = primary ? B(_p.Accent) : B(_p.Field);
@@ -297,14 +297,14 @@ internal sealed class ConnectWindow : Window
                        (App.Pairing!.HasTokens ? " · a browser on this computer is already paired" : "");
     }
 
-    /// <summary>Shanku paired (server thread): say so, then close.</summary>
+    /// <summary>cad2bim paired (server thread): say so, then close.</summary>
     private void OnPaired() => Dispatcher.BeginInvoke(() =>
     {
         _tick.Stop();
         _digits.Visibility = Visibility.Collapsed;
         _copy.Visibility = Visibility.Collapsed;
         _drainTrack.Visibility = Visibility.Collapsed;
-        _paired.Text = "✓  Connected to Shanku";
+        _paired.Text = "✓  Connected to cad2bim";
         _paired.Visibility = Visibility.Visible;
         _status.Text = "This window closes by itself.";
         var shut = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.8) };

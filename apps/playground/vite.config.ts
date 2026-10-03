@@ -9,7 +9,7 @@ export default defineConfig({
   base: process.env.BASE ?? '/',
   plugins: [react()],
   resolve: {
-    // Work against @shanku/ui source for instant HMR; the package build is checked in CI.
+    // Work against @cad2bim/ui source for instant HMR; the package build is checked in CI.
     alias: [
       { find: /^@shanku\/ui\/styles\.css$/, replacement: `${uiSrc}styles.css` },
       { find: /^@shanku\/ui$/, replacement: `${uiSrc}index.ts` },

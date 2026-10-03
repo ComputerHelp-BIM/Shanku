@@ -156,7 +156,7 @@
 .bq-table tfoot th, .bq-table tfoot td { position: sticky; bottom: 0; background: var(--panel); font-weight: 600; border-top: 2px solid var(--accent); border-bottom: 0; height: 30px; }
 .bq-foot { height: 28px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
 
-/* ---- docking workspace (dockview themed with Shanku tokens) ---- */
+/* ---- docking workspace (dockview themed with cad2bim tokens) ---- */
 .app-dock { height: 100%; }
 .dockview-theme-light.app-dock-theme {
   --dv-sash-color: transparent;

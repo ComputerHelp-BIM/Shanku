@@ -332,7 +332,7 @@ export function parseIfc(api: IfcAPI, bytes: Uint8Array, options: ParseOptions):
     // web-ifc's shift to the origin (COORDINATE_TO_ORIGIN): patches are mapped into this space
     coordination: coordinationOf(api, modelID),
   };
-  assignLevels(model); // Shanku's one level definition (model/levelRule.ts); the file's storey kept
+  assignLevels(model); // cad2bim's one level definition (model/levelRule.ts); the file's storey kept
   return { modelID, model };
 }
 

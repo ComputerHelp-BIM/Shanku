@@ -1,4 +1,4 @@
-"""Shanku DXF -> 3D pipeline (Computer Help CH-* format). Runs in Pyodide and in CPython.
+"""cad2bim DXF -> 3D pipeline (Computer Help CH-* format). Runs in Pyodide and in CPython.
 
 Reads the default drawing format agreed with the user and writes an IFC4 file:
 
@@ -29,7 +29,7 @@ import uuid
 
 import ezdxf
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 
 # ---------------------------------------------------------------- profile (the drawing format)
 
@@ -650,7 +650,7 @@ class _Step:
         return "#{}".format(len(self.lines))
 
 
-def build_ifc(result, project_name="Shanku DXF model", source_name="drawing.dxf"):
+def build_ifc(result, project_name="cad2bim DXF model", source_name="drawing.dxf"):
     """IFC4 (Reference View geometry: extrusions) from an analyze() result. Returns the file text."""
     S = _Step()
     a = S.add
@@ -663,7 +663,7 @@ def build_ifc(result, project_name="Shanku DXF model", source_name="drawing.dxf"
     units = [a("IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.)"), a("IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.)"),
              a("IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.)"), a("IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.)")]
     ua = a("IFCUNITASSIGNMENT(({}))".format(",".join(units)))
-    project = a("IFCPROJECT({},$,{},{},$,$,$,({}),{})".format(_s(ifc_guid("project:" + source_name)), _s(project_name), _s("From " + source_name + " by the Shanku DXF pipeline " + __version__), ctx, ua))
+    project = a("IFCPROJECT({},$,{},{},$,$,$,({}),{})".format(_s(ifc_guid("project:" + source_name)), _s(project_name), _s("From " + source_name + " by the cad2bim DXF pipeline " + __version__), ctx, ua))
     site_pl = a("IFCLOCALPLACEMENT($,{})".format(world))
     site = a("IFCSITE({},$,'Site',$,$,{},$,$,.ELEMENT.,$,$,$,$,$)".format(_s(ifc_guid("site:" + source_name)), site_pl))
     bld_pl = a("IFCLOCALPLACEMENT({},{})".format(site_pl, world))
@@ -828,7 +828,7 @@ def build_ifc(result, project_name="Shanku DXF model", source_name="drawing.dxf"
     header = "\n".join([
         "ISO-10303-21;", "HEADER;",
         "FILE_DESCRIPTION(('ViewDefinition [ReferenceView_V1.2]'),'2;1');",
-        "FILE_NAME({},{},(''),(''),'Shanku DXF pipeline {}','Shanku','');".format(_s(project_name + ".ifc"), _s(time.strftime("%Y-%m-%dT%H:%M:%S")), __version__),
+        "FILE_NAME({},{},(''),(''),'cad2bim DXF pipeline {}','cad2bim','');".format(_s(project_name + ".ifc"), _s(time.strftime("%Y-%m-%dT%H:%M:%S")), __version__),
         "FILE_SCHEMA(('IFC4'));", "ENDSEC;", "DATA;"])
     body_txt = "\n".join("#{}={};".format(i + 1, line) for i, line in enumerate(S.lines))
     return header + "\n" + body_txt + "\nENDSEC;\nEND-ISO-10303-21;\n", report
@@ -918,7 +918,7 @@ def run_for_js(path, options_json):
     r = analyze(path, level_names=opts.get("names"), level_heights=opts.get("heights"))
     ifc, report = ("", None)
     if opts.get("build"):
-        ifc, report = build_ifc(r, opts.get("project") or "Shanku model", opts.get("source") or "drawing.dxf")
+        ifc, report = build_ifc(r, opts.get("project") or "cad2bim model", opts.get("source") or "drawing.dxf")
     out = summary_for_js(r)
     out["report"] = report
     if opts.get("exchange"):

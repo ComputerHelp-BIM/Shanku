@@ -6,8 +6,8 @@ export interface ShankuMarkProps {
   label?: string;
 }
 
-/** The Shanku mark, drawn from tokens so it follows Paper and Ink. */
-export function ShankuMark({ size = 28, label = 'Shanku' }: ShankuMarkProps) {
+/** The cad2bim mark, drawn from tokens so it follows Paper and Ink. */
+export function ShankuMark({ size = 28, label = 'cad2bim' }: ShankuMarkProps) {
   const maskId = `sk-mark-${useId().replace(/:/g, '')}`;
   const small = size <= 32;
   return (

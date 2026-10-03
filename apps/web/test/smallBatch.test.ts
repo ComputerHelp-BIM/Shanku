@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Category, ElementRecord } from '@shanku/engine';
+import type { Category, ElementRecord } from '@cad2bim/engine';
 import { describeScope, scopeElements } from '../src/lib/boqScope';
 import { bandStatus, bandWarning, rebarEstimate } from '../src/lib/rebar';
 import { diagnoseFile, ifcHeader } from '../src/lib/fileDiagnosis';
@@ -79,7 +79,7 @@ describe('file diagnosis', () => {
     expect(diagnoseFile({ name: 'b.e2k', size: 9, head: enc('$ PROGRAM') }).format).toBe('ETABS model');
     expect(diagnoseFile({ name: 'e.ifc', size: 0, head: new Uint8Array() }).title).toBe('The file is empty');
     expect(diagnoseFile({ name: 'old.dxf', size: 9, head: enc('  0\nSECTION\n  2\nHEADER\n  9\n$ACADVER\n  1\nAC1015\n') }).report).toContain('DXF version: AC1015');
-    expect(diagnoseFile({ name: 'x.foo', size: 9, head: enc('hello') }, ['Shanku: 1.0']).report).toMatch(/Detected: Unknown \(\.foo\)[\s\S]*Shanku: 1\.0$/);
+    expect(diagnoseFile({ name: 'x.foo', size: 9, head: enc('hello') }, ['cad2bim: 1.0']).report).toMatch(/Detected: Unknown \(\.foo\)[\s\S]*cad2bim: 1\.0$/);
   });
 });
 

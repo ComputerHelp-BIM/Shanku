@@ -1,5 +1,5 @@
 /**
- * The project file: Save (Ctrl + S) writes the model and everything Shanku keeps for it to one file
+ * The project file: Save (Ctrl + S) writes the model and everything cad2bim keeps for it to one file
  * (lib/project), back to the same file where the browser allows it (Chrome and Edge keep the file's handle,
  * even after a reload); Save As picks a new one; elsewhere the project is downloaded. Opening a project
  * writes its state into the browser's store, then opens the model, so the usual restore brings views,
@@ -14,7 +14,7 @@ import { PROJECT_EXT, isProjectFile, packProject, projectNameFor, unpackProject 
 import { loadModel, loadProjectHandle, saveProjectHandle, seedFrom, snapshotFor } from '../../lib/session';
 import type { useShankuModel } from '../../lib/useShankuModel';
 
-/** The parts of the File System Access API Shanku uses (Chrome, Edge). */
+/** The parts of the File System Access API cad2bim uses (Chrome, Edge). */
 interface FileHandle {
   name: string;
   createWritable(): Promise<{ write(data: BufferSource): Promise<void>; close(): Promise<void> }>;
@@ -86,7 +86,7 @@ export function useProjectFile({ m, openModelFile, setNotice, changes }: Project
       const picker = (window as unknown as { showSaveFilePicker?: SavePicker }).showSaveFilePicker;
       if (!h && picker) {
         try {
-          h = await picker({ suggestedName: status.file ?? projectNameFor(kept.name), types: [{ description: 'Shanku project', accept: { 'application/x-shanku-project': [PROJECT_EXT] } }] });
+          h = await picker({ suggestedName: status.file ?? projectNameFor(kept.name), types: [{ description: 'cad2bim project', accept: { 'application/x-cad2bim-project': [PROJECT_EXT] } }] });
         } catch (err) {
           if (err instanceof DOMException && err.name === 'AbortError') return;
           h = null;
@@ -116,10 +116,10 @@ export function useProjectFile({ m, openModelFile, setNotice, changes }: Project
     async (file: PickedFile & { handle?: unknown }) => {
       const p = unpackProject(new Uint8Array(file.bytes));
       await seedFrom(p.model.name, p.state);
-      // an older .shk is saved as a new .shkp, not over the old file
+      // a Shanku file (.shkp, .shk) is saved as a new .c2b, not over the old file
       if (file.handle && file.name.toLowerCase().endsWith(PROJECT_EXT)) await saveProjectHandle(p.model.name, file.handle);
       await openModelFile({ name: p.model.name, bytes: p.model.bytes.buffer.slice(p.model.bytes.byteOffset, p.model.bytes.byteOffset + p.model.bytes.byteLength) as ArrayBuffer });
-      m.log(`Opened the project ${file.name} (saved by Shanku ${p.manifest.app}, project schema ${p.manifest.schema}).`);
+      m.log(`Opened the project ${file.name} (saved by ${p.manifest.format === 'shanku-project' ? 'cad2bim' : 'cad2bim'} ${p.manifest.app}, project schema ${p.manifest.schema}).`);
     },
     [m, openModelFile],
   );

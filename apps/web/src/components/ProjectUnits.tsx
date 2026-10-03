@@ -1,5 +1,5 @@
-import { Button } from '@shanku/ui';
-import { formatLength, type DisplayUnits, type LengthUnit } from '@shanku/engine';
+import { Button } from '@cad2bim/ui';
+import { formatLength, type DisplayUnits, type LengthUnit } from '@cad2bim/engine';
 
 const UNITS: Array<[LengthUnit, string]> = [['mm', 'Millimetres'], ['cm', 'Centimetres'], ['m', 'Metres'], ['ft-in', 'Feet and fractional inches']];
 
@@ -40,7 +40,7 @@ export function ProjectUnits({ units, onChange, onClose }: { units: DisplayUnits
       <p className="app-units__sample" aria-label="Sample">
         {sample.map((s) => formatLength(s, { units, symbol: !ft, signed: true })).join('    ')}
       </p>
-      <p className="app-geom__hint">Shanku keeps every length in millimetres inside, exactly; these settings change only how lengths are shown and typed. Typing a unit always wins (3.2m, 450 mm, 10'6").</p>
+      <p className="app-geom__hint">cad2bim keeps every length in millimetres inside, exactly; these settings change only how lengths are shown and typed. Typing a unit always wins (3.2m, 450 mm, 10'6").</p>
       <div className="app-geom__buttons">
         <Button size="sm" variant="primary" onClick={onClose}>
           Done

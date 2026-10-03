@@ -65,5 +65,5 @@ public sealed class RevitQueue : IExternalEventHandler
         while (_jobs.TryDequeue(out var job)) job(app);
     }
 
-    public string GetName() => "Shanku bridge";
+    public string GetName() => "cad2bim bridge";
 }

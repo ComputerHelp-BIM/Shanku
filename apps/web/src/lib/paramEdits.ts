@@ -1,9 +1,9 @@
 /**
- * Parameter editing in Shanku: edits become pending changes, shown in Properties and reviewed in the
+ * Parameter editing in cad2bim: edits become pending changes, shown in Properties and reviewed in the
  * Changes window, then sent to their destination. Revit (through the bridge) is the first destination;
  * later ones (saving IFC, geometry edits) reuse the same changes.
  *
- * Every change remembers the value Revit had when Shanku read it, so the add-in can refuse it if
+ * Every change remembers the value Revit had when cad2bim read it, so the add-in can refuse it if
  * someone changed that value in Revit since.
  */
 
@@ -129,7 +129,7 @@ export function toEditOp(c: PendingChange): EditOp {
   return { kind, globalIds, typeId, familyName, typeName, newName, dx, dy, dz, angle, about };
 }
 
-/** Changes that move, turn or retype elements: Shanku reloads their geometry from Revit after applying. */
+/** Changes that move, turn or retype elements: cad2bim reloads their geometry from Revit after applying. */
 export const changesGeometry = (c: PendingChange): boolean => c.kind === 'move' || c.kind === 'rotate' || c.kind === 'setType' || c.kind === 'duplicateType' || c.kind === 'typeParam';
 
 /** The outcome of checking or applying a change in Revit. */
@@ -185,7 +185,7 @@ export function commonParams(els: readonly RevitElementParams[]): CommonParam[] 
   return out;
 }
 
-/** What Shanku shows for a parameter of an element: the pending value if there is one. */
+/** What cad2bim shows for a parameter of an element: the pending value if there is one. */
 export function effectiveDisplay(pending: readonly PendingChange[], globalId: string, p: Pick<RevitParam, 'id' | 'name' | 'display'>): { display: string | null; modified: boolean } {
   const c = pending.find((x) => x.globalId === globalId && x.paramId === p.id && x.name === p.name);
   return c ? { display: c.value, modified: true } : { display: p.display, modified: false };

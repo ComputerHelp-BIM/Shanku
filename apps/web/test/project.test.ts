@@ -31,7 +31,7 @@ const schema = (n: string) => JSON.parse(readFileSync(join(__dirname, '../../../
 describe('.shkp, schema 2 (docs/format)', () => {
   it('round-trips the model and everything kept for it', () => {
     const p = unpackProject(packProject(model, state, '0.51.0'));
-    expect(p.manifest).toMatchObject({ format: 'shanku-project', schema: 2, app: '0.51.0', name: 'adani', model: { path: 'model/adani.ifc', fileName: 'adani.ifc' } });
+    expect(p.manifest).toMatchObject({ format: 'cad2bim-project', schema: 3, app: '0.51.0', name: 'adani', model: { path: 'model/adani.ifc', fileName: 'adani.ifc' } });
     expect(p.model.bytes).toEqual(model.bytes);
     expect(p.state.views).toEqual(state.views); // order kept
     expect(p.state.graphics).toEqual(state.graphics);
@@ -49,13 +49,13 @@ describe('.shkp, schema 2 (docs/format)', () => {
 
   it('is laid out for Git: sorted keys, a file per view, a line per change', () => {
     const f = files(packProject(model, state, '0.51.0'));
-    expect(Object.keys(f)).toEqual(['model/adani.ifc', 'revit/link.json', 'revit/pending.jsonl', 'shanku.json', 'shanku/deleted.json', 'shanku/edits.jsonl', 'shanku/graphics.json', 'shanku/rates.json', 'shanku/views.json', 'shanku/views/3d.json', 'shanku/views/plan_Level_2-2.json', 'shanku/views/plan_Level_2.json']);
-    expect(JSON.parse(strFromU8(f['shanku/views.json']))).toEqual([
+    expect(Object.keys(f)).toEqual(['cad2bim.json', 'cad2bim/deleted.json', 'cad2bim/edits.jsonl', 'cad2bim/graphics.json', 'cad2bim/rates.json', 'cad2bim/views.json', 'cad2bim/views/3d.json', 'cad2bim/views/plan_Level_2-2.json', 'cad2bim/views/plan_Level_2.json', 'model/adani.ifc', 'revit/link.json', 'revit/pending.jsonl']);
+    expect(JSON.parse(strFromU8(f['cad2bim/views.json']))).toEqual([
       { id: '3d', file: '3d.json' },
       { id: 'plan:Level 2', file: 'plan_Level_2.json' },
       { id: 'plan/Level 2', file: 'plan_Level_2-2.json' },
     ]);
-    const manifestText = strFromU8(f['shanku.json']);
+    const manifestText = strFromU8(f['cad2bim.json']);
     expect(manifestText).toBe(canonical(JSON.parse(manifestText))); // canonical: sorted keys, 2 spaces, final newline
     expect(manifestText.endsWith('}\n')).toBe(true);
     expect(manifestText).not.toMatch(/savedAt|20\d\d-/); // no save time in content
@@ -72,11 +72,11 @@ describe('.shkp, schema 2 (docs/format)', () => {
       const validate = compiled.get(schemaFile)!;
       expect(validate(data), JSON.stringify(validate.errors)).toBe(true);
     };
-    check('shanku.schema.json', JSON.parse(strFromU8(f['shanku.json'])));
+    check('cad2bim.schema.json', JSON.parse(strFromU8(f['cad2bim.json'])));
     check('link.schema.json', JSON.parse(strFromU8(f['revit/link.json'])));
-    for (const [k, v] of Object.entries(f)) if (k.startsWith('shanku/views/')) check('view.schema.json', JSON.parse(strFromU8(v)));
+    for (const [k, v] of Object.entries(f)) if (k.startsWith('cad2bim/views/')) check('view.schema.json', JSON.parse(strFromU8(v)));
     for (const l of strFromU8(f['revit/pending.jsonl']).trim().split('\n')) check('pending.schema.json', JSON.parse(l));
-    for (const l of strFromU8(f['shanku/edits.jsonl']).trim().split('\n')) check('element.schema.json', JSON.parse(l));
+    for (const l of strFromU8(f['cad2bim/edits.jsonl']).trim().split('\n')) check('element.schema.json', JSON.parse(l));
   });
 
   it('opens Shanku 0.50.0 .shk files (schema 1)', () => {
@@ -96,16 +96,17 @@ describe('.shkp, schema 2 (docs/format)', () => {
 
   it('refuses what it cannot read, saying why', () => {
     expect(() => unpackProject(new Uint8Array([1, 2, 3]))).toThrow(ProjectFileError);
-    expect(() => unpackProject(zipSync({ 'a.txt': strToU8('x') }))).toThrow(/no Shanku manifest/);
+    expect(() => unpackProject(zipSync({ 'a.txt': strToU8('x') }))).toThrow(/no cad2bim manifest/);
     const newer = zipSync({ 'shanku.json': strToU8(JSON.stringify({ format: 'shanku-project', schema: 99, app: '9', name: 'a', model: { path: 'model/a.ifc', fileName: 'a.ifc' } })), 'model/a.ifc': strToU8('x') });
-    expect(() => unpackProject(newer)).toThrow(/newer Shanku/);
+    expect(() => unpackProject(newer)).toThrow(/newer cad2bim/);
   });
 
   it('names and recognises project files', () => {
-    expect(PROJECT_EXT).toBe('.shkp');
-    expect(projectNameFor('adani.ifc')).toBe('adani.shkp');
-    expect(projectNameFor('tower.ifc.gz')).toBe('tower.shkp');
-    expect(isProjectFile('Adani.SHKP')).toBe(true);
+    expect(PROJECT_EXT).toBe('.c2b');
+    expect(projectNameFor('adani.ifc')).toBe('adani.c2b');
+    expect(isProjectFile('Tower.C2B')).toBe(true);
+    expect(projectNameFor('tower.ifc.gz')).toBe('tower.c2b');
+    expect(isProjectFile('Adani.SHKP')).toBe(true); // Shanku's files still open
     expect(isProjectFile('old.shk')).toBe(true); // 0.50.0 files still open
     expect(isProjectFile('adani.ifc')).toBe(false);
     expect(safeName('plan:Level 2 / B*')).toBe('plan_Level_2_B_');
@@ -116,5 +117,17 @@ describe('.shkp, schema 2 (docs/format)', () => {
     expect(projectLabel({ file: null, linked: false, savedAt: null, dirty: false }, now)).toBe('Kept on this device · not saved to a file');
     expect(projectLabel({ file: 'adani.shkp', linked: true, savedAt: now - 5 * 60_000, dirty: false }, now)).toBe('adani.shkp · saved 5 min ago');
     expect(projectLabel({ file: 'adani.shkp', linked: true, savedAt: now, dirty: true }, now)).toBe('adani.shkp · changes not saved to the file');
+  });
+
+  it("opens Shanku's schema-2 .shkp files (before the rename to cad2bim): same content, old names", async () => {
+    const now = packProject(model, state, '0.56.1');
+    const f = unzipSync(now);
+    const old: Record<string, Uint8Array> = {};
+    for (const [k, v] of Object.entries(f)) old[k === 'cad2bim.json' ? 'shanku.json' : k.startsWith('cad2bim/') ? 'shanku/' + k.slice(8) : k] = v;
+    old['shanku.json'] = strToU8(canonical({ ...(JSON.parse(strFromU8(old['shanku.json'])) as object), format: 'shanku-project', schema: 2 }));
+    const back = unpackProject(zipSync(old));
+    expect(back.manifest).toMatchObject({ format: 'shanku-project', schema: 2 });
+    expect(back.state).toEqual(unpackProject(now).state);
+    expect(back.model.bytes).toEqual(unpackProject(now).model.bytes);
   });
 });

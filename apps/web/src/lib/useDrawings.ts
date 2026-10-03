@@ -1,6 +1,6 @@
 import { saveDrawings, type SavedFile } from './session';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DxfClient, type ParsedDrawing } from '@shanku/engine';
+import { DxfClient, type ParsedDrawing } from '@cad2bim/engine';
 import { nextDocColor } from './documents';
 import type { PickedFile } from './openFile';
 import type { ObjectVisibility } from './drawingTools';

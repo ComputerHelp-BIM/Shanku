@@ -1,6 +1,6 @@
 import { clearModel as clearSavedModel, saveModel as saveSessionModel } from './session';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, IfcClient, mergeModels, type Category, type Level, type MergeResult, type ParsedModel, type PropertyGroup, type SelectMode } from '@shanku/engine';
+import { DEFAULT_GRADE_RULES, DEFAULT_MARK_RULES, IfcClient, mergeModels, type Category, type Level, type MergeResult, type ParsedModel, type PropertyGroup, type SelectMode } from '@cad2bim/engine';
 import { fmtBytes, fmtCount, fmtMs } from './format';
 import type { PickedFile } from './openFile';
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_DRAWING_DISPLAY, indexEntities } from '@shanku/engine';
+import { DEFAULT_DRAWING_DISPLAY, indexEntities } from '@cad2bim/engine';
 import {
   DEFAULT_QUICK_SELECT,
   countObjects,

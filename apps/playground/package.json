@@ -1,8 +1,8 @@
 {
-  "name": "@shanku/playground",
-  "version": "0.1.16",
+  "name": "@cad2bim/playground",
+  "version": "0.2.0",
   "private": true,
-  "description": "Live playground for @shanku/ui: the full Shanku window with sample data.",
+  "description": "Live playground for @cad2bim/ui: the full cad2bim window with sample data.",
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
@@ -15,8 +15,8 @@
     "@fontsource/ibm-plex-mono": "^5.1.0",
     "@fontsource/ibm-plex-sans": "^5.1.0",
     "@fontsource/sora": "^5.1.0",
-    "@shanku/tokens": "2.1.0",
-    "@shanku/ui": "0.15.3",
+    "@cad2bim/tokens": "2.2.0",
+    "@cad2bim/ui": "0.16.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

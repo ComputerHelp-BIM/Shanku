@@ -6,7 +6,7 @@ import { myShares, shareInfo, type Retention, setTeamCode, shareModel, RETENTION
 import { type useShankuModel } from '../../lib/useShankuModel';
 import { type ViewToken, hiddenForLink, viewLinkUrl, decodeViewToken } from '../../lib/viewLink';
 import { isTwoD } from '../../lib/views';
-import { type DisplayStyle, boxState, type CameraState, type ExplodeMode, EXPLODE_MODES } from '@shanku/engine';
+import { type DisplayStyle, boxState, type CameraState, type ExplodeMode, EXPLODE_MODES } from '@cad2bim/engine';
 import { useState, useRef, useEffect } from 'react';
 
 export interface ViewLinksDeps {

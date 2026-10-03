@@ -1,10 +1,10 @@
-# @shanku/tokens 2.1.0
+# @cad2bim/tokens 2.2.0
 
 Design tokens for Shanku, generated from `tokens.json` (the approved design system).
 
 ```js
-import '@shanku/tokens/tokens.css';          // CSS custom properties + .sk-type-* classes
-import { cssVar } from '@shanku/tokens';      // cssVar('accent') -> 'var(--accent)'
+import '@cad2bim/tokens/tokens.css';          // CSS custom properties + .sk-type-* classes
+import { cssVar } from '@cad2bim/tokens';      // cssVar('accent') -> 'var(--accent)'
 ```
 
 ## Themes
@@ -26,6 +26,9 @@ Every colour token has a Paper and an Ink value. Spacing, radius, size, opacity,
 - Edit `tokens.json`, run `npm run build`, bump the version. The build runs `scripts/check-contrast.mjs` first and fails if a required colour pair drops below WCAG 2 (4.5:1 for text, 3:1 for focus rings and control borders) in either theme.
 
 ## Changelog
+
+### 2.2.0 — 2026-10-03
+- Renamed `@cad2bim/tokens` (was `@shanku/tokens`); tokens unchanged.
 
 ### 2.1.0 — 2026-09-24
 - Added `grid-minor`, `grid-major` (2D drawing grid, translucent) and `axis-x`, `axis-y` (red X and green Y axes and the UCS icon, AutoCAD colours). The axes are checked at 3:1 on `viewport` in both themes (100 contrast pairs).

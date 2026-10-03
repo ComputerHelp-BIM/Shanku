@@ -1,4 +1,4 @@
-import type { Category, ElementRecord } from '@shanku/engine';
+import type { Category, ElementRecord } from '@cad2bim/engine';
 
 /**
  * Reinforcement estimate from steel ratios (kg of steel per m³ of concrete), as quantity surveyors

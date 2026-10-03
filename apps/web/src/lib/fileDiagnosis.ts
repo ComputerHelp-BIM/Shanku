@@ -1,5 +1,5 @@
 /**
- * "What is in this file?" (from the Structura viewer): when a file does not open, Shanku looks at
+ * "What is in this file?" (from the Structura viewer): when a file does not open, cad2bim looks at
  * its first and last bytes, says what the file really is, and gives the export steps that produce
  * a file it can read. Nothing leaves the device; the report is plain text the user can copy.
  */
@@ -11,7 +11,7 @@ export interface DiagnosisInput {
   head: Uint8Array;
   /** Last bytes, for spotting a cut-off IFC. */
   tail?: Uint8Array;
-  /** The error Shanku hit, if it tried to open the file. */
+  /** The error cad2bim hit, if it tried to open the file. */
   error?: string;
 }
 
@@ -60,28 +60,28 @@ function advise(i: DiagnosisInput, head: string, tailText: string): Advice {
   if (/^\s*ISO-10303-21/.test(head)) {
     const cut = i.tail && tailText && !/END-ISO-10303-21\s*;?\s*$/.test(tailText.trim());
     if (cut) return { format: 'IFC (STEP), cut off', title: 'The IFC file is incomplete', steps: ['It does not end with END-ISO-10303-21, so the export or download stopped early.', 'Export it again, and check the file size matches the original.'] };
-    return { format: 'IFC (STEP)', title: 'This IFC file could not be read', steps: ['Export it again from the source program; an older or unusual export option can produce files Shanku cannot read.', ...EXPORT_IFC, 'If it still fails, copy the report below and send it to us.'] };
+    return { format: 'IFC (STEP)', title: 'This IFC file could not be read', steps: ['Export it again from the source program; an older or unusual export option can produce files cad2bim cannot read.', ...EXPORT_IFC, 'If it still fails, copy the report below and send it to us.'] };
   }
   if (startsWith(b, [0x50, 0x4b, 0x03, 0x04])) {
     if (ext === 'ifczip' || /\.ifc/i.test(head)) return { format: 'IFC in a ZIP (ifcZIP)', title: 'Unzip it first', steps: ['This is a compressed IFC. Unzip it (right-click → Extract all) and open the .ifc file inside.'] };
     return { format: 'ZIP archive', title: 'Unzip it first', steps: ['This is a ZIP archive. Extract it and open the .ifc or .dxf file inside.'] };
   }
-  if (/^\s*<\?xml/.test(head) && /ifcXML|iso_10303_28/i.test(head)) return { format: 'ifcXML', title: 'Export IFC as STEP (.ifc) instead of XML', steps: ['Shanku reads IFC in the usual STEP format (.ifc). In the export dialog choose .ifc, not .ifcXML.'] };
-  if (/^AC10\d\d/.test(head) || ext === 'dwg') return { format: 'AutoCAD DWG', title: 'Save the drawing as DXF', steps: ['AutoCAD: Save As → AutoCAD DXF (any version), or type DXFOUT.', 'No AutoCAD? The free ODA File Converter turns DWG into DXF.', 'Then open the DXF in Shanku (Model → DXF).'] };
+  if (/^\s*<\?xml/.test(head) && /ifcXML|iso_10303_28/i.test(head)) return { format: 'ifcXML', title: 'Export IFC as STEP (.ifc) instead of XML', steps: ['cad2bim reads IFC in the usual STEP format (.ifc). In the export dialog choose .ifc, not .ifcXML.'] };
+  if (/^AC10\d\d/.test(head) || ext === 'dwg') return { format: 'AutoCAD DWG', title: 'Save the drawing as DXF', steps: ['AutoCAD: Save As → AutoCAD DXF (any version), or type DXFOUT.', 'No AutoCAD? The free ODA File Converter turns DWG into DXF.', 'Then open the DXF in cad2bim (Model → DXF).'] };
   if (head.startsWith('AutoCAD Binary DXF')) return { format: 'Binary DXF', title: 'Save the drawing as ASCII DXF', steps: ['This DXF is in the binary format. In AutoCAD, Save As → DXF and choose ASCII (the default).'] };
   if (/^\s*0\s*\r?\n\s*SECTION/.test(head) || /^\s*999\s*\r?\n/.test(head) || ext === 'dxf')
     return { format: 'DXF drawing', title: 'This DXF could not be read', steps: ['Open it in AutoCAD, run AUDIT (fix errors: Yes) and PURGE, then save it again as DXF.', 'Very old or hand-made DXF files sometimes miss the header; saving from AutoCAD adds it.', 'If it still fails, copy the report below and send it to us.'] };
   if (startsWith(b, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]) && (ext === 'rvt' || ext === 'rfa' || ext === 'rte'))
-    return { format: ext === 'rfa' ? 'Revit family' : 'Revit project', title: 'Export IFC from Revit', steps: ['Shanku does not read Revit files directly. In Revit: File → Export → IFC.', 'Choose IFC4 Reference View (or IFC 2x3 Coordination View 2.0) and tick "Export base quantities" so the BOQ uses Revit’s quantities.', 'Then open the .ifc in Shanku.'] };
+    return { format: ext === 'rfa' ? 'Revit family' : 'Revit project', title: 'Export IFC from Revit', steps: ['cad2bim does not read Revit files directly. In Revit: File → Export → IFC.', 'Choose IFC4 Reference View (or IFC 2x3 Coordination View 2.0) and tick "Export base quantities" so the BOQ uses Revit’s quantities.', 'Then open the .ifc in cad2bim.'] };
   if (['edb', 'ebk', 'e2k', '$et'].includes(ext))
-    return { format: 'ETABS model', title: 'ETABS files are not read yet', steps: ['The ETABS importer is planned. For now, open the model in the Structura viewer, which reads ETABS text files (.e2k, .$et).', 'For an .edb file: in ETABS, File → Export → ETABS .e2k Text File.', 'If your ETABS version offers File → Export → IFC, that IFC opens in Shanku.'] };
+    return { format: 'ETABS model', title: 'ETABS files are not read yet', steps: ['The ETABS importer is planned. For now, open the model in the Structura viewer, which reads ETABS text files (.e2k, .$et).', 'For an .edb file: in ETABS, File → Export → ETABS .e2k Text File.', 'If your ETABS version offers File → Export → IFC, that IFC opens in cad2bim.'] };
   if (['sdb', 's2k', '$2k'].includes(ext))
     return { format: 'SAP2000 model', title: 'SAP2000 files are not read yet', steps: ['Open the model in the Structura viewer, which reads SAP2000 text files (.s2k, .$2k).', 'For an .sdb file: in SAP2000, File → Export → SAP2000 .s2k Text File.'] };
-  if (startsWith(b, [0x25, 0x50, 0x44, 0x46])) return { format: 'PDF document', title: 'PDF drawings cannot be opened', steps: ['A PDF has no model or layers Shanku can use. Ask for the DXF (2D) or the IFC (3D) instead.'] };
-  if (ext === 'skp') return { format: 'SketchUp model', title: 'Export IFC from SketchUp', steps: ['SketchUp Pro: File → Export → 3D Model → IFC. Then open the .ifc in Shanku.'] };
+  if (startsWith(b, [0x25, 0x50, 0x44, 0x46])) return { format: 'PDF document', title: 'PDF drawings cannot be opened', steps: ['A PDF has no model or layers cad2bim can use. Ask for the DXF (2D) or the IFC (3D) instead.'] };
+  if (ext === 'skp') return { format: 'SketchUp model', title: 'Export IFC from SketchUp', steps: ['SketchUp Pro: File → Export → 3D Model → IFC. Then open the .ifc in cad2bim.'] };
   if (ext === 'nwd' || ext === 'nwc' || ext === 'nwf') return { format: 'Navisworks file', title: 'Export IFC from the source model', steps: ['Navisworks files cannot be read. Ask for an IFC exported from the program that made the model.'] };
   if (ext === 'std') return { format: 'STAAD.Pro model', title: 'STAAD.Pro files are not read', steps: ['Export an IFC or a DXF from STAAD.Pro, or from the drawing program the model came from.'] };
-  return { format: `Unknown (.${ext || 'no extension'})`, title: 'Shanku cannot open this kind of file', steps: ['Shanku opens IFC models (.ifc) and DXF drawings (.dxf).', ...EXPORT_IFC, 'For drawings: save or export as DXF.'] };
+  return { format: `Unknown (.${ext || 'no extension'})`, title: 'cad2bim cannot open this kind of file', steps: ['cad2bim opens IFC models (.ifc) and DXF drawings (.dxf).', ...EXPORT_IFC, 'For drawings: save or export as DXF.'] };
 }
 
 /** What the file is, what to do about it, and a report to copy. */

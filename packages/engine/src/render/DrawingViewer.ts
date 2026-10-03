@@ -91,7 +91,7 @@ const BASELINE: Record<string, CanvasTextBaseline> = { baseline: 'alphabetic', b
  * 2D DXF view, AutoCAD-like: middle-drag pan, wheel zoom about the cursor, double
  * middle-click fit, Alt + left-drag pan on trackpads. Lines and fills on the GPU in
  * one draw call each; text on a 2D canvas overlay so it stays crisp at any zoom.
- * Colours follow the Shanku theme; colour 7 flips black/white like AutoCAD.
+ * Colours follow the cad2bim theme; colour 7 flips black/white like AutoCAD.
  */
 export class DrawingViewer {
   private renderer: WebGLRenderer;

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Every @shanku/* dependency must name the version that package actually has: otherwise `npm ci` on a
+ * Every @cad2bim/* dependency must name the version that package actually has: otherwise `npm ci` on a
  * clean clone looks for it on the public registry and fails (it happened twice when a package was bumped).
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -15,7 +15,7 @@ for (const p of pkgs)
     for (const [name, want] of Object.entries(p[field] ?? {}))
       if (name in version && want !== version[name] && want !== '*' && !want.startsWith('workspace:')) wrong.push(`${p.name} wants ${name}@${want}, but it is ${version[name]}`);
 // version constants shown to people must match their package (the status bar showed engine 0.35.1 for 0.39.0)
-for (const [file, name, pkg] of [['packages/engine/src/index.ts', 'ENGINE_VERSION', '@shanku/engine'], ['apps/web/src/app/constants.ts', 'APP_VERSION', '@shanku/web']]) {
+for (const [file, name, pkg] of [['packages/engine/src/index.ts', 'ENGINE_VERSION', '@cad2bim/engine'], ['apps/web/src/app/constants.ts', 'APP_VERSION', '@cad2bim/web']]) {
   const m = new RegExp(`${name} = '([^']+)'`).exec(readFileSync(join(root, file), 'utf8'));
   if (!m) wrong.push(`${file} has no ${name}`);
   else if (m[1] !== version[pkg]) wrong.push(`${file}: ${name} is ${m[1]}, but ${pkg} is ${version[pkg]}`);

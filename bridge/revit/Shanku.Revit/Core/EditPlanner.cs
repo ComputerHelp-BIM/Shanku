@@ -5,13 +5,13 @@ using System.Linq;
 namespace Shanku.Revit.Core;
 
 /// <summary>
-/// An edit Shanku asks Revit to make (POST /elements/edit, add-in 0.12.0). Kinds:
+/// An edit cad2bim asks Revit to make (POST /elements/edit, add-in 0.12.0). Kinds:
 /// <c>param</c> an instance parameter (GlobalIds: one element; ParamId, Name, OldDisplay, Value);
 /// <c>typeParam</c> a type parameter — every instance of the type changes (TypeId, or FamilyName + TypeName
 /// for a type duplicated earlier in the same edit; ParamId, Name, OldDisplay, Value);
 /// <c>setType</c> elements switched to another type of their category (GlobalIds; TypeId or FamilyName + TypeName);
 /// <c>duplicateType</c> a copy of a type (TypeId, NewName), given to the GlobalIds;
-/// <c>move</c> by Dx, Dy, Dz in mm along the model's axes (Revit's internal axes: the IFC Shanku reads is
+/// <c>move</c> by Dx, Dy, Dz in mm along the model's axes (Revit's internal axes: the IFC cad2bim reads is
 /// exported on them); <c>rotate</c> by Angle degrees about a vertical axis (counter-clockwise seen from above)
 /// through each element's centre (About "each") or the centre of all of them ("group").
 /// </summary>
@@ -38,7 +38,7 @@ public sealed record TypeChoice(long Id, string Family, string Name);
 public static class EditPlanner
 {
     public static readonly string[] Kinds = { "param", "typeParam", "setType", "duplicateType", "move", "rotate" };
-    /// <summary>Largest move Shanku sends in one edit (mm): a typo guard, not a Revit limit.</summary>
+    /// <summary>Largest move cad2bim sends in one edit (mm): a typo guard, not a Revit limit.</summary>
     public const double MaxMoveMm = 1_000_000;
     /// <summary>Characters Revit refuses in a type name.</summary>
     public const string ForbiddenNameChars = "{}[]|;<>?`~\\:";
@@ -90,7 +90,7 @@ public static class EditPlanner
         return null;
     }
 
-    /// <summary>"Shanku: move 3 elements, change 2 parameters" — the undo entry Revit shows.</summary>
+    /// <summary>"cad2bim: move 3 elements, change 2 parameters" — the undo entry Revit shows.</summary>
     public static string UndoName(IReadOnlyList<EditOp> ops)
     {
         string N(int n, string one, string many) => $"{n} {(n == 1 ? one : many)}";
@@ -107,6 +107,6 @@ public static class EditPlanner
         if (retyped > 0) parts.Add("change the type of " + N(retyped, "element", "elements"));
         if (tprm > 0) parts.Add("change " + N(tprm, "type parameter", "type parameters"));
         if (prm > 0) parts.Add("change " + N(prm, "parameter", "parameters"));
-        return "Shanku: " + (parts.Count > 0 ? string.Join(", ", parts) : "edit");
+        return "cad2bim: " + (parts.Count > 0 ? string.Join(", ", parts) : "edit");
     }
 }

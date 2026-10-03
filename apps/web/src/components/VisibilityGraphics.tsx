@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button } from '@shanku/ui';
+import { Button } from '@cad2bim/ui';
 import type { CategoryOverrides, GraphicsOverride } from '../lib/visibility';
 import type { AppliedFilter, ViewFilter } from '../lib/filters';
 

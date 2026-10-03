@@ -1,4 +1,4 @@
-"""Shanku DXF extractor (runs in Pyodide; also runs in CPython for tests).
+"""cad2bim DXF extractor (runs in Pyodide; also runs in CPython for tests).
 
 Reads a DXF with ezdxf and flattens model space into render-ready primitives:
 line segments, filled polygons and texts, each tagged with a colour index and a

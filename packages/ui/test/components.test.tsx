@@ -195,11 +195,11 @@ describe('ErrorBoundary', () => {
     const { ErrorBoundary } = await import('../src');
     const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     render(
-      <ErrorBoundary where="Shanku" variant="page" details={() => 'Version: test'}>
+      <ErrorBoundary where="cad2bim" variant="page" details={() => 'Version: test'}>
         <Boom />
       </ErrorBoundary>,
     );
-    expect(screen.getByText('Shanku hit an error')).toBeTruthy();
+    expect(screen.getByText('cad2bim hit an error')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy();
     expect(screen.getByText(/Version: test/)).toBeTruthy();
     spy.mockRestore();

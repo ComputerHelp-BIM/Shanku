@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Icon } from '@shanku/ui';
-import type { History } from '@shanku/engine';
+import { Icon } from '@cad2bim/ui';
+import type { History } from '@cad2bim/engine';
 
 export interface QuickAccessProps {
   history: History;

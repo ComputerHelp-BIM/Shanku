@@ -15,8 +15,8 @@ import { type useHistory } from '../../lib/useHistory';
 import { type usePipeline } from '../../lib/usePipeline';
 import { type useShankuModel } from '../../lib/useShankuModel';
 import { isTwoD, KIND_LABEL } from '../../lib/views';
-import { type Category, CATEGORY_PLURAL, EXPLODE_MODES, DIMENSION_TOOLS, MEASURE_MODES, type ExplodeMode } from '@shanku/engine';
-import { useShortcut, isEditableTarget } from '@shanku/ui';
+import { type Category, CATEGORY_PLURAL, EXPLODE_MODES, DIMENSION_TOOLS, MEASURE_MODES, type ExplodeMode } from '@cad2bim/engine';
+import { useShortcut, isEditableTarget } from '@cad2bim/ui';
 import { useRef, useEffect, useCallback } from 'react';
 
 export interface AppCommandsDeps {

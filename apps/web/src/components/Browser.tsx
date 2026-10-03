@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { DockPanel, TreeView, type IconName, type TreeNode } from '@shanku/ui';
-import { CATEGORY_PLURAL, type Category, type ParsedModel } from '@shanku/engine';
+import { DockPanel, TreeView, type IconName, type TreeNode } from '@cad2bim/ui';
+import { CATEGORY_PLURAL, type Category, type ParsedModel } from '@cad2bim/engine';
 import { fmtCount } from '../lib/format';
 
 export interface BrowserProps {

@@ -1,4 +1,4 @@
-/* Shanku homepage — Paper / Ink tokens, same design system as the app. The app frame never scrolls,
+/* cad2bim homepage — Paper / Ink tokens, same design system as the app. The app frame never scrolls,
    so the homepage scrolls inside its own container. */
 .home { position: fixed; inset: 0; overflow-y: auto; scroll-behavior: smooth; background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 16px; line-height: 1.55; }
 .home a { color: inherit; }

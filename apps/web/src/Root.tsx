@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
-import { ErrorBoundary } from '@shanku/ui';
+import { ErrorBoundary } from '@cad2bim/ui';
 import { Home } from './home/Home';
 import type { AppStart } from './App';
 import { enterFullscreen } from './lib/fullscreen';
@@ -8,7 +8,7 @@ const App = lazy(() => import('./App').then((m) => ({ default: m.App })));
 
 /**
  * Homepage and app live in one page: browsers only allow fullscreen after a click on the same page,
- * and navigating away would drop it. "Try Shanku free" asks for fullscreen, then swaps the homepage
+ * and navigating away would drop it. "Try cad2bim free" asks for fullscreen, then swaps the homepage
  * for the app (loaded on demand, so the homepage stays light). #app opens the app directly.
  */
 
@@ -21,7 +21,7 @@ export function Root() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
   useEffect(() => {
-    document.title = start ? 'Shanku' : 'Shanku — structural BIM in your browser';
+    document.title = start ? 'cad2bim' : 'cad2bim — structural BIM in your browser';
   }, [start]);
 
   const open = (s: AppStart = {}) => {
@@ -32,10 +32,10 @@ export function Root() {
 
   if (!start) return <Home onOpen={open} />;
   return (
-    <Suspense fallback={<div className="home-loading">Opening Shanku…</div>}>
+    <Suspense fallback={<div className="home-loading">Opening cad2bim…</div>}>
       {/* Last line of defence: an error that escapes every window and panel shows a report, not a blank page. */}
       <ErrorBoundary
-        where="Shanku"
+        where="cad2bim"
         variant="page"
         details={() => `Page: ${location.href}`}
         onReset={() => {

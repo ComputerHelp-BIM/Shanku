@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, DockPanel, PropertyRow, PropertySection, TypeSelector } from '@shanku/ui';
+import { Button, DockPanel, PropertyRow, PropertySection, TypeSelector } from '@cad2bim/ui';
 import { fmtBytes, fmtCount } from '../lib/format';
 import { UNIT_CHOICES } from '../lib/documents';
 import type { DrawingDoc } from '../lib/useDrawings';

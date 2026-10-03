@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, PropertiesFooter, PropertyGrid, PropertyRow, PropertySection, usePropertySort } from '@shanku/ui';
-import { Viewer, type ParsedModel } from '@shanku/engine';
+import { Button, PropertiesFooter, PropertyGrid, PropertyRow, PropertySection, usePropertySort } from '@cad2bim/ui';
+import { Viewer, type ParsedModel } from '@cad2bim/engine';
 import { typeNameProblem } from '../lib/editChecks';
 import { byGroup, stageOp, stageTypeEdit, typeKey, type PendingChange, type RevitElementParams, type RevitParam, type TypeRef } from '../lib/paramEdits';
 
@@ -89,7 +89,7 @@ export function TypeProperties({ element, model, index, selection, pending, canE
     setDraft([]);
     if (close) onClose();
   };
-  const readOnlyWhy = !canEdit ? 'Editing types needs Shanku Bridge for Revit 0.12.0 or later.' : undefined;
+  const readOnlyWhy = !canEdit ? 'Editing types needs cad2bim Bridge for Revit 0.12.0 or later.' : undefined;
   const problem = naming !== null ? typeNameProblem(naming, taken) : null;
 
   return (

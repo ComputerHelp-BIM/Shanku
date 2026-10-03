@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button } from '@shanku/ui';
-import { formatLength } from '@shanku/engine';
+import { Button } from '@cad2bim/ui';
+import { formatLength } from '@cad2bim/engine';
 import type { Datum } from '../features/datums/useDatums';
 
 /** Grids and reference planes: rename (Enter) and delete, each one undo step. */

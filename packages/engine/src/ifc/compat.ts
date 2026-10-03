@@ -1,5 +1,5 @@
 /**
- * How well an IFC export suits Shanku. Pure function over facts read from the file,
+ * How well an IFC export suits cad2bim. Pure function over facts read from the file,
  * so it is easy to test and to explain in the UI.
  */
 export type CompatLevel = 'recommended' | 'supported' | 'limited' | 'experimental';
@@ -25,7 +25,7 @@ export interface Compatibility {
   notes: string[];
 }
 
-export const RECOMMENDED_EXPORT = 'IFC4 Reference View [Structural] with the Shanku settings (base quantities, Revit property sets, split by level, store IFC GUID)';
+export const RECOMMENDED_EXPORT = 'IFC4 Reference View [Structural] with the cad2bim settings (base quantities, Revit property sets, split by level, store IFC GUID)';
 
 export function readViewDefinition(head: string): string {
   const m = head.match(/ViewDefinition\s*\[([^\]]*)\]/i);
@@ -61,7 +61,7 @@ export function assessCompatibility(f: CompatFacts): Compatibility {
   } else {
     level = 'limited';
     format = schema || 'Unknown schema';
-    notes.push(`Schema ${schema || 'unknown'} is older than Shanku targets. Re-export as IFC4 Reference View.`);
+    notes.push(`Schema ${schema || 'unknown'} is older than cad2bim targets. Re-export as IFC4 Reference View.`);
   }
 
   if (f.quantitySets === 0) {
@@ -71,6 +71,6 @@ export function assessCompatibility(f: CompatFacts): Compatibility {
   if (!f.revitPropertySets && f.fromRevit !== false) notes.push('No Revit property sets (material, dimensions, marks). Turn on "Export Revit property sets" if this came from Revit.');
   if (f.elementCount > 0 && f.elementsWithoutLevel / f.elementCount > 0.05)
     notes.push(`${f.elementsWithoutLevel} elements have no level. Turn on "Split walls, columns, ducts by level".`);
-  if (level === 'recommended' && notes.length === 0) notes.push('Best format for Shanku: quantities, properties and levels all present.');
+  if (level === 'recommended' && notes.length === 0) notes.push('Best format for cad2bim: quantities, properties and levels all present.');
   return { level, format, notes };
 }

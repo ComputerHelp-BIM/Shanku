@@ -119,7 +119,7 @@ describe('Revit bridge client', () => {
   it('refuses a mismatched protocol with a clear message', async () => {
     const s = await new RevitBridge(fakeRevit({ protocol: 2 }).deps).connect();
     expect(s.phase).toBe('error');
-    expect(s.error).toMatch(/protocol 2.*Update Shanku/);
+    expect(s.error).toMatch(/protocol 2.*Update cad2bim/);
   });
 });
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Button } from '@shanku/ui';
+import { Button } from '@cad2bim/ui';
 import type { Diagnosis } from '../lib/fileDiagnosis';
 import { decodeViewToken, type ViewToken } from '../lib/viewLink';
 import { RETENTION_LABEL, type MyShare, type Retention, type ShareInfo } from '../lib/sharedModel';
@@ -31,7 +31,7 @@ async function copyText(text: string): Promise<boolean> {
 
 /**
  * When a file does not open (Structura item 13): what the file really is, the export steps that give
- * Shanku a file it can read, and a "What is in this file?" report to copy. Nothing is uploaded.
+ * cad2bim a file it can read, and a "What is in this file?" report to copy. Nothing is uploaded.
  */
 export function FileDiagnosisDialog({ diagnosis, onClose, onChooseAnother }: { diagnosis: Diagnosis | null; onClose: () => void; onChooseAnother: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -44,7 +44,7 @@ export function FileDiagnosisDialog({ diagnosis, onClose, onChooseAnother }: { d
         <>
           <h2 className="app-dialog__title">{diagnosis.title}</h2>
           <p className="app-dialog__text">
-            Shanku looked at the file on this device. Detected: <strong>{diagnosis.format}</strong>.
+            cad2bim looked at the file on this device. Detected: <strong>{diagnosis.format}</strong>.
           </p>
           <ol className="app-diag__steps">
             {diagnosis.steps.map((s) => (
@@ -117,10 +117,10 @@ export function ViewLinkDialog({ mode, link, onApply, onClose, share }: { mode: 
       ) : mode === 'open' ? (
         <>
           <h2 className="app-dialog__title">Open a view link</h2>
-          <p className="app-dialog__text">Paste a Shanku view link, or text starting with SHANKU/1|. It applies to the model that is open.</p>
+          <p className="app-dialog__text">Paste a cad2bim view link, or text starting with SHANKU/1|. It applies to the model that is open.</p>
           <textarea className="app-link-box" value={text} rows={4} autoFocus aria-label="View link to open" aria-invalid={text.trim() !== '' && !token} onChange={(e) => setText(e.target.value)} />
           <p className="app-dialog__text" role="status">
-            {!text.trim() ? '' : token ? `A view of ${token.file}${token.select?.length ? `, ${token.select.length} selected` : ''}${token.hide ? `, ${token.hide.mode === 'isolate' ? 'isolated' : 'with hidden'} elements` : ''}.` : 'That is not a Shanku view link.'}
+            {!text.trim() ? '' : token ? `A view of ${token.file}${token.select?.length ? `, ${token.select.length} selected` : ''}${token.hide ? `, ${token.hide.mode === 'isolate' ? 'isolated' : 'with hidden'} elements` : ''}.` : 'That is not a cad2bim view link.'}
           </p>
           <div className="app-dialog__actions">
             <Button onClick={onClose}>Cancel</Button>

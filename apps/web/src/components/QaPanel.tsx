@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Button } from '@shanku/ui';
-import type { Finding, QaGroup, QaReport, Severity } from '@shanku/engine';
+import { Button } from '@cad2bim/ui';
+import type { Finding, QaGroup, QaReport, Severity } from '@cad2bim/engine';
 import { fmtCount } from '../lib/format';
 
 const SEVERITY_LABEL: Record<Severity, string> = { error: 'Error', warning: 'Warning', info: 'Note' };

@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 // Python console worker: Pyodide (MPL-2.0) from jsDelivr, same build as the DXF reader, plus the shanku API.
 import shankuSource from './shanku.py?raw';
-import { PYODIDE_INDEX_URL as INDEX_URL } from '@shanku/engine/pyodide';
+import { PYODIDE_INDEX_URL as INDEX_URL } from '@cad2bim/engine/pyodide';
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -24,7 +24,7 @@ const boot = () =>
     const p = await mod.loadPyodide({ indexURL: INDEX_URL });
     p.FS.mkdirTree('/shanku');
     p.FS.writeFile('/shanku/shanku.py', shankuSource);
-    p.runPython('import sys\nsys.path.insert(0, "/shanku")\nimport shanku\n_console_env = {"shanku": shanku, "__name__": "__console__"}');
+    p.runPython('import sys\nsys.path.insert(0, "/shanku")\nimport shanku\n_console_env = {"cad2bim": shanku, "shanku": shanku, "__name__": "__console__"}');
     return p;
   })().catch((e) => {
     py = null;

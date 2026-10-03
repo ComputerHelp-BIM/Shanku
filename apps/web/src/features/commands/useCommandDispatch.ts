@@ -3,7 +3,7 @@ import { type useDrawings } from '../../lib/useDrawings';
 import { type useHistory } from '../../lib/useHistory';
 import { type useShankuModel } from '../../lib/useShankuModel';
 import { isTwoD } from '../../lib/views';
-import { useShortcut } from '@shanku/ui';
+import { useShortcut } from '@cad2bim/ui';
 import { useCallback, useEffect } from 'react';
 
 /** Values App declares after this feature: read through a ref, in callbacks and effects only. */

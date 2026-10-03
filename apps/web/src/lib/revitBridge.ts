@@ -1,5 +1,5 @@
 /**
- * Client for the Shanku Revit bridge (docs/bridge/protocol.md): the add-in in Revit serves a small
+ * Client for the cad2bim Revit bridge (docs/bridge/protocol.md): the add-in in Revit serves a small
  * API on localhost; this finds it, pairs with a one-time code, loads the model and keeps the
  * selection in step both ways.
  *
@@ -8,7 +8,7 @@
  */
 
 import type { ChangeOutcome, EditOp, RevitElementParams } from './paramEdits';
-import type { RevitExchange } from '@shanku/engine';
+import type { RevitExchange } from '@cad2bim/engine';
 
 /** What Revit did, or would do, with an Export to Revit (add-in 0.6.0). */
 export interface CreateReport {
@@ -55,7 +55,7 @@ export interface RevitSelection {
   elementIds: number[];
 }
 
-/** Elements Revit changed (by anyone, including Shanku's Apply), by GlobalId. */
+/** Elements Revit changed (by anyone, including cad2bim's Apply), by GlobalId. */
 /** Progress of Revit's long work (add-in 0.8.0+): `done` of `total`, and the phase in plain words. */
 export interface RevitProgress {
   task: 'check' | 'create';
@@ -162,12 +162,12 @@ export class RevitBridge {
     return () => this.changeListeners.delete(fn);
   }
 
-  /** The add-in sends changes and exports only changed elements (Shanku Bridge for Revit 0.5.0+). */
+  /** The add-in sends changes and exports only changed elements (cad2bim Bridge for Revit 0.5.0+). */
   get canLiveUpdate(): boolean {
     return !!this.state.features?.includes('changes') && !!this.state.features?.includes('partial-export');
   }
 
-  /** The add-in builds native elements from the drawing (Shanku Bridge for Revit 0.6.0+). */
+  /** The add-in builds native elements from the drawing (cad2bim Bridge for Revit 0.6.0+). */
   get canCreate(): boolean {
     return !!this.state.features?.includes('create');
   }
@@ -244,7 +244,7 @@ export class RevitBridge {
       return this.state;
     }
     if (hello.protocol !== PROTOCOL) {
-      this.set({ phase: 'error', addin: hello.addin, revit: hello.revit, error: `This Revit add-in speaks protocol ${hello.protocol}; Shanku speaks ${PROTOCOL}. Update ${hello.protocol < PROTOCOL ? 'the add-in' : 'Shanku (reload the page)'}.` });
+      this.set({ phase: 'error', addin: hello.addin, revit: hello.revit, error: `This Revit add-in speaks protocol ${hello.protocol}; cad2bim speaks ${PROTOCOL}. Update ${hello.protocol < PROTOCOL ? 'the add-in' : 'cad2bim (reload the page)'}.` });
       return this.state;
     }
     this.set({ addin: hello.addin, revit: hello.revit, features: hello.features ?? [] });
@@ -266,7 +266,7 @@ export class RevitBridge {
     return this.state;
   }
 
-  /** Exchanges the code shown in Revit (Shanku → Connect) for a token, then connects. */
+  /** Exchanges the code shown in Revit (cad2bim → Connect) for a token, then connects. */
   async pair(code: string): Promise<BridgeState> {
     const clean = code.replace(/\D/g, '');
     if (clean.length !== 6) {
@@ -274,7 +274,7 @@ export class RevitBridge {
       return this.state;
     }
     try {
-      const { token } = await (await this.call<{ token: string }>('/pair', { method: 'POST', body: JSON.stringify({ code: clean, client: 'Shanku web' }) })).json();
+      const { token } = await (await this.call<{ token: string }>('/pair', { method: 'POST', body: JSON.stringify({ code: clean, client: 'cad2bim web' }) })).json();
       this.stored.token = token;
       this.save();
     } catch (e) {
@@ -287,8 +287,10 @@ export class RevitBridge {
   /** Revit exports the open model (IFC4 RV); resolves with the file. Waits up to 10 minutes. */
   async loadModel(): Promise<{ name: string; bytes: ArrayBuffer; key: string; title: string }> {
     const res = await this.call<never>('/model/export', { method: 'POST' }, 600_000);
-    const key = res.headers.get('X-Shanku-Document-Key') ?? '';
-    const title = decodeURIComponent(res.headers.get('X-Shanku-Document-Title') ?? 'Revit model');
+    // The bridge protocol keeps Shanku's names (as its /shanku/v1 path): every installed add-in sends X-Shanku-*.
+    // X-cad2bim-* is read too, in case a build of the add-in ever sends it (0.57.0's first commit did, and broke links).
+    const key = res.headers.get('X-Shanku-Document-Key') ?? res.headers.get('X-cad2bim-Document-Key') ?? '';
+    const title = decodeURIComponent(res.headers.get('X-Shanku-Document-Title') ?? res.headers.get('X-cad2bim-Document-Title') ?? 'Revit model');
     const bytes = await res.arrayBuffer();
     return { name: `${title}.ifc`, bytes, key, title };
   }
@@ -296,7 +298,7 @@ export class RevitBridge {
   /** Revit exports only these elements (a live update), with the same options as the full model. */
   async exportElements(globalIds: string[]): Promise<{ bytes: ArrayBuffer; key: string }> {
     const res = await this.call<never>('/model/export', { method: 'POST', body: JSON.stringify({ globalIds }) }, 600_000);
-    return { bytes: await res.arrayBuffer(), key: res.headers.get('X-Shanku-Document-Key') ?? '' };
+    return { bytes: await res.arrayBuffer(), key: res.headers.get('X-Shanku-Document-Key') ?? res.headers.get('X-cad2bim-Document-Key') ?? '' };
   }
 
   /** Selects these elements in Revit (GlobalIds first, ElementIds as a fallback). */
@@ -304,7 +306,7 @@ export class RevitBridge {
     return (await this.call<{ selected: number; missing: number }>('/selection', { method: 'POST', body: JSON.stringify({ key, globalIds, elementIds }) })).json();
   }
 
-  /** The add-in can read and write parameters (Shanku Bridge for Revit 0.2.0+). */
+  /** The add-in can read and write parameters (cad2bim Bridge for Revit 0.2.0+). */
   get canEditParams(): boolean {
     return !!this.state.features?.includes('params');
   }
@@ -314,7 +316,7 @@ export class RevitBridge {
     return (await (await this.call<{ elements: RevitElementParams[] }>('/params/read', { method: 'POST', body: JSON.stringify({ key, globalIds }) }, 120_000)).json()).elements;
   }
 
-  /** The add-in can move, rotate, retype and edit types (Shanku Bridge for Revit 0.12.0+). */
+  /** The add-in can move, rotate, retype and edit types (cad2bim Bridge for Revit 0.12.0+). */
   get canEdit(): boolean {
     return !!this.state.features?.includes('edit');
   }

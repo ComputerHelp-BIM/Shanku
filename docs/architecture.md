@@ -17,7 +17,7 @@ tools/             the mock Revit bridge, refactoring tools
 ```
 
 Rules: a lower layer never imports a higher one; packages are used through their public entry points
-(`@shanku/engine`, `@shanku/engine/worker`, `@shanku/engine/pyodide`, `@shanku/ui`); the Revit add-in talks
+(`@cad2bim/engine`, `@cad2bim/engine/worker`, `@cad2bim/engine/pyodide`, `@cad2bim/ui`); the Revit add-in talks
 to Shanku only through the bridge protocol (`docs/bridge/protocol.md`).
 
 ## The web app

@@ -41,7 +41,7 @@ export interface ThemeProviderProps {
 
 /**
  * Applies the theme by setting `data-theme` on <html>. "system" removes the
- * attribute so @shanku/tokens follows `prefers-color-scheme` with no JS flash.
+ * attribute so @cad2bim/tokens follows `prefers-color-scheme` with no JS flash.
  */
 export function ThemeProvider({ children, defaultPreference = 'system', persist = true }: ThemeProviderProps) {
   const [preference, setPreferenceState] = useState<ThemePreference>(() =>

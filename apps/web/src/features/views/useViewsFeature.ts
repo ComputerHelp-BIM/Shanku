@@ -10,7 +10,7 @@ import { marksFor } from '../../lib/viewMarks';
 import { type ModelView, levelHeights, isTwoD, viewClip, viewDirection, duplicateView, nextSectionName, sectionFromVerticalView } from '../../lib/views';
 import { type ViewTemplate, loadTemplates, saveTemplates, type ViewState, applyTemplate } from '../../lib/viewTemplates';
 import { resolveGraphics, type ViewGraphics, type CategoryOverrides, type GraphicsOverride, EMPTY_GRAPHICS } from '../../lib/visibility';
-import { type CameraState, type GridSpec, type SectionBoxState, type ExplodeMode, projectZeroY, type Vec3, followModel, boxState } from '@shanku/engine';
+import { type CameraState, type GridSpec, type SectionBoxState, type ExplodeMode, projectZeroY, type Vec3, followModel, boxState } from '@cad2bim/engine';
 import { useState, useRef, useEffect, useMemo } from 'react';
 
 /** Values App declares after this feature: read through a ref, in callbacks and effects only. */

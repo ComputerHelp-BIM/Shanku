@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
-import { DrawingViewer, type DrawingDisplay, type DrawingTool } from '@shanku/engine';
+import { DrawingViewer, type DrawingDisplay, type DrawingTool } from '@cad2bim/engine';
 import type { DrawingDoc } from '../lib/useDrawings';
 import { hiddenMask } from '../lib/drawingTools';
 

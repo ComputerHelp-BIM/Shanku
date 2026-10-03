@@ -1,4 +1,4 @@
-// @shanku/tokens build — tokens.json -> dist/tokens.css + dist/index.js + dist/index.d.ts
+// @cad2bim/tokens build — tokens.json -> dist/tokens.css + dist/index.js + dist/index.d.ts
 // Theme model:
 //   :root / [data-theme="paper"]            Paper values (default)
 //   [data-theme="ink"]                      Ink values (explicit choice)
@@ -62,7 +62,7 @@ for (const group of src.type.groups) {
   }
 }
 
-const css = `/* @shanku/tokens ${JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version} — generated from tokens.json, do not edit. */
+const css = `/* @cad2bim/tokens ${JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version} — generated from tokens.json, do not edit. */
 :root,
 [data-theme="${first}"] {
   color-scheme: light;
@@ -89,17 +89,17 @@ ${typeRules.join('\n')}
 `;
 
 const names = [...seen];
-const js = `// @shanku/tokens — generated from tokens.json, do not edit.
+const js = `// @cad2bim/tokens — generated from tokens.json, do not edit.
 export const themes = ${JSON.stringify(themes)};
 export const tokenNames = ${JSON.stringify(names)};
 /** CSS custom-property reference for a token, e.g. cssVar('accent') -> 'var(--accent)'. */
 export function cssVar(name) {
-  if (!tokenNames.includes(name)) throw new Error('Unknown Shanku token: ' + name);
+  if (!tokenNames.includes(name)) throw new Error('Unknown cad2bim token: ' + name);
   return 'var(--' + name + ')';
 }
 export const tokens = ${JSON.stringify(src)};
 `;
-const dts = `// @shanku/tokens — generated from tokens.json, do not edit.
+const dts = `// @cad2bim/tokens — generated from tokens.json, do not edit.
 export type ThemeId = ${themes.map((t) => JSON.stringify(t)).join(' | ')};
 export type TokenName = ${names.map((n) => JSON.stringify(n)).join('\n  | ')};
 export declare const themes: readonly ThemeId[];
@@ -112,4 +112,4 @@ mkdirSync(join(root, 'dist'), { recursive: true });
 writeFileSync(join(root, 'dist/tokens.css'), css);
 writeFileSync(join(root, 'dist/index.js'), js);
 writeFileSync(join(root, 'dist/index.d.ts'), dts);
-console.log(`@shanku/tokens: ${names.length} tokens, ${typeRules.length} type styles -> dist/`);
+console.log(`@cad2bim/tokens: ${names.length} tokens, ${typeRules.length} type styles -> dist/`);

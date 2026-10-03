@@ -1,4 +1,4 @@
-import type { ElementRecord } from '@shanku/engine';
+import type { ElementRecord } from '@cad2bim/engine';
 import type { RebarSettings } from './rebar';
 import { profileFor, profileRateFor, profileSteel, type ProfileChoice } from './rateProfiles';
 

@@ -296,7 +296,7 @@ const tinyElements: QaCheck = {
         title: `${cap(noun(c, els.length))} with no size`,
         detail: `${count(els.length)} ${noun(c, els.length)} ${verb(els.length, 'has', 'have')} a dimension under ${mm(t)} or no volume (${examples(els)}). ${verb(els.length, 'It is usually a modelling slip and distorts', 'They are usually modelling slips and distort')} the BOQ.`,
         measured: `Any length, width, depth or height under ${mm(t)}, or a volume of zero. Rebar and plates are skipped.`,
-        limits: 'Uses the dimensions Shanku reads from the IFC; an element with a wrong quantity set but correct geometry is reported too.',
+        limits: 'Uses the dimensions cad2bim reads from the IFC; an element with a wrong quantity set but correct geometry is reported too.',
       }),
     );
   },
@@ -344,14 +344,14 @@ const noLevel: QaCheck = {
       finding(this, 'warning', els, {
         title: `${cap(noun(c, els.length))} without a level`,
         detail: `${count(els.length)} ${noun(c, els.length)} ${verb(els.length, 'is', 'are')} not on any level (${examples(els)}). Plans, the Project Browser and the BOQ by level leave them out.`,
-        measured: 'Each element’s level by Shanku’s definition (the lowest level at or above its top), else the IFC storey it is filed under.',
+        measured: 'Each element’s level by cad2bim’s definition (the lowest level at or above its top), else the IFC storey it is filed under.',
         limits: 'An element without geometry or levels to judge by keeps the storey its file gives it.',
       }),
     );
   },
 };
 
-/** CH-LEVEL is a label: after copying floors in Revit it can go stale. Shanku's level follows the top. */
+/** CH-LEVEL is a label: after copying floors in Revit it can go stale. cad2bim's level follows the top. */
 const levelLabel: QaCheck = {
   id: 'level-label',
   group: 'model',
@@ -367,8 +367,8 @@ const levelLabel: QaCheck = {
       const [label, level] = k.split('\u0001');
       return finding(this, 'warning', els, {
         title: `CH-LEVEL says ${label}, the top is at ${level}`,
-        detail: `${count(els.length)} element${els.length === 1 ? '' : 's'} (${examples(els)}) carry CH-LEVEL “${label}” but finish at ${level}. Shanku puts ${els.length === 1 ? 'it' : 'them'} on ${level}; update CH-LEVEL in Revit if the label is stale (for example after copying a floor).`,
-        measured: 'CH-LEVEL against the level by Shanku’s definition: the lowest level at or above the element’s top (beams, slabs and footings may rise 600 mm above it).',
+        detail: `${count(els.length)} element${els.length === 1 ? '' : 's'} (${examples(els)}) carry CH-LEVEL “${label}” but finish at ${level}. cad2bim puts ${els.length === 1 ? 'it' : 'them'} on ${level}; update CH-LEVEL in Revit if the label is stale (for example after copying a floor).`,
+        measured: 'CH-LEVEL against the level by cad2bim’s definition: the lowest level at or above the element’s top (beams, slabs and footings may rise 600 mm above it).',
         limits: 'Only elements that have a CH-LEVEL parameter.',
       });
     });

@@ -1,4 +1,4 @@
-import type { ElementRecord, Level } from '@shanku/engine';
+import type { ElementRecord, Level } from '@cad2bim/engine';
 
 /**
  * Colour by parameter (quick-wins A1), after the Structura viewer's element palette: pick what to

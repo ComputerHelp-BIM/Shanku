@@ -13,7 +13,7 @@ namespace Shanku.Revit.Revit;
 
 /// <summary>
 /// The bridge's view of Revit (IRevitHost): every Revit API call runs on Revit's main thread through
-/// RevitQueue. Also forwards Revit's selection and document changes to Shanku.
+/// RevitQueue. Also forwards Revit's selection and document changes to cad2bim.
 /// </summary>
 public sealed class RevitHost : IRevitHost
 {
@@ -25,7 +25,7 @@ public sealed class RevitHost : IRevitHost
     private DocumentInfo? _current;
     private string? _mapKey;
     private Dictionary<string, ElementId> _byGlobalId = new();
-    private HashSet<long>? _justPushed; // selection Shanku set: not echoed back
+    private HashSet<long>? _justPushed; // selection cad2bim set: not echoed back
 
     public RevitHost(RevitQueue queue, string revitVersion)
     {
@@ -33,7 +33,7 @@ public sealed class RevitHost : IRevitHost
         RevitVersion = revitVersion;
     }
 
-    /// <summary>Set by the add-in: sends an event to Shanku.</summary>
+    /// <summary>Set by the add-in: sends an event to cad2bim.</summary>
     public Action<string, object>? Broadcast { get; set; }
 
     public string AddinVersion => typeof(RevitHost).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
@@ -67,7 +67,7 @@ public sealed class RevitHost : IRevitHost
             only = globalIds.Where(_byGlobalId.ContainsKey).Select(g => _byGlobalId[g]).Where(id => doc.GetElement(id) != null).ToList();
             if (only.Count == 0) throw new BridgeException(404, "None of these elements are in the Revit model any more.");
         }
-        string dir = Path.Combine(Path.GetTempPath(), "Shanku", Guid.NewGuid().ToString("N"));
+        string dir = Path.Combine(Path.GetTempPath(), "cad2bim", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try
         {
@@ -80,11 +80,11 @@ public sealed class RevitHost : IRevitHost
             options.AddOption("ExportInternalRevitPropertySets", "true");
             options.AddOption("ExportIFCCommonPropertySets", "true");
             options.AddOption("ExportRoomsInView", "false");
-            // On Revit's internal axes (revit-ifc SiteTransformBasis.Internal): a distance typed in Shanku
+            // On Revit's internal axes (revit-ifc SiteTransformBasis.Internal): a distance typed in cad2bim
             // (Move) is then the same along Revit's X, Y and Z, whatever the project's true north.
             options.AddOption("SitePlacement", "Internal");
             // IFC export needs an open transaction; rolling it back leaves the model untouched.
-            using (var t = new Transaction(doc, "Shanku: export IFC"))
+            using (var t = new Transaction(doc, "cad2bim: export IFC"))
             {
                 t.Start();
                 if (only != null)
@@ -166,13 +166,13 @@ public sealed class RevitHost : IRevitHost
         RequireKey(doc, key);
         if (_mapKey != KeyOf(doc) || changes.Any(c => !_byGlobalId.ContainsKey(c.GlobalId))) BuildMap(doc);
         int elements = changes.Select(c => c.GlobalId).Distinct().Count();
-        string undoName = $"Shanku: update {changes.Count} parameter{(changes.Count == 1 ? "" : "s")} on {elements} element{(elements == 1 ? "" : "s")}";
+        string undoName = $"cad2bim: update {changes.Count} parameter{(changes.Count == 1 ? "" : "s")} on {elements} element{(elements == 1 ? "" : "s")}";
         var results = new List<ChangeResult>();
         var warnings = new List<string>();
         // Dry run: a transaction group that is always rolled back. The inner transaction still commits,
         // so Revit raises its warnings (they only appear on commit); the group rollback then undoes it
         // whether or not any warning came up.
-        using var group = dryRun ? new TransactionGroup(doc, "Shanku: check " + undoName) : null;
+        using var group = dryRun ? new TransactionGroup(doc, "cad2bim: check " + undoName) : null;
         group?.Start();
         using var t = new Transaction(doc, undoName);
         var opts = t.GetFailureHandlingOptions();
@@ -195,7 +195,7 @@ public sealed class RevitHost : IRevitHost
                 if (doc.IsWorkshared && WorksharingUtils.GetCheckoutStatus(doc, e.Id, out string owner) == CheckoutStatus.OwnedByOtherUser)
                     throw new InvalidOperationException($"Borrowed by {owner} in the central model.");
                 string now = DisplayOf(p) ?? "";
-                if (c.OldDisplay != null && now != c.OldDisplay) throw new InvalidOperationException($"Changed in Revit since Shanku read it (now \"{now}\"). Refresh, then edit again.");
+                if (c.OldDisplay != null && now != c.OldDisplay) throw new InvalidOperationException($"Changed in Revit since cad2bim read it (now \"{now}\"). Refresh, then edit again.");
                 SetValue(p, c.Value);
                 after = DisplayOf(p);
                 st.Commit();
@@ -259,7 +259,7 @@ public sealed class RevitHost : IRevitHost
         string undoName = EditPlanner.UndoName(ops);
         var results = new List<ChangeResult>();
         var warnings = new List<string>();
-        using var group = dryRun ? new TransactionGroup(doc, "Shanku: check " + undoName) : null;
+        using var group = dryRun ? new TransactionGroup(doc, "cad2bim: check " + undoName) : null;
         group?.Start();
         using var t = new Transaction(doc, undoName);
         var opts = t.GetFailureHandlingOptions();
@@ -293,7 +293,7 @@ public sealed class RevitHost : IRevitHost
 
     private static double Ft(double mm) => UnitUtils.ConvertToInternalUnits(mm, UnitTypeId.Millimeters);
 
-    /// <summary>One edit; returns what Shanku shows as its result, or throws with the reason Revit refused.</summary>
+    /// <summary>One edit; returns what cad2bim shows as its result, or throws with the reason Revit refused.</summary>
     private string? Apply(Document doc, EditOp op)
     {
         switch (op.Kind)
@@ -355,12 +355,12 @@ public sealed class RevitHost : IRevitHost
         throw new InvalidOperationException($"\"{op.Kind}\" is not an edit the add-in knows.");
     }
 
-    /// <summary>A parameter set after checking it is writable and unchanged in Revit since Shanku read it.</summary>
+    /// <summary>A parameter set after checking it is writable and unchanged in Revit since cad2bim read it.</summary>
     private static string? SetChecked(Parameter p, EditOp op)
     {
         if (p.IsReadOnly || KindOf(p) == "element") throw new InvalidOperationException($"\"{op.Name}\" is read-only in Revit.");
         string now = DisplayOf(p) ?? "";
-        if (op.OldDisplay != null && now != op.OldDisplay) throw new InvalidOperationException($"Changed in Revit since Shanku read it (now \"{now}\"). Refresh, then edit again.");
+        if (op.OldDisplay != null && now != op.OldDisplay) throw new InvalidOperationException($"Changed in Revit since cad2bim read it (now \"{now}\"). Refresh, then edit again.");
         SetValue(p, op.Value ?? "");
         return DisplayOf(p);
     }
@@ -432,7 +432,7 @@ public sealed class RevitHost : IRevitHost
         var config = ExportConfig.Load(System.IO.Path.Combine(here, "shanku_export_config.json"));
         var creator = new ModelCreator(doc, config)
         {
-            // progress to Shanku as it builds (server-sent events: the browser's progress display fills in)
+            // progress to cad2bim as it builds (server-sent events: the browser's progress display fills in)
             Progress = (fraction, busy, done, total, phase) => Broadcast?.Invoke("progress", new { task = dryRun ? "check" : "create", fraction, busy, done, total, phase }),
         };
         var report = creator.Run(exchange, dryRun, GlobalIdOf);
@@ -458,7 +458,7 @@ public sealed class RevitHost : IRevitHost
             {
                 if (m.GetSeverity() != FailureSeverity.Warning) continue;
                 _warnings.Add(m.GetDescriptionText().TrimEnd('.', ' ') + ".");
-                fa.DeleteWarning(m); // reported to Shanku instead of a dialog
+                fa.DeleteWarning(m); // reported to cad2bim instead of a dialog
             }
             return FailureProcessingResult.Continue;
         }
@@ -528,7 +528,7 @@ public sealed class RevitHost : IRevitHost
         if (!UnitUtils.IsMeasurableSpec(spec)) return n;
         ForgeTypeId unit;
         if (word.Length == 0) unit = p.Element.Document.GetUnits().GetFormatOptions(spec).GetUnitTypeId();
-        else if (!UnitWords.TryGetValue(word, out unit!)) throw new InvalidOperationException($"\"{word}\" is not a unit Shanku knows (use mm, cm, m, ft or in).");
+        else if (!UnitWords.TryGetValue(word, out unit!)) throw new InvalidOperationException($"\"{word}\" is not a unit cad2bim knows (use mm, cm, m, ft or in).");
         return UnitUtils.ConvertToInternalUnits(n, unit);
     }
 
@@ -571,7 +571,7 @@ public sealed class RevitHost : IRevitHost
 
     /// <summary>
     /// Revit's DocumentChanged: collects model elements modified, added and deleted (by anyone, and by
-    /// Shanku's own Apply), then sends one `changes` event 0.6 s after the last change.
+    /// cad2bim's own Apply), then sends one `changes` event 0.6 s after the last change.
     /// </summary>
     public void OnDocumentChanged(object? sender, DocumentChangedEventArgs e)
     {
@@ -631,7 +631,7 @@ public sealed class RevitHost : IRevitHost
         var set = ids.Select(x => x.Value).ToHashSet();
         if (_justPushed != null && _justPushed.SetEquals(set))
         {
-            _justPushed = null; // Shanku set this one: do not echo it back
+            _justPushed = null; // cad2bim set this one: do not echo it back
             return;
         }
         _justPushed = null;

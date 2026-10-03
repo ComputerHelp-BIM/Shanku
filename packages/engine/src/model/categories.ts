@@ -1,6 +1,6 @@
 import type { Category } from './types';
 
-/** IFC class (upper case, as web-ifc names it) -> Shanku category. */
+/** IFC class (upper case, as web-ifc names it) -> cad2bim category. */
 const MAP: Record<string, Category> = {
   IFCCOLUMN: 'Column',
   IFCCOLUMNSTANDARDCASE: 'Column',

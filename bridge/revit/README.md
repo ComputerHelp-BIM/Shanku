@@ -35,7 +35,7 @@ A browser stays paired across restarts; **Shanku → Disconnect** unpairs every 
 - Live updates only read: Revit exports the changed elements in the background (the export transaction
   is rolled back); with a dialog open in Revit, Shanku waits.
 - Parameter edits change the model only when you press **Apply** in Shanku's Changes window: one
-  transaction named "Shanku: update N parameters on M elements", so one Edit → Undo in Revit takes it
+  transaction named "cad2bim: update N parameters on M elements", so one Edit → Undo in Revit takes it
   all back. Only instance parameters; each change is refused if the value changed in Revit since
   Shanku read it, the parameter is read-only, or the element is borrowed by someone else. Numbers are
   read in the project's units. **Check in Revit** runs the same checks and keeps nothing.
@@ -74,7 +74,7 @@ folder; read on every export, no restart).
 
 | Symptom | Fix |
 |---|---|
-| No Shanku tab | Check `%APPDATA%\Autodesk\Revit\Addins\2025\Shanku.Revit.addin` exists; see `%APPDATA%\Shanku\bridge.log`. |
+| No cad2bim tab | Check `%APPDATA%\Autodesk\Revit\Addins\2025\Shanku.Revit.addin` exists; see `%APPDATA%\Shanku\bridge.log`. |
 | Connect says the port is in use | Set another `port` in `shanku_bridge_config.json` (in the add-in folder) and in Shanku's Revit window. |
 | Shanku says "Revit not found" | Revit is closed, the add-in is not loaded, or Chrome's local network access was blocked (site settings). |
 | Load takes long | Large models export slowly; Shanku waits up to 10 minutes. Close dialogs in Revit. |
@@ -86,6 +86,11 @@ Log: `%APPDATA%\Shanku\bridge.log`.
 Needs the .NET 8 SDK (not Revit): `.\build.ps1` runs the tests, builds, and assembles `dist\`.
 
 ## Changelog
+
+### 0.12.1 — 2026-10-03
+- Renamed to **cad2bim Bridge for Revit** (ribbon tab, dialogs, undo names, installer messages). Protocol, pairing data (the AppData folder) and the C# project names unchanged, so existing installs and pairings keep working.
+- Accepts the app from **cad2bim.in** and its subdomains (`www.`, `app.`); look-alike domains and plain `http://` are refused (tests).
+- The export's headers stay `X-Shanku-Document-Key` / `-Title` (a first build of this version had renamed them, which would have unlinked models in apps expecting the old names). The "bridge did not start" message names the real log folder, `%APPDATA%\Shanku\bridge.log`.
 
 ### 0.12.0 — 2026-09-30
 - **Editing from Shanku** (`POST /elements/edit`, feature `edit`): moves (mm) and rotations (degrees, about

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button } from '@shanku/ui';
+import { Button } from '@cad2bim/ui';
 import { changeKey, type PendingChange } from '../lib/paramEdits';
 
 /** Above this many elements, Apply asks the user to confirm they reviewed the list. */
@@ -20,7 +20,7 @@ export interface RevitChangesProps {
   onRefresh: (keys: string[]) => void;
   /** Revit's warnings from the last check or apply. */
   warnings?: { dryRun: boolean; list: string[] } | null;
-  /** Reload the model from Revit (Shanku still shows it as loaded). */
+  /** Reload the model from Revit (cad2bim still shows it as loaded). */
   onReload: () => void;
   onSelectElements: (globalIds: string[]) => void;
 }
@@ -62,7 +62,7 @@ export function RevitChanges(p: RevitChangesProps) {
       {p.lastApplied ? (
         <div className="app-changes__done">
           <span>
-            Applied {p.lastApplied.applied} in Revit as <strong>{p.lastApplied.undoName}</strong> (Edit → Undo in Revit takes it back). Shanku still shows the model as it was loaded.
+            Applied {p.lastApplied.applied} in Revit as <strong>{p.lastApplied.undoName}</strong> (Edit → Undo in Revit takes it back). cad2bim still shows the model as it was loaded.
           </span>
           <Button size="sm" onClick={p.onReload}>
             Reload from Revit
@@ -110,7 +110,7 @@ export function RevitChanges(p: RevitChangesProps) {
                     </td>
                     <td>
                       {i === 0 ? (
-                        <button type="button" className="app-changes__el" title="Select it in Shanku (and Revit, when Sync is on); tick or untick all its changes with Alt + click" onClick={(e) => (e.altKey ? toggle(cs.map(changeKey), cs.some((x) => unticked.has(changeKey(x)))) : p.onSelectElements([gid]))}>
+                        <button type="button" className="app-changes__el" title="Select it in cad2bim (and Revit, when Sync is on); tick or untick all its changes with Alt + click" onClick={(e) => (e.altKey ? toggle(cs.map(changeKey), cs.some((x) => unticked.has(changeKey(x)))) : p.onSelectElements([gid]))}>
                           {c.element}
                         </button>
                       ) : null}

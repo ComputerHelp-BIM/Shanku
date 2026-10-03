@@ -3,8 +3,8 @@
  * building elevations and user sections. Each view keeps its own graphics, visual style, edges and
  * temporary hides; plans and sections also carry a view range (a clip box without grips).
  */
-import type { PlacedDimension } from '@shanku/engine';
-import type { DisplayStyle } from '@shanku/engine';
+import type { PlacedDimension } from '@cad2bim/engine';
+import type { DisplayStyle } from '@cad2bim/engine';
 import { EMPTY_GRAPHICS, type ViewGraphics } from './visibility';
 
 export type ViewKind = '3d' | 'plan' | 'elevation' | 'section';

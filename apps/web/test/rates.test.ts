@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ElementRecord } from '@shanku/engine';
+import type { ElementRecord } from '@cad2bim/engine';
 import { clearOverride, emptyRates, itemKey, parseRate, rateFor, rateItems, setItemRate, setOverride } from '../src/lib/rates';
 
 const el = (gid: string, category: ElementRecord['category'], grade: string, volume: number) =>

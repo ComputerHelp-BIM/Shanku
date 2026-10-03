@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import type { ParsedModel } from '@shanku/engine';
+import type { ParsedModel } from '@cad2bim/engine';
 import { ConsoleClient, type RunResult } from '../console/client';
 
 type Entry = { id: number; code?: string; result?: RunResult; note?: string; tone?: 'error' };

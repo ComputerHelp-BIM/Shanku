@@ -21,7 +21,7 @@ import {
   ViewTabs,
   useTheme,
   type TreeNode,
-} from '@shanku/ui';
+} from '@cad2bim/ui';
 import { FRAME_FACES } from './frameFaces';
 
 const RIBBON_TABS = ['File', 'Model', 'Modify', 'View', 'Quantities', 'Analyze', 'Collaborate'].map((label) => ({

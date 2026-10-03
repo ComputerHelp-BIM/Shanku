@@ -2,7 +2,7 @@
  * Revit-style View Templates: named view settings kept on this device (and exportable as JSON), applied
  * to the current view as one undoable step. Each part has an Include switch, as in Revit.
  */
-import type { DisplayStyle } from '@shanku/engine';
+import type { DisplayStyle } from '@cad2bim/engine';
 import type { AppliedFilter, ViewFilter } from './filters';
 import type { CategoryOverrides, ViewGraphics } from './visibility';
 
@@ -106,7 +106,7 @@ export function exportTemplates(templates: ViewTemplate[]): string {
 /** Reads an exported file. Imported templates get new ids and " (imported)" if a name is taken. */
 export function importTemplates(text: string, existing: ViewTemplate[]): ViewTemplate[] {
   const j = JSON.parse(text);
-  if (j?.format !== FORMAT || !Array.isArray(j.templates)) throw new Error('This is not a Shanku view template file.');
+  if (j?.format !== FORMAT || !Array.isArray(j.templates)) throw new Error('This is not a cad2bim view template file.');
   const names = new Set(existing.map((t) => t.name));
   return j.templates.map((t: ViewTemplate) => ({
     ...t,

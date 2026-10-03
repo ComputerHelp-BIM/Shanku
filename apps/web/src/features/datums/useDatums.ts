@@ -4,7 +4,7 @@
  * this device and in the project file. Grids are named as Revit names them (1, 2, 3 or A, B, C, from the last).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { nextDatumName, planWorkPlane, type History, type P2, type PickOptions, type PickStatus } from '@shanku/engine';
+import { nextDatumName, planWorkPlane, type History, type P2, type PickOptions, type PickStatus } from '@cad2bim/engine';
 import { loadDatums, saveDatums } from '../../lib/session';
 import type { ModelView } from '../../lib/views';
 import type { useShankuModel } from '../../lib/useShankuModel';

@@ -8,7 +8,7 @@ using Shanku.Revit.Core;
 namespace Shanku.Revit.Revit;
 
 /// <summary>
-/// Export to Revit: builds native elements from Shanku's DXF → 3D exchange. Levels and types first
+/// Export to Revit: builds native elements from cad2bim's DXF → 3D exchange. Levels and types first
 /// (so one failed element cannot take a type others use with it), then every element in its own
 /// sub-transaction, then a check of each placement against the plan (columns and footings are moved or
 /// turned 90° when their family places them differently). One transaction group: one Edit → Undo in
@@ -55,7 +55,7 @@ internal sealed class ModelCreator
     public CreateReport Run(ExchangeModel x, bool dryRun, Func<Document, Element, string> globalIdOf)
     {
         int count = x.Elements.Count;
-        string undoName = $"Shanku: export {count} element{(count == 1 ? "" : "s")} from the drawing";
+        string undoName = $"cad2bim: export {count} element{(count == 1 ? "" : "s")} from the drawing";
         var results = new List<CreateResult>();
         var existing = ExistingIds();
         var todo = new List<ExchangeElement>();

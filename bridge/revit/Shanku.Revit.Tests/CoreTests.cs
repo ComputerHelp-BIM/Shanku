@@ -209,6 +209,13 @@ public class ConfigTests
     [InlineData("https://evil.example", false)]
     [InlineData("https://shanku.vercel.app.evil.example", false)]
     [InlineData("https://notshanku.vercel.app", false)]
+    [InlineData("https://cad2bim.in", true)]
+    [InlineData("https://www.cad2bim.in", true)]
+    [InlineData("https://app.cad2bim.in/", true)]
+    [InlineData("http://cad2bim.in", false)]
+    [InlineData("https://cad2bim.in.evil.example", false)]
+    [InlineData("https://evilcad2bim.in", false)]
+    [InlineData("https://cad2bim.in.co", false)]
     [InlineData(null, false)]
     public void Origins(string? origin, bool allowed) => Assert.Equal(allowed, new BridgeConfig().IsAllowedOrigin(origin));
 
@@ -259,13 +266,13 @@ internal sealed class FakeHost : IRevitHost
         Writes.Add((changes, dryRun));
         var results = changes.Select((c, i) =>
             c.Name == "Volume" ? new ChangeResult(i, false, "\"Volume\" is read-only in Revit.", null)
-            : c.Name == "Mark" && c.OldDisplay != null && Marks.TryGetValue(c.GlobalId, out var now) && now != c.OldDisplay ? new ChangeResult(i, false, $"Changed in Revit since Shanku read it (now \"{now}\").", null)
+            : c.Name == "Mark" && c.OldDisplay != null && Marks.TryGetValue(c.GlobalId, out var now) && now != c.OldDisplay ? new ChangeResult(i, false, $"Changed in Revit since cad2bim read it (now \"{now}\").", null)
             : new ChangeResult(i, true, null, c.Value)).ToList();
         if (!dryRun) foreach (var (c, r) in changes.Zip(results)) if (r.Ok && c.Name == "Mark") Marks[c.GlobalId] = c.Value;
-        return Task.FromResult(new WriteResult(dryRun, $"Shanku: update {changes.Count} parameters", results, new[] { "Elements have duplicate \"Mark\" values." }));
+        return Task.FromResult(new WriteResult(dryRun, $"cad2bim: update {changes.Count} parameters", results, new[] { "Elements have duplicate \"Mark\" values." }));
     }
     public Task<CreateReport> CreateModelAsync(string key, ExchangeModel exchange, bool dryRun) =>
-        Task.FromResult(new CreateReport(dryRun, "Shanku: export", new[] { new LevelPlan("L1", 0, "exists", "01 GROUND LVL.") }, Array.Empty<TypePlan>(),
+        Task.FromResult(new CreateReport(dryRun, "cad2bim: export", new[] { new LevelPlan("L1", 0, "exists", "01 GROUND LVL.") }, Array.Empty<TypePlan>(),
             exchange.Elements.Select(e => new CreateResult(e.Id, true, TypeName: "CH-300 X 600")).ToList(), Array.Empty<string>(), Array.Empty<string>()));
     public List<EditOp> Edited { get; } = new();
     public Task<WriteResult> EditAsync(string key, IReadOnlyList<EditOp> ops, bool dryRun)
@@ -340,7 +347,7 @@ public class ServerTests : IDisposable
         }));
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
         var r = JsonDocument.Parse(await ok.Content.ReadAsStringAsync()).RootElement;
-        Assert.Equal("Shanku: move 2 elements, duplicate 1 type, change 1 type parameter", r.GetProperty("undoName").GetString());
+        Assert.Equal("cad2bim: move 2 elements, duplicate 1 type, change 1 type parameter", r.GetProperty("undoName").GetString());
         Assert.Equal(3, _host.Edited.Count);
         Assert.Equal((500.0, -150.0), (_host.Edited[0].Dx, _host.Edited[0].Dz));
         Assert.Equal("CH-230 X 650", _host.Edited[2].TypeName);
@@ -674,7 +681,7 @@ public class EditPlannerTests
             Op("param", "a") with { Name = "Comments" },
             Op("param", "b") with { Name = "Comments" },
         };
-        Assert.Equal("Shanku: move 3 elements, duplicate 1 type, change 1 type parameter, change 2 parameters", EditPlanner.UndoName(ops));
-        Assert.Equal("Shanku: rotate 1 element", EditPlanner.UndoName(new[] { Op("rotate", "a") with { Angle = 90 } }));
+        Assert.Equal("cad2bim: move 3 elements, duplicate 1 type, change 1 type parameter, change 2 parameters", EditPlanner.UndoName(ops));
+        Assert.Equal("cad2bim: rotate 1 element", EditPlanner.UndoName(new[] { Op("rotate", "a") with { Angle = 90 } }));
     }
 }

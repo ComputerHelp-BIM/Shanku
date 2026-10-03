@@ -1,4 +1,4 @@
-/** Categories Shanku understands in v0.1. Everything else is "Other". */
+/** Categories cad2bim understands in v0.1. Everything else is "Other". */
 export type Category =
   | 'Column'
   | 'Beam'
@@ -19,7 +19,7 @@ export interface ElementRecord {
   source?: number;
   /**
    * The IfcBuildingStorey the file puts it in (Revit files columns and walls under their base level).
-   * For reference only: `level` follows Shanku's level definition (model/levelRule.ts).
+   * For reference only: `level` follows cad2bim's level definition (model/levelRule.ts).
    */
   storey?: string;
   /** Its CH-LEVEL parameter, when it has one (a label; QA flags one that differs from `level`). */
@@ -76,7 +76,7 @@ export interface ModelUnits {
 
 /**
  * How a file's levels relate to its elements: 'top' — a level is the top of its storey (Revit's
- * structural convention, Shanku's DXF → 3D, models built by Export to Revit): Shanku's level definition
+ * structural convention, cad2bim's DXF → 3D, models built by Export to Revit): cad2bim's level definition
  * applies; 'floor' — levels are floors with no level at the roof (many other IFCs): the file's storeys
  * are kept.
  */
@@ -98,7 +98,7 @@ export interface ModelInfo {
   edgeCount: number;
   /** Viewer-space bounds of the whole model, metres. */
   bounds: [number, number, number, number, number, number];
-  /** How well this export suits Shanku. */
+  /** How well this export suits cad2bim. */
   compatibility: import('../ifc/compat').Compatibility;
   viewDefinition: string;
   quantitySets: number;

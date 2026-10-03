@@ -2,7 +2,7 @@
  * Export to Revit review: elements approved by set (level × kind), as the safety rules ask. Sets keep
  * the drawing's level order; kinds follow the order they are built in.
  */
-import type { RevitExchange } from '@shanku/engine';
+import type { RevitExchange } from '@cad2bim/engine';
 
 const KIND_ORDER = ['pcc', 'footing', 'pedestal', 'column', 'wall', 'beam', 'slab', 'chajja'];
 export const KIND_LABEL: Record<string, string> = { pcc: 'PCC', footing: 'Footings', pedestal: 'Pedestals', column: 'Columns', wall: 'Walls', beam: 'Beams', slab: 'Slabs', chajja: 'Chajjas' };

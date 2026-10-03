@@ -15,7 +15,7 @@ import {
   StatusChip,
   TitleBar,
   ViewTabs, useTheme
-} from '@shanku/ui';
+} from '@cad2bim/ui';
 import {
   CATEGORY_PLURAL,
   DEFAULT_GRADE_RULES,
@@ -23,7 +23,7 @@ import {
   ENGINE_VERSION,
   EXPLODE_MODES, type Category,
   type DisplayStyle, DIMENSION_TOOLS, type DimensionKind, type MeasureMode
-} from '@shanku/engine';
+} from '@cad2bim/engine';
 import { Browser } from './components/Browser';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { Viewport, type ViewportHandle } from './components/Viewport';
@@ -112,7 +112,7 @@ export function App({ start }: { start?: AppStart } = {}) {
    * The model as opened: live updates from Revit merge into it (revision > 0) and must not look like
    * a new file (restoring views, switching to 3D, re-applying a view's saved hides).
    */
-  const openedInfoRef = useRef<import('@shanku/engine').ParsedModel['info'] | undefined>(undefined);
+  const openedInfoRef = useRef<import('@cad2bim/engine').ParsedModel['info'] | undefined>(undefined);
   if (!m.model?.revision) openedInfoRef.current = m.model?.info;
   const openedInfo = openedInfoRef.current;
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>('shaded');
@@ -195,7 +195,7 @@ export function App({ start }: { start?: AppStart } = {}) {
   const { pipe, pipeline, showQa } = usePipelineFeature({ drawingView, dx, m, setActiveView, setNotice, toggleWin });
   // the project file: Save (Ctrl + S), Save As, and opening projects alongside models
   const { projectStatus, saveProject, saveProjectAs, openAnyFile } = useProjectFile({ m, openModelFile, setNotice, changes: [views, graphics, pending, colorSettings] });
-  // native editing: Revit's Modify tools on Shanku's own model (docs/design/native-editing.md)
+  // native editing: Revit's Modify tools on cad2bim's own model (docs/design/native-editing.md)
   // datum lines by id for Align locks (kept current below, once the datums are known)
   const datumLineRef = useRef<(id: string) => { a: [number, number]; b: [number, number]; name: string } | null>(() => null);
   const { alignTo, unlock, lockCount, constraintPrompt, levelList, moveLevel, newLevel, deleteLevel, levelDeleteWhy, levelTick, nativePerform, nativeDelete, nativePin, nativeWhy, nativeEditCount } = useNativeEditing({ m, history, setNotice, revitLinked, datumLineRef });
@@ -457,14 +457,14 @@ export function App({ start }: { start?: AppStart } = {}) {
             </>
           ) : (
             <>
-          {/* Revit bridge (Shanku Bridge for Revit): the same actions as the Revit window, Revit-style */}
+          {/* Revit bridge (cad2bim Bridge for Revit): the same actions as the Revit window, Revit-style */}
           <RibbonGroup label="Connection">
             <RibbonButton
               icon="link"
               label={revit.phase === 'connected' ? 'Connected' : revit.phase === 'unpaired' ? 'Pair' : 'Connect'}
               active={revit.phase === 'connected'}
               onClick={() => openRevit()}
-              shortcutHint={revit.phase === 'connected' ? `Revit ${revit.revit ?? ''}: ${revit.document?.title ?? 'no model open'}` : 'find Revit and pair with the code from Shanku → Connect'}
+              shortcutHint={revit.phase === 'connected' ? `Revit ${revit.revit ?? ''}: ${revit.document?.title ?? 'no model open'}` : 'find Revit and pair with the code from cad2bim → Connect'}
             />
             <RibbonButton icon="unlink" label="Disconnect" disabled={revit.phase !== 'connected' && revit.phase !== 'unpaired'} onClick={() => bridge.disconnect()} shortcutHint="forget this browser's pairing" />
           </RibbonGroup>
@@ -481,14 +481,14 @@ export function App({ start }: { start?: AppStart } = {}) {
               label={liveBusy ? 'Updating…' : liveCount ? `Update (${liveCount})` : 'Update'}
               disabled={!canLive || !liveCount || liveBusy}
               onClick={() => void updateFromRevit()}
-              shortcutHint={!revitLinked ? 'load the model from Revit first' : !bridge.canLiveUpdate ? 'needs Shanku Bridge for Revit 0.5.0' : liveCount ? `bring in the ${liveCount} element${liveCount === 1 ? '' : 's'} changed in Revit` : 'nothing changed in Revit'}
+              shortcutHint={!revitLinked ? 'load the model from Revit first' : !bridge.canLiveUpdate ? 'needs cad2bim Bridge for Revit 0.5.0' : liveCount ? `bring in the ${liveCount} element${liveCount === 1 ? '' : 's'} changed in Revit` : 'nothing changed in Revit'}
             />
             <RibbonButton icon="importModel" label="Auto-update" active={autoUpdate} disabled={!canLive} onClick={() => setAutoUpdate((v) => !v)} shortcutHint="bring in Revit's changes as they happen (Revit exports them in the background)" />
             <RibbonButton icon="downloadIfc" label="Download IFC" disabled={!revitLinked} onClick={() => void downloadIfc()} shortcutHint={revitLinked ? 'a fresh IFC export of the Revit model, with every change since loading' : 'load the model from Revit first'} />
           </RibbonGroup>
           <RibbonGroup label="Selection">
             <RibbonButton icon="sync" label="Sync" active={revitSync} onClick={() => setRevitSync((v) => !v)} shortcutHint={revitLinked ? 'selection follows Revit both ways' : 'follows Revit once the model is loaded from Revit'} />
-            <RibbonButton icon="selectSend" label="Send to Revit" disabled={revit.phase !== 'connected' || !revit.document || !m.model} onClick={() => void sendSelectionToRevit()} shortcutHint="select Shanku's selection in Revit now" />
+            <RibbonButton icon="selectSend" label="Send to Revit" disabled={revit.phase !== 'connected' || !revit.document || !m.model} onClick={() => void sendSelectionToRevit()} shortcutHint="select cad2bim's selection in Revit now" />
             <RibbonButton icon="selectGet" label="Get from Revit" disabled={revit.phase !== 'connected' || !revit.document || !m.model} onClick={() => void getSelectionFromRevit()} shortcutHint="take Revit's current selection" />
           </RibbonGroup>
           <RibbonGroup label="Create">
@@ -824,7 +824,7 @@ export function App({ start }: { start?: AppStart } = {}) {
             {levelsOpen ? <DatumsList datums={datums} onRename={renameDatum} onDelete={deleteDatum} /> : null}
             {levelsOpen ? <LevelsTool key={levelTick} rows={levelList()} why={!m.model ? 'Open a model first.' : revitLinked ? 'This model is linked to Revit: change its levels in Revit for now (Sync with Revit comes next).' : null} deleteWhy={levelDeleteWhy} onMove={moveLevel} onNew={newLevel} onDelete={deleteLevel} /> : null}
           </FloatingWindow>
-          <FloatingWindow id="modify" title={modifyKind ? modifyKind[0].toUpperCase() + modifyKind.slice(1) : 'Modify'} subtitle="Shanku's model" open={!!modifyKind} onClose={() => setModifyKind(null)} initial={{ w: 520, h: 420 }}>
+          <FloatingWindow id="modify" title={modifyKind ? modifyKind[0].toUpperCase() + modifyKind.slice(1) : 'Modify'} subtitle="cad2bim's model" open={!!modifyKind} onClose={() => setModifyKind(null)} initial={{ w: 520, h: 420 }}>
             {modifyKind ? <ModifyTool kind={modifyKind} count={m.selection.length} disabledWhy={nativeWhy()} onKind={setModifyKind} onApply={nativePerform} onClose={() => setModifyKind(null)} /> : null}
           </FloatingWindow>
           <FloatingWindow id="typeProps" title="Type Properties" open={wins.typeProps} onClose={() => toggleWin('typeProps', false)} initial={{ w: 760, h: 620 }} minWidth={480} minHeight={360}>
@@ -852,7 +852,7 @@ export function App({ start }: { start?: AppStart } = {}) {
               status={changeStatus}
               busy={changesBusy}
               canApply={canParams}
-              why={revit.phase !== 'connected' ? 'Connect to Revit to check or apply.' : !revitLinked ? 'Revit is showing a different model.' : !bridge.canEditParams ? 'Update Shanku Bridge for Revit to 0.2.0.' : undefined}
+              why={revit.phase !== 'connected' ? 'Connect to Revit to check or apply.' : !revitLinked ? 'Revit is showing a different model.' : !bridge.canEditParams ? 'Update cad2bim Bridge for Revit to 0.2.0.' : undefined}
               lastApplied={lastApplied}
               warnings={changeWarnings}
               onReload={() => void loadFromRevit()}
@@ -866,7 +866,7 @@ export function App({ start }: { start?: AppStart } = {}) {
               onSelectElements={(gids) => m.model && m.setSelection(m.model.elements.flatMap((e, i) => (gids.includes(e.globalId) ? [i] : [])))}
             />
           </FloatingWindow>
-          <FloatingWindow id="revit" title="Revit" subtitle="Shanku Bridge" open={wins.revit} onClose={() => toggleWin('revit', false)} initial={{ w: 460, h: 440 }} minWidth={380} minHeight={300}>
+          <FloatingWindow id="revit" title="Revit" subtitle="cad2bim Bridge" open={wins.revit} onClose={() => toggleWin('revit', false)} initial={{ w: 460, h: 440 }} minWidth={380} minHeight={300}>
             <RevitPanel
               state={revit}
               linkedKey={revitLink && m.model?.info.fileName === revitLink.fileName ? revitLink.key : null}
@@ -880,7 +880,7 @@ export function App({ start }: { start?: AppStart } = {}) {
               live={canLive ? { count: liveCount, busy: liveBusy, auto: autoUpdate, onUpdate: () => void updateFromRevit(), onAuto: setAutoUpdate } : null}
             />
           </FloatingWindow>
-          <FloatingWindow id="guide" title="Guide & FAQ" subtitle={`Shanku ${APP_VERSION}`} open={wins.guide} onClose={() => toggleWin('guide', false)} initial={{ w: 900, h: 620 }} minWidth={560} minHeight={320}>
+          <FloatingWindow id="guide" title="Guide & FAQ" subtitle={`cad2bim ${APP_VERSION}`} open={wins.guide} onClose={() => toggleWin('guide', false)} initial={{ w: 900, h: 620 }} minWidth={560} minHeight={320}>
             <GuidePanel initial={guideSection} />
           </FloatingWindow>
           <FloatingWindow id="keys" title="Keyboard shortcuts" open={wins.keys} onClose={() => toggleWin('keys', false)} initial={{ w: 520, h: 560 }} minWidth={360}>

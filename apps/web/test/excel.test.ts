@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ExcelJS from 'exceljs';
-import type { ElementRecord, ModelInfo } from '@shanku/engine';
+import type { ElementRecord, ModelInfo } from '@cad2bim/engine';
 import { WORKBOOK_TOKENS, buildBoqWorkbook } from '../src/lib/excel';
 import { emptyRates, setItemRate, setOverride } from '../src/lib/rates';
 

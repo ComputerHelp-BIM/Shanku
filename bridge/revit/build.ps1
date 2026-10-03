@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Builds Shanku Bridge for Revit and assembles the install folder in .\dist.
+    Builds cad2bim Bridge for Revit and assembles the install folder in .\dist.
 .DESCRIPTION
     Needs the .NET 8 SDK. Revit's API comes from reference packages; Revit itself is not needed to build.
     Also runs the tests of the parts that do not need Revit.

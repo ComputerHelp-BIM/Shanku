@@ -1,6 +1,6 @@
 import { FIGURES } from './figures';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Kbd } from '@shanku/ui';
+import { Kbd } from '@cad2bim/ui';
 import { GUIDE, searchGuide, type GuideBlock, type GuideSection } from '../lib/guide';
 
 /** **bold** and `code` inside guide text. */

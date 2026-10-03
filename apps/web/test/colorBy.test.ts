@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ElementRecord } from '@shanku/engine';
+import type { ElementRecord } from '@cad2bim/engine';
 import { computeColors, mergeOverrides, ramp, DEFAULT_COLOR_SETTINGS } from '../src/lib/colorBy';
 
 const el = (index: number, extra: Partial<ElementRecord>): ElementRecord =>

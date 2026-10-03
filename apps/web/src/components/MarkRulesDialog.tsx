@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@shanku/ui';
-import type { ElementRecord } from '@shanku/engine';
+import { Button } from '@cad2bim/ui';
+import type { ElementRecord } from '@cad2bim/engine';
 
 export interface MarkRulesDialogProps {
   open: boolean;
@@ -17,7 +17,7 @@ export interface MarkRulesDialogProps {
 }
 
 /**
- * Edit the property names Shanku reads as an element's mark, in priority order.
+ * Edit the property names cad2bim reads as an element's mark, in priority order.
  * "ID" matches any property set; "01--COLUMN_M.ID" matches only that set.
  */
 export function MarkRulesDialog({ open, rules, elements, onSave, onClose, title = 'Mark rules', intro, defaults, sourceField = 'markSource' }: MarkRulesDialogProps) {

@@ -1,7 +1,7 @@
 import { type CommandId } from '../../lib/shortcuts';
 import { type useHistory } from '../../lib/useHistory';
 import { type useShankuModel } from '../../lib/useShankuModel';
-import { type PlacedDimension, type DimensionKind, DIMENSION_TOOLS, dimensionSummary, dimensionValues, runChecks } from '@shanku/engine';
+import { type PlacedDimension, type DimensionKind, DIMENSION_TOOLS, dimensionSummary, dimensionValues, runChecks } from '@cad2bim/engine';
 import { useMemo } from 'react';
 
 export interface DimensionsFeatureDeps {

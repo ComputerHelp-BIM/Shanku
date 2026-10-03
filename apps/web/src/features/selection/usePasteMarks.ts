@@ -1,6 +1,6 @@
 import { parseMarkList, matchMarks, looksLikeMarks } from '../../lib/marks';
 import { type useShankuModel } from '../../lib/useShankuModel';
-import { isEditableTarget } from '@shanku/ui';
+import { isEditableTarget } from '@cad2bim/ui';
 import { useState, useRef, useEffect } from 'react';
 
 export interface PasteMarksDeps {

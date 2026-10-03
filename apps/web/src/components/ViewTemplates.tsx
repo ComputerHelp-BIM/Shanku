@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '@shanku/ui';
+import { Button } from '@cad2bim/ui';
 import { exportTemplates, importTemplates, templateFromView, type TemplateIncludes, type ViewState, type ViewTemplate } from '../lib/viewTemplates';
 import { isEmptyOverride } from '../lib/visibility';
 

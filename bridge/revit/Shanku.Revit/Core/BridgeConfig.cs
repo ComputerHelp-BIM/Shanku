@@ -15,7 +15,7 @@ public sealed class BridgeConfig
 {
     public const int DefaultPort = 7071;
 
-    /// <summary>Shanku's own sites and local development servers.</summary>
+    /// <summary>cad2bim's own sites and local development servers.</summary>
     public static readonly string[] DefaultOrigins =
     {
         "https://shanku.vercel.app",
@@ -25,8 +25,11 @@ public sealed class BridgeConfig
         "http://localhost:4174",
     };
 
-    // Vercel preview deployments of the Shanku project.
+    // Vercel preview deployments of the project (still named shanku on Vercel).
     private static readonly Regex PreviewOrigin = new(@"^https://shanku(-[a-z0-9-]+)?\.vercel\.app$", RegexOptions.Compiled);
+
+    // cad2bim's own domain and any subdomain of it (www., app.): the domain is ours, so only our sites match.
+    private static readonly Regex Cad2bimOrigin = new(@"^https://([a-z0-9-]+\.)*cad2bim\.in$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public int Port { get; init; } = DefaultPort;
     public IReadOnlyList<string> ExtraOrigins { get; init; } = Array.Empty<string>();
@@ -37,7 +40,8 @@ public sealed class BridgeConfig
         origin = origin.TrimEnd('/');
         return DefaultOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)
             || ExtraOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)
-            || PreviewOrigin.IsMatch(origin);
+            || PreviewOrigin.IsMatch(origin)
+            || Cad2bimOrigin.IsMatch(origin);
     }
 
     public static BridgeConfig Load(string path)

@@ -7,7 +7,7 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@shanku/ui": [
+      "@cad2bim/ui": [
         "../../packages/ui/src/index.ts"
       ]
     }

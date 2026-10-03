@@ -1,12 +1,12 @@
 /**
- * Native editing (docs/design/native-editing.md, stage 1): Revit's Modify tools on Shanku's own parametric
+ * Native editing (docs/design/native-editing.md, stage 1): Revit's Modify tools on cad2bim's own parametric
  * model. The model is built from the open IFC the first time it is needed (model/parametric: clean shapes
  * convert, the rest stays reference); each edit is one transaction — one Ctrl + Z — and reaches the 3D
  * view as a patch merged like a live update. Edits are kept on this device as they happen and saved in the
  * project; models linked to Revit keep the Changes for Revit route until Sync with Revit (stage 3).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { align, arrayLinear, brokenLocks, changeOf, copy, deriveElement, elevationMm, formatLength, type AlignLock, followLevels, infoLevels, levelDatums, rehost, withLevel, zeroOf, type LevelDatum, elementPatch, isReference, kindForCategory, mirror, move, newGlobalId, offset, pin, remove, rotate, trianglesOf, type EditResult, type ElementRecord, type History, type ParamElement, type Pt } from '@shanku/engine';
+import { align, arrayLinear, brokenLocks, changeOf, copy, deriveElement, elevationMm, formatLength, type AlignLock, followLevels, infoLevels, levelDatums, rehost, withLevel, zeroOf, type LevelDatum, elementPatch, isReference, kindForCategory, mirror, move, newGlobalId, offset, pin, remove, rotate, trianglesOf, type EditResult, type ElementRecord, type History, type ParamElement, type Pt } from '@cad2bim/engine';
 import type { ModifyRequest } from '../../lib/editChecks';
 import { endTask, startTask } from '../../lib/progress';
 import { loadEdits, saveEdits, type SavedEdits } from '../../lib/session';
@@ -45,7 +45,7 @@ export function useNativeEditing({ m, history, setNotice, revitLinked, datumLine
   const levels = useRef<LevelDatum[]>([]); // the model's levels: elements are hosted on them (Revit's way)
   const openedLevels = useRef<LevelDatum[]>([]); // as the model was opened (what is kept is the difference)
   const zeroY = useRef(0); // the project's ±0 in the viewer, as calibrated when the model was opened
-  const added = useRef(new Set<string>()); // levels added in Shanku (the only ones Delete removes, for now)
+  const added = useRef(new Set<string>()); // levels added in cad2bim (the only ones Delete removes, for now)
   const [levelTick, setLevelTick] = useState(0);
   const edited = useRef(new Map<string, ParamElement | null>()); // since opening: as now, or null (deleted)
   // A model is "opened" when it has no revision (merges, ours and Revit's live updates, add one) and is not the
@@ -198,7 +198,7 @@ export function useNativeEditing({ m, history, setNotice, revitLinked, datumLine
       for (const r of picked) {
         const e = doc.current.get(r.globalId);
         if (e) els.push(e);
-        else skipped.push(`${r.mark || r.name}: ${refs.current.get(r.globalId) ? `kept as reference (${refs.current.get(r.globalId)})` : 'not a structural element Shanku edits yet'}`);
+        else skipped.push(`${r.mark || r.name}: ${refs.current.get(r.globalId) ? `kept as reference (${refs.current.get(r.globalId)})` : 'not a structural element cad2bim edits yet'}`);
       }
       const raw = op(els, () => newGlobalId());
       // hosted on the same levels; a vertical move changes offsets, not absolute heights (Revit's way)

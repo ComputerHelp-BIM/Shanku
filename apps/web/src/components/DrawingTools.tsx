@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from 'react';
-import { Button } from '@shanku/ui';
-import { objectTypeLabel, type EntityIndex, type ParsedDrawing } from '@shanku/engine';
+import { Button } from '@cad2bim/ui';
+import { objectTypeLabel, type EntityIndex, type ParsedDrawing } from '@cad2bim/engine';
 import { DEFAULT_QUICK_SELECT, findText, quickPropertyRows, quickSelect, type QuickSelectCriteria } from '../lib/drawingTools';
 import { fmtCount } from '../lib/format';
 

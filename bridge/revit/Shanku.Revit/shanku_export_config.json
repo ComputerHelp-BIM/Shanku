@@ -1,6 +1,6 @@
 {
   "_readme": [
-    "Export to Revit (Shanku's DXF → 3D pipeline): which families and types Revit uses. Every key is optional; delete one to use its default.",
+    "Export to Revit (cad2bim's DXF → 3D pipeline): which families and types Revit uses. Every key is optional; delete one to use its default.",
     "Type names are patterns in whole millimetres: {W} width (short side), {L} length (long side), {H} depth, {T} thickness, {D} diameter.",
     "A type with the resulting name is reused when the family has it; otherwise the family's first type is duplicated under that name and resized.",
     "Sizing parameters (…Param) are the family's type parameters that set the size; the R25 template's families use W/L (columns), W/H (beams), Width/Length/Foundation Thickness (footings), W (round columns).",

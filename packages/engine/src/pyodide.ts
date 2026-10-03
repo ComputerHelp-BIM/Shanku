@@ -1,5 +1,5 @@
 /**
- * The one Pyodide build Shanku uses (DXF reader, DXF -> 3D pipeline, Python console).
+ * The one Pyodide build cad2bim uses (DXF reader, DXF -> 3D pipeline, Python console).
  * Loaded on first use from jsDelivr and cached by the browser; the drawing never leaves the device.
  */
 export const PYODIDE_VERSION = '0.27.7';

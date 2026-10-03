@@ -1,10 +1,6 @@
-# @shanku/web 0.56.1
+# @cad2bim/web 0.57.0
 
-The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.0.0`.
-The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
-# @shanku/web 0.27.0
-
-The Shanku app. Requires `@shanku/engine >= 0.26.0`, `@shanku/ui >= 0.12.1`, `@shanku/tokens >= 2.1.0`.
+The cad2bim app. Requires `@cad2bim/engine >= 0.43.0`, `@cad2bim/ui >= 0.16.0`, `@cad2bim/tokens >= 2.2.0`.
 
 Open an IFC file (button, drag and drop, or the sample frame); it is read on this device and never uploaded. Navigate and select like Revit; the Properties panel shows identity, level, property sets and quantities; the Project browser selects by level or category; the Activity tab logs load times; the Keyboard tab lists every shortcut.
 
@@ -25,6 +21,14 @@ Keys: `Home`, `Esc`, `ZF` `ZE` `ZX` `ZA` fit, `ZP` `ZC` previous view, `ZR` `ZZ`
 Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + wheel look), SteeringWheel (`F8`), thin lines (`TL`), graphic display options (`GD`).
 
 ## Changelog
+
+### 0.57.0 — 2026-10-03
+- **Shanku is now cad2bim** (cad2bim.in): the app's name everywhere it is seen (title bar and start-screen wordmark, page title, Guide, messages), the packages (`@cad2bim/*`), the Revit add-in's text.
+- **Projects save as `.c2b`** (project format schema 3, docs/format: `cad2bim.json`, `cad2bim/…`). Shanku's `.shkp` (schema 2) and `.shk` (schema 1) still open — their entries are renamed on reading and nothing else differs (tested: a schema-2 file opens with identical model and state); saving writes a new `.c2b`, never over the old file. `.c2f` (families) and `.c2t` (templates) reserved. Extensions checked: `.c2b` is otherwise only an obsolete Casio ClassMate II animation; `.c2f`, `.c2t` unregistered.
+- **Kept on purpose:** the IFC property set `Shanku_Structural` (written into models by the DXF → 3D pipeline; marks and grades are read from it), the browser storage keys and session database (nothing on a device is lost), the Revit add-in's AppData folder and project names (existing pairings keep working), the lockfile's platform binaries (renamed in place, not regenerated — regenerating on Linux dropped Windows and macOS builds). The Python console offers `cad2bim` with `shanku` kept as an alias.
+
+- **Checked before release** (fixed in this version): the bridge's response headers had been renamed to `X-cad2bim-Document-*` in the app and the add-in alike, so every Revit with Shanku Bridge 0.12.0 installed would have loaded models with no document key, unlinked (no Revit types, no Changes for Revit). They are protocol names, as the `/shanku/v1` path: the add-in sends `X-Shanku-*` again and the app reads `X-Shanku-*` first, `X-cad2bim-*` second. Found by the Revit walk-through against the mock bridge.
+- The add-in accepts the app from **cad2bim.in and its subdomains** (it refused every site but shanku.vercel.app, GitHub Pages and localhost); its "bridge did not start" message names the real log folder, `%APPDATA%\Shanku`. Comments and test names about Shanku's files that the rename had turned into "cad2bim" read "Shanku" again; this README's header was repeated three times with stale requirement floors.
 
 ### 0.56.1 — 2026-10-03
 - **Faster tools on large models** (engine 0.42.1). Profiling a 14,039-element model while picking points showed most of each hover in `getBoundingClientRect`: snapping asked for the canvas's position once per projected point, and with the overlays redrawn in between each lookup could force a layout. The viewer now measures each element once per task (cleared by a microtask, so never stale). Hover median 42.1 → 14.5 ms on that model, 5.6 → 4.3 ms on a 4,448-element one; output identical.
@@ -79,7 +83,7 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 - **Refactor, no change in behaviour: `App.tsx` split into feature hooks** (`src/features/`: revit, views, commands, dimensions, viewLinks, files, pipeline, selection, progress) and `src/app/constants.ts`. `App.tsx` 3,240 → 1,226 lines, 194 of them logic (the app's shared state and one call per feature); the rest is the layout. Each hook takes its inputs as one typed object and returns what the app uses; values declared later come through a ref, read at the same moments as before. Made with `tools/refactor/` (the TypeScript checker finds each hook's inputs and outputs), every step type-checked; checked with all tests, the browser walk-throughs (Revit editing, Export to Revit, sharing, DXF → 3D, views, shortcuts) and side by side with the 0.49.1 build. `docs/architecture.md` describes the structure.
 
 ### 0.49.1 — 2026-09-30
-- Fixed CI: `test/edits.test.ts` imported the Move / Rotate and Type Properties components, which load `@shanku/ui` from its build, and CI's `npm test` does not build the UI package. The checks (`geometryProblem`, `readNumber`, `typeNameProblem`) moved to `lib/editChecks.ts` (no UI imports); the components and the test use it. No change in behaviour.
+- Fixed CI: `test/edits.test.ts` imported the Move / Rotate and Type Properties components, which load `@cad2bim/ui` from its build, and CI's `npm test` does not build the UI package. The checks (`geometryProblem`, `readNumber`, `typeNameProblem`) moved to `lib/editChecks.ts` (no UI imports); the components and the test use it. No change in behaviour.
 
 ### 0.49.0 — 2026-09-30
 - **Geometry and type editing for Revit-linked models** (Shanku Bridge for Revit 0.12.0): **Move** (MV) and **Rotate** (RO) with typed values (Revit ribbon → Modify, command search); **Change type** in Properties (the category's types by family; a staged switch shows as modified); **Type Properties** editable — OK / Cancel / Apply, a warning with the instance count, **Duplicate…** (Revit's naming rules) so edits touch only the selection. Everything is staged in Changes for Revit with parameters, checked, and applied as one undo; after geometry or type changes Shanku updates from Revit by itself. `lib/paramEdits` (kinds, `stageOp`, `stageTypeEdit`, `toEditOp`), `components/EditGeometry`, `components/TypeProperties`.
@@ -142,7 +146,7 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 - Design rules for marks, names and trade dress: `docs/design/revit-parity.md`.
 
 ### 0.39.0 — 2026-09-25
-- Combined release of main's 0.38.0 (Export to Revit) and 0.37.1 (view kept on live updates) with the dev line's 0.38.0 (colour by parameter, Fix in Revit, paste marks, Realistic and shadows, rate profiles, branded Excel); both had numbered a release 0.38.0. Requires @shanku/engine 0.29.0.
+- Combined release of main's 0.38.0 (Export to Revit) and 0.37.1 (view kept on live updates) with the dev line's 0.38.0 (colour by parameter, Fix in Revit, paste marks, Realistic and shadows, rate profiles, branded Excel); both had numbered a release 0.38.0. Requires @cad2bim/engine 0.29.0.
 
 ### 0.38.0 — 2026-09-25 (main: Export to Revit)
 - **Export to Revit** (Revit bridge milestone 4, needs Shanku Bridge for Revit 0.6.0): one button in **DXF → 3D** and in **Revit tab → Create** builds the drawing's model natively in the open Revit model, from its template. Revit checks the plan first (a dry run: nothing kept); the review shows levels (existing, reused at the same height, new), types (reused, or duplicated from a template type and resized), elements by level and kind with a tick per set, what Revit already has, what is not exported and why, and Revit's warnings. **Create** makes it as one undo in Revit, checks each element against the drawing (columns and footings are moved or turned 90° if their family places them differently), then **Load it in Shanku** links the two for live updates. Above 500 elements the plan must be confirmed as reviewed.
@@ -155,7 +159,7 @@ Not yet: perspective camera and walkthrough (`W` `A` `S` `D`, `Q` `E`, Shift + w
 - **Colour by parameter** (View → Colour by, the Colour panel, Ctrl + K "colour by"), after the Structura viewer's element palette: category (design-system colours), grade, level, type, section, mark, or a gradient by height, length or volume. Five palettes. The legend recolours a group from its swatch, hides it with its check box and selects it from its name; a compact legend sits on the view for screenshots and presentations. Visibility/Graphics overrides still win.
 - **QA → Revit**: every finding has Show in Revit. "Without a mark" findings have **Fix in Revit**: marks that continue the model's numbering (prefix most used in the category, after the highest number, lowest level first), confirmed in a list, then staged in Changes for Revit to check and apply as one Revit undo. Elements already marked in Revit are left alone and reported.
 - **Paste marks**: Ctrl + V on the model with "C1, C4 and B12", one per line, or C1-C5 / C1 to C5 selects every instance and zooms; marks not in the model are listed; Revit selects them too with sync on. Also Select → By marks and Ctrl + K "select by marks".
-- **Realistic** visual style and **Shadows** (view bar, View → Graphics, Ctrl + K), remembered on this device. Requires @shanku/engine 0.28.0.
+- **Realistic** visual style and **Shadows** (view bar, View → Graphics, Ctrl + K), remembered on this device. Requires @cad2bim/engine 0.28.0.
 - **BOQ rate profiles**: every item gets a rate from a city profile (Delhi NCR = CPWD DSR 2023; Mumbai, Bengaluru, Pune, Chennai, Hyderabad, Kolkata, Ahmedabad with Shanku's indicative city factors). Rate = concrete by grade + formwork (₹/m² × m² per m³), × city factor × escalation. Edit a value once in Rates → Rate profile and every item follows; typed item rates and element overrides still win. Steel rate and ratios default from the profile too. The last profile used is the default for new files.
 - **Excel in the design system**: IBM Plex fonts (Mono for IDs), brand-ink header rows, banded rows with hairline borders, panel-coloured totals with an accent rule, paper title band, input cells as in the app, no gridlines, coloured tabs; colours match tokens.json (tested).
 
@@ -234,15 +238,15 @@ Five features from the Structura viewer (items 7, 8, 9, 13 and 14 in docs/design
 - **Section grips (Revit)**: select a section in a plan to see its far clip extent and grips: ◀ ▶ lengthen or shorten along the line, ▲ drags the far clip, ⇅ flips the direction, and dragging the line moves the section. Each drag or flip is one undoable step (named, e.g. "Resize section: Section 1").
 - Merged the design-system branch's 0.24.0 (command search Ctrl + K, Guide & FAQ F1, exploded views).
 ### 0.27.0 — 2026-09-24
-- **QA panel** (View → QA, Ctrl + K "QA", or the QA summary in the status bar): error, warning and note tiles that filter, a check-group filter, and a card per finding with Select all, Isolate (temporary, Esc restores), Zoom and Step ‹ 1 of N ›. Each card opens "How this was checked": what was measured and what it does not prove. A clean model says so, and that this does not prove it correct. Findings update when mark or grade rules change. From a drawing tab, the actions switch to the 3D view. Requires @shanku/engine 0.25.0.
+- **QA panel** (View → QA, Ctrl + K "QA", or the QA summary in the status bar): error, warning and note tiles that filter, a check-group filter, and a card per finding with Select all, Isolate (temporary, Esc restores), Zoom and Step ‹ 1 of N ›. Each card opens "How this was checked": what was measured and what it does not prove. A clean model says so, and that this does not prove it correct. Findings update when mark or grade rules change. From a drawing tab, the actions switch to the 3D view. Requires @cad2bim/engine 0.25.0.
 
 ### 0.26.0 — 2026-09-24
 - **AutoCAD interface for DXF drawings**: adaptive grid with red / green axes (F7 or the status-bar Grid toggle), UCS icon, crosshair with pick box (small, full screen or off), coordinates read as `X, Y, 0.000`, and MODEL, Grid, UCS, Crosshair and QP toggles in the status bar. Settings are remembered on this device.
 - **AutoCAD right-click menus in the 2D view**: nothing selected (Repeat, Clipboard, Isolate, Undo / Redo, Pan, Zoom, Zoom Window, Zoom Previous, Zoom Extents, Quick Select, Count, Find, Display, Layers, Properties) and with a selection (Repeat, Clipboard, Isolate, the editing entries greyed out with the reason, Select Similar, Deselect All, Zoom to Selection, Quick Select, Count Selection, Find, Properties, Quick Properties).
 - **Isolate Objects / Hide Objects / End Object Isolation**, undoable, with the cyan frame and an End button.
 - **Quick Select** (type, layer, colour; whole drawing or selection; include / exclude; append) with a live count, **Find** in text, MText and attributes (match case, whole words, select all), **Count**, **Select Similar** (same type, layer and colour) and **Quick Properties** (Color, Layer, Linetype, Global width, Closed for polylines).
-- ZP and ZR now work in drawings (Zoom Previous, Zoom Window); the view bar has Zoom window, Previous, Quick select and Find. All of it is in Ctrl + K too. Requires @shanku/engine 0.23.0 and @shanku/tokens 2.1.0.
-- ZP and ZR now work in drawings (Zoom Previous, Zoom Window); the view bar has Zoom window, Previous, Quick select and Find. All of it is in Ctrl + K too. Requires @shanku/engine 0.24.0 and @shanku/tokens 2.1.0.
+- ZP and ZR now work in drawings (Zoom Previous, Zoom Window); the view bar has Zoom window, Previous, Quick select and Find. All of it is in Ctrl + K too. Requires @cad2bim/engine 0.23.0 and @cad2bim/tokens 2.1.0.
+- ZP and ZR now work in drawings (Zoom Previous, Zoom Window); the view bar has Zoom window, Previous, Quick select and Find. All of it is in Ctrl + K too. Requires @cad2bim/engine 0.24.0 and @cad2bim/tokens 2.1.0.
 
 ### 0.25.0 — 2026-09-24
 - **Cut faces are solid** in section boxes and in plan and section view ranges, a shade darker than the element faces so cuts read as cuts, whatever the IFC mesh quality.
@@ -252,7 +256,7 @@ Five features from the Structura viewer (items 7, 8, 9, 13 and 14 in docs/design
 ### 0.24.0 — 2026-09-24
 - **Command search** (Ctrl + K): the title-bar search is now a command palette over one command registry (`lib/commands.ts`). Type what you want to do ("isolate", "hidden line", "explode storeys", a Revit key such as "ZF") or a mark, Element ID, GlobalId or name. About 70 commands plus one per category, level and view; each shows its group, shortcut and state (✓ for toggles), and greyed commands say what they need. `>` searches commands only; recent commands show first. WAI-ARIA combobox: ↑ ↓, Enter, Esc.
 - **Guide & FAQ** (F1, the book icon in the title bar, or View → Windows → Guide): searchable guide in the Structura style with Guide, Answers and About sections (what Shanku opens, navigation, selection, views, graphics, sections, exploded views, commands, quantities, DXF → 3D, the console, undo; common questions; what's new; every shortcut). Content is data in `lib/guide.ts`.
-- **Exploded views** (View → Explode: Storeys, Radial, Categories; click again to collapse): animated, display only, 3D views only, reset for each new file. The view bar shows a Spread slider (0–100 %) and Collapse while exploded. Selecting, box selection, isolate and the section box keep working. Requires @shanku/engine 0.22.0.
+- **Exploded views** (View → Explode: Storeys, Radial, Categories; click again to collapse): animated, display only, 3D views only, reset for each new file. The view bar shows a Spread slider (0–100 %) and Collapse while exploded. Selecting, box selection, isolate and the section box keep working. Requires @cad2bim/engine 0.22.0.
 - Tests: command ranking, recent commands, guide search and structure.
 
 ### 0.23.0 — 2026-09-24
@@ -283,7 +287,7 @@ Five features from the Structura viewer (items 7, 8, 9, 13 and 14 in docs/design
 - Views are saved per file and restored on reload.
 ### 0.19.1 — 2026-09-23
 - Accessibility: the ViewCube compass letters on hover are white on the new `viewcube-hot` blue (5.6:1); they were white on a 70% select-window tint (about 4:1 on Paper, 2.7:1 on Ink).
-- Uses @shanku/tokens 2.0.0 (`on-select-window` replaced by `on-viewcube-hot`).
+- Uses @cad2bim/tokens 2.0.0 (`on-select-window` replaced by `on-viewcube-hot`).
 
 ### 0.19.0 — 2026-09-23
 - **View Templates** (View → Graphics → View Templates ▾): Apply Template Properties to Current View, Create Template from Current View, Manage View Templates (New from view, Duplicate, Rename, Delete, Update from current view, Include switches for V/G Model, V/G Filters, Visual Style, Edges; Import / Export as JSON). Kept on this device; applying is one undoable step named after the template; element overrides stay with the view, as in Revit.
@@ -304,10 +308,10 @@ Five features from the Structura viewer (items 7, 8, 9, 13 and 14 in docs/design
 ### 0.16.2 — 2026-09-23
 - Accessibility: visible focus rings and input, select and button edges now meet 3:1 contrast in both themes; orange text and faint text meet 4.5:1 everywhere.
 - The Temporary Hide/Isolate label is dark on the cyan frame (white was 2.8:1).
-- All colours, shadows and stacking layers in `app.css` and `home.css` now come from @shanku/tokens 1.2.0. Menus share one shadow (the right-click menu's was slightly larger) and floating dock groups use the FloatingWindow shadow.
+- All colours, shadows and stacking layers in `app.css` and `home.css` now come from @cad2bim/tokens 1.2.0. Menus share one shadow (the right-click menu's was slightly larger) and floating dock groups use the FloatingWindow shadow.
 
 ### 0.16.1 — 2026-09-23
-- Fixed: buttons, ribbon buttons and tabs now use IBM Plex Sans instead of the browser default font (@shanku/ui 0.7.1).
+- Fixed: buttons, ribbon buttons and tabs now use IBM Plex Sans instead of the browser default font (@cad2bim/ui 0.7.1).
 
 ### 0.16.0 — 2026-09-22
 - **Right-click menus in the 3D view**, in Revit's layout: without a selection (Cancel, Repeat, Select Previous, Find in Project Browser, Zoom In Region, Zoom Out (2x), Zoom To Fit, Previous / Next Pan/Zoom, Browsers, Properties) and with one (plus Hide in View ▸ Elements / Category, Override Graphics ▸, Create Similar, Edit Family, Select All Instances ▸ Visible in View / In Entire Project, Delete). Entries that need editing or Visibility/Graphics are shown greyed, as in Revit.
@@ -341,7 +345,7 @@ Five features from the Structura viewer (items 7, 8, 9, 13 and 14 in docs/design
 - Fixed: changing mark or grade rules reset hidden elements, the section box and the camera (the view now reloads only for a different file).
 
 ### 0.12.1 — 2026-09-22
-- Requires @shanku/engine 0.10.0: camera no longer sticks at the top or bottom; DXF → 3D walls import completely in Revit.
+- Requires @cad2bim/engine 0.10.0: camera no longer sticks at the top or bottom; DXF → 3D walls import completely in Revit.
 
 ### 0.12.0 — 2026-09-22
 - **BOQ, DXF → 3D and Keys are Revit-style windows** that float anywhere above the app, ribbon included; Properties, Project browser, Activity and the console stay dockable. Saved dock layouts from earlier versions are reset once.
@@ -386,7 +390,7 @@ Five features from the Structura viewer (items 7, 8, 9, 13 and 14 in docs/design
 - Marks: shown in Properties with their source, used in the status bar and in Ctrl + K search. Mark rules dialog (Model → Settings → Marks) to reorder, add or limit rules to one property set; saved in the browser.
 
 ### 0.4.1 — 2026-09-21
-- Requires @shanku/engine 0.3.1 (correct quantity units on Revit exports).
+- Requires @cad2bim/engine 0.3.1 (correct quantity units on Revit exports).
 
 ### 0.4.0 — 2026-09-21
 - Open DXF drawings as 2D view tabs beside {3D} (ribbon DXF button or drag and drop). Each file gets its own tab colour, like pyRevit's tab colouring.

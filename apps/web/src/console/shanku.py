@@ -1,4 +1,4 @@
-"""shanku: the Python API inside the Shanku console (read-only queries + view actions).
+"""shanku: the Python API inside the cad2bim console (read-only queries + view actions).
 
     >>> shanku.help()
     >>> beams = shanku.elements(category="Beam", level="04 1ST LEVEL")

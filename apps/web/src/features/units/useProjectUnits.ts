@@ -4,7 +4,7 @@
  * the last units chosen on this device.
  */
 import { useEffect, useState } from 'react';
-import { DEFAULT_UNITS, setDisplayUnits, type DisplayUnits } from '@shanku/engine';
+import { DEFAULT_UNITS, setDisplayUnits, type DisplayUnits } from '@cad2bim/engine';
 import { loadUnits, saveUnits } from '../../lib/session';
 import type { useShankuModel } from '../../lib/useShankuModel';
 

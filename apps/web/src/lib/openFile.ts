@@ -46,9 +46,9 @@ export async function pickIfcFile(): Promise<PickedFile | null> {
 
 /** Opens the system file picker for one IFC or DXF file. */
 export async function pickFile(kind: FileKind): Promise<PickedFile | null> {
-  // models and Shanku projects open from the same picker
-  const accept: Record<string, string[]> = kind === 'ifc' ? { 'application/x-step': ['.ifc'], 'application/gzip': ['.gz'], 'application/x-shanku-project': [PROJECT_EXT, ...LEGACY_EXTS] } : { 'image/vnd.dxf': ['.dxf'] };
-  const description = kind === 'ifc' ? 'IFC model or Shanku project' : 'DXF drawing';
+  // models and cad2bim projects open from the same picker
+  const accept: Record<string, string[]> = kind === 'ifc' ? { 'application/x-step': ['.ifc'], 'application/gzip': ['.gz'], 'application/x-cad2bim-project': [PROJECT_EXT, ...LEGACY_EXTS] } : { 'image/vnd.dxf': ['.dxf'] };
+  const description = kind === 'ifc' ? 'IFC model or cad2bim project' : 'DXF drawing';
   const picker = (window as unknown as { showOpenFilePicker?: Picker }).showOpenFilePicker;
   if (picker) {
     try {

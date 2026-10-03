@@ -1,5 +1,5 @@
 /**
- * Shanku's one definition of an element's level, for every model (DXF → 3D, loaded from Revit, any
+ * cad2bim's one definition of an element's level, for every model (DXF → 3D, loaded from Revit, any
  * IFC), matching Revit's structural convention and the Computer Help drawings:
  *
  *   An element's level is the lowest level at or above its top.

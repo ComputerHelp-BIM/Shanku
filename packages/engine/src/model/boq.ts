@@ -27,7 +27,7 @@ export interface Boq {
 
 /**
  * Groups elements into BOQ rows by any combination of level, category and grade.
- * Rows sort by level elevation, then the category order used across Shanku, then grade.
+ * Rows sort by level elevation, then the category order used across cad2bim, then grade.
  */
 export function buildBoq(elements: readonly ElementRecord[], levels: readonly Level[], groupBy: BoqKey[], include?: (e: ElementRecord) => boolean): Boq {
   const levelRank = new Map(levels.map((l, i) => [l.name, i]));

@@ -1,4 +1,4 @@
-import type { ElementRecord } from '@shanku/engine';
+import type { ElementRecord } from '@cad2bim/engine';
 
 /**
  * What a BOQ counts (from the Structura viewer's scope switch). Every total in the BOQ window and

@@ -19,8 +19,8 @@ import { type useHistory } from '../../lib/useHistory';
 import { type useShankuModel } from '../../lib/useShankuModel';
 import { defaultViews, levelHeights, type ModelView, normalizeView } from '../../lib/views';
 import { EMPTY_GRAPHICS, type ViewGraphics } from '../../lib/visibility';
-import { projectZeroY, ENGINE_VERSION, type Finding } from '@shanku/engine';
-import { useShortcut, TOGGLE_BOTTOM_PANEL } from '@shanku/ui';
+import { projectZeroY, ENGINE_VERSION, type Finding } from '@cad2bim/engine';
+import { useShortcut, TOGGLE_BOTTOM_PANEL } from '@cad2bim/ui';
 import { useMemo, useSyncExternalStore, useState, useRef, useEffect, useCallback } from 'react';
 
 /** Values App declares after this feature: read through a ref, in callbacks and effects only. */
@@ -92,7 +92,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
     toggleWin('revit', true);
     if (revit.phase === 'idle') void bridge.connect();
   };
-  /** Selects Shanku's selection in Revit now (works with sync off too). */
+  /** Selects cad2bim's selection in Revit now (works with sync off too). */
   const sendSelectionToRevit = async () => {
     const doc = revit.document;
     if (!doc || !m.model) return;
@@ -104,7 +104,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
       setNotice(`Revit: ${(e as Error).message}`);
     }
   };
-  /** Selects these elements in Revit, whatever Shanku has selected. */
+  /** Selects these elements in Revit, whatever cad2bim has selected. */
   const sendSelectionToRevitFor = async (els: number[]) => {
     const doc = revit.document;
     if (!doc || !m.model) return;
@@ -116,7 +116,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
       setNotice(`Revit: ${(e as Error).message}`);
     }
   };
-  /** Takes Revit's current selection into Shanku. */
+  /** Takes Revit's current selection into cad2bim. */
   const getSelectionFromRevit = async () => {
     if (!m.model) return;
     try {
@@ -130,7 +130,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
     }
   };
 
-  /** Revit exports its open model; Shanku opens it and links it for selection sync. */
+  /** Revit exports its open model; cad2bim opens it and links it for selection sync. */
   const loadFromRevit = async () => {
     setRevitLoading(true);
     try {
@@ -249,7 +249,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
     return lastFile.current;
   };
   const diagnose = (snap: NonNullable<typeof lastFile.current>, error?: string) =>
-    setDiagnosis(diagnoseFile({ ...snap, error }, [`Shanku ${APP_VERSION} · engine ${ENGINE_VERSION}`, `Browser: ${navigator.userAgent}`]));
+    setDiagnosis(diagnoseFile({ ...snap, error }, [`cad2bim ${APP_VERSION} · engine ${ENGINE_VERSION}`, `Browser: ${navigator.userAgent}`]));
   /** Opens an IFC; a failure is diagnosed by the effect on m.load below. */
   const openModelFile = (file: { name: string; bytes: ArrayBuffer }) => {
     snapshot(file);
@@ -412,7 +412,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
   const editWhy: string | null = !revitLinked
     ? 'load the model from Revit first: Revit makes the edit'
     : !bridge.canEdit
-      ? `moving and rotating needs Shanku Bridge for Revit 0.12.0 (this Revit has ${revit.addin ?? 'an older add-in'})`
+      ? `moving and rotating needs cad2bim Bridge for Revit 0.12.0 (this Revit has ${revit.addin ?? 'an older add-in'})`
       : !selectedGids.length
         ? 'select elements first'
         : null;
@@ -428,7 +428,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
     const value = g.kind === 'move' ? `ΔX ${mm(g.dx)}, ΔY ${mm(g.dy)}, ΔZ ${mm(g.dz)} mm` : `${g.angle}° about ${g.about === 'each' ? 'each element’s centre' : 'the selection’s centre'}`;
     stageChange(`${g.kind === 'move' ? 'Move' : 'Rotate'} ${gids.length} element${gids.length === 1 ? '' : 's'}`, stageOp(pending, { ...g, globalIds: gids, name: g.kind === 'move' ? 'Move' : 'Rotate', value, element: selectionLabel(gids) }));
     toggleWin('changes', true);
-    setNotice(`${g.kind === 'move' ? 'The move' : 'The rotation'} is waiting in Changes for Revit: check, then apply. Shanku shows the result once Revit has it.`);
+    setNotice(`${g.kind === 'move' ? 'The move' : 'The rotation'} is waiting in Changes for Revit: check, then apply. cad2bim shows the result once Revit has it.`);
   };
   const stage = (els: RevitElementParams[], param: { id: number; name: string }, value: string) => {
     const before = pending;
@@ -510,7 +510,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
     if (!revitLink || m.model?.info.fileName !== revitLink.fileName || !m.selection.length) return undefined;
     if (revit.phase !== 'connected') return { status: 'Connect to Revit to see and edit its parameters.', groups: [] };
     if (!revitLinked) return { status: 'Revit is showing a different model.', groups: [] };
-    if (!bridge.canEditParams) return { status: `Editing needs Shanku Bridge for Revit 0.2.0 (this Revit has ${revit.addin ?? 'an older add-in'}).`, groups: [] };
+    if (!bridge.canEditParams) return { status: `Editing needs cad2bim Bridge for Revit 0.2.0 (this Revit has ${revit.addin ?? 'an older add-in'}).`, groups: [] };
     if (selectedGids.length > MAX_PARAM_SELECTION) return { status: `Select ${MAX_PARAM_SELECTION} or fewer elements to edit Revit parameters.`, groups: [] };
     const els = selectedGids.map((g) => paramsCache.current.get(g)).filter((e): e is RevitElementParams => !!e);
     if (els.length < selectedGids.length) return { status: paramsState.error ? `Could not read from Revit: ${paramsState.error}` : 'Reading parameters from Revit…', groups: [] };
@@ -599,7 +599,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
       setNotice(`Revit: ${(e as Error).message}`);
     }
   };
-  // ---- Live updates (milestone 3): Revit reports what changed; Shanku merges just those elements
+  // ---- Live updates (milestone 3): Revit reports what changed; cad2bim merges just those elements
   const [liveChanges, setLiveChanges] = useState<ChangeSet>(NO_CHANGES);
   const [liveBusy, setLiveBusy] = useState(false);
   const [autoUpdate, setAutoUpdate] = useState(() => localStorage.getItem('shanku.revitAutoUpdate') === 'on');
@@ -670,7 +670,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
   const [exportState, setExportState] = useState<ExportState | null>(null);
   const [exportOff, setExportOff] = useState<Set<string>>(new Set());
   const canExport = revit.phase === 'connected' && !!revit.document && !revit.document.isFamily && bridge.canCreate;
-  const exportWhy = revit.phase !== 'connected' ? 'connect to Revit first' : !revit.document ? 'open the target model in Revit' : revit.document.isFamily ? 'Revit is showing a family' : !bridge.canCreate ? 'needs Shanku Bridge for Revit 0.6.0' : '';
+  const exportWhy = revit.phase !== 'connected' ? 'connect to Revit first' : !revit.document ? 'open the target model in Revit' : revit.document.isFamily ? 'Revit is showing a family' : !bridge.canCreate ? 'needs cad2bim Bridge for Revit 0.6.0' : '';
   /** Runs the pipeline for Revit and has Revit check the plan (a dry run), for review. */
   const exportToRevit = async () => {
     if (!canExport) {
@@ -714,7 +714,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
   useEffect(() => {
     if (!m.model || m.model.revision || !revitLink || m.model.info.fileName !== revitLink.fileName) return;
     if (localStorage.getItem(`shanku.revitUpdated.${revitLink.fileName}`) === '1')
-      setNotice('Shanku restored this model as it was first loaded from Revit; changes merged since then are not in it. Revit tab → Reload brings it up to date.');
+      setNotice('cad2bim restored this model as it was first loaded from Revit; changes merged since then are not in it. Revit tab → Reload brings it up to date.');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openedInfo]);
   // ---- Download IFC: the model as a file. A model linked to the open Revit document is exported fresh
@@ -780,7 +780,7 @@ export function useRevitLink(deps: RevitLinkDeps) {
         const done = afterApply(pending, sent, r.results);
         for (const c of sent) if (!done.failed.has(changeKey(c))) status.delete(changeKey(c));
         setChangeStatus(status);
-        setPending(done.remaining); // applied in Revit: Revit's undo takes them back, not Shanku's
+        setPending(done.remaining); // applied in Revit: Revit's undo takes them back, not cad2bim's
         setLastApplied({ undoName: r.undoName, applied: done.applied, warnings: r.warnings });
         for (const c of sent) paramsCache.current.delete(c.globalId);
         // moved, turned or retyped elements (and a type's new values on all its instances): read again,

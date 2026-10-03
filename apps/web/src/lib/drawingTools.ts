@@ -1,4 +1,4 @@
-import { objectTypeLabel, type EntityIndex, type ParsedDrawing } from '@shanku/engine';
+import { objectTypeLabel, type EntityIndex, type ParsedDrawing } from '@cad2bim/engine';
 
 /**
  * AutoCAD's object isolation (ISOLATEOBJECTS / HIDEOBJECTS / UNISOLATEOBJECTS) for the 2D view:

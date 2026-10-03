@@ -10,8 +10,8 @@ using Shanku.Revit.Revit;
 namespace Shanku.Revit;
 
 /// <summary>
-/// Shanku Bridge for Revit: a Shanku ribbon tab (Connect, Disconnect, Open Shanku) and a localhost
-/// server that lets Shanku in the browser load this model and sync the selection
+/// cad2bim Bridge for Revit: a cad2bim ribbon tab (Connect, Disconnect, Open cad2bim) and a localhost
+/// server that lets cad2bim in the browser load this model and sync the selection
 /// (docs/bridge/protocol.md).
 /// </summary>
 public sealed class App : IExternalApplication
@@ -49,7 +49,7 @@ public sealed class App : IExternalApplication
             app.SelectionChanged += Host.OnSelectionChanged;
             app.ViewActivated += Host.OnViewActivated;
             app.ControlledApplication.DocumentClosed += Host.OnDocumentClosed;
-            app.ControlledApplication.DocumentChanged += Host.OnDocumentChanged; // live updates for Shanku
+            app.ControlledApplication.DocumentChanged += Host.OnDocumentChanged; // live updates for cad2bim
             CreateRibbon(app);
             return Result.Succeeded;
         }
@@ -75,7 +75,7 @@ public sealed class App : IExternalApplication
 
     private static void CreateRibbon(UIControlledApplication app)
     {
-        const string tab = "Shanku";
+        const string tab = "cad2bim";
         try { app.CreateRibbonTab(tab); } catch { /* already there */ }
         var panel = app.CreateRibbonPanel(tab, "Bridge");
         string asm = typeof(App).Assembly.Location;
@@ -85,9 +85,9 @@ public sealed class App : IExternalApplication
             Image = Icon($"{icon}16.png"),
             ToolTip = tip,
         };
-        panel.AddItem(Button("ShankuConnect", "Connect", "Shanku.Revit.Commands.ConnectCommand", "connect", "Show a pairing code for Shanku, and the bridge status."));
+        panel.AddItem(Button("ShankuConnect", "Connect", "Shanku.Revit.Commands.ConnectCommand", "connect", "Show a pairing code for cad2bim, and the bridge status."));
         panel.AddItem(Button("ShankuDisconnect", "Disconnect", "Shanku.Revit.Commands.DisconnectCommand", "disconnect", "Forget every paired browser and close their connections."));
-        panel.AddItem(Button("ShankuOpen", "Open\nShanku", "Shanku.Revit.Commands.OpenShankuCommand", "open", "Open Shanku in your web browser."));
+        panel.AddItem(Button("ShankuOpen", "Open\ncad2bim", "Shanku.Revit.Commands.OpenShankuCommand", "open", "Open cad2bim in your web browser."));
     }
 
     private static BitmapSource? Icon(string file)
@@ -98,9 +98,9 @@ public sealed class App : IExternalApplication
         return decoder.Frames[0];
     }
 
-    internal static void OpenShanku() => Process.Start(new ProcessStartInfo(ShankuUrl) { UseShellExecute = true });
+    internal static void Opencad2bim() => Process.Start(new ProcessStartInfo(ShankuUrl) { UseShellExecute = true });
 
-    /// <summary>Appends to %APPDATA%\Shanku\bridge.log (kept under 1 MB).</summary>
+    /// <summary>Appends to %APPDATA%\Shanku\bridge.log (kept under 1 MB; the folder keeps its name so pairings survive the rename).</summary>
     internal static void Log(string line)
     {
         try

@@ -1,4 +1,4 @@
-import iconData from '@shanku/brand/icons.json';
+import iconData from '@cad2bim/brand/icons.json';
 
 type IconSet = typeof iconData.icons;
 export type IconName = keyof IconSet;
@@ -17,8 +17,8 @@ export interface IconProps {
 export const iconNames = Object.keys(iconData.icons) as IconName[];
 
 /**
- * Renders a Shanku structural icon. Colour follows `currentColor`.
- * The markup comes from @shanku/brand/icons.json (a static, trusted build asset),
+ * Renders a cad2bim structural icon. Colour follows `currentColor`.
+ * The markup comes from @cad2bim/brand/icons.json (a static, trusted build asset),
  * which is why it is injected rather than parsed.
  */
 export function Icon({ name, size = 20, variant = 'outline', label, className }: IconProps) {

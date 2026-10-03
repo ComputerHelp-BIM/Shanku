@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { DisplayStyle } from '@shanku/engine';
+import type { DisplayStyle } from '@cad2bim/engine';
 
 /** Revit's Visual Style menu on the view bar: one button with the current style, the list in Revit's order. */
 export function VisualStyleMenu({ styles, value, onChange, disabled }: { styles: Array<{ id: DisplayStyle; label: string; keys: string }>; value: DisplayStyle; onChange: (s: DisplayStyle) => void; disabled?: boolean }) {

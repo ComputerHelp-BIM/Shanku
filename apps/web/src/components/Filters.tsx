@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button } from '@shanku/ui';
+import { Button } from '@cad2bim/ui';
 import {
   FILTER_PARAMS,
   NUMBER_OPS,

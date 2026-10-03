@@ -10,7 +10,7 @@ In traditional Indian building practice the *shanku* is the vertical rod set on 
 - At 32 px and below use `shanku-mark-small.svg` (heavier strokes, wider column). Never shrink the regular mark below 48 px.
 - Clear space around the mark: half its width on every side.
 - Do not recolour the column faces, remove the shadow band, add a dot at the ring, or flatten the ring into a circle.
-- The wordmark is lowercase **shanku** set in Sora SemiBold (`wordmark`). It is typeset, not yet outlined.
+- The wordmark is lowercase **cad2bim** set in Sora SemiBold (`wordmark`). It is typeset, not yet outlined.
 
 ## Voice
 

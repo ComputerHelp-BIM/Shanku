@@ -41,6 +41,6 @@ describe('view templates (Revit)', () => {
     const back = importTemplates(exportTemplates([t]), [t]);
     expect(back[0].name).toBe('Structure (imported)');
     expect(back[0].id).not.toBe(t.id);
-    expect(() => importTemplates('{"x":1}', [])).toThrow(/not a Shanku view template/);
+    expect(() => importTemplates('{"x":1}', [])).toThrow(/not a cad2bim view template/);
   });
 });

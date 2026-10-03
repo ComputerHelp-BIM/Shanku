@@ -43,14 +43,14 @@ export function TitleBar({ fileName, saveState, search, actions, quickAccess, br
   return (
     <header className="sk-titlebar">
       {brandHref ? (
-        <a className="sk-titlebar__brand" href={brandHref} target="_blank" rel="noopener" title="Shanku home (opens in a new tab)">
+        <a className="sk-titlebar__brand" href={brandHref} target="_blank" rel="noopener" title="cad2bim home (opens in a new tab)">
         <ShankuMark size={26} />
-        <span className="sk-titlebar__wordmark">shanku</span>
+        <span className="sk-titlebar__wordmark">cad2bim</span>
         </a>
       ) : (
         <div className="sk-titlebar__brand">
         <ShankuMark size={26} />
-        <span className="sk-titlebar__wordmark">shanku</span>
+        <span className="sk-titlebar__wordmark">cad2bim</span>
         </div>
       )}
       {quickAccess ? <div className="sk-titlebar__qat" role="toolbar" aria-label="Quick Access Toolbar">{quickAccess}</div> : null}

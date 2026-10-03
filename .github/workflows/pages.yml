@@ -28,11 +28,11 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run build -w @shanku/tokens
-      - run: npm run build -w @shanku/web
+      - run: npm run build -w @cad2bim/tokens
+      - run: npm run build -w @cad2bim/web
         env:
           BASE: /Shanku/
-      - run: npm run build -w @shanku/playground
+      - run: npm run build -w @cad2bim/playground
         env:
           BASE: /Shanku/playground/
       - name: Assemble site

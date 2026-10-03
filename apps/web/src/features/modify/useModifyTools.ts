@@ -6,7 +6,7 @@
  * centreline; Lock keeps it there. All on the shared point picker.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { planWorkPlane, type P2, type PickOptions, type PickStatus, type WorkPlane } from '@shanku/engine';
+import { planWorkPlane, type P2, type PickOptions, type PickStatus, type WorkPlane } from '@cad2bim/engine';
 import type { ModifyRequest } from '../../lib/editChecks';
 import { viewDirection, type ModelView } from '../../lib/views';
 import type { useShankuModel } from '../../lib/useShankuModel';

@@ -185,6 +185,6 @@ export function paletteSections(commands: readonly AppCommand[], usage: CommandU
   return [
     { id: 'recent' as const, title: 'Recently used', commands: recent },
     { id: 'frequent' as const, title: 'Most used', commands: frequent },
-    { id: 'new' as const, title: `New in Shanku ${maj}.${min}`, commands: fresh },
+    { id: 'new' as const, title: `New in cad2bim ${maj}.${min}`, commands: fresh },
   ].filter((sct) => sct.commands.length);
 }

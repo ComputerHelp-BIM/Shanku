@@ -1,13 +1,13 @@
 import { ExplodeFigure, MouseFigure, SectionBoxFigure, SelectionFigure } from '../components/figures';
 import { useState, type DragEvent } from 'react';
-import { ThemeIcon, useTheme } from '@shanku/ui';
-import { ShankuMark } from '@shanku/ui';
+import { ThemeIcon, useTheme } from '@cad2bim/ui';
+import { ShankuMark } from '@cad2bim/ui';
 import type { AppStart } from '../App';
 import { disclaimer } from '../lib/legal';
 import './home.css';
 
 const BASE = import.meta.env.BASE_URL;
-const REPO = 'https://github.com/Shanku-BIM/Shanku';
+const REPO = 'https://github.com/cad2bim-BIM/cad2bim';
 
 const STEPS = [
   ['Drop in a file', 'An IFC model exported from Revit, or a DXF drawing. It opens on your machine; nothing is uploaded.'],
@@ -27,7 +27,7 @@ const TOOLS = [
   ['Python console', 'Query the model with Python in the browser: elements, levels, BOQ, select and isolate.'],
   ['Marks and grades', 'Detected from Mark, ID, Comments or any parameter you choose.'],
   ['Undo, done right', 'Every change is a named transaction, as Revit users expect: undo and redo from the history list.'],
-  ['Revit add-in (optional)', 'Shanku Bridge for Revit connects to Revit on your own computer: load its model, sync the selection, edit parameters, and build DXF models as native Revit elements.'],
+  ['Revit add-in (optional)', 'cad2bim Bridge for Revit connects to Revit on your own computer: load its model, sync the selection, edit parameters, and build DXF models as native Revit elements.'],
 ] as const;
 
 const SHOTS = [
@@ -43,17 +43,17 @@ const SPECS = [
   ['Opens', 'IFC2x3, IFC4 (IFC4x3 experimental), DXF from AutoCAD R12 to 2018+'],
   ['Exports', 'Excel BOQ (.xlsx), IFC4 from DXF; with the Revit add-in, native Revit elements from DXF and parameter changes back to Revit'],
   ['Largest tested', '51,280 elements open in 3.9 s; a 23.6 MB DXF with 505,000 lines in 26 s'],
-  ['Where it runs', 'Entirely in your browser. Files are read on your device and never uploaded. The optional Revit add-in talks to Shanku on your own computer only.'],
+  ['Where it runs', 'Entirely in your browser. Files are read on your device and never uploaded. The optional Revit add-in talks to cad2bim on your own computer only.'],
   ['Browsers', 'Chrome and Edge (full), Firefox and Safari (open and save by upload and download)'],
-  ['Not yet', 'DWG (save as DXF first), editing geometry in Shanku, windows and doors in Export to Revit, reinforcement and BBS'],
+  ['Not yet', 'DWG (save as DXF first), editing geometry in cad2bim, windows and doors in Export to Revit, reinforcement and BBS'],
 ] as const;
 
 const FAQ = [
   ['Is it free?', 'Yes. Open the app and start; there is no account and no paywall for anything shown here.'],
   ['Do I need to install anything?', 'No. It runs in the browser. The first DXF or Python console session downloads about 15 MB of Python once; the browser keeps it.'],
-  ['Are my files uploaded?', 'No. Models and drawings are read on your device. Nothing leaves it unless you download a file yourself. The optional Revit add-in connects to Shanku on your own computer (localhost), not over the internet.'],
-  ['Is Shanku made by Autodesk?', 'No. Shanku is an independent application by Computer Help, Mumbai. It is not affiliated with, sponsored by or endorsed by Autodesk, Inc. It reads IFC and DXF files that Revit, AutoCAD and other programs write.'],
-  ['Do I need Revit?', 'No. Shanku opens IFC and DXF files on its own. Revit is only needed for the optional add-in features: loading the open Revit model, sending parameter changes back and exporting DXF models as native Revit elements.'],
+  ['Are my files uploaded?', 'No. Models and drawings are read on your device. Nothing leaves it unless you download a file yourself. The optional Revit add-in connects to cad2bim on your own computer (localhost), not over the internet.'],
+  ['Is cad2bim made by Autodesk?', 'No. cad2bim is an independent application by Computer Help, Mumbai. It is not affiliated with, sponsored by or endorsed by Autodesk, Inc. It reads IFC and DXF files that Revit, AutoCAD and other programs write.'],
+  ['Do I need Revit?', 'No. cad2bim opens IFC and DXF files on its own. Revit is only needed for the optional add-in features: loading the open Revit model, sending parameter changes back and exporting DXF models as native Revit elements.'],
   ['Which IFC export should I use from Revit?', 'IFC4 Reference View [Structural] with base quantities and Revit property sets on. The app rates every file it opens and tells you what to change.'],
   ['Can it open DWG?', 'Not directly. Save as DXF in AutoCAD, or use the free ODA File Converter, then open the DXF.'],
   ['Does it work offline?', 'After the first visit mostly yes; Python for DXF files is fetched once from a public CDN.'],
@@ -78,9 +78,9 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
   return (
     <div className="home">
       <header className="home-nav">
-        <a className="home-brand" href="#top" aria-label="Shanku home">
+        <a className="home-brand" href="#top" aria-label="cad2bim home">
           <ShankuMark size={28} />
-          <span>shanku</span>
+          <span>cad2bim</span>
         </a>
         <nav aria-label="Sections">
           <a href="#features">Features</a>
@@ -93,7 +93,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
           <ThemeIcon preference={preference} size={16} />
         </button>
         <button type="button" className="home-btn home-btn--primary" onClick={() => onOpen()}>
-          Open Shanku
+          Open cad2bim
         </button>
       </header>
 
@@ -106,7 +106,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
           <p className="home-lede">Open IFC models exported from Revit and DXF drawings from AutoCAD, navigate with familiar Revit-style controls, check quantities and export a BOQ to Excel. Nothing to install.</p>
           <div className="home-cta">
             <button type="button" className="home-btn home-btn--primary home-btn--lg" onClick={() => onOpen()}>
-              Try Shanku free
+              Try cad2bim free
             </button>
             <button type="button" className="home-btn home-btn--lg" onClick={() => onOpen({ sample: true })}>
               Open the sample model
@@ -125,7 +125,7 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
             <span>It opens straight in the app, full screen.</span>
             {note ? <span className="home-drop__note">{note}</span> : null}
           </div>
-          <img className="home-hero__shot" src={shot('shot-3d')} alt="Shanku showing a structural frame in 3D with the Project browser, Properties and view cube" width={1440} height={900} />
+          <img className="home-hero__shot" src={shot('shot-3d')} alt="cad2bim showing a structural frame in 3D with the Project browser, Properties and view cube" width={1440} height={900} />
         </section>
 
         <section id="how" className="home-section">
@@ -142,13 +142,13 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
           <ul className="home-good">
             <li>Every file stays on your machine. No uploads, no servers.</li>
             <li>Revit users feel at home: familiar shortcuts, a view cube and a section box that work the way they expect.</li>
-            <li>Each IFC file is rated for Shanku, with the Revit export settings that make it better.</li>
+            <li>Each IFC file is rated for cad2bim, with the Revit export settings that make it better.</li>
           </ul>
         </section>
 
         <section id="navigate" className="home-section">
           <p className="home-kicker">Navigation</p>
-          <h2>If you know Revit, you already know Shanku.</h2>
+          <h2>If you know Revit, you already know cad2bim.</h2>
           <p className="home-sub">The same mouse, the same window and crossing selection, the same two-letter shortcuts.</p>
           <MouseFigure />
           <SelectionFigure />
@@ -233,14 +233,14 @@ export function Home({ onOpen }: { onOpen: (start?: AppStart) => void }) {
           <h2>Ready to look inside your model?</h2>
           <p>It opens in about three seconds.</p>
           <button type="button" className="home-btn home-btn--primary home-btn--lg" onClick={() => onOpen()}>
-            Try Shanku free
+            Try cad2bim free
           </button>
         </section>
       </main>
 
       <footer className="home-footer">
         <div>
-          <a className="home-brand" href="#top"><ShankuMark size={22} /><span>shanku</span></a>
+          <a className="home-brand" href="#top"><ShankuMark size={22} /><span>cad2bim</span></a>
           <p>Open, IFC-native structural BIM in the browser.</p>
         </div>
         <div>

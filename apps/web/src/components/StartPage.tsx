@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Icon } from '@shanku/ui';
+import { Button, Icon } from '@cad2bim/ui';
 import { SAMPLES, sampleUrl, type SampleBuilding } from '../lib/samples';
 import { fmtCount } from '../lib/format';
 

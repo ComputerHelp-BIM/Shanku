@@ -1,5 +1,5 @@
 /**
- * Project units (decision 27A): Shanku works in millimetres inside (IFC and CH drawings are mm; numbers are
+ * Project units (decision 27A): cad2bim works in millimetres inside (IFC and CH drawings are mm; numbers are
  * exact far beyond any building), and shows lengths in the project's display units, as Revit's Project
  * Units do: mm, cm, m or feet-inches, with chosen decimals and digit grouping. Every length shown or typed
  * goes through formatLength / parseLength.

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { History } from '@shanku/engine';
+import { History } from '@cad2bim/engine';
 
 /** The document's transaction history, with React state for the undo/redo buttons. */
 export function useHistory() {

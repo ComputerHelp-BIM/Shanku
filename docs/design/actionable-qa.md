@@ -2,7 +2,7 @@
 
 Status: **phase 1 built** in Shanku 0.27.0 (engine 0.25.0); phases 2 and 3 proposed. Written against Shanku 0.22.0.
 
-**Built in phase 1:** the `Finding` and `QaCheck` types and `runChecks` (`packages/engine/src/qa/`), the model-health and mark checks below (except "No level" fix buttons), and the QA panel with tiles, a group filter, Select all, Isolate, Zoom and Step, plus a QA summary in the status bar. **Different from this design:** checks run on the main thread, not in the worker. They are pure and take a few milliseconds (under a second for 50,000 elements), so the extra worker round trip is not worth it yet. Discontinuous columns look through a slab the column sits on, because many models stop columns under the slab. Pipeline (DXF → 3D) findings are not merged into the panel yet; the Card and Badge are app styles, not `@shanku/ui` components, until phase 2 needs them elsewhere. **Not built yet:** ignores, fixes, colour by QA status, Properties integration, exports, IS 1893 screening.
+**Built in phase 1:** the `Finding` and `QaCheck` types and `runChecks` (`packages/engine/src/qa/`), the model-health and mark checks below (except "No level" fix buttons), and the QA panel with tiles, a group filter, Select all, Isolate, Zoom and Step, plus a QA summary in the status bar. **Different from this design:** checks run on the main thread, not in the worker. They are pure and take a few milliseconds (under a second for 50,000 elements), so the extra worker round trip is not worth it yet. Discontinuous columns look through a slab the column sits on, because many models stop columns under the slab. Pipeline (DXF → 3D) findings are not merged into the panel yet; the Card and Badge are app styles, not `@cad2bim/ui` components, until phase 2 needs them elsewhere. **Not built yet:** ignores, fixes, colour by QA status, Properties integration, exports, IS 1893 screening.
 
 ## Why
 
@@ -15,7 +15,7 @@ Revit's Warnings dialog is a long list of text with no severity, no explanation 
 | IFC export rating | `packages/engine/src/ifc/compat.ts` `assessCompatibility` | Model-wide notes only (schema, quantity sets, Revit property sets, elements without level > 5 %). Shown in Properties when nothing is selected. Not element-level. |
 | DXF → 3D checks | `dxf2ifc.py` `analyze()`, type `PipelineQa` in `packages/engine/src/pipeline/types.ts` | 16 codes with severity, DXF position, layer, handle and bounds. "Show" zooms the 2D drawing to the problem but does not select the entity. |
 | Status colours | tokens `status-ok`, `status-warning`, `status-error`, `status-unchecked` | Used by the compatibility badge and Activity; no per-element QA state. |
-| Bottom panel with badges | `@shanku/ui` `BottomPanel` (`badge?: number`) | Built, used only in the playground. |
+| Bottom panel with badges | `@cad2bim/ui` `BottomPanel` (`badge?: number`) | Built, used only in the playground. |
 | Select and zoom helpers | `m.setSelection`, `viewport.fit(indices)`, `boqSelect` | Ready to reuse. |
 | QA panel, QA colour mode | — | Do not exist. |
 
@@ -148,7 +148,7 @@ After each model load and after anything that changes the inputs (mark rules, gr
 
 ## Design-system impact
 
-- Finding cards need a Card and a severity Badge in `@shanku/ui`, built from `status-*` tokens with an icon for each severity (colour never alone), and the planned Menu for Fix and Ignore.
+- Finding cards need a Card and a severity Badge in `@cad2bim/ui`, built from `status-*` tokens with an icon for each severity (colour never alone), and the planned Menu for Fix and Ignore.
 - The QA status colours on the model must reach 3:1 against `viewport` in both canvas themes; add those pairs to `packages/tokens/scripts/check-contrast.mjs`.
 - New icons: severity glyphs (error, warning, info) drawn on the 24 px grid, and "step" arrows if Lucide's do not fit.
 

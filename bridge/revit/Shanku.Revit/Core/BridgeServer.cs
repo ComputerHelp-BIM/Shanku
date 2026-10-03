@@ -16,13 +16,13 @@ public sealed record IdEntry(string GlobalId, string UniqueId, long ElementId);
 public sealed record IdsResult(string Key, IReadOnlyList<IdEntry> Ids);
 public sealed record SelectResult(int Selected, int Missing);
 
-/// <summary>One instance parameter as Shanku shows it. Kind: text, number, integer, yesno, element.</summary>
+/// <summary>One instance parameter as cad2bim shows it. Kind: text, number, integer, yesno, element.</summary>
 /// <remarks>Unit: the project's display unit symbol for numbers ("mm", "m³"…), when it has one (0.4.0).</remarks>
 public sealed record ParamInfo(long Id, string Name, string Group, string Kind, string? Display, bool ReadOnly, string? Why, string? Unit = null);
 /// <summary>Params: instance parameters in the Properties palette's order. TypeParams: the type's (read-only for now).</summary>
 /// <remarks>0.12.0: TypeParams editable where Revit allows; TypeId, how many instances the type has, and the types of the same category it can switch to.</remarks>
 public sealed record ElementParams(string GlobalId, long ElementId, string Category, string TypeName, IReadOnlyList<ParamInfo> Params, string FamilyName = "", IReadOnlyList<ParamInfo>? TypeParams = null, long TypeId = 0, int TypeInstances = 0, IReadOnlyList<TypeChoice>? Types = null);
-/// <summary>A change to apply. OldDisplay is what Shanku read; a different current value is a conflict.</summary>
+/// <summary>A change to apply. OldDisplay is what cad2bim read; a different current value is a conflict.</summary>
 public sealed record ParamChange(string GlobalId, long ParamId, string Name, string? OldDisplay, string Value);
 public sealed record ChangeResult(int Index, bool Ok, string? Error, string? NewDisplay);
 public sealed record WriteResult(bool DryRun, string UndoName, IReadOnlyList<ChangeResult> Results, IReadOnlyList<string> Warnings);
@@ -58,14 +58,14 @@ public sealed class BridgeException : Exception
 }
 
 /// <summary>
-/// The bridge's HTTP server (docs/bridge/protocol.md): localhost only, CORS for Shanku's origins with
+/// The bridge's HTTP server (docs/bridge/protocol.md): localhost only, CORS for cad2bim's origins with
 /// Chrome's local network access header, bearer tokens from pairing, and a server-sent event stream for
 /// selection and document changes.
 /// </summary>
 public sealed class BridgeServer : IDisposable
 {
     public const int Protocol = 1;
-    /// <summary>What this add-in can do beyond protocol 1's basics (Shanku checks before offering it).</summary>
+    /// <summary>What this add-in can do beyond protocol 1's basics (cad2bim checks before offering it).</summary>
     public static readonly string[] Features = { "params", "changes", "partial-export", "create", "edit" };
     public const int MaxCreateElements = 20000;
     public const int MaxReadElements = 500;
@@ -190,17 +190,18 @@ public sealed class BridgeServer : IDisposable
         bool keepOpen = false;
         try
         {
-            // CORS: Shanku's origins only; other sites get nothing they can read.
+            // CORS: cad2bim's origins only; other sites get nothing they can read.
             string? origin = req.Headers["Origin"];
             if (origin != null)
             {
                 if (!_config.IsAllowedOrigin(origin))
                 {
-                    await Send(res, 403, new { error = "This site is not allowed to use the Shanku bridge." });
+                    await Send(res, 403, new { error = "This site is not allowed to use the cad2bim bridge." });
                     return;
                 }
                 res.Headers["Access-Control-Allow-Origin"] = origin;
                 res.Headers["Vary"] = "Origin";
+                // protocol names keep Shanku's, as the /shanku/v1 path: apps of every version read them
                 res.Headers["Access-Control-Expose-Headers"] = "X-Shanku-Document-Key, X-Shanku-Document-Title";
             }
             if (req.HttpMethod == "OPTIONS")
@@ -237,10 +238,10 @@ public sealed class BridgeServer : IDisposable
                 string? token = _pairing.TryPair(code);
                 if (token == null)
                 {
-                    await Send(res, 403, new { error = _pairing.PairingOpen ? "That code is not right." : "No code is showing in Revit. Click Shanku → Connect in Revit for a new one." });
+                    await Send(res, 403, new { error = _pairing.PairingOpen ? "That code is not right." : "No code is showing in Revit. Click cad2bim → Connect in Revit for a new one." });
                     return;
                 }
-                _log("Paired with Shanku");
+                _log("Paired with cad2bim");
                 await Send(res, 200, new { token });
                 return;
             }
@@ -250,7 +251,7 @@ public sealed class BridgeServer : IDisposable
             string? tokenIn = auth != null && auth.StartsWith("Bearer ", StringComparison.Ordinal) ? auth.Substring(7) : req.QueryString["token"];
             if (!_pairing.IsValid(tokenIn))
             {
-                await Send(res, 401, new { error = "Not paired. Click Shanku → Connect in Revit and enter the code in Shanku." });
+                await Send(res, 401, new { error = "Not paired. Click cad2bim → Connect in Revit and enter the code in cad2bim." });
                 return;
             }
 
@@ -352,7 +353,7 @@ public sealed class BridgeServer : IDisposable
                     ExchangeModel? model;
                     try { model = ex.Deserialize<ExchangeModel>(); }
                     catch (JsonException je) { throw new BridgeException(400, $"The model to create cannot be read: {je.Message}"); }
-                    if (model == null || model.Version != 1) throw new BridgeException(400, "This add-in reads exchange version 1; update the add-in or Shanku.");
+                    if (model == null || model.Version != 1) throw new BridgeException(400, "This add-in reads exchange version 1; update the add-in or cad2bim.");
                     if (model.Elements.Count > MaxCreateElements) throw new BridgeException(400, $"At most {MaxCreateElements} elements at a time.");
                     var r = await _host.CreateModelAsync(key, model, dry);
                     await Send(res, 200, r);

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Button } from '@shanku/ui';
+import { Button } from '@cad2bim/ui';
 import { geometryProblem, readNumber, type GeometryEdit } from '../lib/editChecks';
 
 /**
  * Revit's Move (MV) and Rotate (RO) for the selection, with typed values: a move in mm along the model's
- * axes (Revit's own: the IFC Shanku reads from Revit is exported on them), a rotation in degrees
+ * axes (Revit's own: the IFC cad2bim reads from Revit is exported on them), a rotation in degrees
  * (counter-clockwise seen from above) about each element's centre or the selection's. The edit is staged
- * in Changes for Revit; Revit moves the elements when it is applied, and Shanku shows the result then.
+ * in Changes for Revit; Revit moves the elements when it is applied, and cad2bim shows the result then.
  */
 export function EditGeometry({ mode, count, disabledWhy, onMode, onStage, onClose }: { mode: 'move' | 'rotate'; count: number; disabledWhy?: string | null; onMode: (m: 'move' | 'rotate') => void; onStage: (g: GeometryEdit) => void; onClose: () => void }) {
   const [dx, setDx] = useState('');
@@ -70,7 +70,7 @@ export function EditGeometry({ mode, count, disabledWhy, onMode, onStage, onClos
           </fieldset>
         </div>
       )}
-      {problem ? <p className="app-geom__problem">{problem}</p> : <p className="app-geom__hint">Staged in Changes for Revit: check, then apply. Revit moves the elements; Shanku shows them once Revit has.</p>}
+      {problem ? <p className="app-geom__problem">{problem}</p> : <p className="app-geom__hint">Staged in Changes for Revit: check, then apply. Revit moves the elements; cad2bim shows them once Revit has.</p>}
       <div className="app-geom__buttons">
         <Button size="sm" onClick={onClose}>
           Cancel

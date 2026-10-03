@@ -22,7 +22,7 @@ Autodesk's **artwork or branding**. Every new pattern keeps to these rules:
 
 ## Patterns
 
-### Properties palette (`@shanku/ui`: `PropertySection`, `PropertyRow`, `PropertyGrid`, `PropertiesFooter`, `DockPanel` footer)
+### Properties palette (`@cad2bim/ui`: `PropertySection`, `PropertyRow`, `PropertyGrid`, `PropertiesFooter`, `DockPanel` footer)
 
 | Revit | Shanku | Why |
 |---|---|---|
@@ -55,7 +55,7 @@ Properties left, Project Browser right, as Revit docks them (layout key `shanku.
 ### Scrollbars
 
 Thin and themed everywhere (`scrollbar-width: thin`, thumb `--border-strong`, hover `--text-faint`), in
-`@shanku/ui` styles so every surface gets them.
+`@cad2bim/ui` styles so every surface gets them.
 
 ## Review log
 

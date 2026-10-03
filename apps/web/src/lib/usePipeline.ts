@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import type { DxfClient, PipelineQa, RevitExchange } from '@shanku/engine';
+import type { DxfClient, PipelineQa, RevitExchange } from '@cad2bim/engine';
 import type { PipelineState } from '../components/PipelinePanel';
 import { downloadFile } from './excel';
 import { pickFile, type PickedFile } from './openFile';

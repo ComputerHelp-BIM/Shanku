@@ -1,4 +1,4 @@
-import { ErrorBoundary } from '@shanku/ui';
+import { ErrorBoundary } from '@cad2bim/ui';
 import { createContext, forwardRef, useCallback, useContext, useImperativeHandle, useRef, type ReactNode } from 'react';
 import {
   DockviewReact,
@@ -10,7 +10,7 @@ import {
 } from 'dockview-react';
 import 'dockview-react/dist/styles/dockview.css';
 
-/** Every dockable panel in Shanku. "views" is the 3D view and drawing tabs; it always stays in the grid. */
+/** Every dockable panel in cad2bim. "views" is the 3D view and drawing tabs; it always stays in the grid. */
 export type PanelId = 'views' | 'properties' | 'browser' | 'activity' | 'console' | 'qa' | 'colour';
 
 export const PANEL_TITLES: Record<PanelId, string> = {
@@ -41,7 +41,7 @@ function PanelBody(props: IDockviewPanelProps) {
   );
 }
 
-/** Float and dock back, as buttons on every group's tab bar. Everything stays inside the Shanku tab. */
+/** Float and dock back, as buttons on every group's tab bar. Everything stays inside the cad2bim tab. */
 function HeaderActions({ group, containerApi }: IDockviewHeaderActionsProps) {
   const where = group.api.location.type;
   if (group.panels.some((p) => p.id === 'views')) return null;
@@ -124,7 +124,7 @@ export const DockWorkspace = forwardRef<DockWorkspaceHandle, DockWorkspaceProps>
     if (!api) return;
     try {
       const json = api.toJSON() as unknown as Record<string, unknown>;
-      delete json.popoutGroups; // Shanku never opens separate browser windows
+      delete json.popoutGroups; // cad2bim never opens separate browser windows
       localStorage.setItem(LAYOUT_KEY, JSON.stringify(json));
     } catch {
       /* storage unavailable */

@@ -5,9 +5,9 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
     "baseUrl": ".",
     "paths": {
-      "@shanku/ui": ["../../packages/ui/src/index.ts"],
-      "@shanku/engine": ["../../packages/engine/src/index.ts"],
-      "@shanku/engine/pyodide": ["../../packages/engine/src/pyodide.ts"]
+      "@cad2bim/ui": ["../../packages/ui/src/index.ts"],
+      "@cad2bim/engine": ["../../packages/engine/src/index.ts"],
+      "@cad2bim/engine/pyodide": ["../../packages/engine/src/pyodide.ts"]
     }
   },
   "include": ["src", "vite.config.ts"]

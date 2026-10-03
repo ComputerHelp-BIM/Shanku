@@ -1,5 +1,5 @@
-# @shanku/engine 0.42.1
-# @shanku/engine 0.25.0
+# @cad2bim/engine 0.43.0
+# @cad2bim/engine 0.25.0
 
 The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 
@@ -7,7 +7,7 @@ The Shanku model engine: IFC loading, the element model, and the 3D viewer.
 - **One draw call** for the whole model: geometry merged into one indexed mesh, plus feature edges (boundary and > 30° creases only).
 - **Per-element state on the GPU** (selected, hover, hidden) in a small texture, so selection never rebuilds geometry.
 - **ID-buffer picking**: one pixel rendered per pick, constant time regardless of model size.
-- **Revit navigation and commands** in `Viewer` (see below). Colours come from `@shanku/tokens` at runtime, so the view follows Paper and Ink.
+- **Revit navigation and commands** in `Viewer` (see below). Colours come from `@cad2bim/tokens` at runtime, so the view follows Paper and Ink.
 
 Requires `three` 0.186 and `web-ifc` 0.0.77. The app must serve `web-ifc.wasm` and pass its folder to `new IfcClient(wasmPath)`.
 
@@ -43,7 +43,7 @@ The first DXF in a session downloads Python and ezdxf from jsDelivr and PyPI (ab
 
 ```bash
 python tools/fixtures/make_sample_ifc.py large large-frame.ifc
-SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
+SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @cad2bim/engine
 ```
 
 ## Known limits
@@ -53,6 +53,9 @@ SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
 - Perspective camera, walkthrough (WASD, Q/E) and the SteeringWheel (F8) are not implemented.
 
 ## Changelog
+
+### 0.43.0 — 2026-10-03
+- Renamed `@cad2bim/engine` (was `@shanku/engine`); messages say cad2bim. DXF → 3D pipeline 2.0.2: new IFC headers name cad2bim (the `Shanku_Structural` property set is unchanged).
 
 ### 0.42.1 — 2026-10-03
 - `Viewer`: element positions measured once per task (`rectOf`, cleared by a microtask) instead of per projected point; hover while picking ~3× faster on a 14,000-element model. Output identical.
@@ -225,7 +228,7 @@ Measure and Dimensions (web 0.42.0 and 0.43.0; the dev line's engine 0.32.0 was 
 - Pipeline 1.1.0: stacked identical outlines with one label are built once (warning) instead of skipped.
 - Windows and doors render as glass (a transparent second pass).
 - DXF extractor 1.1.0: every line, fill and text records its DXF object; `DrawingViewer.pickAt` / `select` pick with a CAD pick box and highlight; `DxfClient.entity` returns object properties; drawings stay open in the worker until `forget`.
-- One Pyodide constant (`@shanku/engine/pyodide`) for all workers.
+- One Pyodide constant (`@cad2bim/engine/pyodide`) for all workers.
 
 ### 0.8.0 — 2026-09-22
 - Added the DXF → 3D pipeline (`src/pipeline/dxf2ifc.py` 1.0.0): reads the Computer Help format (see `docs/dxf-format.md`) and writes IFC4 with storeys, extrusions, openings, types, materials, `Shanku_DXF` properties, base quantities and stable GlobalIds; checks with locations. Runs in the DXF worker (`DxfClient.pipeline`) and in CPython (pytest).

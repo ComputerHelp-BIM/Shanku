@@ -2,7 +2,7 @@
 
 Shanku is a static site: `apps/web/dist` after a build. It is an npm-workspaces monorepo, so hosts must
 install and build from the **repository root**, never from `apps/web` alone (the local packages
-`@shanku/engine`, `@shanku/ui` and `@shanku/tokens` are not on npm).
+`@cad2bim/engine`, `@cad2bim/ui` and `@cad2bim/tokens` are not on npm).
 
 ## GitHub Pages (automatic)
 
@@ -24,7 +24,7 @@ In the Vercel dashboard, one project is enough:
 
 1. **Settings → General → Root Directory:** leave it **empty** (repository root). A root of `apps/web`
    is what made the "Production – shanku-web" project fail: `npm install` there cannot find the local
-   `@shanku/*` packages.
+   `@cad2bim/*` packages.
 2. **Framework Preset:** Other. Build and output settings come from `vercel.json`; leave the dashboard
    overrides off.
 3. **Node.js version:** 22.x (matches `.nvmrc`).

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
-import { Button } from '@shanku/ui';
-import { CATEGORY_ORDER, siFactor, type ElementRecord, type ParsedModel } from '@shanku/engine';
+import { Button } from '@cad2bim/ui';
+import { CATEGORY_ORDER, siFactor, type ElementRecord, type ParsedModel } from '@cad2bim/engine';
 import { buildBoqWorkbook, downloadFile } from '../lib/excel';
 import { clearOverride, effectiveRebar, inr, itemKey, itemRate, lastProfile, parseRate, rateFor, rateItems, rememberProfile, setItemRate, setOverride, type RateBook } from '../lib/rates';
 import { CITY_PROFILES, ESTIMATED_GRADES, GRADES, profileFor, profileRate, type RateProfileValues } from '../lib/rateProfiles';
@@ -443,7 +443,7 @@ export function BoqWindow(p: BoqWindowProps) {
           <section className="bq-rebar bq-profile-edit" aria-labelledby="bq-profile-title">
             <h3 id="bq-profile-title">Rate profile: {cityName}</h3>
             <p className="bq-faint">
-              Every item without a typed rate uses these values: concrete by grade plus formwork, times the city factor and escalation. Change a value once and every item follows. Base: CPWD DSR 2023 (Delhi, April 2023 prices). {CITY_PROFILES.find((c) => c.id === profile.id)?.note}. Grades marked * and the formwork areas are Shanku estimates. Replace them with your own tender rates.
+              Every item without a typed rate uses these values: concrete by grade plus formwork, times the city factor and escalation. Change a value once and every item follows. Base: CPWD DSR 2023 (Delhi, April 2023 prices). {CITY_PROFILES.find((c) => c.id === profile.id)?.note}. Grades marked * and the formwork areas are cad2bim estimates. Replace them with your own tender rates.
             </p>
             <div className="bq-profile-grid">
               <fieldset>

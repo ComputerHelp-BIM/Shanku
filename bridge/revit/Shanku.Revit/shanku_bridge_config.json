@@ -1,8 +1,8 @@
 {
   "_readme": [
-    "Shanku Revit bridge settings. All keys are optional; delete a key to use its default.",
-    "port: the localhost port the bridge listens on (default 7071). Shanku must use the same port.",
-    "extraOrigins: more web addresses allowed to call the bridge, besides Shanku's own sites",
+    "cad2bim Revit bridge settings. All keys are optional; delete a key to use its default.",
+    "port: the localhost port the bridge listens on (default 7071). cad2bim must use the same port.",
+    "extraOrigins: more web addresses allowed to call the bridge, besides cad2bim's own sites",
     "  (https://shanku.vercel.app and its previews, GitHub Pages, and localhost dev servers).",
     "Restart Revit after changing this file."
   ],

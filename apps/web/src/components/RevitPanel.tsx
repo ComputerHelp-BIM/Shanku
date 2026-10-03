@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Button } from '@shanku/ui';
+import { Button } from '@cad2bim/ui';
 import { DEFAULT_PORT, type BridgeState } from '../lib/revitBridge';
 
 export interface RevitPanelProps {
   state: BridgeState;
-  /** Shanku shows the model loaded from this Revit document (key). */
+  /** cad2bim shows the model loaded from this Revit document (key). */
   linkedKey: string | null;
   loading: boolean;
   syncSelection: boolean;
@@ -35,10 +35,10 @@ export function RevitPanel(p: RevitPanelProps) {
   const steps = (
     <ol className="app-revit__steps">
       <li>
-        Install <strong>Shanku Bridge for Revit 2025</strong> (from the Shanku repository: <code>bridge/revit</code>).
+        Install <strong>cad2bim Bridge for Revit 2025</strong> (from the cad2bim repository: <code>bridge/revit</code>).
       </li>
       <li>
-        Open your model in Revit, then <strong>Shanku → Connect</strong>. Revit shows a 6-digit code.
+        Open your model in Revit, then <strong>cad2bim → Connect</strong>. Revit shows a 6-digit code.
       </li>
       <li>Enter the code here. Chrome asks once to allow access to apps on this device: allow it.</li>
     </ol>
@@ -108,7 +108,7 @@ export function RevitPanel(p: RevitPanelProps) {
                 <dd className="app-revit__path">{doc.path}</dd>
               </>
             ) : null}
-            <dt>In Shanku</dt>
+            <dt>In cad2bim</dt>
             <dd>{linked ? 'This model (selection follows Revit)' : p.linkedKey ? 'A different Revit model' : 'Not loaded yet'}</dd>
           </dl>
           <div className="app-revit__row">

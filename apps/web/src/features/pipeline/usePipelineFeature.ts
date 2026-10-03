@@ -1,7 +1,7 @@
 import { type useDrawings } from '../../lib/useDrawings';
 import { usePipeline, qaFocus } from '../../lib/usePipeline';
 import { type useShankuModel } from '../../lib/useShankuModel';
-import { type PipelineQa } from '@shanku/engine';
+import { type PipelineQa } from '@cad2bim/engine';
 import { useCallback } from 'react';
 
 export interface PipelineFeatureDeps {

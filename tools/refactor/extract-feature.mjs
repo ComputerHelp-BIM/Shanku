@@ -136,7 +136,7 @@ function typeText(name, info) {
     const nm = /node_modules\/(?:@types\/)?((?:@[^/]+\/)?[^/]+)/.exec(p);
     if (nm) return `import('${nm[1] === 'react' ? 'react' : nm[1]}')`;
     const pk = /packages\/(engine|ui)\/src\/index$/.exec(p);
-    if (pk) return `import('@shanku/${pk[1]}')`;
+    if (pk) return `import('@cad2bim/${pk[1]}')`;
     return `import('${rel(p)}')`;
   });
   return s;

@@ -1,5 +1,5 @@
 import { Fragment, useId, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
-import { CommandSearch } from '@shanku/ui';
+import { CommandSearch } from '@cad2bim/ui';
 import { isNewCommand, loadUsage, paletteSections, rankCommands, recordUse, type AppCommand, type CommandUsage } from '../lib/commands';
 
 /** An element the query found (mark, Element ID, GlobalId or name). */
@@ -14,7 +14,7 @@ export interface CommandPaletteProps {
   getCommands: () => AppCommand[];
   findElement: (query: string) => ElementHit | null;
   inputRef?: Ref<HTMLInputElement>;
-  /** For the "New in Shanku x.y" section and the New badges. */
+  /** For the "New in cad2bim x.y" section and the New badges. */
   appVersion: string;
 }
 

@@ -1,13 +1,13 @@
 /**
  * Trademark and compatibility notice, in one place: the homepage footer, the Guide's About section and
- * anywhere Shanku shows full product copy use it. Wording: Autodesk's standard attribution (accurate
+ * anywhere cad2bim shows full product copy use it. Wording: Autodesk's standard attribution (accurate
  * whatever each mark's registration status in India) and Computer Help's independence statement.
  * The month comes from the build date, so it cannot go stale.
  */
 declare const __BUILD_DATE__: string | undefined;
 
 export const TRADEMARK_NOTICE =
-  'Autodesk, Revit and AutoCAD are registered trademarks or trademarks of Autodesk, Inc., and/or its subsidiaries and/or affiliates in the USA and/or other countries. Shanku is an independent software application developed by Computer Help and is not affiliated with, sponsored by, or endorsed by Autodesk, Inc.';
+  'Autodesk, Revit and AutoCAD are registered trademarks or trademarks of Autodesk, Inc., and/or its subsidiaries and/or affiliates in the USA and/or other countries. cad2bim is an independent software application developed by Computer Help and is not affiliated with, sponsored by, or endorsed by Autodesk, Inc.';
 
 /** The build's date (in tests and tools without the build stamp: today). */
 export function buildDate(): Date {

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Installs (or removes) Shanku Bridge for Revit for the current user.
+    Installs (or removes) cad2bim Bridge for Revit for the current user.
 .DESCRIPTION
     Copies Shanku.Revit.dll and its manifest to %APPDATA%\Autodesk\Revit\Addins\<version>\.
     Keeps an existing shanku_bridge_config.json. Revit must be closed.
@@ -10,7 +10,7 @@
     Remove:
         powershell -ExecutionPolicy RemoteSigned -File .\install.ps1 -Uninstall
 .NOTES
-    Shanku Bridge 0.12.0 · Revit 2025
+    cad2bim Bridge 0.12.1 · Revit 2025
 #>
 [CmdletBinding()]
 param(
@@ -32,7 +32,7 @@ if (Get-Process -Name 'Revit' -ErrorAction SilentlyContinue) {
 if ($Uninstall) {
     Remove-Item -LiteralPath $manifest -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Host 'Shanku Bridge removed.'
+    Write-Host 'cad2bim Bridge removed.'
     exit 0
 }
 
@@ -57,5 +57,5 @@ Copy-Item -LiteralPath (Join-Path $here 'Shanku.Revit.addin') -Destination $mani
 Get-ChildItem -LiteralPath $target -File | Unblock-File
 Unblock-File -LiteralPath $manifest
 
-Write-Host "Installed Shanku Bridge for Revit $RevitVersion in $target"
-Write-Host 'Start Revit, then Shanku tab -> Connect.'
+Write-Host "Installed cad2bim Bridge for Revit $RevitVersion in $target"
+Write-Host 'Start Revit, then cad2bim tab -> Connect.'

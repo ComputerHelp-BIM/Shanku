@@ -1,4 +1,4 @@
-import type { Category, ElementRecord } from '@shanku/engine';
+import type { Category, ElementRecord } from '@cad2bim/engine';
 
 /**
  * Default BOQ rates by city (rate profiles): pick a city once and every item gets a rate; change a
@@ -7,11 +7,11 @@ import type { Category, ElementRecord } from '@shanku/engine';
  *
  * Basis: CPWD Delhi Schedule of Rates (DSR) 2023, prices of April 2023 at Delhi:
  * - RCC concrete excluding formwork and reinforcement: M20 ₹8,364.20/m³, M25 ₹8,683.80/m³ (DSR);
- *   M30 to M40 continue the same step per grade (Shanku's estimate, marked as such in the app).
+ *   M30 to M40 continue the same step per grade (cad2bim's estimate, marked as such in the app).
  * - Centering and shuttering, DSR 5.9: columns ₹961.30/m², beams ₹736.40/m², suspended slabs
  *   ₹927.25/m², walls ₹842.50/m², foundations ₹392.15/m².
  * - Reinforcement, TMT Fe500D, cut, bent, placed and bound: ₹84.50/kg (DSR).
- * City factors are Shanku's indicative estimates of each metro's premium over Delhi, not CPWD cost
+ * City factors are cad2bim's indicative estimates of each metro's premium over Delhi, not CPWD cost
  * indices; escalation since April 2023 is a separate factor. Both are editable, and every rate here
  * is a starting point to replace with current tender rates.
  */
@@ -23,7 +23,7 @@ export interface RateProfileValues {
   concrete: Record<Grade, number>;
   /** ₹ per m² of formwork by category. */
   formwork: Partial<Record<Category, number>>;
-  /** m² of formwork per m³ of concrete, typical for Indian RCC sections (Shanku's estimate). */
+  /** m² of formwork per m³ of concrete, typical for Indian RCC sections (cad2bim's estimate). */
   formworkArea: Partial<Record<Category, number>>;
   /** ₹ per kg of reinforcement, fixed in place. */
   steel: number;
@@ -54,7 +54,7 @@ export const ESTIMATED_GRADES: readonly Grade[] = ['M30', 'M35', 'M40'];
 export interface RateProfile {
   id: string;
   name: string;
-  /** Shanku's estimate, or from a published schedule. */
+  /** cad2bim's estimate, or from a published schedule. */
   note: string;
   cityFactor: number;
 }
@@ -62,13 +62,13 @@ export interface RateProfile {
 /** Metro city profiles (factor on the Delhi DSR base). Indicative: change them to your own rates. */
 export const CITY_PROFILES: readonly RateProfile[] = [
   { id: 'delhi', name: 'Delhi NCR (CPWD DSR 2023 base)', note: 'CPWD DSR 2023 rates as published', cityFactor: 1 },
-  { id: 'mumbai', name: 'Mumbai / MMR', note: 'Shanku estimate: +15 % on Delhi', cityFactor: 1.15 },
-  { id: 'bengaluru', name: 'Bengaluru', note: 'Shanku estimate: +8 % on Delhi', cityFactor: 1.08 },
-  { id: 'pune', name: 'Pune', note: 'Shanku estimate: +8 % on Delhi', cityFactor: 1.08 },
-  { id: 'chennai', name: 'Chennai', note: 'Shanku estimate: +5 % on Delhi', cityFactor: 1.05 },
-  { id: 'hyderabad', name: 'Hyderabad', note: 'Shanku estimate: +3 % on Delhi', cityFactor: 1.03 },
-  { id: 'kolkata', name: 'Kolkata', note: 'Shanku estimate: same as Delhi', cityFactor: 1 },
-  { id: 'ahmedabad', name: 'Ahmedabad', note: 'Shanku estimate: −2 % on Delhi', cityFactor: 0.98 },
+  { id: 'mumbai', name: 'Mumbai / MMR', note: 'cad2bim estimate: +15 % on Delhi', cityFactor: 1.15 },
+  { id: 'bengaluru', name: 'Bengaluru', note: 'cad2bim estimate: +8 % on Delhi', cityFactor: 1.08 },
+  { id: 'pune', name: 'Pune', note: 'cad2bim estimate: +8 % on Delhi', cityFactor: 1.08 },
+  { id: 'chennai', name: 'Chennai', note: 'cad2bim estimate: +5 % on Delhi', cityFactor: 1.05 },
+  { id: 'hyderabad', name: 'Hyderabad', note: 'cad2bim estimate: +3 % on Delhi', cityFactor: 1.03 },
+  { id: 'kolkata', name: 'Kolkata', note: 'cad2bim estimate: same as Delhi', cityFactor: 1 },
+  { id: 'ahmedabad', name: 'Ahmedabad', note: 'cad2bim estimate: −2 % on Delhi', cityFactor: 0.98 },
 ];
 
 /** The profile a rate book uses: a city and, optionally, its own values. */

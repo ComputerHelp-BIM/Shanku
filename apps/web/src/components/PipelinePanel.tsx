@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useTasks } from '../lib/progress';
 import { BuildProgress } from './BuildProgress';
-import { Button } from '@shanku/ui';
-import type { PipelineQa, PipelineSummary } from '@shanku/engine';
+import { Button } from '@cad2bim/ui';
+import type { PipelineQa, PipelineSummary } from '@cad2bim/engine';
 
 export interface PipelineState {
   fileName: string;

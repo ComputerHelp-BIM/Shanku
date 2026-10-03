@@ -241,7 +241,7 @@ export interface AppShellProps {
   statusBar: ReactNode;
 }
 
-/** The full Shanku window layout. Fills its container (give it 100vh). */
+/** The full cad2bim window layout. Fills its container (give it 100vh). */
 export function AppShell(p: AppShellProps) {
   return (
     <div className="sk-shell">

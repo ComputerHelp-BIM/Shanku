@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
-import { DEFAULT_DRAWING_DISPLAY, indexEntities, type CrosshairSize, type DrawingDisplay, type DrawingTool, type History } from '@shanku/engine';
+import { DEFAULT_DRAWING_DISPLAY, indexEntities, type CrosshairSize, type DrawingDisplay, type DrawingTool, type History } from '@cad2bim/engine';
 import type { DrawingViewHandle } from '../components/DrawingView';
 import type { AppCommand } from './commands';
 import { drawingMenu, type DrawingAction } from './drawingMenu';

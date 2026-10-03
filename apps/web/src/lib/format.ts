@@ -1,4 +1,4 @@
-import type { PropertyValue } from '@shanku/engine';
+import type { PropertyValue } from '@cad2bim/engine';
 
 const nf = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 3 });
 

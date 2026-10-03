@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace Shanku.Revit.Core;
 
 /// <summary>
-/// The model Shanku asks Revit to build (the DXF → 3D pipeline's exchange, version 1): levels and
+/// The model cad2bim asks Revit to build (the DXF → 3D pipeline's exchange, version 1): levels and
 /// elements in millimetres, relative to the drawing origin, which goes to Revit's Project Base Point.
 /// </summary>
 public sealed class ExchangeModel

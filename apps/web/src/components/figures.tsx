@@ -2,7 +2,7 @@
  * Guide figures: small diagrams drawn as inline SVG, coloured only through design tokens (see the
  * .fig-* rules in app.css), so they follow the Paper and Ink themes and stay crisp at any size.
  * Each figure has a text alternative for screen readers; the visible labels repeat what it shows.
- * Structura's guide uses the same approach; these describe Shanku's own controls (Revit-style).
+ * Structura's guide uses the same approach; these describe cad2bim's own controls (Revit-style).
  */
 import { useId, type ReactNode } from 'react';
 import './figures.css';
@@ -62,7 +62,7 @@ const Arrow = ({ x1, y1, x2, y2, className = 'fig-arrow' }: { x1: number; y1: nu
 
 /* ------------------------------------------------------------------ mouse */
 
-/** Shanku's mouse map (Revit navigation), colour-keyed to the button each action uses. */
+/** cad2bim's mouse map (Revit navigation), colour-keyed to the button each action uses. */
 export function MouseFigure() {
   const groups: Array<{ tone: string; head: string; x: number; y: number; items: Array<[string, string]> }> = [
     {
@@ -99,7 +99,7 @@ export function MouseFigure() {
         <path d="M0 64 H110 M55 0 V64" className="fig-seam" />
         <rect x="47" y="14" width="16" height="32" rx="8" className="fig-zone-wheel" />
         <path d="M51 22 H59 M51 28 H59 M51 34 H59 M51 40 H59" className="fig-seam" />
-        <text x="55" y="118" className="fig-d" textAnchor="middle">Shanku</text>
+        <text x="55" y="118" className="fig-d" textAnchor="middle">cad2bim</text>
       </g>
       {groups.map((g) => (
         <g key={g.head}>
@@ -471,13 +471,13 @@ export function QuantitiesFigure() {
 export function DxfPipelineFigure() {
   return (
     <Flow
-      label="DXF to 3D: the drawing's frames and CH layers are read, outlines, labels and levels are matched, checked, and written as an IFC4 model that opens in Shanku and Revit."
+      label="DXF to 3D: the drawing's frames and CH layers are read, outlines, labels and levels are matched, checked, and written as an IFC4 model that opens in cad2bim and Revit."
       steps={[
         ['DXF drawing', 'frames and\nCH-* layers'],
         ['Read', 'outlines, labels,\nlevels, heights'],
         ['Check', 'duplicates and\nmissing labels'],
         ['IFC4 model', 'stable GlobalIds,\nno openings'],
-        ['Open', 'in Shanku\nor Revit'],
+        ['Open', 'in cad2bim\nor Revit'],
       ]}
     />
   );
@@ -487,15 +487,15 @@ export function DxfPipelineFigure() {
 
 export function RevitBridgeFigure() {
   return (
-    <Svg w={660} h={230} label="The Revit bridge. The Shanku add-in in Revit and Shanku in the browser talk over localhost on this computer only, after pairing with a one-time code. Revit sends the model as IFC4; the selection follows in both directions. The Revit model changes only when you apply changes or export to Revit.">
+    <Svg w={660} h={230} label="The Revit bridge. The cad2bim add-in in Revit and cad2bim in the browser talk over localhost on this computer only, after pairing with a one-time code. Revit sends the model as IFC4; the selection follows in both directions. The Revit model changes only when you apply changes or export to Revit.">
       <rect x="20" y="40" width="190" height="150" rx="10" className="fig-panel" />
       <text x="115" y="66" className="fig-t" textAnchor="middle">Revit 2025</text>
       <rect x="44" y="84" width="142" height="40" rx="8" className="fig-card fig-card--mid" />
-      <text x="115" y="102" className="fig-t" textAnchor="middle">Shanku add-in</text>
-      <text x="115" y="117" className="fig-d" textAnchor="middle">Shanku tab → Connect</text>
+      <text x="115" y="102" className="fig-t" textAnchor="middle">cad2bim add-in</text>
+      <text x="115" y="117" className="fig-d" textAnchor="middle">cad2bim tab → Connect</text>
       <text x="115" y="150" className="fig-d" textAnchor="middle">your model · never changed</text>
       <rect x="450" y="40" width="190" height="150" rx="10" className="fig-panel" />
-      <text x="545" y="66" className="fig-t" textAnchor="middle">Shanku in the browser</text>
+      <text x="545" y="66" className="fig-t" textAnchor="middle">cad2bim in the browser</text>
       <rect x="474" y="84" width="142" height="40" rx="8" className="fig-card fig-card--top" />
       <text x="545" y="102" className="fig-t" textAnchor="middle">Revit window</text>
       <text x="545" y="117" className="fig-d" textAnchor="middle">enter the 6-digit code</text>

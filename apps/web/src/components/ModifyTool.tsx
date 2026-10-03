@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button } from '@shanku/ui';
-import { parseLength, unitLabel } from '@shanku/engine';
+import { Button } from '@cad2bim/ui';
+import { parseLength, unitLabel } from '@cad2bim/engine';
 import { modifyProblem, readNumber, type ModifyKind, type ModifyRequest } from '../lib/editChecks';
 
 const TITLE: Record<ModifyKind, string> = { move: 'Move', copy: 'Copy', rotate: 'Rotate', mirror: 'Mirror', array: 'Array', offset: 'Offset' };
@@ -15,7 +15,7 @@ const WHAT: Record<ModifyKind, string> = {
 };
 
 /**
- * Revit's Modify tools with typed values (stage 1): Move, Copy, Rotate, Mirror, Array, Offset on Shanku's own
+ * Revit's Modify tools with typed values (stage 1): Move, Copy, Rotate, Mirror, Array, Offset on cad2bim's own
  * model. Picking points, snaps and temporary dimensions come next; Delete, Pin and Unpin need no dialog.
  */
 export function ModifyTool({ kind, count, disabledWhy, onKind, onApply, onClose }: { kind: ModifyKind; count: number; disabledWhy: string | null; onKind: (k: ModifyKind) => void; onApply: (r: ModifyRequest) => void; onClose: () => void }) {

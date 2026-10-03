@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Button } from '@shanku/ui';
-import type { RevitExchange } from '@shanku/engine';
+import { Button } from '@cad2bim/ui';
+import type { RevitExchange } from '@cad2bim/engine';
 import type { CreateReport } from '../lib/revitBridge';
 import { KIND_LABEL, exportSets } from '../lib/exportPlan';
 import { BuildProgress } from './BuildProgress';
@@ -37,7 +37,7 @@ const ACTION: Record<string, string> = { exists: 'in Revit', 'same-elevation': '
 
 /**
  * Export to Revit: the drawing's model is checked by Revit first (a dry run: nothing is kept), shown
- * here for approval by level and kind, then created as one Revit undo; Shanku then loads it back.
+ * here for approval by level and kind, then created as one Revit undo; cad2bim then loads it back.
  */
 export function ExportToRevit({ state, off, onToggle, onCheck, onCreate, onLoad, loading, progress }: ExportToRevitProps) {
   const [reviewed, setReviewed] = useState(false);
@@ -88,10 +88,10 @@ export function ExportToRevit({ state, off, onToggle, onCheck, onCreate, onLoad,
         {notes.length ? <Notes list={notes} /> : null}
         {r.warnings.length ? <Warnings list={r.warnings} /> : null}
         <div className="app-export__bar">
-          <span className="app-export__hint">Shanku loads the model from Revit, so both stay in step.</span>
+          <span className="app-export__hint">cad2bim loads the model from Revit, so both stay in step.</span>
           <span className="app-spacer" />
           <Button size="sm" variant="primary" disabled={loading} onClick={onLoad}>
-            {loading ? 'Loading…' : 'Load it in Shanku'}
+            {loading ? 'Loading…' : 'Load it in cad2bim'}
           </Button>
         </div>
       </div>

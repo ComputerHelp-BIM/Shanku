@@ -5,7 +5,7 @@
  *   across the view as vertical section lines.
  * 3D views show none.
  */
-import { formatLength, type Annotation } from '@shanku/engine';
+import { formatLength, type Annotation } from '@cad2bim/engine';
 import { viewDirection, type ModelView } from './views';
 
 interface Box {

@@ -2,8 +2,8 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { ViewCube, type Orientation } from './ViewCube';
 import { MeasureBar } from './MeasureBar';
 import { DimensionBar } from './DimensionBar';
-import { type GridSpec, Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName, onDisplayUnits, type PickOptions } from '@shanku/engine';
-import type { Annotation, CameraState, DimensionKind, DimensionReadout, ExplodeMode, MeasureMode, MeasureReadout, PlacedDimension, SectionBoxState, Vec3 } from '@shanku/engine';
+import { type GridSpec, Viewer, type DisplayStyle, type ParsedModel, type SelectMode, type ViewName, onDisplayUnits, type PickOptions } from '@cad2bim/engine';
+import type { Annotation, CameraState, DimensionKind, DimensionReadout, ExplodeMode, MeasureMode, MeasureReadout, PlacedDimension, SectionBoxState, Vec3 } from '@cad2bim/engine';
 
 export interface ViewportHandle {
   fit: (indices?: number[]) => void;

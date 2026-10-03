@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { asOf, disclaimer, TRADEMARK_NOTICE } from '../src/lib/legal';
 
 describe('legal notice', () => {
-  it('names the marks, their owner and Shanku’s independence', () => {
+  it('names the marks, their owner and cad2bim’s independence', () => {
     for (const s of ['Autodesk, Revit and AutoCAD', 'trademarks of Autodesk, Inc.', 'independent software application developed by Computer Help', 'not affiliated with, sponsored by, or endorsed by Autodesk, Inc.']) expect(TRADEMARK_NOTICE).toContain(s);
   });
   it('dates the features and compatibility data by month', () => {

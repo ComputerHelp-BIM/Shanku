@@ -1,4 +1,4 @@
-// @shanku/tokens contrast check — fails the build when a required colour pair drops below WCAG 2.
+// @cad2bim/tokens contrast check — fails the build when a required colour pair drops below WCAG 2.
 // Text needs 4.5:1 (1.4.3); focus indicators and control boundaries need 3:1 (1.4.11).
 // Every pair is checked in every theme. Only opaque hex values are compared.
 import { readFileSync } from 'node:fs';
@@ -65,7 +65,7 @@ for (const theme of themes) {
 }
 
 if (failures.length) {
-  console.error(`@shanku/tokens: ${failures.length} of ${checked} contrast pairs fail:\n${failures.join('\n')}`);
+  console.error(`@cad2bim/tokens: ${failures.length} of ${checked} contrast pairs fail:\n${failures.join('\n')}`);
   process.exit(1);
 }
-console.log(`@shanku/tokens: ${checked} contrast pairs pass (WCAG 2, ${themes.join(' + ')}).`);
+console.log(`@cad2bim/tokens: ${checked} contrast pairs pass (WCAG 2, ${themes.join(' + ')}).`);

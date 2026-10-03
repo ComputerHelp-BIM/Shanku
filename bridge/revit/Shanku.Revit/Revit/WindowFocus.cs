@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace Shanku.Revit.Revit;
 
 /// <summary>
-/// Brings Revit's main window to the front, maximised, after work Shanku asked for (Export to Revit). Windows lets a
+/// Brings Revit's main window to the front, maximised, after work cad2bim asked for (Export to Revit). Windows lets a
 /// program take the foreground only in some conditions; the usual way in is a synthetic Alt key press
 /// before SetForegroundWindow. When Windows still refuses, Revit's taskbar button flashes instead.
 /// </summary>

@@ -30,7 +30,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     this.setState({ stack: info.componentStack ?? '' });
-    console.error(`[Shanku] Error in ${this.props.where}:`, error, info.componentStack);
+    console.error(`[cad2bim] Error in ${this.props.where}:`, error, info.componentStack);
   }
 
   private report(): string {
@@ -62,7 +62,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
     const page = this.props.variant === 'page';
     return (
       <div className={page ? 'sk-crash sk-crash--page' : 'sk-crash'} role="alert">
-        <strong>{page ? 'Shanku hit an error' : `${this.props.where} hit an error`}</strong>
+        <strong>{page ? 'cad2bim hit an error' : `${this.props.where} hit an error`}</strong>
         <p className="sk-crash__msg">{e.message || e.name}</p>
         <p className="sk-crash__hint">
           {page

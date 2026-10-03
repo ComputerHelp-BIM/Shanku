@@ -138,7 +138,7 @@ const modeOf = (e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }): S
   e.ctrlKey || e.metaKey ? 'add' : e.shiftKey ? 'remove' : 'replace';
 
 /**
- * The Shanku 3D view. One merged mesh + feature edges, per-element state in a texture,
+ * The cad2bim 3D view. One merged mesh + feature edges, per-element state in a texture,
  * ID-buffer picking, render on demand, theme-aware.
  *
  * Revit navigation: middle-drag pan · Shift + middle-drag orbit (about the selection) ·

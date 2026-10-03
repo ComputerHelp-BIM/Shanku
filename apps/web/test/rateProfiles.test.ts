@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { ElementRecord } from '@shanku/engine';
+import type { ElementRecord } from '@cad2bim/engine';
 import { DSR_2023, gradeOf, profileFor, profileRate, profileSteel } from '../src/lib/rateProfiles';
 import { effectiveRebar, emptyRates, rateFor, rateItems, setItemRate, setOverride } from '../src/lib/rates';
 

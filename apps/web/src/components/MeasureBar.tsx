@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MEASURE_MODES, type MeasureMode, type MeasureReadout } from '@shanku/engine';
+import { MEASURE_MODES, type MeasureMode, type MeasureReadout } from '@cad2bim/engine';
 
 export interface MeasureBarProps {
   readout: MeasureReadout;

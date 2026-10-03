@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ElementRecord } from '@shanku/engine';
+import type { ElementRecord } from '@cad2bim/engine';
 import { looksLikeMarks, matchMarks, parseMarkList, proposeMarks } from '../src/lib/marks';
 
 const el = (index: number, category: string, mark: string, level = 'L1', x = 0, z = 0): ElementRecord =>

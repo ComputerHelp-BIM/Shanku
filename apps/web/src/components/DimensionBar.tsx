@@ -1,4 +1,4 @@
-import { DIMENSION_TOOLS, type DimensionReadout } from '@shanku/engine';
+import { DIMENSION_TOOLS, type DimensionReadout } from '@cad2bim/engine';
 
 /**
  * The Dimension tool's strip over the top of the view (Revit's Options Bar): which tool, what to pick

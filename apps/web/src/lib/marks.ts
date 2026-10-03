@@ -1,8 +1,8 @@
-import type { Category, ElementRecord } from '@shanku/engine';
+import type { Category, ElementRecord } from '@cad2bim/engine';
 
 /**
  * Marks from a pasted message (quick-wins B2): "C1, C4, B12", one per line, "C1-C5" or "C1 to C5".
- * Site queries arrive this way on WhatsApp and in Excel; Shanku selects every element with those
+ * Site queries arrive this way on WhatsApp and in Excel; cad2bim selects every element with those
  * marks (all levels) and lists the ones it could not find.
  */
 export function parseMarkList(text: string, maxRange = 200): string[] {

@@ -33,7 +33,7 @@ describe('command palette sections', () => {
     expect(isNewCommand('explode.radial', '0.29.0')).toBe(false); // five releases ago: no longer new
     expect(isNewCommand('window.qa', '0.25.0')).toBe(false); // not before it exists
     const s = paletteSections(all, {}, '0.25.0').find((x) => x.id === 'new')!;
-    expect(s.title).toBe('New in Shanku 0.25');
+    expect(s.title).toBe('New in cad2bim 0.25');
     expect(s.commands.map((c) => c.id)).toEqual(['explode.storeys', 'explode.radial', 'help.guide']);
     recordUse('explode.radial');
     const after = paletteSections(all, loadUsage(), '0.25.0').find((x) => x.id === 'new')!;

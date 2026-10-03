@@ -2,6 +2,20 @@
 
 All notable changes to this repository. Package-level detail lives in each package README.
 
+## 0.57.0 — 2026-10-03
+
+### Changed
+- **Shanku is now cad2bim** (cad2bim.in): the name, the packages (`@cad2bim/*`, versions: web 0.57.0, engine 0.43.0, ui 0.16.0, brand 1.15.0, tokens 2.2.0), the Revit add-in's text (cad2bim Bridge for Revit 0.12.1), the DXF → 3D pipeline's IFC header (2.0.2).
+- Projects save as **`.c2b`** (schema 3); `.shkp` and `.shk` still open. Families `.c2f` and templates `.c2t` reserved.
+
+### Kept
+- The `Shanku_Structural` IFC property set, the browser storage, the add-in's pairing data: existing models, sessions and pairings keep working.
+- The Revit bridge's protocol names (`/shanku/v1`, `X-Shanku-Document-*`): every installed add-in keeps working with this app, and this add-in with older apps.
+
+### Fixed (before release)
+- The rename had changed the bridge's response headers on both sides, which would have unlinked every Revit running Shanku Bridge 0.12.0. Restored; the app reads both names.
+- Shanku Bridge for Revit 0.12.1 accepts the app from cad2bim.in and its subdomains.
+
 ## 0.56.1 — 2026-10-03
 
 ### Performance

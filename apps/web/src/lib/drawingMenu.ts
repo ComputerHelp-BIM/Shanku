@@ -1,4 +1,4 @@
-import type { CrosshairSize, DrawingDisplay } from '@shanku/engine';
+import type { CrosshairSize, DrawingDisplay } from '@cad2bim/engine';
 import { item, sep, type MenuItem } from './menu';
 
 /** Everything the 2D right-click menu can do; App.tsx carries each one out. */
@@ -46,7 +46,7 @@ export interface DrawingMenuState {
 }
 
 /** Why editing entries are greyed out; shown as their tooltip. */
-export const VIEW_ONLY = 'Shanku opens drawings to view and check them; editing is not available yet.';
+export const VIEW_ONLY = 'cad2bim opens drawings to view and check them; editing is not available yet.';
 
 /**
  * AutoCAD's shortcut menus for the drawing area: the default menu when nothing is selected, and the

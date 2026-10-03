@@ -1,4 +1,4 @@
-import type { ElementRecord, ModelInfo } from '@shanku/engine';
+import type { ElementRecord, ModelInfo } from '@cad2bim/engine';
 import type { ConsoleRequest, ConsoleResponse } from './worker';
 
 export interface RunResult {

@@ -5,7 +5,7 @@ import { parseIfc } from '../src/ifc/parse';
 
 // Performance check against a ~50k-element model. Skipped unless SHANKU_LARGE_IFC points at one:
 //   python tools/fixtures/make_sample_ifc.py large large-frame.ifc
-//   SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @shanku/engine
+//   SHANKU_LARGE_IFC=../../large-frame.ifc npm test -w @cad2bim/engine
 const file = process.env.SHANKU_LARGE_IFC;
 
 describe.skipIf(!file || !existsSync(file))('large model', () => {

@@ -1,5 +1,5 @@
 /**
- * Parametric elements: the model Shanku edits (docs/design/native-editing.md, decision 16A).
+ * Parametric elements: the model cad2bim edits (docs/design/native-editing.md, decision 16A).
  *
  * The same shape as the exchange DXF → 3D and Export to Revit use, plus identity and state. Lengths are mm,
  * in the model's plan (X east, Y north) and heights from the project's ±0. IFC is generated from these on
@@ -69,7 +69,7 @@ export function fromExchange(ex: RevitExchange): ParamElement[] {
 
 // ---- from IFC geometry ---------------------------------------------------------------------------------
 
-/** The kinds Shanku can turn into parametric elements, from its categories. */
+/** The kinds cad2bim can turn into parametric elements, from its categories. */
 export function kindForCategory(category: string, ifcClass = ''): ElementKind | null {
   switch (category) {
     case 'Column':

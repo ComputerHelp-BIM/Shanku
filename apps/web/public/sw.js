@@ -1,5 +1,5 @@
 /*
- * Shanku's service worker: the app opens without internet, with the work kept on this device.
+ * cad2bim's service worker: the app opens without internet, with the work kept on this device.
  * - The page: network first (updates arrive whenever online), else the saved copy.
  * - The app's files (hashed assets, WebAssembly, fonts, samples) and the Python runtime (jsDelivr's
  *   Pyodide): kept on first use, served from here after.
@@ -25,7 +25,7 @@ const sameOrigin = (url) => url.origin === self.location.origin;
 const neverKeep = (url) =>
   (sameOrigin(url) && url.pathname.startsWith('/api/')) ||
   url.hostname.endsWith('.blob.vercel-storage.com') ||
-  // the Revit bridge on this computer (another port), not Shanku itself served from localhost
+  // the Revit bridge on this computer (another port), not cad2bim itself served from localhost
   (!sameOrigin(url) && (url.hostname === 'localhost' || url.hostname === '127.0.0.1'));
 const keepable = (url) => sameOrigin(url) || url.hostname === 'cdn.jsdelivr.net';
 

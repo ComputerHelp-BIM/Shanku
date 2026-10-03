@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RevitExchange } from '@shanku/engine';
+import type { RevitExchange } from '@cad2bim/engine';
 import { approvedOnly, exportSets } from '../src/lib/exportPlan';
 
 const x: RevitExchange = {

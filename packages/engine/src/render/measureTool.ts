@@ -22,7 +22,7 @@ import {
 
 /**
  * The Measure tool (Revit's Measure Between Two References and Measure Along an Element, plus
- * Shanku's clear distance, face area and chain): hover shows what a click would take, Tab steps
+ * cad2bim's clear distance, face area and chain): hover shows what a click would take, Tab steps
  * through the other choices under the cursor, Shift+Tab steps back. Results stay on the view until
  * cleared or the tool closes.
  *
